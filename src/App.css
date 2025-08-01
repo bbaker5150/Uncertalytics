@@ -191,12 +191,45 @@ button:active,
   padding-right: 2rem;
 }
 
-.results-sidebar h4 {
-  margin-top: 0;
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 15px;
+}
+
+.sidebar-header h4 {
+  margin: 0;
   padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 15px;
   color: var(--text-color);
+  border-bottom: none;
+}
+
+.add-point-button {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-color-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0 0 10px 0;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.add-point-button:hover {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .results-content {
@@ -205,16 +238,17 @@ button:active,
 }
 
 .placeholder-content {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  text-align: center;
-  color: #6c757d;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    text-align: center;
+    color: var(--text-color-muted);
+    background-color: var(--background-color);
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 2rem;
 }
 
 .placeholder-content h3 {
@@ -244,6 +278,19 @@ button:active,
   transition: all 0.2s ease-in-out;
 }
 
+.measurement-point-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.point-main {
+    font-weight: 500;
+}
+.point-qualifier {
+    font-size: 0.85rem;
+    color: var(--text-color-muted);
+}
+
 .measurement-point-item:hover {
   background-color: var(--background-color);
   border-color: var(--primary-color);
@@ -254,6 +301,9 @@ button:active,
   border-color: var(--primary-color);
   color: white;
   font-weight: 700;
+}
+.measurement-point-item.active .point-qualifier {
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .measurement-point-item.active .delete-action {
@@ -330,13 +380,52 @@ button:active,
 }
 
 .dark-mode-toggle {
-    background-color: var(--text-color-muted);
-    color: var(--background-color);
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+
+.dark-mode-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.dark-mode-toggle .slider {
+    position: absolute;
     cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 28px;
+}
+
+.dark-mode-toggle .slider:before {
+    position: absolute;
+    content: "☀️";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.dark-mode-toggle input:checked + .slider {
+    background-color: var(--primary-color);
+}
+.dark-mode-toggle input:checked + .slider:before {
+    transform: translateX(22px);
+    content: "🌒";
 }
 /* =================================================================== */
 /* 4. MODALS & OVERLAYS                                                */
@@ -644,17 +733,18 @@ button:active,
 }
 
 .k-factor-cell {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
     white-space: nowrap;
 }
 
-.k-factor-cell label {
+.k-factor-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     margin: 0;
     font-size: 0.85rem;
     color: var(--text-color-muted);
     cursor: pointer;
+    font-weight: normal;
 }
 /* =================================================================== */
 /* 7. RISK ANALYSIS & DASHBOARD                                        */
@@ -883,6 +973,11 @@ body.dark-mode .form-section-warning {
   color: #f6e05e;
 }
 
+body.dark-mode .placeholder-content {
+    background-color: transparent;
+    color: var(--text-color-muted);
+}
+
 body.dark-mode .measurement-point-item:hover {
   background-color: var(--background-color);
 }
@@ -893,7 +988,7 @@ body.dark-mode .measurement-point-item.active {
 }
 
 body.dark-mode .view-toggle {
-  background-color: #1a202c;
+  background-color: #2c2c2c;
 }
 
 body.dark-mode .view-toggle button {
@@ -901,8 +996,8 @@ body.dark-mode .view-toggle button {
 }
 
 body.dark-mode .view-toggle button.active {
-  background-color: var(--content-background);
-  color: var(--primary-color);
+  background-color: var(--primary-color);
+  color: #fff;
 }
 
 body.dark-mode .uncertainty-budget-table thead th {

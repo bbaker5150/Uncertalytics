@@ -160,13 +160,13 @@ const UncertaintyBudgetTable = ({ components, onRemove, calcResults, useTDistrib
                         </tr>
                         <tr>
                             <td colSpan="2">{'Coverage Factor (k)'}</td>
-                            <td colSpan="4">{calcResults.k_value.toFixed(3)}</td>
-                        </tr>
-                        <tr>
-                          <td className="k-factor-cell">
-                            <input type="checkbox" id="use-t-dist" checked={useTDistribution} onChange={e => setUseTDistribution(e.target.checked)} />
-                            <label htmlFor="use-t-dist">Use t-dist</label>
-                          </td>
+                            <td>{calcResults.k_value.toFixed(3)}</td>
+                            <td colSpan="2" className="k-factor-cell">
+                                <label htmlFor="use-t-dist" className="k-factor-label">
+                                    <input type="checkbox" id="use-t-dist" checked={useTDistribution} onChange={e => setUseTDistribution(e.target.checked)} />
+                                    Use t-dist
+                                </label>
+                            </td>
                         </tr>
                     </>
                 )}
@@ -597,12 +597,10 @@ const convertToPPM = (value, unit, nominalValue, nominalUnit, getExplanation = f
 // --- ANALYSIS COMPONENT (HANDLES THE THREE VIEWS) ---
 function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
     const { 
-        testPointInfo, 
         uut: initialUut, 
         tmde: initialTmde, 
         specifications: initialSpecs, 
         components: initialManualComponents,
-        ...initialResults 
     } = testPointData;
     
     // --- STATE MANAGEMENT ---
@@ -621,7 +619,6 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
 
 
     // --- EFFECTS ---
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         const {
             uut: newUut,
@@ -637,6 +634,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
         setSpecInput(newSpecs || defaultTestPoint.specifications);
         setCalcResults(newResults.is_detailed_uncertainty_calculated ? { ...newResults } : null);
         setRiskResults(null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [testPointData.id, defaultTestPoint]);
 
     useEffect(() => {
@@ -1343,20 +1341,22 @@ function App() {
 
             <div className="content-area uncertainty-analysis-page">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h2>Uncertainty Analysis (Standalone)</h2>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <button className="button" onClick={() => setIsAddModalOpen(true)}>Add New Measurement Point</button>
-                        <button className="dark-mode-toggle" onClick={() => setIsDarkMode(!isDarkMode)}>
-                            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
-                        </button>
-                    </div>
+                    <h2>Uncertainty Analysis</h2>
+                    <label className="dark-mode-toggle">
+                        <input type="checkbox" checked={isDarkMode} onChange={() => setIsDarkMode(!isDarkMode)} />
+                        <span className="slider"></span>
+                    </label>
                 </div>
-                {currentTestPoints.length === 0 ? (
-                    <div className="form-section-warning"><p>No measurement points available. Click "Add New Measurement Point" to begin.</p></div>
-                ) : (
-                    <div className="results-workflow-container">
-                        <aside className="results-sidebar">
+                
+                <div className="results-workflow-container">
+                    <aside className="results-sidebar">
+                        <div className="sidebar-header">
                             <h4>Measurement Points</h4>
+                            <button className="add-point-button" onClick={() => setIsAddModalOpen(true)} title="Add New Measurement Point">+</button>
+                        </div>
+                        {currentTestPoints.length === 0 ? (
+                             <div className="form-section-warning"><p>No measurement points available. Click the "+" button to begin.</p></div>
+                        ) : (
                             <div className="measurement-point-list">
                                 {currentTestPoints.map(tp => {
                                     const isSelected = selectedTestPointId === tp.id;
@@ -1366,8 +1366,9 @@ function App() {
                                             onClick={() => setSelectedTestPointId(tp.id)}
                                             className={`measurement-point-item ${isSelected ? 'active' : ''}`}
                                         >
-                                            <span>
-                                                {tp.parameter ? `${tp.parameter.name}: ${tp.parameter.value}${tp.parameter.unit}` : `Legacy Measurement Point`}
+                                            <span className="measurement-point-details">
+                                                <span className="point-main">{tp.parameter ? `${tp.parameter.name}: ${tp.parameter.value}${tp.parameter.unit}` : `Legacy Point`}</span>
+                                                <span className="point-qualifier">{tp.qualifier ? `@ ${tp.qualifier.value}${tp.qualifier.unit}`: ''}</span>
                                             </span>
                                             <span 
                                                 className="delete-action" 
@@ -1383,23 +1384,24 @@ function App() {
                                     );
                                 })}
                             </div>
-                        </aside>
-                        <main className="results-content">
-                            {testPointData ? (
-                                <Analysis
-                                    testPointData={testPointData}
-                                    onDataSave={handleDataSave}
-                                    defaultTestPoint={defaultTestPoint}
-                                />
-                            ) : (
-                                <div className="placeholder-content">
-                                    <h3>Select a Measurement Point</h3>
-                                    <p>Please select a measurement point from the list to begin.</p>
-                                </div>
-                            )}
-                        </main>
-                    </div>
-                )}
+                        )}
+                    </aside>
+                    <main className="results-content">
+                        {testPointData ? (
+                            <Analysis
+                                testPointData={testPointData}
+                                onDataSave={handleDataSave}
+                                defaultTestPoint={defaultTestPoint}
+                            />
+                        ) : (
+                            <div className="placeholder-content">
+                                <h3>Select or Add a Measurement Point</h3>
+                                <p>Please select a measurement point from the list or add a new one to begin.</p>
+                            </div>
+                        )}
+                    </main>
+                </div>
+                
             </div>
         </div>
     );
