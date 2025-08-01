@@ -222,13 +222,13 @@ button:active,
   margin-bottom: 10px;
 }
 
-.test-point-list {
+.measurement-point-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.test-point-item {
+.measurement-point-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -244,19 +244,19 @@ button:active,
   transition: all 0.2s ease-in-out;
 }
 
-.test-point-item:hover {
+.measurement-point-item:hover {
   background-color: var(--background-color);
   border-color: var(--primary-color);
 }
 
-.test-point-item.active {
+.measurement-point-item.active {
   background-color: var(--primary-color);
   border-color: var(--primary-color);
   color: white;
   font-weight: 700;
 }
 
-.test-point-item.active .delete-action {
+.measurement-point-item.active .delete-action {
   color: white;
 }
 
@@ -329,6 +329,15 @@ button:active,
   font-size: 0.9rem;
 }
 
+.dark-mode-toggle {
+    background-color: var(--text-color-muted);
+    color: var(--background-color);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
 /* =================================================================== */
 /* 4. MODALS & OVERLAYS                                                */
 /* =================================================================== */
@@ -638,6 +647,7 @@ button:active,
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    white-space: nowrap;
 }
 
 .k-factor-cell label {
@@ -829,6 +839,28 @@ button:active,
 .spec-dashboard.status-warning .spec-status-footer { background-color: var(--status-warning); color: #000; }
 .spec-dashboard.status-bad .spec-status-footer { background-color: var(--status-bad); }
 
+.spec-input-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+}
+.spec-input-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.spec-input-column h5 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    color: var(--text-color);
+}
+.spec-input-column label {
+    font-size: 0.9rem;
+    color: var(--text-color-muted);
+}
 
 /* =================================================================== */
 /* 9. DARK MODE OVERRIDES                                              */
@@ -851,11 +883,11 @@ body.dark-mode .form-section-warning {
   color: #f6e05e;
 }
 
-body.dark-mode .test-point-item:hover {
+body.dark-mode .measurement-point-item:hover {
   background-color: var(--background-color);
 }
 
-body.dark-mode .test-point-item.active {
+body.dark-mode .measurement-point-item.active {
   color: #ffffff;
   background-color: var(--primary-color);
 }
@@ -923,7 +955,12 @@ body.dark-mode .uut-tolerance-display {
     background-color: #1A202C;
     border-color: #4A5568;
 }
-
+body.dark-mode .spec-input-column h5 {
+    color: var(--text-color);
+}
+body.dark-mode .spec-input-column label {
+    color: var(--text-color-muted);
+}
 /* =================================================================== */
 /* 10. MEDIA QUERIES                                                   */
 /* =================================================================== */
@@ -951,6 +988,9 @@ body.dark-mode .uut-tolerance-display {
   }
 
   .risk-inputs-container {
+    grid-template-columns: 1fr;
+  }
+  .spec-input-container {
     grid-template-columns: 1fr;
   }
 }

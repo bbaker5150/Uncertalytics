@@ -160,11 +160,13 @@ const UncertaintyBudgetTable = ({ components, onRemove, calcResults, useTDistrib
                         </tr>
                         <tr>
                             <td colSpan="2">{'Coverage Factor (k)'}</td>
-                            <td>{calcResults.k_value.toFixed(3)}</td>
-                            <td colSpan="2" className="k-factor-cell">
-                                <input type="checkbox" id="use-t-dist" checked={useTDistribution} onChange={e => setUseTDistribution(e.target.checked)} />
-                                <label htmlFor="use-t-dist">Use t-dist</label>
-                            </td>
+                            <td colSpan="4">{calcResults.k_value.toFixed(3)}</td>
+                        </tr>
+                        <tr>
+                          <td className="k-factor-cell">
+                            <input type="checkbox" id="use-t-dist" checked={useTDistribution} onChange={e => setUseTDistribution(e.target.checked)} />
+                            <label htmlFor="use-t-dist">Use t-dist</label>
+                          </td>
                         </tr>
                     </>
                 )}
@@ -186,7 +188,7 @@ const FinalUncertaintyCard = ({ calcResults, testPointInfo }) => {
                         {testPointInfo.qualifier.name}: {testPointInfo.qualifier.value} {testPointInfo.qualifier.unit}
                     </>
                 ) : (
-                    "Legacy Test Point Selected"
+                    "Legacy Measurement Point Selected"
                 )}
             </p>
 
@@ -933,14 +935,22 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
         
         return (
             <div>
-                 <Accordion title="Define Specifications" startOpen={true}>
-                    <div className="risk-inputs-container" style={{paddingTop: '15px'}}>
-                         <div className="config-column"><label>Manufacturer's Spec (± ppm)</label><input type="number" name="mfg" data-field="uncertainty" value={specInput.mfg.uncertainty || ''} onChange={handleSpecInputChange} /></div>
-                         <div className="config-column"><label>Manufacturer's k-factor</label><input type="number" name="mfg" data-field="k" value={specInput.mfg.k || ''} onChange={handleSpecInputChange} /></div>
-                         <div className="config-column"><label>Navy Requirement (± ppm)</label><input type="number" name="navy" data-field="uncertainty" value={specInput.navy.uncertainty || ''} onChange={handleSpecInputChange} /></div>
-                         <div className="config-column"><label>Navy's k-factor</label><input type="number" name="navy" data-field="k" value={specInput.navy.k || ''} onChange={handleSpecInputChange} /></div>
+                <div className="spec-input-container">
+                    <div className="spec-input-column">
+                        <h5>Manufacturer Specs</h5>
+                        <label>Spec (± ppm)</label>
+                        <input type="number" name="mfg" data-field="uncertainty" value={specInput.mfg.uncertainty || ''} onChange={handleSpecInputChange} />
+                        <label>k-factor</label>
+                        <input type="number" name="mfg" data-field="k" value={specInput.mfg.k || ''} onChange={handleSpecInputChange} />
                     </div>
-                </Accordion>
+                    <div className="spec-input-column">
+                        <h5>Navy Requirements</h5>
+                        <label>Requirement (± ppm)</label>
+                        <input type="number" name="navy" data-field="uncertainty" value={specInput.navy.uncertainty || ''} onChange={handleSpecInputChange} />
+                        <label>k-factor</label>
+                        <input type="number" name="navy" data-field="k" value={specInput.navy.k || ''} onChange={handleSpecInputChange} />
+                    </div>
+                </div>
                 <div style={{display: 'flex', gap: '20px', marginTop: '20px'}}>
                     <ComparisonCard title="Manufacturer Specification" specData={specInput.mfg} userUncertainty={calcResults.expanded_uncertainty} kUser={calcResults.k_value} />
                     <ComparisonCard title="Navy Requirement" specData={specInput.navy} userUncertainty={calcResults.expanded_uncertainty} kUser={calcResults.k_value} />
@@ -1158,7 +1168,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave }) => {
             />
             <div className="modal-content" style={{maxWidth: '600px'}}>
                 <button onClick={onClose} className="modal-close-button">&times;</button>
-                <h3>Add New Test Point</h3>
+                <h3>Add New Measurement Point</h3>
                 <div className="config-grid" style={{borderTop: 'none', paddingTop: '0'}}>
                     <div className='form-section'>
                         <label>Parameter Name</label>
@@ -1179,7 +1189,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave }) => {
                 </div>
                  <div className="modal-actions">
                     <button className="button button-secondary" onClick={onClose}>Cancel</button>
-                    <button className="button" onClick={handleSave}>Save Test Point</button>
+                    <button className="button" onClick={handleSave}>Save Measurement Point</button>
                 </div>
             </div>
         </div>
@@ -1193,6 +1203,7 @@ function App() {
     const [selectedSessionId, setSelectedSessionId] = useState(1);
     const [selectedTestPointId, setSelectedTestPointId] = useState(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
     const defaultTestPoint = useMemo(() => ({
         uut: { distribution: 'normal', toleranceLimit: '', unit: 'ppm' },
@@ -1220,6 +1231,14 @@ function App() {
             }
         } catch (error) { console.error("Failed to load data from localStorage", error); }
     }, []);
+
+    useEffect(() => {
+        if (isDarkMode) {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+    }, [isDarkMode]);
 
     const saveData = (updatedSessions) => {
         try {
@@ -1251,7 +1270,7 @@ function App() {
     };
 
     const handleDeleteTestPoint = (idToDelete) => {
-        if (!window.confirm("Are you sure you want to delete this test point?")) return;
+        if (!window.confirm("Are you sure you want to delete this measurement point?")) return;
 
         const updatedSessions = sessions.map(session => {
             if (session.id !== selectedSessionId) return session;
@@ -1325,29 +1344,34 @@ function App() {
             <div className="content-area uncertainty-analysis-page">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2>Uncertainty Analysis (Standalone)</h2>
-                    <button className="button" onClick={() => setIsAddModalOpen(true)}>Add New Test Point</button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <button className="button" onClick={() => setIsAddModalOpen(true)}>Add New Measurement Point</button>
+                        <button className="dark-mode-toggle" onClick={() => setIsDarkMode(!isDarkMode)}>
+                            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+                        </button>
+                    </div>
                 </div>
                 {currentTestPoints.length === 0 ? (
-                    <div className="form-section-warning"><p>No test points available. Click "Add New Test Point" to begin.</p></div>
+                    <div className="form-section-warning"><p>No measurement points available. Click "Add New Measurement Point" to begin.</p></div>
                 ) : (
                     <div className="results-workflow-container">
                         <aside className="results-sidebar">
-                            <h4>Test Points</h4>
-                            <div className="test-point-list">
+                            <h4>Measurement Points</h4>
+                            <div className="measurement-point-list">
                                 {currentTestPoints.map(tp => {
                                     const isSelected = selectedTestPointId === tp.id;
                                     return (
                                         <button
                                             key={tp.id}
                                             onClick={() => setSelectedTestPointId(tp.id)}
-                                            className={`test-point-item ${isSelected ? 'active' : ''}`}
+                                            className={`measurement-point-item ${isSelected ? 'active' : ''}`}
                                         >
                                             <span>
-                                                {tp.parameter ? `${tp.parameter.name}: ${tp.parameter.value}${tp.parameter.unit}` : `Legacy Test Point`}
+                                                {tp.parameter ? `${tp.parameter.name}: ${tp.parameter.value}${tp.parameter.unit}` : `Legacy Measurement Point`}
                                             </span>
                                             <span 
                                                 className="delete-action" 
-                                                title="Delete Test Point"
+                                                title="Delete Measurement Point"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleDeleteTestPoint(tp.id);
@@ -1369,8 +1393,8 @@ function App() {
                                 />
                             ) : (
                                 <div className="placeholder-content">
-                                    <h3>Select a Test Point</h3>
-                                    <p>Please select a test point from the list to begin.</p>
+                                    <h3>Select a Measurement Point</h3>
+                                    <p>Please select a measurement point from the list to begin.</p>
                                 </div>
                             )}
                         </main>
