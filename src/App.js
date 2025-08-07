@@ -1129,12 +1129,14 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
 
 const AddTestPointModal = ({ isOpen, onClose, onSave }) => {
     const [formData, setFormData] = useState({
-        paramName: 'Voltage',
-        paramValue: '10',
-        paramUnit: 'V',
-        qualName: 'Frequency',
-        qualValue: '1',
-        qualUnit: 'kHz',
+        section: '',
+        paramName: '',
+        paramValue: '',
+        paramUnit: '',
+        UUT: '',
+        qualName: '',
+        qualValue: '',
+        qualUnit: '',
     });
     const [notification, setNotification] = useState(null);
 
@@ -1147,7 +1149,9 @@ const AddTestPointModal = ({ isOpen, onClose, onSave }) => {
     };
 
     const handleSave = () => {
-        for (const key in formData) {
+        const requiredFields = ['section', 'paramName', 'paramUnit', 'paramValue', 'UUT'];
+
+        for (const key of requiredFields) {
             if (!formData[key]) {
                  setNotification({ title: 'Missing Information', message: `Please fill out the "${key}" field.` });
                 return;
@@ -1169,20 +1173,24 @@ const AddTestPointModal = ({ isOpen, onClose, onSave }) => {
                 <h3>Add New Measurement Point</h3>
                 <div className="config-grid" style={{borderTop: 'none', paddingTop: '0'}}>
                     <div className='form-section'>
-                        <label>Parameter Name</label>
+                        <label>Section*</label>
+                        <input type="text" name="section" value={formData.section} onChange={handleChange} />
+                        <label>Parameter Name*</label>
                         <input type="text" name="paramName" value={formData.paramName} onChange={handleChange} />
-                        <label>Parameter Value</label>
-                        <input type="text" name="paramValue" value={formData.paramValue} onChange={handleChange} />
-                        <label>Parameter Unit</label>
+                        <label>Parameter Unit*</label>
                         <input type="text" name="paramUnit" value={formData.paramUnit} onChange={handleChange} />
+                        <label>Parameter Value*</label>
+                        <input type="text" name="paramValue" value={formData.paramValue} onChange={handleChange} />
                     </div>
                      <div className='form-section'>
+                        <label>UUT*</label>
+                        <input type="text" name="UUT" value={formData.UUT} onChange={handleChange} />
                         <label>Qualifier Name</label>
                         <input type="text" name="qualName" value={formData.qualName} onChange={handleChange} />
-                        <label>Qualifier Value</label>
-                        <input type="text" name="qualValue" value={formData.qualValue} onChange={handleChange} />
                         <label>Qualifier Unit</label>
                         <input type="text" name="qualUnit" value={formData.qualUnit} onChange={handleChange} />
+                        <label>Qualifier Value</label>
+                        <input type="text" name="qualValue" value={formData.qualValue} onChange={handleChange} />
                     </div>
                 </div>
                  <div className="modal-actions">
@@ -1201,7 +1209,7 @@ function App() {
     const [selectedSessionId, setSelectedSessionId] = useState(1);
     const [selectedTestPointId, setSelectedTestPointId] = useState(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(true);
 
     const defaultTestPoint = useMemo(() => ({
         uut: { distribution: 'normal', toleranceLimit: '', unit: 'ppm' },
@@ -1246,10 +1254,11 @@ function App() {
     };
 
     const handleSaveTestPoint = (formData) => {
-        const { paramName, paramValue, paramUnit, qualName, qualValue, qualUnit } = formData;
+        const { section, paramName, paramValue, paramUnit, UUT, qualName, qualValue, qualUnit } = formData;
         
         const newTestPoint = {
             id: Date.now(),
+            testpoint: { step: section, ti: UUT },
             parameter: { name: paramName, value: paramValue, unit: paramUnit },
             qualifier: { name: qualName, value: qualValue, unit: qualUnit },
             ...defaultTestPoint
@@ -1367,6 +1376,7 @@ function App() {
                                             className={`measurement-point-item ${isSelected ? 'active' : ''}`}
                                         >
                                             <span className="measurement-point-details">
+                                                <span className="point-data">{tp.testpoint ? `${tp.testpoint.step} ${tp.testpoint.ti}` : `N/A`}</span>
                                                 <span className="point-main">{tp.parameter ? `${tp.parameter.name}: ${tp.parameter.value}${tp.parameter.unit}` : `Legacy Point`}</span>
                                                 <span className="point-qualifier">{tp.qualifier ? `@ ${tp.qualifier.value}${tp.qualifier.unit}`: ''}</span>
                                             </span>

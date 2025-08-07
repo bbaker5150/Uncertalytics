@@ -283,6 +283,10 @@ button:active,
     flex-direction: column;
 }
 
+.point-data {
+    font-weight: 900;
+}
+
 .point-main {
     font-weight: 500;
 }
