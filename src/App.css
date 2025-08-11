@@ -571,6 +571,44 @@ button:active,
   padding-top: 15px;
 }
 
+/* NEW: Styles for the new tolerance display cards */
+.tolerance-display-card {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background-color: var(--background-color);
+}
+
+.tolerance-display-card h5 {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.tolerance-summary {
+    font-size: 1rem;
+    color: var(--text-color);
+    background: var(--content-background);
+    padding: 10px;
+    border-radius: 4px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 500;
+    flex-grow: 1;
+}
+
+.tolerance-display-card .button {
+    margin-top: auto; /* Push button to the bottom */
+    width: 100%;
+}
+
 .config-stack {
   display: flex;
   flex-direction: column;
@@ -1068,6 +1106,12 @@ body.dark-mode .spec-input-column h5 {
 body.dark-mode .spec-input-column label {
     color: var(--text-color-muted);
 }
+body.dark-mode .tolerance-display-card {
+    background-color: #1A202C;
+}
+body.dark-mode .tolerance-summary {
+    background-color: var(--background-color);
+}
 /* =================================================================== */
 /* 10. MEDIA QUERIES                                                   */
 /* =================================================================== */
@@ -1156,4 +1200,89 @@ body.dark-mode .spec-input-column label {
 
 body.dark-mode .test-point-details-view strong {
     color: var(--text-color-muted);
+}
+
+/* NEW: Styles for the redesigned ToleranceToolModal */
+.components-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.component-card {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--background-color);
+}
+
+.component-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.component-header h5 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.remove-component-btn {
+    background: none;
+    border: none;
+    color: var(--status-bad);
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+}
+
+.component-body {
+    padding: 15px;
+}
+
+.add-component-section {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 15px;
+    background-color: var(--background-color);
+    border-radius: 6px;
+    margin-top: 10px;
+}
+
+.add-component-section select {
+    flex-grow: 1;
+    margin: 0;
+}
+
+.add-component-section .button-small {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+/* NEW: Style for button group in Tolerance Display Card */
+.tolerance-display-card .button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.tolerance-display-card .button-group .button {
+    flex: 1;
+    margin: 0;
+}
+
+
+/* Dark Mode additions for new elements */
+body.dark-mode .component-card {
+    background-color: #1A202C;
+}
+
+body.dark-mode .add-component-section {
+    background-color: #1A202C;
 }
