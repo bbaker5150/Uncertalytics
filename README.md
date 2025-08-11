@@ -1,5 +1,3 @@
-Of course. I've updated the `README.md` to only include instructions for `npm`.
-
 # Uncertainty Analysis Application
 
 This is a standalone React application designed for uncertainty analysis, risk analysis, and specification comparison. It provides a professional and intuitive interface for metrology and engineering professionals.
