@@ -3,8 +3,14 @@ import { probit, erf } from 'simple-statistics';
 import Latex from 'react-latex-next';
 import 'katex/dist/katex.min.css';
 import './App.css';
+import SessionInfo from './components/SessionInfo';
+import AddTestPointModal from './components/AddTestPointModal';
+import TestPointDetailView from './components/TestPointDetailView';
 
-// --- HELPER FUNCTIONS ---
+// --- HELPER FUNCTIONS & SHARED SUB-COMPONENTS ---
+// These are assumed to be available to other components. In a larger app,
+// they would be moved to their own files (e.g., 'utils.js', 'components/Accordion.js').
+
 function bivariateNormalCDF(x, y, rho) {
     if (rho === null || isNaN(rho) || rho > 1 || rho < -1) { return NaN; }
     if (rho === 0) return ((1 + erf(x / Math.sqrt(2))) / 2 * (1 + erf(y / Math.sqrt(2))) / 2);
@@ -49,9 +55,68 @@ function getKValueFromTDistribution(dof) {
     return kLower + (roundedDof - lowerBound) * (kUpper - kLower) / (upperBound - lowerBound);
 }
 
+const unitFamilies = {
+    'V': 'Voltage', 'mV': 'Voltage', 'uV': 'Voltage',
+    'A': 'Current', 'mA': 'Current', 'uA': 'Current',
+    'Hz': 'Frequency', 'kHz': 'Frequency', 'MHz': 'Frequency',
+    'Ohm': 'Resistance', 'kOhm': 'Resistance', 'MOhm': 'Resistance',
+    'deg F': 'Temperature', 'deg C': 'Temperature',
+    '%': 'Relative',
+    'ppm': 'Relative'
+};
 
-// --- SUB-COMPONENTS ---
-const Accordion = ({ title, children, startOpen = false }) => {
+const convertToPPM = (value, unit, nominalValue, nominalUnit, getExplanation = false) => {
+    const parsedValue = parseFloat(value);
+    const parsedNominal = parseFloat(nominalValue);
+
+    if (isNaN(parsedValue) || parsedValue === 0) {
+        return getExplanation ? { value: 0 } : 0;
+    }
+
+    if (unit === 'ppm') {
+        return getExplanation ? { value: parsedValue, explanation: `${parsedValue.toFixed(2)} ppm (no conversion needed)` } : parsedValue;
+    }
+
+    if (unit === '%') {
+        const ppmValue = (parsedValue / 100) * 1e6;
+        const explanation = `(${parsedValue} / 100) × 1,000,000 = ${ppmValue.toFixed(2)} ppm`;
+        return getExplanation ? { value: ppmValue, explanation } : ppmValue;
+    }
+
+    if (!nominalUnit || isNaN(parsedNominal) || parsedNominal === 0) {
+        const warning = `Cannot convert from ${unit} without a valid, non-zero nominal value.`;
+        return getExplanation ? { value: NaN, warning } : NaN;
+    }
+
+    const valueFamily = unitFamilies[unit];
+    const nominalFamily = unitFamilies[nominalUnit];
+
+    if (valueFamily && nominalFamily && valueFamily !== nominalFamily) {
+        const warning = `Unit mismatch: Cannot convert tolerance in ${unit} (${valueFamily}) to a nominal value in ${nominalUnit} (${nominalFamily}).`;
+        return getExplanation ? { value: NaN, warning } : NaN;
+    }
+
+    const multipliers = {
+        'V': 1, 'mV': 1e-3, 'uV': 1e-6,
+        'A': 1, 'mA': 1e-3, 'uA': 1e-6,
+        'Hz': 1, 'kHz': 1e3, 'MHz': 1e6,
+        'Ohm': 1, 'kOhm': 1e3, 'MOhm': 1e6,
+        'deg F': NaN, 'deg C': NaN
+    };
+
+    const multiplier = multipliers[unit];
+    if (isNaN(multiplier)) {
+        const warning = `Conversion for unit '${unit}' is not supported or is incompatible.`;
+        return getExplanation ? { value: NaN, warning } : NaN;
+    }
+
+    const absoluteValue = parsedValue * multiplier;
+    const ppmValue = (absoluteValue / parsedNominal) * 1e6;
+    const explanation = `((${parsedValue} ${unit} × ${multiplier}) / ${parsedNominal} ${nominalUnit}) × 1,000,000 = ${ppmValue.toFixed(2)} ppm`;
+    return getExplanation ? { value: ppmValue, explanation } : ppmValue;
+};
+
+export const Accordion = ({ title, children, startOpen = false }) => {
     const [isOpen, setIsOpen] = useState(startOpen);
     return (
         <div className="accordion-card">
@@ -64,7 +129,7 @@ const Accordion = ({ title, children, startOpen = false }) => {
     );
 };
 
-const NotificationModal = ({ isOpen, onClose, title, message }) => {
+export const NotificationModal = ({ isOpen, onClose, title, message }) => {
     if (!isOpen) return null;
     return (
         <div className="modal-overlay">
@@ -532,69 +597,8 @@ const ToleranceInput = ({ title, data, onChange, nominal }) => {
     );
 };
 
-const unitFamilies = {
-    'V': 'Voltage', 'mV': 'Voltage', 'uV': 'Voltage',
-    'A': 'Current', 'mA': 'Current', 'uA': 'Current',
-    'Hz': 'Frequency', 'kHz': 'Frequency', 'MHz': 'Frequency',
-    'Ohm': 'Resistance', 'kOhm': 'Resistance', 'MOhm': 'Resistance',
-    'deg F': 'Temperature', 'deg C': 'Temperature',
-    '%': 'Relative',
-    'ppm': 'Relative'
-};
-
-const convertToPPM = (value, unit, nominalValue, nominalUnit, getExplanation = false) => {
-    const parsedValue = parseFloat(value);
-    const parsedNominal = parseFloat(nominalValue);
-
-    if (isNaN(parsedValue) || parsedValue === 0) {
-        return getExplanation ? { value: 0 } : 0;
-    }
-
-    if (unit === 'ppm') {
-        return getExplanation ? { value: parsedValue, explanation: `${parsedValue.toFixed(2)} ppm (no conversion needed)` } : parsedValue;
-    }
-
-    if (unit === '%') {
-        const ppmValue = (parsedValue / 100) * 1e6;
-        const explanation = `(${parsedValue} / 100) × 1,000,000 = ${ppmValue.toFixed(2)} ppm`;
-        return getExplanation ? { value: ppmValue, explanation } : ppmValue;
-    }
-
-    if (!nominalUnit || isNaN(parsedNominal) || parsedNominal === 0) {
-        const warning = `Cannot convert from ${unit} without a valid, non-zero nominal value.`;
-        return getExplanation ? { value: NaN, warning } : NaN;
-    }
-
-    const valueFamily = unitFamilies[unit];
-    const nominalFamily = unitFamilies[nominalUnit];
-
-    if (valueFamily && nominalFamily && valueFamily !== nominalFamily) {
-        const warning = `Unit mismatch: Cannot convert tolerance in ${unit} (${valueFamily}) to a nominal value in ${nominalUnit} (${nominalFamily}).`;
-        return getExplanation ? { value: NaN, warning } : NaN;
-    }
-
-    const multipliers = {
-        'V': 1, 'mV': 1e-3, 'uV': 1e-6,
-        'A': 1, 'mA': 1e-3, 'uA': 1e-6,
-        'Hz': 1, 'kHz': 1e3, 'MHz': 1e6,
-        'Ohm': 1, 'kOhm': 1e3, 'MOhm': 1e6,
-        'deg F': NaN, 'deg C': NaN
-    };
-
-    const multiplier = multipliers[unit];
-    if (isNaN(multiplier)) {
-        const warning = `Conversion for unit '${unit}' is not supported or is incompatible.`;
-        return getExplanation ? { value: NaN, warning } : NaN;
-    }
-
-    const absoluteValue = parsedValue * multiplier;
-    const ppmValue = (absoluteValue / parsedNominal) * 1e6;
-    const explanation = `((${parsedValue} ${unit} × ${multiplier}) / ${parsedNominal} ${nominalUnit}) × 1,000,000 = ${ppmValue.toFixed(2)} ppm`;
-    return getExplanation ? { value: ppmValue, explanation } : ppmValue;
-};
-
-
-// --- ANALYSIS COMPONENT (HANDLES THE THREE VIEWS) ---
+// --- ANALYSIS COMPONENT ---
+// This component contains the core uncertainty calculation logic and its three tabs.
 function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
     const { 
         uut: initialUut, 
@@ -1127,101 +1131,56 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
     );
 }
 
-const AddTestPointModal = ({ isOpen, onClose, onSave }) => {
-    const [formData, setFormData] = useState({
-        section: '',
-        paramName: '',
-        paramValue: '',
-        paramUnit: '',
-        UUT: '',
-        qualName: '',
-        qualValue: '',
-        qualUnit: '',
-    });
-    const [notification, setNotification] = useState(null);
-
-
-    if (!isOpen) return null;
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSave = () => {
-        const requiredFields = ['section', 'paramName', 'paramUnit', 'paramValue', 'UUT'];
-
-        for (const key of requiredFields) {
-            if (!formData[key]) {
-                 setNotification({ title: 'Missing Information', message: `Please fill out the "${key}" field.` });
-                return;
-            }
-        }
-        onSave(formData);
-    };
-
-    return (
-        <div className="modal-overlay">
-            <NotificationModal 
-                isOpen={!!notification} 
-                onClose={() => setNotification(null)}
-                title={notification?.title}
-                message={notification?.message}
-            />
-            <div className="modal-content" style={{maxWidth: '600px'}}>
-                <button onClick={onClose} className="modal-close-button">&times;</button>
-                <h3>Add New Measurement Point</h3>
-                <div className="config-grid" style={{borderTop: 'none', paddingTop: '0'}}>
-                    <div className='form-section'>
-                        <label>Section*</label>
-                        <input type="text" name="section" value={formData.section} onChange={handleChange} />
-                        <label>Parameter Name*</label>
-                        <input type="text" name="paramName" value={formData.paramName} onChange={handleChange} />
-                        <label>Parameter Unit*</label>
-                        <input type="text" name="paramUnit" value={formData.paramUnit} onChange={handleChange} />
-                        <label>Parameter Value*</label>
-                        <input type="text" name="paramValue" value={formData.paramValue} onChange={handleChange} />
-                    </div>
-                     <div className='form-section'>
-                        <label>UUT*</label>
-                        <input type="text" name="UUT" value={formData.UUT} onChange={handleChange} />
-                        <label>Qualifier Name</label>
-                        <input type="text" name="qualName" value={formData.qualName} onChange={handleChange} />
-                        <label>Qualifier Unit</label>
-                        <input type="text" name="qualUnit" value={formData.qualUnit} onChange={handleChange} />
-                        <label>Qualifier Value</label>
-                        <input type="text" name="qualValue" value={formData.qualValue} onChange={handleChange} />
-                    </div>
-                </div>
-                 <div className="modal-actions">
-                    <button className="button button-secondary" onClick={onClose}>Cancel</button>
-                    <button className="button" onClick={handleSave}>Save Measurement Point</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
 // --- TOP-LEVEL APP COMPONENT ---
 function App() {
-    const [sessions, setSessions] = useState([{ id: 1, name: 'Local Session', testPoints: [] }]);
-    const [selectedSessionId, setSelectedSessionId] = useState(1);
-    const [selectedTestPointId, setSelectedTestPointId] = useState(null);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isDarkMode, setIsDarkMode] = useState(true);
-
+    // NEW: Define a more detailed structure for a new test point
     const defaultTestPoint = useMemo(() => ({
+        section: '',
+        uutDescription: '',
+        tmdeDescription: '',
+        // Structure based on Tolerance Calculator Tool
+        uutTolerance: { 
+            isSymmetric: true,
+            measuringResolution: 0,
+            reading: { low: '', high: '', unit: '%' },
+            range: { value: '', low: '', high: '', unit: '%' },
+            floor: { low: '', high: '', unit: 'V' },
+            db: { low: '', high: '', multiplier: 10, ref: 1 }
+        },
+        tmdeTolerance: {
+            isSymmetric: true,
+            reading: { low: '', high: '', unit: '%' },
+            range: { value: '', low: '', high: '', unit: '%' },
+            floor: { low: '', high: '', unit: 'V' },
+            db: { low: '', high: '', multiplier: 10, ref: 1 }
+        },
+        // Existing data structure for calculations
         uut: { distribution: 'normal', toleranceLimit: '', unit: 'ppm' },
         tmde: { distribution: 'uniform', toleranceLimit: '', unit: 'ppm' },
-        specifications: {
-            mfg: { uncertainty: '', k: 2 },
-            navy: { uncertainty: '', k: 2 }
-        },
+        specifications: { mfg: { uncertainty: '', k: 2 }, navy: { uncertainty: '', k: 2 } },
         components: [],
         is_detailed_uncertainty_calculated: false
     }), []);
 
+    // --- STATE MANAGEMENT ---
+    const createNewSession = () => ({
+        id: Date.now(),
+        name: 'New Session',
+        equipmentName: '',
+        analyst: '',
+        organization: '',
+        notes: '',
+        testPoints: []
+    });
+
+    const [sessions, setSessions] = useState([createNewSession()]);
+    const [selectedSessionId, setSelectedSessionId] = useState(sessions[0]?.id);
+    const [selectedTestPointId, setSelectedTestPointId] = useState(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [activeTab, setActiveTab] = useState('info');
+    
+    // --- EFFECTS ---
     useEffect(() => {
         try {
             const savedSessions = localStorage.getItem('uncertaintySessions');
@@ -1230,124 +1189,124 @@ function App() {
                 if (Array.isArray(parsed) && parsed.length > 0) {
                     setSessions(parsed);
                     setSelectedSessionId(parsed[0].id);
-                    if (parsed[0].testPoints.length > 0) {
-                        setSelectedTestPointId(parsed[0].testPoints[0].id);
-                    }
+                    setSelectedTestPointId(parsed[0].testPoints?.[0]?.id || null);
                 }
             }
         } catch (error) { console.error("Failed to load data from localStorage", error); }
     }, []);
 
     useEffect(() => {
-        if (isDarkMode) {
-            document.body.classList.add('dark-mode');
-        } else {
-            document.body.classList.remove('dark-mode');
+        try {
+            localStorage.setItem('uncertaintySessions', JSON.stringify(sessions));
+        } catch (error) {
+            console.error("Failed to save data to localStorage", error);
         }
+    }, [sessions]);
+
+    useEffect(() => {
+        if (isDarkMode) { document.body.classList.add('dark-mode'); } 
+        else { document.body.classList.remove('dark-mode'); }
     }, [isDarkMode]);
 
-    const saveData = (updatedSessions) => {
-        try {
-            localStorage.setItem('uncertaintySessions', JSON.stringify(updatedSessions));
-            setSessions(updatedSessions);
-        } catch (error) { console.error("Failed to save data to localStorage", error); }
+    // --- HANDLERS ---
+    const handleAddNewSession = () => {
+        const newSession = createNewSession();
+        setSessions(prev => [...prev, newSession]);
+        setSelectedSessionId(newSession.id);
+        setActiveTab('info');
+        setSelectedTestPointId(null);
+    };
+
+    const handleSessionChange = (updatedSession) => {
+        setSessions(prevSessions =>
+            prevSessions.map(s => s.id === updatedSession.id ? updatedSession : s)
+        );
+    };
+    
+    const handleSaveToFile = () => {
+        const currentSession = sessions.find(s => s.id === selectedSessionId);
+        if (!currentSession) return;
+        const fileName = `MUA ${currentSession.equipmentName || 'Session'}.json`;
+        const dataToSave = JSON.stringify(currentSession, null, 2);
+        const blob = new Blob([dataToSave], { type: 'application/json' });
+        const href = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = href;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(href);
     };
 
     const handleSaveTestPoint = (formData) => {
-        const { section, paramName, paramValue, paramUnit, UUT, qualName, qualValue, qualUnit } = formData;
-        
+        const { paramName, paramValue, paramUnit, qualName, qualValue, qualUnit, section, uutDescription, tmdeDescription } = formData;
         const newTestPoint = {
             id: Date.now(),
-            testpoint: { step: section, ti: UUT },
+            ...defaultTestPoint, // Spread the detailed default structure
+            section,
+            uutDescription,
+            tmdeDescription,
             parameter: { name: paramName, value: paramValue, unit: paramUnit },
             qualifier: { name: qualName, value: qualValue, unit: qualUnit },
-            ...defaultTestPoint
         };
-
-        const updatedSessions = sessions.map(session => {
-            if (session.id === selectedSessionId) {
-                return { ...session, testPoints: [...session.testPoints, newTestPoint] };
-            }
-            return session;
-        });
-
-        saveData(updatedSessions);
+        setSessions(prev => prev.map(session =>
+            session.id === selectedSessionId
+                ? { ...session, testPoints: [...session.testPoints, newTestPoint] }
+                : session
+        ));
         setSelectedTestPointId(newTestPoint.id);
+        setActiveTab('document');
         setIsAddModalOpen(false);
     };
 
     const handleDeleteTestPoint = (idToDelete) => {
         if (!window.confirm("Are you sure you want to delete this measurement point?")) return;
-
-        const updatedSessions = sessions.map(session => {
-            if (session.id !== selectedSessionId) return session;
-            
-            const filteredTestPoints = session.testPoints.filter(tp => tp.id !== idToDelete);
-            return { ...session, testPoints: filteredTestPoints };
-        });
-
-        if (selectedTestPointId === idToDelete) {
-             const currentSession = updatedSessions.find(s => s.id === selectedSessionId);
-             const firstRemainingPoint = currentSession?.testPoints[0];
-             setSelectedTestPointId(firstRemainingPoint ? firstRemainingPoint.id : null);
-        }
-
-        saveData(updatedSessions);
+        let nextSelectedTestPointId = selectedTestPointId;
+        setSessions(prev => prev.map(session => {
+            if (session.id === selectedSessionId) {
+                const filteredTestPoints = session.testPoints.filter(tp => tp.id !== idToDelete);
+                if (selectedTestPointId === idToDelete) {
+                    nextSelectedTestPointId = filteredTestPoints[0]?.id || null;
+                }
+                return { ...session, testPoints: filteredTestPoints };
+            }
+            return session;
+        }));
+        setSelectedTestPointId(nextSelectedTestPointId);
     };
 
     const handleDataSave = useCallback((updatedData) => {
-        setSessions(prevSessions => {
-            const updatedSessions = prevSessions.map(session => {
-                if (session.id === selectedSessionId) {
-                    const updatedTestPoints = session.testPoints.map(tp => {
-                        if (tp.id === selectedTestPointId) {
-                            return { ...tp, ...updatedData };
-                        }
-                        return tp;
-                    });
-                    return { ...session, testPoints: updatedTestPoints };
-                }
-                return session;
-            });
-            try {
-                localStorage.setItem('uncertaintySessions', JSON.stringify(updatedSessions));
-            } catch (error) {
-                console.error("Failed to save data to localStorage", error);
+        setSessions(prevSessions => prevSessions.map(session => {
+            if (session.id === selectedSessionId) {
+                const updatedTestPoints = session.testPoints.map(tp =>
+                    tp.id === selectedTestPointId ? { ...tp, ...updatedData } : tp
+                );
+                return { ...session, testPoints: updatedTestPoints };
             }
-            return updatedSessions;
-        });
+            return session;
+        }));
     }, [selectedSessionId, selectedTestPointId]);
 
+    // --- MEMOIZED SELECTORS ---
+    const currentSessionData = useMemo(() => sessions.find(s => s.id === selectedSessionId), [sessions, selectedSessionId]);
     const testPointData = useMemo(() => {
-        const currentSession = sessions.find(s => s.id === selectedSessionId);
-        if (!currentSession || !selectedTestPointId) return null;
-
-        const point = currentSession.testPoints.find(p => p.id === selectedTestPointId);
-        if (point) {
-            return {
-                id: point.id, 
-                ...point, 
-                testPointInfo: point.parameter ? {
-                    parameter: point.parameter,
-                    qualifier: point.qualifier,
-                } : null
-            };
-        }
-        return null;
-    }, [sessions, selectedSessionId, selectedTestPointId]);
+        if (!currentSessionData || !selectedTestPointId) return null;
+        const point = currentSessionData.testPoints.find(p => p.id === selectedTestPointId);
+        return point ? { ...point, testPointInfo: { 
+            parameter: point.parameter, 
+            qualifier: point.qualifier, 
+            uut: point.uutDescription, 
+            tmde: point.tmdeDescription, 
+            section: point.section 
+        } } : null;
+    }, [currentSessionData, selectedTestPointId]);
+    const currentTestPoints = useMemo(() => currentSessionData?.testPoints || [], [currentSessionData]);
     
-    const currentTestPoints = useMemo(() => {
-        return sessions.find(s => s.id === selectedSessionId)?.testPoints || [];
-    }, [sessions, selectedSessionId]);
-
+    // --- RENDER LOGIC ---
     return (
         <div className="App">
-            <AddTestPointModal 
-                isOpen={isAddModalOpen} 
-                onClose={() => setIsAddModalOpen(false)}
-                onSave={handleSaveTestPoint}
-            />
-
+            <AddTestPointModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSave={handleSaveTestPoint} />
             <div className="content-area uncertainty-analysis-page">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2>Uncertainty Analysis</h2>
@@ -1356,62 +1315,76 @@ function App() {
                         <span className="slider"></span>
                     </label>
                 </div>
-                
                 <div className="results-workflow-container">
                     <aside className="results-sidebar">
                         <div className="sidebar-header">
-                            <h4>Measurement Points</h4>
-                            <button className="add-point-button" onClick={() => setIsAddModalOpen(true)} title="Add New Measurement Point">+</button>
+                            <h4>Analysis Sessions</h4>
+                            <button className="add-point-button" onClick={handleAddNewSession} title="Add New Session">+</button>
                         </div>
-                        {currentTestPoints.length === 0 ? (
-                             <div className="form-section-warning"><p>No measurement points available. Click the "+" button to begin.</p></div>
-                        ) : (
-                            <div className="measurement-point-list">
-                                {currentTestPoints.map(tp => {
-                                    const isSelected = selectedTestPointId === tp.id;
-                                    return (
-                                        <button
-                                            key={tp.id}
-                                            onClick={() => setSelectedTestPointId(tp.id)}
-                                            className={`measurement-point-item ${isSelected ? 'active' : ''}`}
-                                        >
-                                            <span className="measurement-point-details">
-                                                <span className="point-data">{tp.testpoint ? `${tp.testpoint.step} ${tp.testpoint.ti}` : `N/A`}</span>
-                                                <span className="point-main">{tp.parameter ? `${tp.parameter.name}: ${tp.parameter.value}${tp.parameter.unit}` : `Legacy Point`}</span>
-                                                <span className="point-qualifier">{tp.qualifier ? `@ ${tp.qualifier.value}${tp.qualifier.unit}`: ''}</span>
-                                            </span>
-                                            <span 
-                                                className="delete-action" 
-                                                title="Delete Measurement Point"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteTestPoint(tp.id);
-                                                }}
-                                            >
-                                                ×
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
+                        <div className="session-list">
+                            {sessions.map(s => (
+                                <button key={s.id} onClick={() => {
+                                        setSelectedSessionId(s.id);
+                                        setSelectedTestPointId(s.testPoints?.[0]?.id || null);
+                                        setActiveTab('info');
+                                    }}
+                                    className={`session-list-item ${selectedSessionId === s.id ? 'active' : ''}`}
+                                >{s.name}</button>
+                            ))}
+                        </div>
                     </aside>
                     <main className="results-content">
-                        {testPointData ? (
-                            <Analysis
-                                testPointData={testPointData}
-                                onDataSave={handleDataSave}
-                                defaultTestPoint={defaultTestPoint}
-                            />
+                        {currentSessionData ? (
+                            <>
+                                <div className="view-toggle" style={{ marginBottom: '20px', display: 'flex' }}>
+                                    <button className={activeTab === 'info' ? 'active' : ''} onClick={() => setActiveTab('info')}>Session Info & Notes</button>
+                                    <button className={activeTab === 'document' ? 'active' : ''} onClick={() => setActiveTab('document')}>Document (Measurement Points)</button>
+                                </div>
+                                {activeTab === 'info' && <SessionInfo sessionData={currentSessionData} onSessionChange={handleSessionChange} onSaveToFile={handleSaveToFile} />}
+                                {activeTab === 'document' && (
+                                    <div className="document-view">
+                                        <div className="sidebar-header" style={{ borderBottom: 'none', marginBottom: '10px' }}>
+                                            <h4>Measurement Points</h4>
+                                            <button className="add-point-button" onClick={() => setIsAddModalOpen(true)} title="Add New Measurement Point">+</button>
+                                        </div>
+                                        {currentTestPoints.length === 0 ? (
+                                            <div className="placeholder-content" style={{ minHeight: '150px' }}>
+                                                <h3>No Measurement Points</h3>
+                                                <p>Click the "+" button to add the first measurement point for this session.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="measurement-point-list">
+                                                {currentTestPoints.map(tp => (
+                                                    <button key={tp.id} onClick={() => setSelectedTestPointId(tp.id)} className={`measurement-point-item ${selectedTestPointId === tp.id ? 'active' : ''}`}>
+                                                        <span className="measurement-point-details">
+                                                            <span className="point-main">{tp.parameter.name}: {tp.parameter.value}{tp.parameter.unit}</span>
+                                                            <span className="point-qualifier">@{tp.qualifier.value}{tp.qualifier.unit}</span>
+                                                        </span>
+                                                        <span className="delete-action" title="Delete Point" onClick={(e) => { e.stopPropagation(); handleDeleteTestPoint(tp.id); }}>×</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <hr style={{ margin: '2rem 0' }} />
+                                        {testPointData ? (
+                                            <TestPointDetailView key={selectedTestPointId} testPointData={testPointData} onDataSave={handleDataSave}>
+                                                {/* The full analysis component is passed as a child */}
+                                                <Analysis testPointData={testPointData} onDataSave={handleDataSave} defaultTestPoint={defaultTestPoint} />
+                                            </TestPointDetailView>
+                                        ) : currentTestPoints.length > 0 && 
+                                            <div className="placeholder-content"><h3>Select a measurement point to see details.</h3></div>
+                                        }
+                                    </div>
+                                )}
+                            </>
                         ) : (
                             <div className="placeholder-content">
-                                <h3>Select or Add a Measurement Point</h3>
-                                <p>Please select a measurement point from the list or add a new one to begin.</p>
+                                <h3>No Session Selected</h3>
+                                <p>Create a new session to begin your analysis.</p>
                             </div>
                         )}
                     </main>
                 </div>
-                
             </div>
         </div>
     );
