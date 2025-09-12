@@ -180,7 +180,7 @@ const calculateUncertaintyFromToleranceObject = (toleranceObject, nominal, isUUT
 
         const ppm = convertToPPM(valueInNominalUnits, nominal.unit, nominal.value, nominal.unit);
         if (!isNaN(ppm)) {
-            const u_i = Math.abs(ppm / 1.96);
+            const u_i = Math.abs(ppm / Math.sqrt(3));
             totalLinearTolerance += Math.abs(ppm);
             totalVariance += Math.pow(u_i, 2); 
             breakdown.push({ name, input: `±${value} ${unit}`, explanation, ppm: Math.abs(ppm), u_i });
