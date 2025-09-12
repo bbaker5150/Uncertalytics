@@ -6,6 +6,7 @@
 
 3. Context Menu on session via right click
 * View/Edit/Delete Session
+* Remove Session Info Tab
 
 4. Risk Analysis - Guardband Functionality
 *Cal Interval with or without
