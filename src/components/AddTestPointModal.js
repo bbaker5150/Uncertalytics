@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const NotificationModal = ({ isOpen, onClose, title, message }) => {
     if (!isOpen) return null;
@@ -16,7 +16,7 @@ const NotificationModal = ({ isOpen, onClose, title, message }) => {
     );
 };
 
-const AddTestPointModal = ({ isOpen, onClose, onSave }) => {
+const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
     const [formData, setFormData] = useState({
         section: '',
         uutDescription: '',
@@ -30,6 +30,28 @@ const AddTestPointModal = ({ isOpen, onClose, onSave }) => {
     });
     const [notification, setNotification] = useState(null);
 
+    useEffect(() => {
+        if (initialData) {
+            setFormData({
+                section: initialData.section || '',
+                uutDescription: initialData.uutDescription || '',
+                tmdeDescription: initialData.tmdeDescription || '',
+                paramName: initialData.testPointInfo.parameter.name || 'DC Voltage',
+                paramValue: initialData.testPointInfo.parameter.value || '10',
+                paramUnit: initialData.testPointInfo.parameter.unit || 'V',
+                qualName: initialData.testPointInfo.qualifier.name || 'Frequency',
+                qualValue: initialData.testPointInfo.qualifier.value || '1',
+                qualUnit: initialData.testPointInfo.qualifier.unit || 'kHz',
+            });
+        } else {
+            setFormData({
+                section: '', uutDescription: '', tmdeDescription: '', paramName: 'DC Voltage',
+                paramValue: '10', paramUnit: 'V', qualName: 'Frequency', qualValue: '1', qualUnit: 'kHz'
+            });
+        }
+    }, [initialData]);
+
+
     if (!isOpen) return null;
 
     const handleChange = (e) => {
@@ -38,25 +60,42 @@ const AddTestPointModal = ({ isOpen, onClose, onSave }) => {
     };
 
     const handleSave = () => {
-        // Validation for required fields based on Excel sheet description
         if (!formData.section || !formData.uutDescription || !formData.tmdeDescription || !formData.paramValue) {
              setNotification({ title: 'Missing Information', message: 'Please fill out Section, UUT, TMDE, and Parameter Value fields.' });
             return;
         }
-        onSave(formData);
-        // Reset form for next time
-        setFormData({ 
-            section: '', uutDescription: '', tmdeDescription: '', paramName: 'DC Voltage',
-            paramValue: '10', paramUnit: 'V', qualName: 'Frequency', qualValue: '1', qualUnit: 'kHz'
-        });
+
+        if (initialData) {
+            // It's an edit, package data differently
+            onSave({
+                id: initialData.id,
+                testPointData: {
+                    section: formData.section,
+                    uutDescription: formData.uutDescription,
+                    tmdeDescription: formData.tmdeDescription,
+                    testPointInfo: {
+                        parameter: { name: formData.paramName, value: formData.paramValue, unit: formData.paramUnit },
+                        qualifier: { name: formData.qualName, value: formData.qualValue, unit: formData.qualUnit },
+                        uut: formData.uutDescription,
+                        tmde: formData.tmdeDescription,
+                        section: formData.section
+                    }
+                }
+            });
+        } else {
+            // It's a new point
+            onSave(formData);
+        }
     };
+
+    const isEditing = !!initialData;
 
     return (
         <div className="modal-overlay">
             {notification && <NotificationModal isOpen={!!notification} onClose={() => setNotification(null)} title={notification.title} message={notification.message} />}
             <div className="modal-content" style={{maxWidth: '800px'}}>
                 <button onClick={onClose} className="modal-close-button">&times;</button>
-                <h3>Add New Measurement Point</h3>
+                <h3>{isEditing ? 'Edit Measurement Point' : 'Add New Measurement Point'}</h3>
                 <div className="config-grid" style={{borderTop: 'none', paddingTop: '0'}}>
                     <div className='form-section'>
                         <label>Section</label>
@@ -85,7 +124,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave }) => {
                 </div>
                  <div className="modal-actions">
                     <button className="button button-secondary" onClick={onClose}>Cancel</button>
-                    <button className="button" onClick={handleSave}>Save Measurement Point</button>
+                    <button className="button" onClick={handleSave}>Save Changes</button>
                 </div>
             </div>
         </div>

@@ -3,10 +3,16 @@ import { probit, erf } from 'simple-statistics';
 import Latex from 'react-latex-next';
 import 'katex/dist/katex.min.css';
 import './App.css';
-import SessionInfo from './components/SessionInfo';
 import AddTestPointModal from './components/AddTestPointModal';
 import TestPointDetailView from './components/TestPointDetailView';
 import ToleranceToolModal from './components/ToleranceToolModal';
+import EditSessionModal from './components/EditSessionModal';
+import ContextMenu from './components/ContextMenu';
+import FullBreakdownModal from './components/FullBreakdownModal';
+import TestPointInfoModal from './components/TestPointInfoModal';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faInfoCircle, faCalculator, faPlus, faEdit, faTrashAlt, faPencilAlt, faSlidersH } from '@fortawesome/free-solid-svg-icons';
+
 
 // --- NEW: UNIT MANAGEMENT SYSTEM ---
 export const unitSystem = {
@@ -56,9 +62,8 @@ export const unitSystem = {
 
 // --- HELPER FUNCTIONS & SHARED SUB-COMPONENTS ---
 
-// Helper function to create a display string from the tolerance object
 export const getToleranceSummary = (toleranceData) => {
-    if (!toleranceData) return 'Not Set';
+    if (!toleranceData || Object.keys(toleranceData).length === 0) return 'Not Set';
     const { reading, range, floor, db } = toleranceData;
     const parts = [];
     if (parseFloat(reading?.high)) parts.push(`±${reading.high} ${reading.unit}`);
@@ -66,6 +71,73 @@ export const getToleranceSummary = (toleranceData) => {
     if (parseFloat(floor?.high)) parts.push(`±${floor.high} ${floor.unit}`);
     if (parseFloat(db?.high)) parts.push(`±${db.high} dB`);
     return parts.length > 0 ? parts.join(' + ') : 'Not Set';
+};
+
+export const calculateUncertaintyFromToleranceObject = (toleranceObject, nominal, isUUT) => {
+    if (!toleranceObject || !nominal || !nominal.value || !nominal.unit) {
+        return { standardUncertainty: 0, totalToleranceForTar: 0, breakdown: [] };
+    }
+
+    const nominalValue = parseFloat(nominal.value);
+    let totalVariance = 0;
+    let totalLinearTolerance = 0;
+    const breakdown = [];
+
+    const addComponent = (value, unit, baseValueForRelative, name) => {
+        if (isNaN(value) || value === 0) return;
+
+        let valueInNominalUnits;
+        let explanation = '';
+        if (unit === '%' || unit === 'ppm') {
+            valueInNominalUnits = value * unitSystem.conversions[unit] * baseValueForRelative;
+            explanation = `${value}${unit} of ${baseValueForRelative}${nominal.unit} = ${valueInNominalUnits.toExponential(3)} ${nominal.unit}`;
+        } else {
+            const valueInBase = unitSystem.toBaseUnit(value, unit);
+            const nominalUnitInBase = unitSystem.toBaseUnit(1, nominal.unit);
+            valueInNominalUnits = valueInBase / nominalUnitInBase;
+            explanation = `${value} ${unit} = ${valueInNominalUnits.toExponential(3)} ${nominal.unit}`;
+        }
+
+        const ppm = convertToPPM(valueInNominalUnits, nominal.unit, nominal.value, nominal.unit);
+        if (!isNaN(ppm)) {
+            const u_i = Math.abs(ppm / Math.sqrt(3));
+            totalLinearTolerance += Math.abs(ppm);
+            totalVariance += Math.pow(u_i, 2);
+            breakdown.push({ name, input: `±${value} ${unit}`, explanation, ppm: Math.abs(ppm), u_i });
+        }
+    };
+
+    addComponent(parseFloat(toleranceObject.reading?.high), toleranceObject.reading?.unit, nominalValue, "Reading");
+    addComponent(parseFloat(toleranceObject.range?.high), toleranceObject.range?.unit, parseFloat(toleranceObject.range?.value), "Range");
+    addComponent(parseFloat(toleranceObject.floor?.high), toleranceObject.floor?.unit, nominalValue, "Floor");
+
+    const dbTol = parseFloat(toleranceObject.db?.high);
+    if (!isNaN(dbTol) && dbTol > 0) {
+        const dbMult = parseFloat(toleranceObject.db.multiplier) || 20;
+        const dbRef = parseFloat(toleranceObject.db.ref) || 1;
+        const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
+        const absoluteDeviation = Math.abs((dbRef * Math.pow(10, (dbNominal + dbTol) / dbMult)) - nominalValue);
+        const ppm = convertToPPM(absoluteDeviation, nominal.unit, nominal.value, nominal.unit);
+         if (!isNaN(ppm)) {
+            const u_i = Math.abs(ppm / Math.sqrt(3));
+            totalLinearTolerance += Math.abs(ppm);
+            totalVariance += Math.pow(u_i, 2);
+            breakdown.push({ name: 'dB', input: `±${dbTol} dB`, explanation: `Calculates to ${absoluteDeviation.toExponential(3)} ${nominal.unit} deviation`, ppm: Math.abs(ppm), u_i });
+        }
+    }
+
+    if (isUUT && parseFloat(toleranceObject.measuringResolution) > 0) {
+        const res = parseFloat(toleranceObject.measuringResolution);
+        const resPpm = convertToPPM(res, nominal.unit, nominal.value, nominal.unit);
+        if (!isNaN(resPpm)) {
+            const u_i = Math.abs((resPpm / 2) / Math.sqrt(3));
+            totalVariance += Math.pow(u_i, 2);
+            breakdown.push({ name: 'Resolution', input: `±${res/2} ${nominal.unit}`, explanation: `Rectangular distribution over ± half the least significant digit.`, ppm: Math.abs(resPpm/2), u_i });
+        }
+    }
+
+    const standardUncertainty = Math.sqrt(totalVariance);
+    return { standardUncertainty, totalToleranceForTar: totalLinearTolerance, breakdown };
 };
 
 function bivariateNormalCDF(x, y, rho) {
@@ -112,7 +184,6 @@ function getKValueFromTDistribution(dof) {
     return kLower + (roundedDof - lowerBound) * (kUpper - kLower) / (upperBound - lowerBound);
 }
 
-// REFACTORED: `convertToPPM` is now a more generic converter to a base unit, then to PPM
 const convertToPPM = (value, unit, nominalValue, nominalUnit, getExplanation = false) => {
     const parsedValue = parseFloat(value);
     const parsedNominal = parseFloat(nominalValue);
@@ -135,7 +206,7 @@ const convertToPPM = (value, unit, nominalValue, nominalUnit, getExplanation = f
     } else {
          valueInBase = unitSystem.toBaseUnit(parsedValue, unit);
     }
-    
+
     if (isNaN(valueInBase)) return getExplanation ? { value: NaN, warning: `Unsupported unit conversion for '${unit}'.` } : NaN;
 
     const nominalInBase = unitSystem.toBaseUnit(parsedNominal, nominalUnit);
@@ -147,115 +218,8 @@ const convertToPPM = (value, unit, nominalValue, nominalUnit, getExplanation = f
         const explanation = `((${valueInBase.toExponential(4)} ${unitSystem.families[nominalFamily].base}) / ${nominalInBase.toExponential(4)} ${unitSystem.families[nominalFamily].base}) × 1,000,000 = ${ppmValue.toFixed(2)} ppm`;
         return { value: ppmValue, explanation };
     }
-    
+
     return ppmValue;
-};
-
-
-// REWRITTEN: Calculates final uncertainty from the complex tolerance object with breakdown
-const calculateUncertaintyFromToleranceObject = (toleranceObject, nominal, isUUT, getBreakdown = false) => {
-    if (!toleranceObject || !nominal || !nominal.value || !nominal.unit) {
-        return { standardUncertainty: 0, totalToleranceForTar: 0, breakdown: [] };
-    }
-
-    const nominalValue = parseFloat(nominal.value);
-    let totalVariance = 0;
-    let totalLinearTolerance = 0;
-    const breakdown = [];
-
-    const addComponent = (value, unit, baseValueForRelative, name) => {
-        if (isNaN(value) || value === 0) return;
-        
-        let valueInNominalUnits;
-        let explanation = '';
-        if (unit === '%' || unit === 'ppm') {
-            valueInNominalUnits = value * unitSystem.conversions[unit] * baseValueForRelative;
-            explanation = `${value}${unit} of ${baseValueForRelative}${nominal.unit} = ${valueInNominalUnits.toExponential(3)} ${nominal.unit}`;
-        } else {
-            const valueInBase = unitSystem.toBaseUnit(value, unit);
-            const nominalUnitInBase = unitSystem.toBaseUnit(1, nominal.unit);
-            valueInNominalUnits = valueInBase / nominalUnitInBase;
-            explanation = `${value} ${unit} = ${valueInNominalUnits.toExponential(3)} ${nominal.unit}`;
-        }
-
-        const ppm = convertToPPM(valueInNominalUnits, nominal.unit, nominal.value, nominal.unit);
-        if (!isNaN(ppm)) {
-            const u_i = Math.abs(ppm / Math.sqrt(3));
-            totalLinearTolerance += Math.abs(ppm);
-            totalVariance += Math.pow(u_i, 2); 
-            breakdown.push({ name, input: `±${value} ${unit}`, explanation, ppm: Math.abs(ppm), u_i });
-        }
-    };
-    
-    addComponent(parseFloat(toleranceObject.reading?.high), toleranceObject.reading?.unit, nominalValue, "Reading");
-    addComponent(parseFloat(toleranceObject.range?.high), toleranceObject.range?.unit, parseFloat(toleranceObject.range?.value), "Range");
-    addComponent(parseFloat(toleranceObject.floor?.high), toleranceObject.floor?.unit, nominalValue, "Floor");
-
-    const dbTol = parseFloat(toleranceObject.db?.high);
-    if (!isNaN(dbTol) && dbTol > 0) {
-        const dbMult = parseFloat(toleranceObject.db.multiplier) || 20;
-        const dbRef = parseFloat(toleranceObject.db.ref) || 1;
-        const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
-        const absoluteDeviation = Math.abs((dbRef * Math.pow(10, (dbNominal + dbTol) / dbMult)) - nominalValue);
-        const ppm = convertToPPM(absoluteDeviation, nominal.unit, nominal.value, nominal.unit);
-         if (!isNaN(ppm)) {
-            const u_i = Math.abs(ppm / Math.sqrt(3));
-            totalLinearTolerance += Math.abs(ppm);
-            totalVariance += Math.pow(u_i, 2); 
-            breakdown.push({ name: 'dB', input: `±${dbTol} dB`, explanation: `Calculates to ${absoluteDeviation.toExponential(3)} ${nominal.unit} deviation`, ppm: Math.abs(ppm), u_i });
-        }
-    }
-
-    if (isUUT && parseFloat(toleranceObject.measuringResolution) > 0) {
-        const res = parseFloat(toleranceObject.measuringResolution);
-        const resPpm = convertToPPM(res, nominal.unit, nominal.value, nominal.unit);
-        if (!isNaN(resPpm)) {
-            const u_i = Math.abs((resPpm / 2) / Math.sqrt(3));
-            totalVariance += Math.pow(u_i, 2);
-            breakdown.push({ name: 'Resolution', input: `±${res/2} ${nominal.unit}`, explanation: `Rectangular distribution over ± half the least significant digit.`, ppm: Math.abs(resPpm/2), u_i });
-        }
-    }
-    
-    const standardUncertainty = Math.sqrt(totalVariance);
-    return { standardUncertainty, totalToleranceForTar: totalLinearTolerance, breakdown };
-};
-
-// --- NEW MODAL: Shows the breakdown of tolerance calculations ---
-const ToleranceBreakdownModal = ({ isOpen, onClose, breakdownData }) => {
-    if (!isOpen) return null;
-    const { type, toleranceObject, nominal } = breakdownData;
-    const { standardUncertainty, breakdown } = calculateUncertaintyFromToleranceObject(toleranceObject, nominal, type === 'UUT', true);
-
-    return (
-        <div className="modal-overlay">
-            <div className="modal-content breakdown-modal-content">
-                <button onClick={onClose} className="modal-close-button">&times;</button>
-                <h3>{type} Tolerance Calculation Breakdown</h3>
-                <div className="breakdown-step">
-                    <h5>Nominal Value</h5>
-                    <p>The reference value for all calculations: <strong>{nominal.value} {nominal.unit}</strong></p>
-                </div>
-
-                {breakdown.map((comp, index) => (
-                    <div className="breakdown-step" key={index}>
-                        <h5>{comp.name} Component</h5>
-                        <ul>
-                            <li><strong>Input:</strong> {comp.input}</li>
-                            <li><strong>Conversion:</strong> {comp.explanation}</li>
-                            <li><strong>In PPM:</strong> {comp.ppm.toFixed(3)} ppm</li>
-                            <li><strong>Std. Uncertainty (uᵢ):</strong> <Latex>{`$$ \\frac{${comp.ppm.toFixed(3)}}{\\sqrt{3}} = ${comp.u_i.toFixed(3)} \\text{ ppm}$$`}</Latex></li>
-                        </ul>
-                    </div>
-                ))}
-                
-                <div className="breakdown-step">
-                    <h5>Final Combined Uncertainty</h5>
-                    <p>The individual standard uncertainties (uᵢ) are combined using the Root Sum of Squares (RSS) method.</p>
-                    <Latex>{`$$ u_c = \\sqrt{\\sum u_i^2} = \\sqrt{${breakdown.map(c => `${c.u_i.toFixed(2)}^2`).join(' + ')}} = \\mathbf{${standardUncertainty.toFixed(3)}} \\text{ ppm} $$`}</Latex>
-                </div>
-            </div>
-        </div>
-    );
 };
 
 export const Accordion = ({ title, children, startOpen = false }) => {
@@ -336,7 +300,7 @@ const UncertaintyBudgetTable = ({ components, onRemove, calcResults, useTDistrib
 
     const typeAComponents = components.filter(c => c.type === 'A');
     const typeBComponents = components.filter(c => c.type === 'B');
-    
+
     return (
         <table className="uncertainty-budget-table">
             <thead>
@@ -668,45 +632,51 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
     );
 };
 
-// --- ANALYSIS COMPONENT ---
+const errorDistributions = [
+    { value: '1.732', label: 'Rectangular' },
+    { value: '3.464', label: 'Rectangular (Resolution)' },
+    { value: '2.449', label: 'Triangular' },
+    { value: '1.414', label: 'U Shaped' },
+    { value: '1.645', label: 'Normal (90%, k=1.645)' },
+    { value: '1.960', label: 'Normal (95%, k=1.960)' },
+    { value: '2.000', label: 'Normal (95.45%, k=2)' },
+    { value: '2.576', label: 'Normal (99%, k=2.576)' },
+    { value: '3.000', label: 'Normal (99.73%, k=3)' },
+    { value: '4.179', label: 'Rayleigh' },
+    { value: '1.000', label: 'Standard Uncertainty (Input is uᵢ)' },
+];
+
+
 function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
-    // ... (State setup remains largely the same)
-    const { 
-        specifications: initialSpecs, 
+    const {
+        specifications: initialSpecs,
         components: initialManualComponents,
     } = testPointData;
-    
-    // --- STATE MANAGEMENT ---
-    const [analysisMode, setAnalysisMode] = useState('detailed');
+
+    const [analysisMode, setAnalysisMode] = useState('uncertaintyTool');
     const [manualComponents, setManualComponents] = useState(initialManualComponents || []);
     const [specInput, setSpecInput] = useState(initialSpecs || defaultTestPoint.specifications);
-    const [newComponent, setNewComponent] = useState({ name: '', type: 'B', distribution: 'uniform', toleranceLimit: '', unit: 'ppm', expandedUncertainty: '', coverageFactor: 2, standardUncertainty: '', dof: 'Infinity' });
+    const [newComponent, setNewComponent] = useState({ name: '', type: 'B', errorDistributionDivisor: '1.732', toleranceLimit: '', unit: 'ppm', standardUncertainty: '', dof: 'Infinity' });
     const [useTDistribution, setUseTDistribution] = useState(false);
     const [calcResults, setCalcResults] = useState(null);
     const [riskInputs, setRiskInputs] = useState({ LLow: '', LUp: '', reliability: 0.95, guardBandMultiplier: 1 });
     const [riskResults, setRiskResults] = useState(null);
     const [breakdownModal, setBreakdownModal] = useState(null);
     const [notification, setNotification] = useState(null);
-    const [isToleranceModalOpen, setIsToleranceModalOpen] = useState(false);
-    const [editingToleranceType, setEditingToleranceType] = useState(null);
-    const [toleranceBreakdown, setToleranceBreakdown] = useState(null); // NEW: State for the breakdown modal
 
-
-    // ... (useEffect hooks and most handlers remain the same)
-    // --- EFFECTS ---
+    // **FIX FOR ESLINT WARNING**
     useEffect(() => {
         const {
             specifications: newSpecs,
             components: newManualComponents,
             ...newResults
         } = testPointData;
-    
+
         setManualComponents(newManualComponents || []);
         setSpecInput(newSpecs || defaultTestPoint.specifications);
         setCalcResults(newResults.is_detailed_uncertainty_calculated ? { ...newResults } : null);
         setRiskResults(null);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [testPointData.id, defaultTestPoint]);
+    }, [testPointData, defaultTestPoint]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -714,11 +684,11 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
         }, 500);
         return () => clearTimeout(handler);
     }, [specInput, manualComponents, onDataSave]);
-    
+
     useEffect(() => {
         const nominal = testPointData?.testPointInfo?.parameter;
         const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(testPointData.uutTolerance, nominal, true);
-    
+
         if (totalToleranceForTar > 0) {
             setRiskInputs(prev => ({
                 ...prev,
@@ -728,35 +698,33 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
         } else {
             setRiskInputs(prev => ({ ...prev, LLow: '', LUp: '' }));
         }
-    }, [testPointData.uutTolerance, testPointData.testPointInfo]);
+    }, [testPointData]);
 
-
-    // --- MEMOIZED CALCULATIONS ---
     const allComponents = useMemo(() => {
         const components = [...manualComponents];
         const nominal = testPointData?.testPointInfo?.parameter;
-        
-        const { 
-            standardUncertainty: uutValue, 
-            totalToleranceForTar: uutTolerance 
+
+        const {
+            standardUncertainty: uutValue,
+            totalToleranceForTar: uutTolerance
         } = calculateUncertaintyFromToleranceObject(testPointData.uutTolerance, nominal, true);
-        
+
         if (uutValue > 0) {
-            components.push({ 
-                id: 'uut_core', name: 'Unit Under Test (UUT)', type: 'B', 
-                value: uutValue, dof: Infinity, isCore: true, toleranceLimit: uutTolerance 
+            components.push({
+                id: 'uut_core', name: 'Unit Under Test (UUT)', type: 'B',
+                value: uutValue, dof: Infinity, isCore: true, toleranceLimit: uutTolerance
             });
         }
-        
-        const { 
-            standardUncertainty: tmdeValue, 
-            totalToleranceForTar: tmdeTolerance 
+
+        const {
+            standardUncertainty: tmdeValue,
+            totalToleranceForTar: tmdeTolerance
         } = calculateUncertaintyFromToleranceObject(testPointData.tmdeTolerance, nominal, false);
-    
+
         if (tmdeValue > 0) {
-            components.push({ 
-                id: 'tmde_core', name: 'Standard Instrument (TMDE)', type: 'B', 
-                value: tmdeValue, dof: Infinity, isCore: true, toleranceLimit: tmdeTolerance 
+            components.push({
+                id: 'tmde_core', name: 'Standard Instrument (TMDE)', type: 'B',
+                value: tmdeValue, dof: Infinity, isCore: true, toleranceLimit: tmdeTolerance
             });
         }
 
@@ -787,30 +755,11 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
         onDataSave(newResults);
     }, [allComponents, useTDistribution, onDataSave]);
 
-
-    // --- HANDLERS ---
-    const openToleranceModal = (type) => {
-        setEditingToleranceType(type);
-        setIsToleranceModalOpen(true);
-    };
-    
-    const closeToleranceModal = () => {
-        setEditingToleranceType(null);
-        setIsToleranceModalOpen(false);
-    };
-    
-    const handleSaveTolerance = (data) => {
-        if (editingToleranceType) {
-            onDataSave({ [editingToleranceType]: data });
-        }
-        closeToleranceModal();
-    };
-
     const handleAddComponent = () => {
         let valueInPPM = NaN;
         let dof = newComponent.dof === 'Infinity' ? Infinity : parseFloat(newComponent.dof);
         const nominal = testPointData?.testPointInfo?.parameter;
-        
+
         if (newComponent.type === 'A') {
             const stdUnc = parseFloat(newComponent.standardUncertainty);
             if (isNaN(stdUnc) || stdUnc <= 0 || isNaN(dof) || dof < 1) {
@@ -823,41 +772,19 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
                 return;
             }
             valueInPPM = ppm;
-        } else {
-            let rawValue, kFactor;
-            switch (newComponent.distribution) {
-                case 'uniform':
-                case 'triangular':
-                    rawValue = parseFloat(newComponent.toleranceLimit);
-                    if (isNaN(rawValue) || rawValue <= 0) {
-                        setNotification({ title: 'Invalid Input', message: 'Please provide a valid, positive tolerance limit.' });
-                        return;
-                    }
-                    const { value: ppm, warning } = convertToPPM(rawValue, newComponent.unit, nominal?.value, nominal?.unit, true);
-                     if (warning) {
-                        setNotification({ title: 'Conversion Error', message: warning });
-                        return;
-                    }
-                    valueInPPM = newComponent.distribution === 'uniform' ? ppm / Math.sqrt(3) : ppm / Math.sqrt(6);
-                    break;
-                case 'normal':
-                    rawValue = parseFloat(newComponent.expandedUncertainty);
-                    kFactor = parseFloat(newComponent.coverageFactor);
-                    if (isNaN(rawValue) || isNaN(kFactor) || rawValue <= 0 || kFactor <= 0) {
-                        setNotification({ title: 'Invalid Input', message: 'Please provide valid expanded uncertainty and coverage factor.' });
-                        return;
-                    }
-                    const { value: ppmNorm, warning: warnNorm } = convertToPPM(rawValue, newComponent.unit, nominal?.value, nominal?.unit, true);
-                    if (warnNorm) {
-                        setNotification({ title: 'Conversion Error', message: warnNorm });
-                        return;
-                    }
-                    valueInPPM = ppmNorm / kFactor;
-                    break;
-                default:
-                    setNotification({ title: 'Error', message: 'Invalid distribution selected.' });
-                    return;
+        } else { // Type B
+            const rawValue = parseFloat(newComponent.toleranceLimit);
+            const divisor = parseFloat(newComponent.errorDistributionDivisor);
+            if (isNaN(rawValue) || rawValue <= 0 || isNaN(divisor)) {
+                setNotification({ title: 'Invalid Input', message: 'Please provide a valid, positive tolerance limit and select a distribution.' });
+                return;
             }
+            const { value: ppm, warning } = convertToPPM(rawValue, newComponent.unit, nominal?.value, nominal?.unit, true);
+             if (warning) {
+                setNotification({ title: 'Conversion Error', message: warning });
+                return;
+            }
+            valueInPPM = ppm / divisor;
         }
 
         if (!newComponent.name || isNaN(valueInPPM)) {
@@ -868,9 +795,9 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
         const componentToAdd = { ...newComponent, id: Date.now(), value: valueInPPM, dof };
         const updatedComponents = [...manualComponents, componentToAdd];
         setManualComponents(updatedComponents);
-        setNewComponent({ name: '', type: 'B', distribution: 'uniform', toleranceLimit: '', unit: 'ppm', expandedUncertainty: '', coverageFactor: 2, standardUncertainty: '', dof: 'Infinity' });
+        setNewComponent({ name: '', type: 'B', errorDistributionDivisor: '1.732', toleranceLimit: '', unit: 'ppm', standardUncertainty: '', dof: 'Infinity' });
     };
-    
+
     const handleRemoveComponent = (id) => {
         const updatedComponents = manualComponents.filter(c => c.id !== id);
         setManualComponents(updatedComponents);
@@ -891,7 +818,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
         if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) { setNotification({ title: 'Invalid Input', message: 'Please enter valid UUT tolerance limits.' }); return; }
         if (isNaN(reliability) || reliability <= 0 || reliability >= 1) { setNotification({ title: 'Invalid Input', message: 'Please enter a valid reliability (e.g., 0.95).' }); return; }
         if (isNaN(guardBandMultiplier) || guardBandMultiplier < 0 || guardBandMultiplier > 1) { setNotification({ title: 'Invalid Input', message: 'Guard Band Multiplier must be between 0 and 1.' }); return; }
-        if (!calcResults) { setNotification({ title: 'Calculation Required', message: 'A detailed uncertainty budget must be calculated first.' }); return; }
+        if (!calcResults) { setNotification({ title: 'Calculation Required', message: 'An uncertainty budget must be calculated first.' }); return; }
 
         const calibrationComponents = allComponents.filter(c => c.id !== 'uut_core');
         const calVariance = calibrationComponents.reduce((sum, comp) => sum + Math.pow(comp.value, 2), 0);
@@ -899,7 +826,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
 
         const tmdeComponent = allComponents.find(c => c.id === 'tmde_core');
         if (!tmdeComponent || !tmdeComponent.toleranceLimit) {
-            setNotification({ title: 'Missing Component', message: "Could not find the TMDE component with a tolerance limit in the budget. Please define it on the 'Detailed Budget' tab." });
+            setNotification({ title: 'Missing Component', message: "Could not find the TMDE component with a tolerance limit in the budget. Please define it on the 'Uncertainty Tool' tab." });
             return;
         }
         const tmdeToleranceSpan = tmdeComponent.toleranceLimit * 2;
@@ -907,7 +834,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
         const mid = (LUp + LLow) / 2;
         const LUp_symmetric = Math.abs(LUp - mid);
         const uDev = LUp_symmetric / probit((1 + reliability) / 2);
-        
+
         const uUUT2 = uDev ** 2 - uCal ** 2;
         let uUUT = 0;
         if (uUUT2 <= 0) {
@@ -945,7 +872,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
             expandedUncertainty: calcResults.expanded_uncertainty, tmdeToleranceSpan: tmdeToleranceSpan
         });
     };
-    
+
     const unitOptions = useMemo(() => {
         const nominalUnit = testPointData?.testPointInfo?.parameter?.unit;
         if (nominalUnit) {
@@ -954,20 +881,18 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
         return ['%', 'ppm'];
     }, [testPointData]);
 
-
-    // --- RENDER METHODS ---
     const renderSpecComparison = () => {
         if (!calcResults) {
-            return <div className="form-section-warning"><p>A detailed uncertainty budget must be calculated first.</p></div>;
+            return <div className="form-section-warning"><p>An uncertainty budget must be calculated first.</p></div>;
         }
-        
+
         const handleSpecInputChange = (e) => setSpecInput(prev => ({...prev, [e.target.name]: { ...prev[e.target.name], [e.target.dataset.field]: e.target.value }}));
 
         const ComparisonCard = ({ title, specData, userUncertainty, kUser }) => {
             const U_user = userUncertainty;
             const U_spec = parseFloat(specData.uncertainty);
             const k_spec = parseFloat(specData.k);
-            
+
             let status = 'Not Defined';
             let statusClass = '';
             let percentageOfSpec = null;
@@ -976,7 +901,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
                 percentageOfSpec = (U_user / U_spec) * 100;
                 statusClass = 'status-good';
                 status = 'Within Specification';
-                 if (percentageOfSpec > 100) { status = 'Exceeds Specification'; statusClass = 'status-bad'; } 
+                 if (percentageOfSpec > 100) { status = 'Exceeds Specification'; statusClass = 'status-bad'; }
                  else if (percentageOfSpec > 90) { status = 'Approaching Limit'; statusClass = 'status-warning'; }
             }
 
@@ -999,7 +924,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
                 </div>
             );
         };
-        
+
         return (
             <div>
                 <div className="spec-input-container">
@@ -1028,30 +953,12 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
 
     return (
         <div>
-            <NotificationModal 
-                isOpen={!!notification} 
+            <NotificationModal
+                isOpen={!!notification}
                 onClose={() => setNotification(null)}
                 title={notification?.title}
                 message={notification?.message}
             />
-
-            <ToleranceBreakdownModal
-                isOpen={!!toleranceBreakdown}
-                onClose={() => setToleranceBreakdown(null)}
-                breakdownData={toleranceBreakdown}
-            />
-
-            {isToleranceModalOpen && 
-                <ToleranceToolModal 
-                    isOpen={isToleranceModalOpen}
-                    onClose={closeToleranceModal}
-                    onSave={handleSaveTolerance}
-                    initialData={testPointData[editingToleranceType]}
-                    title={editingToleranceType === 'uutTolerance' ? "UUT Tolerance Calculator" : "TMDE Tolerance Calculator"}
-                    isUUT={editingToleranceType === 'uutTolerance'}
-                    nominal={testPointData.testPointInfo.parameter}
-                />
-            }
 
             {breakdownModal && <div className="modal-placeholder" />}
             {breakdownModal === 'inputs' && <InputsBreakdownModal results={riskResults} inputs={{ ...riskInputs, LLow: parseFloat(riskInputs.LLow), LUp: parseFloat(riskInputs.LUp) }} onClose={() => setBreakdownModal(null)} />}
@@ -1059,142 +966,98 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
             {breakdownModal === 'tar' && <TarBreakdownModal results={riskResults} inputs={{ ...riskInputs, LLow: parseFloat(riskInputs.LLow), LUp: parseFloat(riskInputs.LUp) }} onClose={() => setBreakdownModal(null)} />}
             {breakdownModal === 'pfa' && <PfaBreakdownModal results={riskResults} inputs={{ ...riskInputs, LLow: parseFloat(riskInputs.LLow), LUp: parseFloat(riskInputs.LUp) }} onClose={() => setBreakdownModal(null)} />}
             {breakdownModal === 'pfr' && <PfrBreakdownModal results={riskResults} inputs={{ ...riskInputs, LLow: parseFloat(riskInputs.LLow), LUp: parseFloat(riskInputs.LUp) }} onClose={() => setBreakdownModal(null)} />}
-            
+
             <div className="view-toggle" style={{ justifyContent: 'center', marginBottom: '30px' }}>
-                <button className={analysisMode === 'detailed' ? 'active' : ''} onClick={() => setAnalysisMode('detailed')}>Detailed Budget</button>
+                <button className={analysisMode === 'uncertaintyTool' ? 'active' : ''} onClick={() => setAnalysisMode('uncertaintyTool')}>Uncertainty Tool</button>
                 <button className={analysisMode === 'risk' ? 'active' : ''} onClick={() => setAnalysisMode('risk')}>Risk Analysis</button>
                 <button className={analysisMode === 'spec' ? 'active' : ''} onClick={() => setAnalysisMode('spec')}>Specification Comparison</button>
             </div>
 
-            <Accordion title="Final Uncertainty Result" startOpen={true}>
-                <FinalUncertaintyCard calcResults={calcResults} testPointInfo={testPointData?.testPointInfo} />
-            </Accordion>
-            
-            {analysisMode === 'detailed' && (
-                <>
-                    <Accordion title="Tolerance Inputs" startOpen={true}>
-                        <div className="tolerance-input-container">
-                            <div className="tolerance-display-card">
-                                <h5>Unit Under Test (UUT)</h5>
-                                <div className="tolerance-summary">
-                                    {getToleranceSummary(testPointData.uutTolerance)}
+            {calcResults && (
+                <Accordion title="Final Uncertainty Result" startOpen={true}>
+                    <FinalUncertaintyCard calcResults={calcResults} testPointInfo={testPointData?.testPointInfo} />
+                </Accordion>
+            )}
+
+            {analysisMode === 'uncertaintyTool' && (
+                <div className="analysis-dashboard">
+                    <div className="configuration-panel">
+                         <Accordion title="Add Manual Uncertainty Component">
+                            <div className="config-stack">
+                                <div className="config-column">
+                                    <label>Component Name</label>
+                                    <input type="text" name="name" value={newComponent.name} onChange={handleNewComponentInputChange} placeholder="e.g., UUT Stability Spec" />
                                 </div>
-                                <div className='button-group'>
-                                    <button className="button" onClick={() => openToleranceModal('uutTolerance')}>Set / Edit</button>
-                                    <button className="button button-secondary" onClick={() => setToleranceBreakdown({ type: 'UUT', toleranceObject: testPointData.uutTolerance, nominal: testPointData.testPointInfo.parameter })}>Show Calc</button>
+                                <div className="config-column">
+                                    <label>Type</label>
+                                    <select name="type" value={newComponent.type} onChange={handleNewComponentInputChange}>
+                                        <option value="A">Type A</option>
+                                        <option value="B">Type B</option>
+                                    </select>
                                 </div>
-                            </div>
-                            <div className="tolerance-display-card">
-                                <h5>Standard Instrument (TMDE)</h5>
-                                <div className="tolerance-summary">
-                                    {getToleranceSummary(testPointData.tmdeTolerance)}
-                                </div>
-                                <div className='button-group'>
-                                <button className="button" onClick={() => openToleranceModal('tmdeTolerance')}>Set / Edit</button>
-                                <button className="button button-secondary" onClick={() => setToleranceBreakdown({ type: 'TMDE', toleranceObject: testPointData.tmdeTolerance, nominal: testPointData.testPointInfo.parameter })}>Show Calc</button>
-                                </div>
-                            </div>
-                        </div>
-                    </Accordion>
-                    <div className="analysis-dashboard">
-                        <div className="configuration-panel">
-                             <Accordion title="Add Manual Uncertainty Component">
-                                <div className="config-stack">
-                                    <div className="config-column">
-                                        <label>Component Name</label>
-                                        <input type="text" name="name" value={newComponent.name} onChange={handleNewComponentInputChange} placeholder="e.g., UUT Stability Spec" />
-                                    </div>
-                                    <div className="config-column">
-                                        <label>Type</label>
-                                        <select name="type" value={newComponent.type} onChange={handleNewComponentInputChange}>
-                                            <option value="A">Type A</option>
-                                            <option value="B">Type B</option>
-                                        </select>
-                                    </div>
-                                    {newComponent.type === 'A' && (
-                                        <>
-                                            <div className="config-column">
-                                                <label>Standard Uncertainty (uᵢ)</label>
-                                                <div className="input-with-unit">
-                                                    <input type="number" step="any" name="standardUncertainty" value={newComponent.standardUncertainty} onChange={handleNewComponentInputChange} placeholder="e.g., 15.3" />
-                                                    <select name="unit" value={newComponent.unit} onChange={handleNewComponentInputChange}>
-                                                        {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
-                                                    </select>
-                                                </div>
-                                                 <ConversionInfo value={newComponent.standardUncertainty} unit={newComponent.unit} nominal={testPointData?.testPointInfo?.parameter} />
-                                            </div>
-                                            <div className="config-column">
-                                                <label>Degrees of Freedom (vᵢ)</label>
-                                                <input type="number" step="1" min="1" name="dof" value={newComponent.dof} onChange={handleNewComponentInputChange} placeholder="e.g., 9" />
-                                            </div>
-                                        </>
-                                    )}
-                                    {newComponent.type === 'B' && (
-                                        <>
-                                            <div className="config-column">
-                                                <label>Distribution</label>
-                                                <select name="distribution" value={newComponent.distribution} onChange={handleNewComponentInputChange}>
-                                                    <option value="uniform">Uniform (Rectangular)</option>
-                                                    <option value="triangular">Triangular</option>
-                                                    <option value="normal">Normal</option>
+                                {newComponent.type === 'A' && (
+                                    <>
+                                        <div className="config-column">
+                                            <label>Standard Uncertainty (uᵢ)</label>
+                                            <div className="input-with-unit">
+                                                <input type="number" step="any" name="standardUncertainty" value={newComponent.standardUncertainty} onChange={handleNewComponentInputChange} placeholder="e.g., 15.3" />
+                                                <select name="unit" value={newComponent.unit} onChange={handleNewComponentInputChange}>
+                                                    {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
                                                 </select>
                                             </div>
-                                            {(newComponent.distribution === 'uniform' || newComponent.distribution === 'triangular') && (
-                                                <div className="config-column">
-                                                    <label>Tolerance Limits (±)</label>
-                                                    <div className="input-with-unit">
-                                                        <input type="number" step="any" name="toleranceLimit" value={newComponent.toleranceLimit} onChange={handleNewComponentInputChange} placeholder="e.g., 100" />
-                                                        <select name="unit" value={newComponent.unit} onChange={handleNewComponentInputChange}>
-                                                            {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
-                                                        </select>
-                                                    </div>
-                                                     <ConversionInfo value={newComponent.toleranceLimit} unit={newComponent.unit} nominal={testPointData?.testPointInfo?.parameter} />
-                                                </div>
-                                            )}
-                                            {newComponent.distribution === 'normal' && (<>
-                                                <div className="config-column">
-                                                    <label>Expanded Uncertainty (±)</label>
-                                                    <div className="input-with-unit">
-                                                        <input type="number" step="any" name="expandedUncertainty" value={newComponent.expandedUncertainty} onChange={handleNewComponentInputChange} placeholder="e.g., 50" />
-                                                        <select name="unit" value={newComponent.unit} onChange={handleNewComponentInputChange}>
-                                                            {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
-                                                        </select>
-                                                    </div>
-                                                     <ConversionInfo value={newComponent.expandedUncertainty} unit={newComponent.unit} nominal={testPointData?.testPointInfo?.parameter} />
-                                                </div>
-                                                <div className="config-column">
-                                                    <label>Coverage Factor (k)</label>
-                                                    <input type="number" step="any" name="coverageFactor" value={newComponent.coverageFactor} onChange={handleNewComponentInputChange} />
-                                                </div>
-                                            </>)}
-                                            <div className="config-column">
-                                                <label>Degrees of Freedom</label>
-                                                <input type="text" name="dof" value={newComponent.dof} onChange={handleNewComponentInputChange} placeholder="Infinity" />
+                                             <ConversionInfo value={newComponent.standardUncertainty} unit={newComponent.unit} nominal={testPointData?.testPointInfo?.parameter} />
+                                        </div>
+                                        <div className="config-column">
+                                            <label>Degrees of Freedom (vᵢ)</label>
+                                            <input type="number" step="1" min="1" name="dof" value={newComponent.dof} onChange={handleNewComponentInputChange} placeholder="e.g., 9" />
+                                        </div>
+                                    </>
+                                )}
+                                {newComponent.type === 'B' && (
+                                    <>
+                                        <div className="config-column">
+                                            <label>Error Limit Distribution Type</label>
+                                            <select name="errorDistributionDivisor" value={newComponent.errorDistributionDivisor} onChange={handleNewComponentInputChange}>
+                                                {errorDistributions.map(dist => (
+                                                    <option key={dist.value} value={dist.value}>{dist.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="config-column">
+                                            <label>Tolerance Limits (±)</label>
+                                            <div className="input-with-unit">
+                                                <input type="number" step="any" name="toleranceLimit" value={newComponent.toleranceLimit} onChange={handleNewComponentInputChange} placeholder="e.g., 100" />
+                                                <select name="unit" value={newComponent.unit} onChange={handleNewComponentInputChange}>
+                                                    {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                                                </select>
                                             </div>
-                                        </>
-                                    )}
-                                </div>
-                                <button onClick={handleAddComponent} className="button" style={{ marginTop: '15px' }}>Add Component</button>
-                            </Accordion>
-                        </div>
-                         <div className="configuration-panel">
-                            <Accordion title="Uncertainty Budget" startOpen={true}>
-                                <UncertaintyBudgetTable
-                                    components={allComponents}
-                                    onRemove={handleRemoveComponent}
-                                    calcResults={calcResults}
-                                    useTDistribution={useTDistribution}
-                                    setUseTDistribution={setUseTDistribution}
-                                />
-                            </Accordion>
-                        </div>
+                                                <ConversionInfo value={newComponent.toleranceLimit} unit={newComponent.unit} nominal={testPointData?.testPointInfo?.parameter} />
+                                        </div>
+                                        <div className="config-column">
+                                            <label>Degrees of Freedom</label>
+                                            <input type="text" name="dof" value={newComponent.dof} onChange={handleNewComponentInputChange} placeholder="Infinity" />
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                            <button onClick={handleAddComponent} className="button" style={{ marginTop: '15px' }}>Add Component</button>
+                        </Accordion>
+                        <Accordion title="Uncertainty Budget" startOpen={false}>
+                            <UncertaintyBudgetTable
+                                components={allComponents}
+                                onRemove={handleRemoveComponent}
+                                calcResults={calcResults}
+                                useTDistribution={useTDistribution}
+                                setUseTDistribution={setUseTDistribution}
+                            />
+                        </Accordion>
                     </div>
-                </>
+                </div>
             )}
             {analysisMode === 'risk' && (
                  <Accordion title="Risk & Conformance Analysis" startOpen={true}>
                     {!calcResults ? (
-                        <div className="form-section-warning"><p>A detailed uncertainty budget must be calculated first on the 'Detailed Budget' tab.</p></div>
+                        <div className="form-section-warning"><p>An uncertainty budget must be calculated first on the 'Uncertainty Tool' tab.</p></div>
                     ) : (
                         <>
                             <div className="risk-inputs-container">
@@ -1206,7 +1069,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
                                     <span>
                                         LUp: <strong>{riskInputs.LUp ? parseFloat(riskInputs.LUp).toFixed(3) : 'N/A'}</strong>
                                     </span>
-                                    <small>Derived from UUT input on the 'Detailed Budget' tab.</small>
+                                    <small>Derived from UUT input on the 'Uncertainty Tool' tab.</small>
                                 </div>
                                 <div className="config-column">
                                     <label>Target Reliability (R)</label>
@@ -1232,53 +1095,44 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
     );
 }
 
-// --- TOP-LEVEL APP COMPONENT ---
 function App() {
-    // UPDATED: defaultTestPoint now has a more detailed tolerance structure with units.
     const defaultTestPoint = useMemo(() => ({
         section: '',
         uutDescription: '',
         tmdeDescription: '',
-        uutTolerance: { 
-            isSymmetric: true,
-            measuringResolution: 0,
-            reading: { low: '', high: '', unit: '%' },
-            range: { value: '', low: '', high: '', unit: '%' },
-            floor: { low: '', high: '', unit: 'V' },
-            db: { low: '', high: '', multiplier: 20, ref: 1 }
-        },
-        tmdeTolerance: {
-            isSymmetric: true,
-            reading: { low: '', high: '', unit: '%' },
-            range: { value: '', low: '', high: '', unit: '%' },
-            floor: { low: '', high: '', unit: 'V' },
-            db: { low: '', high: '', multiplier: 20, ref: 1 }
-        },
+        uutTolerance: {},
+        tmdeTolerance: {},
         specifications: { mfg: { uncertainty: '', k: 2 }, navy: { uncertainty: '', k: 2 } },
         components: [],
         is_detailed_uncertainty_calculated: false
     }), []);
 
-    // --- STATE MANAGEMENT ---
-    const createNewSession = () => ({
+    const createNewSession = useCallback(() => ({
         id: Date.now(),
         name: 'New Session',
         equipmentName: '',
         analyst: '',
         organization: '',
+        document: '',
+        documentDate: '',
         notes: '',
         testPoints: []
-    });
+    }), []);
 
-    const [sessions, setSessions] = useState([createNewSession()]);
-    const [selectedSessionId, setSelectedSessionId] = useState(sessions[0]?.id);
+    const [sessions, setSessions] = useState([]);
+    const [selectedSessionId, setSelectedSessionId] = useState(null);
     const [selectedTestPointId, setSelectedTestPointId] = useState(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [editingTestPoint, setEditingTestPoint] = useState(null);
     const [isDarkMode, setIsDarkMode] = useState(false);
-    const [activeTab, setActiveTab] = useState('info');
-    
-    // --- EFFECTS ---
+    const [contextMenu, setContextMenu] = useState(null);
+    const [editingSession, setEditingSession] = useState(null);
+    const [isToleranceModalOpen, setIsToleranceModalOpen] = useState(false);
+    const [breakdownPoint, setBreakdownPoint] = useState(null);
+    const [infoModalPoint, setInfoModalPoint] = useState(null);
+
     useEffect(() => {
+        let loadedData = false;
         try {
             const savedSessions = localStorage.getItem('uncertaintySessions');
             if (savedSessions) {
@@ -1287,39 +1141,70 @@ function App() {
                     setSessions(parsed);
                     setSelectedSessionId(parsed[0].id);
                     setSelectedTestPointId(parsed[0].testPoints?.[0]?.id || null);
+                    loadedData = true;
                 }
             }
         } catch (error) { console.error("Failed to load data from localStorage", error); }
-    }, []);
+
+        if (!loadedData) {
+            const firstSession = createNewSession();
+            setSessions([firstSession]);
+            setSelectedSessionId(firstSession.id);
+            setEditingSession(firstSession);
+        }
+    }, [createNewSession]);
 
     useEffect(() => {
-        try {
-            localStorage.setItem('uncertaintySessions', JSON.stringify(sessions));
-        } catch (error) {
-            console.error("Failed to save data to localStorage", error);
+        if (sessions.length > 0) {
+            try {
+                localStorage.setItem('uncertaintySessions', JSON.stringify(sessions));
+            } catch (error) {
+                console.error("Failed to save data to localStorage", error);
+            }
         }
     }, [sessions]);
 
     useEffect(() => {
-        if (isDarkMode) { document.body.classList.add('dark-mode'); } 
+        if (isDarkMode) { document.body.classList.add('dark-mode'); }
         else { document.body.classList.remove('dark-mode'); }
     }, [isDarkMode]);
 
-    // --- HANDLERS ---
+    const handleCloseContextMenu = useCallback(() => setContextMenu(null), []);
+
     const handleAddNewSession = () => {
         const newSession = createNewSession();
         setSessions(prev => [...prev, newSession]);
         setSelectedSessionId(newSession.id);
-        setActiveTab('info');
         setSelectedTestPointId(null);
+        setEditingSession(newSession);
+    };
+
+    const handleDeleteSession = (sessionId) => {
+        if (!window.confirm("Are you sure you want to delete this session and all its measurement points?")) return;
+
+        setSessions(prev => {
+            const newSessions = prev.filter(s => s.id !== sessionId);
+            if (selectedSessionId === sessionId) {
+                const newSelectedId = newSessions[0]?.id || null;
+                setSelectedSessionId(newSelectedId);
+                setSelectedTestPointId(newSessions[0]?.testPoints?.[0]?.id || null);
+            }
+            if (newSessions.length === 0) {
+                const firstSession = createNewSession();
+                setEditingSession(firstSession);
+                return [firstSession];
+            }
+            return newSessions;
+        });
     };
 
     const handleSessionChange = (updatedSession) => {
         setSessions(prevSessions =>
             prevSessions.map(s => s.id === updatedSession.id ? updatedSession : s)
         );
+        setEditingSession(null);
     };
-    
+
     const handleSaveToFile = () => {
         const currentSession = sessions.find(s => s.id === selectedSessionId);
         if (!currentSession) return;
@@ -1337,31 +1222,45 @@ function App() {
     };
 
     const handleSaveTestPoint = (formData) => {
-        const { paramName, paramValue, paramUnit, qualName, qualValue, qualUnit, section, uutDescription, tmdeDescription } = formData;
-        const newTestPoint = {
-            id: Date.now(),
-            ...defaultTestPoint,
-            section,
-            uutDescription,
-            tmdeDescription,
-            testPointInfo: {
-                parameter: { name: paramName, value: paramValue, unit: paramUnit },
-                qualifier: { name: qualName, value: qualValue, unit: qualUnit },
-                uut: uutDescription,
-                tmde: tmdeDescription,
-                section: section
-            },
-            parameter: { name: paramName, value: paramValue, unit: paramUnit },
-            qualifier: { name: qualName, value: qualValue, unit: qualUnit },
-        };
-        setSessions(prev => prev.map(session =>
-            session.id === selectedSessionId
-                ? { ...session, testPoints: [...session.testPoints, newTestPoint] }
-                : session
-        ));
-        setSelectedTestPointId(newTestPoint.id);
-        setActiveTab('document');
+        setSessions(prev => prev.map(session => {
+            if (session.id !== selectedSessionId) return session;
+
+            if (formData.id) {
+                const updatedTestPoints = session.testPoints.map(tp => {
+                    if (tp.id === formData.id) {
+                        return {
+                            ...tp,
+                            section: formData.testPointData.section,
+                            uutDescription: formData.testPointData.uutDescription,
+                            tmdeDescription: formData.testPointData.tmdeDescription,
+                            testPointInfo: { ...formData.testPointData.testPointInfo }
+                        };
+                    }
+                    return tp;
+                });
+                return { ...session, testPoints: updatedTestPoints };
+            } else {
+                const newTestPoint = {
+                    id: Date.now(),
+                    ...defaultTestPoint,
+                    section: formData.section,
+                    uutDescription: formData.uutDescription,
+                    tmdeDescription: formData.tmdeDescription,
+                    testPointInfo: {
+                        parameter: { name: formData.paramName, value: formData.paramValue, unit: formData.paramUnit },
+                        qualifier: { name: formData.qualName, value: formData.qualValue, unit: formData.qualUnit },
+                        uut: formData.uutDescription,
+                        tmde: formData.tmdeDescription,
+                        section: formData.section
+                    },
+                };
+                setSelectedTestPointId(newTestPoint.id);
+                return { ...session, testPoints: [...session.testPoints, newTestPoint] };
+            }
+        }));
+
         setIsAddModalOpen(false);
+        setEditingTestPoint(null);
     };
 
     const handleDeleteTestPoint = (idToDelete) => {
@@ -1392,28 +1291,63 @@ function App() {
         }));
     }, [selectedSessionId, selectedTestPointId]);
 
-    // --- MEMOIZED SELECTORS ---
+    const handleSessionSelect = (e) => {
+        const newSessionId = Number(e.target.value);
+        const newSession = sessions.find(s => s.id === newSessionId);
+        setSelectedSessionId(newSessionId);
+        setSelectedTestPointId(newSession?.testPoints?.[0]?.id || null);
+    };
+
     const currentSessionData = useMemo(() => sessions.find(s => s.id === selectedSessionId), [sessions, selectedSessionId]);
     const testPointData = useMemo(() => {
         if (!currentSessionData || !selectedTestPointId) return null;
-        const point = currentSessionData.testPoints.find(p => p.id === selectedTestPointId);
-        if (point && !point.testPointInfo) {
-            point.testPointInfo = { 
-                parameter: point.parameter, 
-                qualifier: point.qualifier, 
-                uut: point.uutDescription, 
-                tmde: point.tmdeDescription, 
-                section: point.section 
-            };
-        }
-        return point;
+        return currentSessionData.testPoints.find(p => p.id === selectedTestPointId);
     }, [currentSessionData, selectedTestPointId]);
     const currentTestPoints = useMemo(() => currentSessionData?.testPoints || [], [currentSessionData]);
-    
-    // --- RENDER LOGIC ---
+
     return (
         <div className="App">
-            <AddTestPointModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSave={handleSaveTestPoint} />
+            <AddTestPointModal
+                isOpen={isAddModalOpen || !!editingTestPoint}
+                onClose={() => { setIsAddModalOpen(false); setEditingTestPoint(null); }}
+                onSave={handleSaveTestPoint}
+                initialData={editingTestPoint}
+            />
+
+            <EditSessionModal
+                isOpen={!!editingSession}
+                onClose={() => setEditingSession(null)}
+                sessionData={editingSession}
+                onSave={handleSessionChange}
+                onSaveToFile={handleSaveToFile}
+            />
+
+            {testPointData &&
+                <ToleranceToolModal
+                    isOpen={isToleranceModalOpen}
+                    onClose={() => setIsToleranceModalOpen(false)}
+                    onSave={(data) => {
+                        handleDataSave(data);
+                        setIsToleranceModalOpen(false);
+                    }}
+                    testPointData={testPointData}
+                />
+            }
+
+            <FullBreakdownModal
+                isOpen={!!breakdownPoint}
+                testPoint={breakdownPoint}
+                onClose={() => setBreakdownPoint(null)}
+            />
+
+            <TestPointInfoModal
+                isOpen={!!infoModalPoint}
+                testPoint={infoModalPoint}
+                onClose={() => setInfoModalPoint(null)}
+            />
+
+            {contextMenu && <ContextMenu menu={contextMenu} onClose={handleCloseContextMenu} />}
+
             <div className="content-area uncertainty-analysis-page">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2>Uncertainty Analysis</h2>
@@ -1424,69 +1358,94 @@ function App() {
                 </div>
                 <div className="results-workflow-container">
                     <aside className="results-sidebar">
-                        <div className="sidebar-header">
-                            <h4>Analysis Sessions</h4>
-                            <button className="add-point-button" onClick={handleAddNewSession} title="Add New Session">+</button>
+                        <div className="sidebar-header" style={{alignItems: 'flex-end'}}>
+                            <div className="session-controls">
+                                <label htmlFor="session-select">Analysis Session</label>
+                                <select
+                                    id="session-select"
+                                    className="session-selector"
+                                    value={selectedSessionId || ''}
+                                    onChange={handleSessionSelect}
+                                >
+                                    {sessions.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="session-actions">
+                                <button onClick={handleAddNewSession} title="Add New Session" className="sidebar-action-button">
+                                    <FontAwesomeIcon icon={faPlus} />
+                                </button>
+                                <button onClick={() => setEditingSession(currentSessionData)} title="Edit Session" className="sidebar-action-button">
+                                    <FontAwesomeIcon icon={faEdit} />
+                                </button>
+                                <button onClick={() => handleDeleteSession(selectedSessionId)} title="Delete Session" className="sidebar-action-button delete">
+                                    <FontAwesomeIcon icon={faTrashAlt} />
+                                </button>
+                            </div>
                         </div>
-                        <div className="session-list">
-                            {sessions.map(s => (
-                                <button key={s.id} onClick={() => {
-                                        setSelectedSessionId(s.id);
-                                        setSelectedTestPointId(s.testPoints?.[0]?.id || null);
-                                        setActiveTab('info');
-                                    }}
-                                    className={`session-list-item ${selectedSessionId === s.id ? 'active' : ''}`}
-                                >{s.name}</button>
-                            ))}
+
+                         <div className="sidebar-header">
+                            <h4 style={{margin: '0'}}>Measurement Points</h4>
+                            <button className="add-point-button" onClick={() => setIsAddModalOpen(true)} title="Add New Measurement Point">+</button>
+                        </div>
+                        <div className="measurement-point-list">
+                            {currentTestPoints.length > 0 ? (
+                                currentTestPoints.map(tp => {
+                                    const uutSummary = getToleranceSummary(tp.uutTolerance);
+                                    const tmdeSummary = getToleranceSummary(tp.tmdeTolerance);
+                                    const tooltipText = `UUT: ${uutSummary}\nTMDE: ${tmdeSummary}`;
+
+                                    return (
+                                    <button key={tp.id}
+                                        onClick={() => setSelectedTestPointId(tp.id)}
+                                        title={tooltipText}
+                                        onContextMenu={(e) => {
+                                            e.preventDefault();
+                                            const menuItems = [
+                                                { label: 'Edit Details', action: () => setEditingTestPoint(tp), icon: faPencilAlt },
+                                                { label: 'Edit Tolerances', action: () => { setSelectedTestPointId(tp.id); setIsToleranceModalOpen(true); }, icon: faSlidersH },
+                                                { type: 'divider' },
+                                                { label: 'View Details', action: () => setInfoModalPoint(tp), icon: faInfoCircle },
+                                                { label: 'View Calculation', action: () => setBreakdownPoint(tp), icon: faCalculator },
+                                                { type: 'divider' },
+                                                { label: 'Delete Point', action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: 'destructive' }
+                                            ];
+                                            setContextMenu({ x: e.pageX, y: e.pageY, items: menuItems });
+                                        }}
+                                        className={`measurement-point-item ${selectedTestPointId === tp.id ? 'active' : ''}`}>
+                                        <span className="measurement-point-content">
+                                            <span className="point-main">{tp.testPointInfo.parameter.name}: {tp.testPointInfo.parameter.value}{tp.testPointInfo.parameter.unit}</span>
+                                            <span className="point-qualifier">@{tp.testPointInfo.qualifier.value}{tp.testPointInfo.qualifier.unit}</span>
+                                        </span>
+                                    </button>
+                                )})
+                            ) : (
+                                <div className="placeholder-content" style={{ minHeight: '100px', fontSize: '0.9rem', margin: '1rem 0' }}>
+                                    <p>No measurement points in this session. <br/> Click '+' to add one.</p>
+                                </div>
+                            )}
                         </div>
                     </aside>
                     <main className="results-content">
-                        {currentSessionData ? (
-                            <>
-                                <div className="view-toggle" style={{ marginBottom: '20px', display: 'flex' }}>
-                                    <button className={activeTab === 'info' ? 'active' : ''} onClick={() => setActiveTab('info')}>Session Info & Notes</button>
-                                    <button className={activeTab === 'document' ? 'active' : ''} onClick={() => setActiveTab('document')}>Document (Measurement Points)</button>
-                                </div>
-                                {activeTab === 'info' && <SessionInfo sessionData={currentSessionData} onSessionChange={handleSessionChange} onSaveToFile={handleSaveToFile} />}
-                                {activeTab === 'document' && (
-                                    <div className="document-view">
-                                        <div className="sidebar-header" style={{ borderBottom: 'none', marginBottom: '10px' }}>
-                                            <h4>Measurement Points</h4>
-                                            <button className="add-point-button" onClick={() => setIsAddModalOpen(true)} title="Add New Measurement Point">+</button>
-                                        </div>
-                                        {currentTestPoints.length === 0 ? (
-                                            <div className="placeholder-content" style={{ minHeight: '150px' }}>
-                                                <h3>No Measurement Points</h3>
-                                                <p>Click the "+" button to add the first measurement point for this session.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="measurement-point-list">
-                                                {currentTestPoints.map(tp => (
-                                                    <button key={tp.id} onClick={() => setSelectedTestPointId(tp.id)} className={`measurement-point-item ${selectedTestPointId === tp.id ? 'active' : ''}`}>
-                                                        <span className="measurement-point-details">
-                                                            <span className="point-main">{tp.parameter.name}: {tp.parameter.value}{tp.parameter.unit}</span>
-                                                            <span className="point-qualifier">@{tp.qualifier.value}{tp.qualifier.unit}</span>
-                                                        </span>
-                                                        <span className="delete-action" title="Delete Point" onClick={(e) => { e.stopPropagation(); handleDeleteTestPoint(tp.id); }}>×</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <hr style={{ margin: '2rem 0' }} />
-                                        {testPointData ? (
-                                            <TestPointDetailView key={selectedTestPointId} testPointData={testPointData} onDataSave={handleDataSave}>
-                                                {/* The full analysis component is passed as a child */}
-                                                <Analysis testPointData={testPointData} onDataSave={handleDataSave} defaultTestPoint={defaultTestPoint} />
-                                            </TestPointDetailView>
-                                        ) : currentTestPoints.length > 0 && 
-                                            <div className="placeholder-content"><h3>Select a measurement point to see details.</h3></div>
-                                        }
-                                    </div>
-                                )}
-                            </>
+                        {testPointData ? (
+                            <TestPointDetailView key={selectedTestPointId} testPointData={testPointData}>
+                                <Analysis
+                                    testPointData={testPointData}
+                                    onDataSave={handleDataSave}
+                                    defaultTestPoint={defaultTestPoint}
+                                />
+                            </TestPointDetailView>
+                        ) : currentSessionData && currentTestPoints.length > 0 ? (
+                            <div className="placeholder-content"><h3>Select a measurement point to see details.</h3></div>
+                        ) : currentSessionData && currentTestPoints.length === 0 ? (
+                             <div className="placeholder-content">
+                                <h3>This session has no measurement points.</h3>
+                                <p>Click the '+' button in the sidebar to add one.</p>
+                            </div>
                         ) : (
                             <div className="placeholder-content">
-                                <h3>No Session Selected</h3>
+                                <h3>No Session Available</h3>
                                 <p>Create a new session to begin your analysis.</p>
                             </div>
                         )}

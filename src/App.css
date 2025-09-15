@@ -14,6 +14,8 @@
  * 8.  SPECIFICATION COMPARISON
  * 9.  DARK MODE OVERRIDES
  * 10. MEDIA QUERIES
+ * 11. CONTEXT MENU
+ * 12. MISCELLANEOUS
  *
  */
 /* =================================================================== */
@@ -34,6 +36,7 @@
   --button-primary-bg: #007bff;
   --button-primary-hover: #0069d9;
   --primary-color: #007bff;
+  --primary-color-light: #e7f1ff;
   --status-good-bg: #d1e7dd;
   --status-warning-bg: #fff3cd;
   --status-bad-bg: #f8d7da;
@@ -57,6 +60,7 @@ body.dark-mode {
   --button-primary-bg: #0d6efd;
   --button-primary-hover: #3b82f6;
   --primary-color: #3b82f6;
+  --primary-color-light: #2a3a5a;
   --status-good-bg: #142e22;
   --status-warning-bg: #33270b;
   --status-bad-bg: #2f1b20;
@@ -87,10 +91,10 @@ body {
 
 input[type="text"],
 input[type="number"],
+input[type="date"],
 textarea,
 select {
   padding: 10px;
-  margin: 5px 0 0 0; /* Adjusted margin */
   border: 1px solid var(--border-color);
   border-radius: 6px;
   box-sizing: border-box;
@@ -103,6 +107,7 @@ select {
 
 input[type="text"]:focus,
 input[type="number"]:focus,
+input[type="date"]:focus,
 textarea:focus,
 select:focus {
   border-color: var(--button-primary-bg);
@@ -111,7 +116,6 @@ select:focus {
 }
 
 /* --- Buttons --- */
-button,
 .button {
   background-color: var(--button-primary-bg);
   color: white;
@@ -122,37 +126,34 @@ button,
   display: inline-block;
   font-size: 1rem;
   font-weight: 500;
-  margin: 10px 5px;
   cursor: pointer;
   border-radius: 6px;
   transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-button:hover,
 .button:hover {
   background-color: var(--button-primary-hover);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-button:active,
 .button:active {
     transform: translateY(1px);
 }
 
-.button.button-secondary {
+.button-secondary {
   background-color: #6c757d;
 }
 
-.button.button-secondary:hover {
+.button-secondary:hover {
   background-color: #5a6268;
 }
 
-.button.button-small {
-  padding: 5px 10px;
+.button-small {
+  padding: 8px 12px;
   font-size: 0.9rem;
-  margin: 0;
 }
+
 
 /* =================================================================== */
 /* 3. APP LAYOUT & GLOBAL COMPONENTS                                   */
@@ -168,7 +169,7 @@ button:active,
   background-color: var(--content-background);
   border: 1px solid var(--border-color);
   padding: 2rem;
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   margin-bottom: 2rem;
   text-align: left;
@@ -180,46 +181,47 @@ button:active,
   margin: 0;
 }
 
+/* --- Sidebar and Main Content --- */
 .results-workflow-container {
   display: flex;
   gap: 2rem;
 }
 
 .results-sidebar {
-  flex: 0 0 320px;
-  border-right: 1px solid var(--border-color);
-  padding-right: 2rem;
+  flex: 0 0 350px; /* A bit wider for measurement points */
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-end;
     border-bottom: 1px solid var(--border-color);
-    margin-bottom: 15px;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    gap: 1rem;
 }
 
 .sidebar-header h4 {
   margin: 0;
-  padding-bottom: 10px;
-  color: var(--text-color);
-  border-bottom: none;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .add-point-button {
     background: none;
     border: 1px solid var(--border-color);
     color: var(--text-color-muted);
-    font-size: 1.5rem;
+    font-size: 1rem;
     cursor: pointer;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    margin: 0 0 10px 0;
     line-height: 1;
     transition: all 0.2s ease;
 }
@@ -242,7 +244,7 @@ button:active,
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    min-height: 300px;
+    flex-grow: 1;
     text-align: center;
     color: var(--text-color-muted);
     background-color: var(--background-color);
@@ -256,12 +258,12 @@ button:active,
   margin-bottom: 10px;
 }
 
-/* --- NEW Styles for Session & Document View --- */
 .session-list,
 .measurement-point-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  overflow-y: auto; /* Allow scrolling for long lists */
 }
 
 .session-list-item,
@@ -272,23 +274,15 @@ button:active,
   width: 100%;
   text-align: left;
   padding: 12px 15px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-  background-color: var(--content-background);
+  border-radius: 8px;
+  border: none;
+  background-color: transparent;
   color: var(--text-color);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 }
 
-.session-list-item {
-  font-weight: 600;
-}
-
-.measurement-point-details {
-    display: flex;
-    flex-direction: column;
-}
 
 .point-main {
     font-weight: 500;
@@ -301,24 +295,30 @@ button:active,
 .session-list-item:hover,
 .measurement-point-item:hover {
   background-color: var(--background-color);
-  border-color: var(--primary-color);
 }
 
 .session-list-item.active,
 .measurement-point-item.active {
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
-  color: white;
+  background-color: var(--primary-color-light);
+  color: var(--primary-color-dark);
+}
+
+.session-list-item.active {
   font-weight: 700;
 }
+
+.measurement-point-item.active .point-main {
+  font-weight: 600;
+}
+
 .measurement-point-item.active .point-qualifier {
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--primary-color);
+    opacity: 0.8;
 }
 
 .measurement-point-item.active .delete-action {
-  color: white;
+  color: var(--primary-color-dark);
 }
-/* --- END NEW Styles --- */
 
 .delete-action {
   color: #dc3545;
@@ -336,8 +336,8 @@ button:active,
 
 .form-section-warning {
   padding: 15px;
-  background-color: #fff3cd;
-  border: 1px solid #ffeeba;
+  background-color: var(--status-warning-bg);
+  border: 1px solid var(--status-warning);
   color: #856404;
   border-radius: 4px;
   margin-bottom: 20px;
@@ -437,6 +437,7 @@ button:active,
     transform: translateX(22px);
     content: "🌒";
 }
+
 /* =================================================================== */
 /* 4. MODALS & OVERLAYS                                                */
 /* =================================================================== */
@@ -451,13 +452,14 @@ button:active,
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  backdrop-filter: blur(5px);
 }
 
 .modal-content {
   background-color: var(--content-background);
   padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
   max-width: 450px;
   width: 90%;
   text-align: center;
@@ -480,22 +482,28 @@ button:active,
 
 .modal-close-button {
   position: absolute;
-  top: 10px;
+  top: 15px;
   right: 15px;
   background: transparent;
   border: none;
-  font-size: 1.5rem;
+  font-size: 1.7rem;
   line-height: 1;
-  color: #6c757d;
+  color: var(--text-color-muted);
   cursor: pointer;
   padding: 0;
-  opacity: 0.6;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.modal-close-button:hover {
+  color: var(--text-color);
+  transform: rotate(90deg);
 }
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  margin-top: 20px;
 }
 
 .breakdown-modal-content {
@@ -515,15 +523,122 @@ button:active,
 .breakdown-step li { margin-bottom: 8px; }
 
 
+/* --- Modal Tabs --- */
+.modal-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border-color);
+    margin: 20px -30px 25px -30px;
+    padding: 0 25px;
+}
+.modal-tab {
+    padding: 10px 15px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-color-muted);
+    position: relative;
+    bottom: -2px;
+    border-bottom: 3px solid transparent;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+.modal-tab:hover {
+    color: var(--primary-color);
+}
+.modal-tab.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+/* --- Dynamic Tolerance Modal Styles --- */
+.components-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.component-card {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--background-color);
+    overflow: hidden;
+}
+
+.component-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background-color: var(--content-background);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.component-header h5 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.remove-component-btn {
+    background: none;
+    border: none;
+    color: var(--status-bad);
+    font-size: 1.6rem;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+.remove-component-btn:hover {
+    color: #a71d2a;
+    transform: scale(1.1);
+}
+
+.component-body {
+    padding: 20px;
+}
+
+.add-component-section {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+.add-component-section select {
+    flex-grow: 1;
+    margin: 0;
+    border-right: none;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.add-component-section .button-small {
+    margin: 0;
+    flex-shrink: 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+
 /* =================================================================== */
 /* 5. ACCORDION & INPUTS                                               */
 /* =================================================================== */
 .accordion-card {
   background-color: var(--content-background);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
   margin-bottom: 20px;
+  overflow: hidden;
 }
 
 .accordion-header {
@@ -532,11 +647,17 @@ button:active,
   align-items: center;
   padding: 20px;
   cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-.accordion-header h4, .accordion-header h3 {
+.accordion-header:hover {
+  background-color: var(--background-color);
+}
+
+.accordion-header h4 {
   margin: 0;
   font-size: 1.2rem;
+  font-weight: 600;
   color: var(--primary-color);
 }
 
@@ -553,9 +674,8 @@ button:active,
 }
 
 .accordion-content {
-  padding: 20px;
+  padding: 0 20px 20px 20px;
   border-top: 1px solid var(--border-color);
-  color: #495057;
   animation: fadeIn 0.5s ease;
 }
 
@@ -571,7 +691,6 @@ button:active,
   padding-top: 15px;
 }
 
-/* NEW: Styles for the new tolerance display cards */
 .tolerance-display-card {
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -604,11 +723,6 @@ button:active,
     flex-grow: 1;
 }
 
-.tolerance-display-card .button {
-    margin-top: auto; /* Push button to the bottom */
-    width: 100%;
-}
-
 .config-stack {
   display: flex;
   flex-direction: column;
@@ -638,7 +752,7 @@ button:active,
   border-right: none;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
-  margin-top: 0;
+  margin: 0;
 }
 
 .input-with-unit select {
@@ -647,13 +761,13 @@ button:active,
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
   margin-left: -1px;
-  margin-top: 0;
+  margin: 0;
 }
 
 .conversion-info, .conversion-warning {
     font-size: 0.8rem;
     padding: 5px 8px;
-    margin-top: 8px; /* Spacing from input */
+    margin-top: 8px;
     border-radius: 4px;
 }
 
@@ -672,13 +786,9 @@ button:active,
 /* =================================================================== */
 /* 6. UNCERTAINTY ANALYSIS                                             */
 /* =================================================================== */
-.uncertainty-analysis-page {
-  text-align: left;
-}
-
 .analysis-dashboard {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  grid-template-columns: 1fr;
   gap: 30px;
   align-items: start;
 }
@@ -718,7 +828,7 @@ button:active,
 
 .result-confidence-note {
   font-size: 0.85rem;
-  color: #6c757d;
+  color: var(--text-color-muted);
   margin-top: 15px;
   line-height: 1.5;
   text-align: center;
@@ -937,7 +1047,7 @@ button:active,
 }
 .spec-detail-card {
   border: 1px solid var(--border-color);
-  background: var(--background-color);
+  background: var(--content-background);
   border-radius: 6px;
   padding: 16px;
   display: flex;
@@ -1003,6 +1113,10 @@ button:active,
 /* =================================================================== */
 /* 9. DARK MODE OVERRIDES                                              */
 /* =================================================================== */
+body.dark-mode .modal-content {
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.4);
+}
+
 body.dark-mode .modal-content h3 {
   color: var(--text-color);
 }
@@ -1026,15 +1140,15 @@ body.dark-mode .placeholder-content {
     color: var(--text-color-muted);
 }
 
-body.dark-mode .measurement-point-item:hover,
-body.dark-mode .session-list-item:hover {
-  background-color: var(--background-color);
+body.dark-mode .session-list-item:hover,
+body.dark-mode .measurement-point-item:hover {
+  background-color: #2a2a2a;
 }
 
-body.dark-mode .measurement-point-item.active,
-body.dark-mode .session-list-item.active {
-  color: #ffffff;
-  background-color: var(--primary-color);
+body.dark-mode .session-list-item.active,
+body.dark-mode .measurement-point-item.active {
+  color: var(--primary-color-dark);
+  background-color: var(--primary-color-light);
 }
 
 body.dark-mode .view-toggle {
@@ -1046,8 +1160,8 @@ body.dark-mode .view-toggle button {
 }
 
 body.dark-mode .view-toggle button.active {
-  background-color: var(--primary-color);
-  color: #fff;
+  background-color: var(--primary-color-light);
+  color: var(--primary-color-dark);
 }
 
 body.dark-mode .uncertainty-budget-table thead th {
@@ -1112,6 +1226,42 @@ body.dark-mode .tolerance-display-card {
 body.dark-mode .tolerance-summary {
     background-color: var(--background-color);
 }
+body.dark-mode .component-card {
+    background-color: #1A202C;
+    border-color: #4A5568;
+}
+body.dark-mode .component-header {
+    background-color: #2D3748;
+    border-color: #4A5568;
+}
+body.dark-mode .add-component-section {
+    background-color: #1A202C;
+    border-color: #4A5568;
+}
+body.dark-mode .accordion-header:hover {
+  background-color: #2d3748;
+}
+body.dark-mode .modal-tab.active {
+    border-bottom-color: var(--primary-color-dark);
+}
+body.dark-mode .measurement-point-item.active .info-icon,
+body.dark-mode .measurement-point-item.active .calc-icon {
+    background-color: var(--content-background);
+    color: var(--primary-color-dark);
+    border-color: var(--primary-color-dark);
+}
+body.dark-mode .sidebar-action-button.delete {
+    color: var(--status-bad);
+    border-color: var(--status-bad);
+}
+
+body.dark-mode .sidebar-action-button.delete:hover {
+    background-color: var(--status-bad);
+    border-color: var(--status-bad);
+    color: white;
+}
+
+
 /* =================================================================== */
 /* 10. MEDIA QUERIES                                                   */
 /* =================================================================== */
@@ -1144,145 +1294,201 @@ body.dark-mode .tolerance-summary {
   .spec-input-container {
     grid-template-columns: 1fr;
   }
+  .full-breakdown-container {
+    grid-template-columns: 1fr;
+  }
 }
 
-/* --- ADDED STYLES for Session & Document View --- */
-.session-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* =================================================================== */
+/* 11. CONTEXT MENU                                                    */
+/* =================================================================== */
+.context-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  background: transparent; /* Makes it invisible */
 }
 
-.session-list-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  text-align: left;
-  padding: 12px 15px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
+.context-menu {
+  position: absolute;
   background-color: var(--content-background);
-  color: var(--text-color);
-  font-weight: 600; /* Bolder for sessions */
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.08);
+  padding: 6px;
+  z-index: 1001;
+  min-width: 240px;
+  animation: context-menu-fade-in 0.1s ease-out;
+}
+
+@keyframes context-menu-fade-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.context-menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.context-menu li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color);
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.session-list-item:hover {
-  background-color: var(--background-color);
-  border-color: var(--primary-color);
-}
-
-.session-list-item.active {
+.context-menu li:not(.context-menu-divider):hover {
   background-color: var(--primary-color);
-  border-color: var(--primary-color);
   color: white;
-  font-weight: 700;
 }
 
-.test-point-details-view p {
-    margin: 0 0 10px 0;
+.context-menu .context-menu-icon {
+    width: 16px;
+    text-align: center;
 }
 
-.test-point-details-view strong {
-    color: var(--text-color-muted);
-    font-weight: 600;
-    margin-right: 8px;
-    display: inline-block;
-    width: 130px; /* Align text */
+.context-menu-divider {
+    height: 0;
+    border-top: 1px solid var(--border-color); /* Use a border to create the line */
+    margin: 6px 12px;
+    padding: 0;
+    cursor: default;
 }
 
-.input-group {
-    display: flex;
-    gap: 10px;
+.context-menu li.destructive {
+    color: var(--status-bad);
 }
 
-body.dark-mode .test-point-details-view strong {
-    color: var(--text-color-muted);
+.context-menu li.destructive:hover {
+    background-color: var(--status-bad);
+    color: white;
 }
 
-/* NEW: Styles for the redesigned ToleranceToolModal */
-.components-container {
+/* =================================================================== */
+/* 12. MISCELLANEOUS                                                   */
+/* =================================================================== */
+
+.measurement-point-content {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    margin-bottom: 20px;
+    flex-grow: 1;
+    align-items: flex-start;
+    text-align: left;
 }
 
-.component-card {
+/* Unified styles for FontAwesome action icons */
+.info-icon,
+.calc-icon {
+    color: var(--text-color-muted);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background-color: var(--background-color);
-}
-
-.component-header {
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 10px 15px;
-    border-bottom: 1px solid var(--border-color);
+    justify-content: center;
+    font-size: 13px; /* Controls SVG icon size */
+    margin-left: 10px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    cursor: pointer;
 }
 
-.component-header h5 {
-    margin: 0;
-    font-size: 1rem;
+.info-icon:hover,
+.calc-icon:hover {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.measurement-point-item.active .info-icon,
+.measurement-point-item.active .calc-icon {
+    background-color: white;
+    color: var(--primary-color);
+    border-color: var(--border-color);
+}
+
+.measurement-point-item.active .info-icon:hover,
+.measurement-point-item.active .calc-icon:hover {
+    background-color: white;
     color: var(--primary-color);
 }
 
-.remove-component-btn {
-    background: none;
-    border: none;
-    color: var(--status-bad);
-    font-size: 1.5rem;
-    font-weight: bold;
-    cursor: pointer;
-    padding: 0 5px;
-    line-height: 1;
+/* FullBreakdownModal */
+.full-breakdown-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 1rem;
 }
 
-.component-body {
-    padding: 15px;
+.full-breakdown-column h4 {
+    text-align: center;
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
 }
 
-.add-component-section {
+/* Session Selector Styles */
+.session-controls {
     display: flex;
-    gap: 10px;
-    align-items: center;
-    padding: 15px;
-    background-color: var(--background-color);
-    border-radius: 6px;
-    margin-top: 10px;
-}
-
-.add-component-section select {
+    flex-direction: column;
+    gap: 0.5rem;
     flex-grow: 1;
-    margin: 0;
 }
-
-.add-component-section .button-small {
-    margin: 0;
-    flex-shrink: 0;
+.session-controls label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-color-muted);
 }
-
-/* NEW: Style for button group in Tolerance Display Card */
-.tolerance-display-card .button-group {
+.session-selector {
+    padding: 8px;
+    font-weight: 500;
+}
+.session-actions {
     display: flex;
-    gap: 10px;
-    margin-top: auto;
+    gap: 0.5rem;
+    align-items: center;
 }
-
-.tolerance-display-card .button-group .button {
-    flex: 1;
-    margin: 0;
+.sidebar-action-button {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color-muted);
+    font-size: 0.9rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
 }
-
-
-/* Dark Mode additions for new elements */
-body.dark-mode .component-card {
-    background-color: #1A202C;
+.sidebar-action-button:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
 }
-
-body.dark-mode .add-component-section {
-    background-color: #1A202C;
+.sidebar-action-button.delete {
+    color: var(--status-bad);
+    border-color: var(--status-bad);
+}
+.sidebar-action-button.delete:hover {
+    background-color: var(--status-bad);
+    border-color: var(--status-bad);
+    color: white;
 }

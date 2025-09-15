@@ -1,175 +1,271 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { unitSystem } from '../App'; 
+import { unitSystem } from '../App';
 
-const ToleranceToolModal = ({ isOpen, onClose, onSave, initialData, title, isUUT, nominal }) => {
-    const [components, setComponents] = useState([]);
-    const [miscData, setMiscData] = useState({});
-    const [componentToAdd, setComponentToAdd] = useState('reading');
+// Define all possible tolerance components and their default states
+const componentDefinitions = {
+    reading: {
+        label: '% of Reading',
+        defaultState: { high: '', unit: '%' },
+    },
+    range: {
+        label: '% of Full Scale (Range)',
+        defaultState: { value: '', high: '', unit: '%' },
+    },
+    floor: {
+        label: 'Floor (Absolute)',
+        defaultState: { high: '', unit: '' }, // Default unit is set dynamically from nominal
+    },
+    db: {
+        label: 'dB Component',
+        defaultState: { high: '', multiplier: 20, ref: 1 },
+    }
+};
 
-    const componentTypes = useMemo(() => ({
-        reading: { name: 'Reading (% of Reading)', defaults: { low: '', high: '', unit: '%' } },
-        range: { name: 'Range (% of Full Scale)', defaults: { value: '', low: '', high: '', unit: '%' } },
-        floor: { name: 'Floor (Absolute)', defaults: { low: '', high: '', unit: nominal?.unit || 'V' } },
-        db: { name: 'dB Component', defaults: { low: '', high: '', multiplier: 20, ref: 1 } },
-    }), [nominal]);
+/**
+ * A dynamic form for building a tolerance specification by adding/removing components.
+ */
+const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
+    const [componentToAdd, setComponentToAdd] = useState('');
 
-    const availableComponents = useMemo(() => {
-        const activeTypes = components.map(c => c.type);
-        return Object.entries(componentTypes)
-            .filter(([type]) => !activeTypes.includes(type))
-            .map(([type, { name }]) => ({ type, name }));
-    }, [components, componentTypes]);
-    
-    useEffect(() => {
-        const { reading, range, floor, db, ...rest } = initialData;
-        const active = [];
-        if (reading && (parseFloat(reading.high) || parseFloat(reading.low))) active.push({ id: 1, type: 'reading', ...reading });
-        if (range && (parseFloat(range.high) || parseFloat(range.low))) active.push({ id: 2, type: 'range', ...range });
-        if (floor && (parseFloat(floor.high) || parseFloat(floor.low))) active.push({ id: 3, type: 'floor', ...floor });
-        if (db && (parseFloat(db.high) || parseFloat(db.low))) active.push({ id: 4, type: 'db', ...db });
-        
-        setComponents(active);
-        setMiscData(rest);
-
-        // Set the default component to add
-        const activeTypes = active.map(c => c.type);
-        const firstAvailable = Object.keys(componentTypes).find(t => !activeTypes.includes(t));
-        setComponentToAdd(firstAvailable || '');
-
-    }, [initialData, componentTypes]);
-    
     const unitOptions = useMemo(() => {
         return nominal?.unit ? unitSystem.getRelevantUnits(nominal.unit) : ['%', 'ppm'];
     }, [nominal]);
 
-    if (!isOpen) return null;
+    // Set the default unit for the 'floor' component based on the nominal parameter's unit
+    useEffect(() => {
+        if (nominal?.unit) {
+            componentDefinitions.floor.defaultState.unit = nominal.unit;
+        }
+    }, [nominal]);
 
-    const handleAddComponent = () => {
-        if (!componentToAdd) return;
-        const newComponent = {
-            id: Date.now(),
-            type: componentToAdd,
-            ...componentTypes[componentToAdd].defaults,
-        };
-        setComponents(prev => [...prev, newComponent]);
-        
-        const nextAvailable = availableComponents.filter(c => c.type !== componentToAdd)[0];
-        setComponentToAdd(nextAvailable ? nextAvailable.type : '');
-    };
+    // Generic handler to update any field in the tolerance state
+    const handleChange = (e) => {
+        const { name, value, dataset } = e.target;
+        const { field, type } = dataset; // `type` is 'reading', 'range', 'misc', etc.
 
-    const handleRemoveComponent = (id) => {
-        setComponents(prev => prev.filter(c => c.id !== id));
-    };
-
-    const handleChange = (e, id) => {
-        const { name, value } = e.target;
-        
-        if (id === 'misc') {
-            setMiscData(prev => ({ ...prev, [name]: value }));
+        if (type === 'misc') { // For standalone fields like measuringResolution
+            setTolerance(prev => ({ ...prev, [name]: value }));
             return;
         }
 
-        setComponents(prev => prev.map(c => 
-            c.id === id ? { ...c, [name]: value } : c
-        ));
+        // For fields within a component (e.g., the 'high' field of the 'reading' component)
+        setTolerance(prev => ({
+            ...prev,
+            [type]: { ...prev[type], [field]: value }
+        }));
+    };
+    
+    // Adds a selected component to the tolerance object
+    const handleAddComponent = () => {
+        if (componentToAdd && !tolerance[componentToAdd]) {
+            setTolerance(prev => ({
+                ...prev,
+                [componentToAdd]: componentDefinitions[componentToAdd].defaultState
+            }));
+            setComponentToAdd(''); // Reset dropdown after adding
+        }
     };
 
-    const handleSave = () => {
-        const finalData = { ...miscData };
-        // Ensure all component types exist in the final object
-        Object.keys(componentTypes).forEach(type => {
-            finalData[type] = componentTypes[type].defaults;
+    // Removes a component from the tolerance object
+    const handleRemoveComponent = (key) => {
+        setTolerance(prev => {
+            const newTolerance = { ...prev };
+            delete newTolerance[key];
+            return newTolerance;
         });
-        // Populate with active component data
-        components.forEach(comp => {
-            const { id, type, ...compData } = comp;
-            finalData[type] = { ...finalData[type], ...compData };
-        });
-        onSave(finalData);
     };
+    
+    // Renders the form inputs for a specific component card
+    const renderComponentCard = (key) => {
+        const componentData = tolerance[key];
+        if (!componentData) return null;
 
-    const renderComponentInputs = (comp) => {
-        switch (comp.type) {
+        let content = null;
+        switch (key) {
             case 'reading':
-                return <div className="config-stack">
-                    <label>Tolerance (±)</label>
-                    <input type="number" step="any" name="high" value={comp.high} onChange={(e) => handleChange(e, comp.id)} placeholder="e.g., 0.1"/>
-                    <label>Units</label>
-                    <select name="unit" value={comp.unit} onChange={(e) => handleChange(e, comp.id)}>
-                        {['%', 'ppm'].map(u => <option key={u} value={u}>{u}</option>)}
-                    </select>
-                </div>;
+                content = (
+                    <div className="config-stack">
+                        <label>Tolerance (±)</label>
+                        <input type="number" step="any" data-type="reading" data-field="high" value={componentData.high || ''} onChange={handleChange} placeholder="e.g., 0.1"/>
+                        <label>Units</label>
+                        <select data-type="reading" data-field="unit" value={componentData.unit || '%'} onChange={handleChange}>
+                            {['%', 'ppm'].map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                    </div>
+                );
+                break;
             case 'range':
-                return <div className="config-stack">
-                    <label>Range (FS) Value</label>
-                    <input type="number" step="any" name="value" value={comp.value} onChange={(e) => handleChange(e, comp.id)} placeholder="e.g., 100"/>
-                    <label>Tolerance (±)</label>
-                    <input type="number" step="any" name="high" value={comp.high} onChange={(e) => handleChange(e, comp.id)} placeholder="e.g., 0.05"/>
-                     <label>Units</label>
-                    <select name="unit" value={comp.unit} onChange={(e) => handleChange(e, comp.id)}>
-                        {['%'].map(u => <option key={u} value={u}>{u}</option>)}
-                    </select>
-                </div>;
+                 content = (
+                    <div className="config-stack">
+                        <label>Range (FS) Value</label>
+                        <input type="number" step="any" data-type="range" data-field="value" value={componentData.value || ''} onChange={handleChange} placeholder="e.g., 100"/>
+                        <label>Tolerance (±)</label>
+                        <input type="number" step="any" data-type="range" data-field="high" value={componentData.high || ''} onChange={handleChange} placeholder="e.g., 0.05"/>
+                        <label>Units</label>
+                        <select data-type="range" data-field="unit" value={componentData.unit || '%'} onChange={handleChange}>
+                            {['%'].map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                    </div>
+                );
+                break;
             case 'floor':
-                return <div className="config-stack">
-                     <label>Tolerance (±)</label>
-                    <input type="number" step="any" name="high" value={comp.high} onChange={(e) => handleChange(e, comp.id)} placeholder="e.g., 0.001"/>
-                     <label>Units</label>
-                    <select name="unit" value={comp.unit} onChange={(e) => handleChange(e, comp.id)}>
-                        {unitOptions.filter(u => u !== '%' && u !== 'ppm').map(u => <option key={u} value={u}>{u}</option>)}
-                    </select>
-                </div>;
+                 content = (
+                     <div className="config-stack">
+                        <label>Tolerance (±)</label>
+                        <input type="number" step="any" data-type="floor" data-field="high" value={componentData.high || ''} onChange={handleChange} placeholder="e.g., 0.001"/>
+                        <label>Units</label>
+                        <select data-type="floor" data-field="unit" value={componentData.unit || nominal.unit} onChange={handleChange}>
+                            {unitOptions.filter(u => u !== '%' && u !== 'ppm').map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                    </div>
+                );
+                break;
             case 'db':
-                 return <div className="config-stack">
-                    <label>Tolerance (± dB)</label>
-                    <input type="number" step="any" name="high" value={comp.high} onChange={(e) => handleChange(e, comp.id)} placeholder="e.g., 0.5"/>
-                    <label>dB Equation Multiplier</label>
-                    <input type="number" step="any" name="multiplier" value={comp.multiplier} onChange={(e) => handleChange(e, comp.id)} />
-                    <label>dB Reference Value</label>
-                    <input type="number" step="any" name="ref" value={comp.ref} onChange={(e) => handleChange(e, comp.id)} />
-                </div>;
+                content = (
+                    <div className="config-stack">
+                        <label>Tolerance (± dB)</label>
+                        <input type="number" step="any" data-type="db" data-field="high" value={componentData.high || ''} onChange={handleChange} placeholder="e.g., 0.5"/>
+                        <label>dB Equation Multiplier</label>
+                        <input type="number" step="any" data-type="db" data-field="multiplier" value={componentData.multiplier || 20} onChange={handleChange} />
+                        <label>dB Reference Value</label>
+                        <input type="number" step="any" data-type="db" data-field="ref" value={componentData.ref || 1} onChange={handleChange} />
+                    </div>
+                );
+                break;
             default:
                 return null;
         }
+
+        return (
+            <div className="component-card" key={key}>
+                <div className="component-header">
+                    <h5>{componentDefinitions[key].label}</h5>
+                    <button onClick={() => handleRemoveComponent(key)} className="remove-component-btn" title="Remove component">&times;</button>
+                </div>
+                <div className="component-body">
+                    {content}
+                </div>
+            </div>
+        );
+    };
+
+    const addedComponents = Object.keys(tolerance).filter(key => componentDefinitions[key]);
+    const availableComponents = Object.keys(componentDefinitions).filter(key => !tolerance[key]);
+
+    return (
+        <>
+            <div className="components-container">
+                {addedComponents.length > 0 ? (
+                    addedComponents.map(key => renderComponentCard(key))
+                ) : (
+                    <div className="placeholder-content" style={{ minHeight: '100px', margin: '10px 0', backgroundColor: 'transparent' }}>
+                        <p>No tolerance components added.</p>
+                    </div>
+                )}
+            </div>
+            
+            <div className="add-component-section">
+                <select 
+                    value={componentToAdd} 
+                    onChange={(e) => setComponentToAdd(e.target.value)} 
+                    disabled={availableComponents.length === 0}
+                >
+                    <option value="">-- Select component to add --</option>
+                    {availableComponents.map(key => (
+                        <option key={key} value={key}>{componentDefinitions[key].label}</option>
+                    ))}
+                </select>
+                <button 
+                    className="button button-small" 
+                    onClick={handleAddComponent}
+                    disabled={!componentToAdd}
+                >
+                    Add Component
+                </button>
+            </div>
+
+            {isUUT && 
+                <div className="form-section" style={{marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '20px'}}>
+                    <label>Measuring Resolution (Least Significant Digit)</label>
+                    <input type="number" step="any" name="measuringResolution" data-type="misc" value={tolerance.measuringResolution || ''} onChange={handleChange} placeholder="e.g., 0.001"/>
+                </div>
+            }
+        </>
+    );
+};
+
+
+const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
+    const [activeTab, setActiveTab] = useState('UUT');
+    const [uutTolerance, setUutTolerance] = useState({});
+    const [tmdeTolerance, setTmdeTolerance] = useState({});
+
+    useEffect(() => {
+        if (isOpen && testPointData) {
+            // Ensure we load a clean object, removing any undefined keys from older data structures
+            const cleanObject = (obj) => Object.fromEntries(Object.entries(obj || {}).filter(([_, v]) => v !== undefined));
+            setUutTolerance(cleanObject(testPointData.uutTolerance));
+            setTmdeTolerance(cleanObject(testPointData.tmdeTolerance));
+            setActiveTab('UUT');
+        }
+    }, [isOpen, testPointData]);
+    
+    if (!isOpen) return null;
+
+    const handleSave = () => {
+        // Helper to remove any components the user added but left empty
+        const cleanupTolerance = (tol) => {
+            const cleaned = { ...tol };
+            
+            Object.keys(componentDefinitions).forEach(key => {
+                const component = cleaned[key];
+                // If the component object exists but its primary value ('high') is empty or zero, remove the whole component
+                if (component && !parseFloat(component.high)) {
+                    delete cleaned[key];
+                }
+            });
+
+            // Clean up measuringResolution if it's 0 or empty
+            if (!parseFloat(cleaned.measuringResolution)) {
+                delete cleaned.measuringResolution;
+            }
+            return cleaned;
+        };
+
+        onSave({
+            uutTolerance: cleanupTolerance(uutTolerance),
+            tmdeTolerance: cleanupTolerance(tmdeTolerance)
+        });
     };
 
     return (
         <div className="modal-overlay">
             <div className="modal-content" style={{maxWidth: '600px'}}>
                 <button onClick={onClose} className="modal-close-button">&times;</button>
-                <h3>{title}</h3>
-
-                <div className="components-container">
-                    {components.map(comp => (
-                        <div key={comp.id} className="component-card">
-                            <div className="component-header">
-                                <h5>{componentTypes[comp.type].name}</h5>
-                                <button onClick={() => handleRemoveComponent(comp.id)} className="remove-component-btn">&times;</button>
-                            </div>
-                            <div className="component-body">
-                                {renderComponentInputs(comp)}
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                <h3>Tolerance Editor</h3>
                 
-                {availableComponents.length > 0 && (
-                    <div className="add-component-section">
-                        <select value={componentToAdd} onChange={(e) => setComponentToAdd(e.target.value)}>
-                            {availableComponents.map(({ type, name }) => (
-                                <option key={type} value={type}>{name}</option>
-                            ))}
-                        </select>
-                        <button className="button button-small" onClick={handleAddComponent}>Add Component</button>
-                    </div>
+                <div className="modal-tabs">
+                    <button className={`modal-tab ${activeTab === 'UUT' ? 'active' : ''}`} onClick={() => setActiveTab('UUT')}>UUT</button>
+                    <button className={`modal-tab ${activeTab === 'TMDE' ? 'active' : ''}`} onClick={() => setActiveTab('TMDE')}>TMDE</button>
+                </div>
+
+                {activeTab === 'UUT' && (
+                    <ToleranceFormContent
+                        tolerance={uutTolerance}
+                        setTolerance={setUutTolerance}
+                        isUUT={true}
+                        nominal={testPointData.testPointInfo.parameter}
+                    />
                 )}
 
-                {isUUT && 
-                    <div className="form-section" style={{marginTop: '20px'}}>
-                        <label>Measuring Resolution (Least Significant Digit)</label>
-                        <input type="number" step="any" name="measuringResolution" value={miscData.measuringResolution || ''} onChange={(e) => handleChange(e, 'misc')} placeholder="e.g., 0.001"/>
-                    </div>
-                }
+                {activeTab === 'TMDE' && (
+                    <ToleranceFormContent
+                        tolerance={tmdeTolerance}
+                        setTolerance={setTmdeTolerance}
+                        isUUT={false}
+                        nominal={testPointData.testPointInfo.parameter}
+                    />
+                )}
 
                 <div className="modal-actions">
                     <button className="button button-secondary" onClick={onClose}>Cancel</button>
