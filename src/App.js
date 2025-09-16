@@ -967,7 +967,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
             {breakdownModal === 'pfa' && <PfaBreakdownModal results={riskResults} inputs={{ ...riskInputs, LLow: parseFloat(riskInputs.LLow), LUp: parseFloat(riskInputs.LUp) }} onClose={() => setBreakdownModal(null)} />}
             {breakdownModal === 'pfr' && <PfrBreakdownModal results={riskResults} inputs={{ ...riskInputs, LLow: parseFloat(riskInputs.LLow), LUp: parseFloat(riskInputs.LUp) }} onClose={() => setBreakdownModal(null)} />}
 
-            <div className="view-toggle" style={{ justifyContent: 'center', marginBottom: '30px' }}>
+            <div className="analysis-tabs">
                 <button className={analysisMode === 'uncertaintyTool' ? 'active' : ''} onClick={() => setAnalysisMode('uncertaintyTool')}>Uncertainty Tool</button>
                 <button className={analysisMode === 'risk' ? 'active' : ''} onClick={() => setAnalysisMode('risk')}>Risk Analysis</button>
                 <button className={analysisMode === 'spec' ? 'active' : ''} onClick={() => setAnalysisMode('spec')}>Specification Comparison</button>
@@ -1389,6 +1389,7 @@ function App() {
                             <h4 style={{margin: '0'}}>Measurement Points</h4>
                             <button className="add-point-button" onClick={() => setIsAddModalOpen(true)} title="Add New Measurement Point">+</button>
                         </div>
+                        <p className="sidebar-hint">Right-click an item for more options.</p>
                         <div className="measurement-point-list">
                             {currentTestPoints.length > 0 ? (
                                 currentTestPoints.map(tp => {
