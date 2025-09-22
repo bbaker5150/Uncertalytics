@@ -71,7 +71,7 @@ export const getToleranceSummary = (toleranceData) => {
     if (parseFloat(floor?.high)) parts.push(`±${floor.high} ${floor.unit}`);
     if (parseFloat(db?.high)) parts.push(`±${db.high} dB`);
     return parts.length > 0 ? parts.join(' + ') : 'Not Set';
-};
+}; 
 
 export const calculateUncertaintyFromToleranceObject = (toleranceObject, nominal, isUUT) => {
     if (!toleranceObject || !nominal || !nominal.value || !nominal.unit) {
