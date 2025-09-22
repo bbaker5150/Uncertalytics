@@ -620,6 +620,12 @@ select:focus {
   border-bottom-color: var(--primary-color);
 }
 
+.modal-body-scrollable {
+  max-height: 55vh; /* Limit height to 55% of the viewport */
+  overflow-y: auto;  /* Add scrollbar only when content overflows */
+  padding-right: 10px; /* Add space to prevent content from touching the scrollbar */
+}
+
 /* --- Dynamic Tolerance Modal Styles --- */
 .components-container {
   display: flex;
@@ -732,6 +738,109 @@ select:focus {
   opacity: 0.65;
 }
 
+/* Add to Section 4: MODALS & OVERLAYS */
+
+.modal-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 40px;
+  text-align: left;
+  padding-top: 15px;
+}
+
+.modal-form-section h4 {
+  font-size: 1.1rem;
+  color: var(--primary-color);
+  margin-bottom: 15px;
+  margin-top: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-form-section hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 25px 0;
+}
+
+.modal-form-section label {
+  display: block;
+  margin-bottom: 10px;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-color-muted);
+  letter-spacing: 0.05em;
+}
+
+.input-group {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 10px;
+  align-items: end;
+}
+
+.add-qualifier-btn {
+  background-color: var(--background-color);
+  color: var(--primary-color);
+  border: 1px dashed var(--border-color);
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.add-qualifier-btn:hover {
+  background-color: var(--primary-color-light);
+  border-color: var(--primary-color);
+}
+
+.qualifier-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qualifier-header button {
+  background: none;
+  border: none;
+  color: var(--status-bad);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+/* Add to Section 5: ACCORDION & INPUTS */
+
+.searchable-dropdown {
+  position: relative;
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  z-index: 1010;
+  max-height: 150px;
+  overflow-y: auto;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.dropdown-item {
+  padding: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: var(--primary-color-light);
+}
 
 /* =================================================================== */
 /* 5. ACCORDION & INPUTS                                               */

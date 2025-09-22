@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheck, faTimes, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
+import { unitSystem } from '../App';
 
+// A generic notification modal for displaying errors or messages
 const NotificationModal = ({ isOpen, onClose, title, message }) => {
     if (!isOpen) return null;
     return (
@@ -16,22 +20,81 @@ const NotificationModal = ({ isOpen, onClose, title, message }) => {
     );
 };
 
+// A new reusable component for searchable unit dropdowns
+const SearchableDropdown = ({ name, value, onChange, options }) => {
+    const [searchTerm, setSearchTerm] = useState(value);
+    const [isOpen, setIsOpen] = useState(false);
+    const wrapperRef = useRef(null);
+
+    useEffect(() => {
+        setSearchTerm(value);
+    }, [value]);
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [wrapperRef]);
+    
+    const filteredOptions = options.filter(option => 
+        option.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const handleSelect = (option) => {
+        setSearchTerm(option);
+        onChange({ target: { name, value: option } });
+        setIsOpen(false);
+    };
+
+    const handleChange = (e) => {
+        setSearchTerm(e.target.value);
+        onChange(e);
+        if (!isOpen) setIsOpen(true);
+    }
+
+    return (
+        <div className="searchable-dropdown" ref={wrapperRef}>
+            <input 
+                type="text"
+                name={name}
+                value={searchTerm}
+                onChange={handleChange}
+                onFocus={() => setIsOpen(true)}
+                autoComplete="off"
+            />
+            {isOpen && filteredOptions.length > 0 && (
+                <div className="dropdown-list">
+                    {filteredOptions.map(option => (
+                        <div key={option} className="dropdown-item" onClick={() => handleSelect(option)}>
+                            {option}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
 const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
     const [formData, setFormData] = useState({
-        section: '',
-        uutDescription: '',
-        tmdeDescription: '',
-        paramName: 'DC Voltage',
-        paramValue: '10',
-        paramUnit: 'V',
-        qualName: 'Frequency',
-        qualValue: '1',
-        qualUnit: 'kHz',
+        section: '', uutDescription: '', tmdeDescription: '',
+        paramName: 'DC Voltage', paramValue: '10', paramUnit: 'V',
+        qualName: 'Frequency', qualValue: '', qualUnit: 'kHz',
     });
+    const [hasQualifier, setHasQualifier] = useState(false);
     const [notification, setNotification] = useState(null);
+
+    const availableUnits = useMemo(() => Object.keys(unitSystem.conversions), []);
 
     useEffect(() => {
         if (initialData) {
+            const qualExists = !!initialData.testPointInfo.qualifier?.value;
+            setHasQualifier(qualExists);
             setFormData({
                 section: initialData.section || '',
                 uutDescription: initialData.uutDescription || '',
@@ -39,18 +102,18 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                 paramName: initialData.testPointInfo.parameter.name || 'DC Voltage',
                 paramValue: initialData.testPointInfo.parameter.value || '10',
                 paramUnit: initialData.testPointInfo.parameter.unit || 'V',
-                qualName: initialData.testPointInfo.qualifier.name || 'Frequency',
-                qualValue: initialData.testPointInfo.qualifier.value || '1',
-                qualUnit: initialData.testPointInfo.qualifier.unit || 'kHz',
+                qualName: initialData.testPointInfo.qualifier.name ?? 'Frequency',
+                qualValue: initialData.testPointInfo.qualifier.value ?? '',
+                qualUnit: initialData.testPointInfo.qualifier.unit ?? 'kHz',
             });
         } else {
+            setHasQualifier(false);
             setFormData({
                 section: '', uutDescription: '', tmdeDescription: '', paramName: 'DC Voltage',
-                paramValue: '10', paramUnit: 'V', qualName: 'Frequency', qualValue: '1', qualUnit: 'kHz'
+                paramValue: '10', paramUnit: 'V', qualName: 'Frequency', qualValue: '', qualUnit: 'kHz'
             });
         }
     }, [initialData]);
-
 
     if (!isOpen) return null;
 
@@ -65,26 +128,27 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
             return;
         }
 
+        const qualifierData = hasQualifier
+            ? { name: formData.qualName, value: formData.qualValue, unit: formData.qualUnit }
+            : { name: '', value: '', unit: '' };
+
+        const finalData = {
+            section: formData.section,
+            uutDescription: formData.uutDescription,
+            tmdeDescription: formData.tmdeDescription,
+            testPointInfo: {
+                parameter: { name: formData.paramName, value: formData.paramValue, unit: formData.paramUnit },
+                qualifier: qualifierData,
+                uut: formData.uutDescription,
+                tmde: formData.tmdeDescription,
+                section: formData.section
+            },
+        };
+
         if (initialData) {
-            // It's an edit, package data differently
-            onSave({
-                id: initialData.id,
-                testPointData: {
-                    section: formData.section,
-                    uutDescription: formData.uutDescription,
-                    tmdeDescription: formData.tmdeDescription,
-                    testPointInfo: {
-                        parameter: { name: formData.paramName, value: formData.paramValue, unit: formData.paramUnit },
-                        qualifier: { name: formData.qualName, value: formData.qualValue, unit: formData.qualUnit },
-                        uut: formData.uutDescription,
-                        tmde: formData.tmdeDescription,
-                        section: formData.section
-                    }
-                }
-            });
+            onSave({ id: initialData.id, testPointData: finalData });
         } else {
-            // It's a new point
-            onSave(formData);
+            onSave(finalData);
         }
     };
 
@@ -96,8 +160,10 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
             <div className="modal-content" style={{maxWidth: '800px'}}>
                 <button onClick={onClose} className="modal-close-button">&times;</button>
                 <h3>{isEditing ? 'Edit Measurement Point' : 'Add New Measurement Point'}</h3>
-                <div className="config-grid" style={{borderTop: 'none', paddingTop: '0'}}>
-                    <div className='form-section'>
+                
+                <div className="modal-form-grid">
+                    <div className="modal-form-section">
+                        <h4>Identification</h4>
                         <label>Section</label>
                         <input type="text" name="section" value={formData.section} onChange={handleChange} placeholder="e.g., 4.1.a" />
                         <label>UUT – Unit Under Test</label>
@@ -105,26 +171,60 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                         <label>TMDE – Test Equipment</label>
                         <input type="text" name="tmdeDescription" value={formData.tmdeDescription} onChange={handleChange} placeholder="Test Equipment model or ID" />
                     </div>
-                    <div className='form-section'>
+
+                    <div className="modal-form-section">
+                        <h4>Parameter</h4>
                         <label>Parameter Name</label>
                         <input type="text" name="paramName" value={formData.paramName} onChange={handleChange} />
-                        <label>Measurement Point (Value)</label>
-                        <input type="text" name="paramValue" value={formData.paramValue} onChange={handleChange} />
-                        <label>Measurement Units</label>
-                        <input type="text" name="paramUnit" value={formData.paramUnit} onChange={handleChange} />
-                    </div>
-                     <div className='form-section'>
-                        <label>Qualifier Name</label>
-                        <input type="text" name="qualName" value={formData.qualName} onChange={handleChange} />
-                        <label>Qualifier Value</label>
-                        <input type="text" name="qualValue" value={formData.qualValue} onChange={handleChange} />
-                        <label>Qualifier Units</label>
-                        <input type="text" name="qualUnit" value={formData.qualUnit} onChange={handleChange} />
+                        <div className="input-group">
+                            <div>
+                                <label>Value</label>
+                                <input type="text" name="paramValue" value={formData.paramValue} onChange={handleChange} />
+                            </div>
+                            <div>
+                                <label>Units</label>
+                                <SearchableDropdown name="paramUnit" value={formData.paramUnit} onChange={handleChange} options={availableUnits} />
+                            </div>
+                        </div>
+
+                        <hr />
+
+                        {hasQualifier ? (
+                            <>
+                                <div className="qualifier-header">
+                                    <h4>Qualifier</h4>
+                                    <button onClick={() => setHasQualifier(false)} title="Remove Qualifier">
+                                        <FontAwesomeIcon icon={faTrashAlt} />
+                                    </button>
+                                </div>
+                                <label>Qualifier Name</label>
+                                <input type="text" name="qualName" value={formData.qualName} onChange={handleChange} />
+                                <div className="input-group">
+                                    <div>
+                                        <label>Value</label>
+                                        <input type="text" name="qualValue" value={formData.qualValue} onChange={handleChange} />
+                                    </div>
+                                    <div>
+                                        <label>Units</label>
+                                        <SearchableDropdown name="qualUnit" value={formData.qualUnit} onChange={handleChange} options={availableUnits} />
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                             <button className="add-qualifier-btn" onClick={() => setHasQualifier(true)}>
+                                <FontAwesomeIcon icon={faPlus} /> Add Qualifier
+                            </button>
+                        )}
                     </div>
                 </div>
+
                  <div className="modal-actions">
-                    <button className="button button-secondary" onClick={onClose}>Cancel</button>
-                    <button className="button" onClick={handleSave}>Save Changes</button>
+                    <button className="modal-icon-button secondary" onClick={onClose} title="Cancel">
+                        <FontAwesomeIcon icon={faTimes} />
+                    </button>
+                    <button className="modal-icon-button primary" onClick={handleSave} title="Save Changes">
+                        <FontAwesomeIcon icon={faCheck} />
+                    </button>
                 </div>
             </div>
         </div>

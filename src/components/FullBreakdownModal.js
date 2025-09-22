@@ -29,7 +29,7 @@ const BreakdownDetails = ({ type, testPoint }) => {
                         <li><strong>Input:</strong> {comp.input}</li>
                         <li><strong>Conversion:</strong> {comp.explanation}</li>
                         <li><strong>In PPM:</strong> {comp.ppm.toFixed(3)} ppm</li>
-                        <li><strong>Std. Uncertainty (uᵢ):</strong> <Latex>{`$$ \\frac{${comp.ppm.toFixed(3)}}{\\sqrt{3}} = ${comp.u_i.toFixed(3)} \\text{ ppm}$$`}</Latex></li>
+                        <li><strong>Std. Uncertainty (uᵢ):</strong> <Latex>{`$$ \\frac{${comp.ppm.toFixed(3)}}{${comp.divisor.toFixed(3)}} = ${comp.u_i.toFixed(3)} \\text{ ppm}$$`}</Latex></li>
                     </ul>
                 </div>
             ))}

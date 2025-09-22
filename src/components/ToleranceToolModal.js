@@ -1,24 +1,25 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { unitSystem } from "../App";
+import { unitSystem, errorDistributions } from "../App";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrashAlt, faCheck, faTimes } from '@fortawesome/free-solid-svg-icons';
+
 // Define all possible tolerance components and their default states
 const componentDefinitions = {
   reading: {
     label: "% of Reading",
-    defaultState: { high: "", unit: "%" },
+    defaultState: { high: "", unit: "%", distribution: "1.732" },
   },
   range: {
     label: "% of Full Scale (Range)",
-    defaultState: { value: "", high: "", unit: "%" },
+    defaultState: { value: "", high: "", unit: "%", distribution: "1.732" },
   },
   floor: {
     label: "Floor (Absolute)",
-    defaultState: { high: "", unit: "" }, // Default unit is set dynamically from nominal
+    defaultState: { high: "", unit: "", distribution: "1.732" },
   },
   db: {
     label: "dB Component",
-    defaultState: { high: "", multiplier: 20, ref: 1 },
+    defaultState: { high: "", multiplier: 20, ref: 1, distribution: "1.732" },
   },
 };
 
@@ -85,6 +86,27 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
     if (!componentData) return null;
 
     let content = null;
+    const distributionOptions = errorDistributions.filter(d => d.label !== 'Std. Uncertainty');
+
+    const distributionSelect = (
+      <>
+        <label>Distribution</label>
+        <select
+          data-type={key}
+          data-field="distribution"
+          value={componentData.distribution || "1.732"}
+          onChange={handleChange}
+        >
+          {distributionOptions.map((dist) => (
+            <option key={dist.value} value={dist.value}>
+              {dist.label}
+            </option>
+          ))}
+        </select>
+      </>
+    );
+
+
     switch (key) {
       case "reading":
         content = (
@@ -112,6 +134,7 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
                 </option>
               ))}
             </select>
+            {distributionSelect}
           </div>
         );
         break;
@@ -151,6 +174,7 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
                 </option>
               ))}
             </select>
+            {distributionSelect}
           </div>
         );
         break;
@@ -182,6 +206,7 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
                   </option>
                 ))}
             </select>
+            {distributionSelect}
           </div>
         );
         break;
@@ -216,6 +241,7 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
               value={componentData.ref || 1}
               onChange={handleChange}
             />
+            {distributionSelect}
           </div>
         );
         break;
@@ -299,15 +325,31 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
           }}
         >
           <label>Measuring Resolution (Least Significant Digit)</label>
-          <input
-            type="number"
-            step="any"
-            name="measuringResolution"
-            data-type="misc"
-            value={tolerance.measuringResolution || ""}
-            onChange={handleChange}
-            placeholder="e.g., 0.001"
-          />
+          <div className="input-with-unit">
+            <input
+              type="number"
+              step="any"
+              name="measuringResolution"
+              data-type="misc"
+              value={tolerance.measuringResolution || ""}
+              onChange={handleChange}
+              placeholder="e.g., 1"
+            />
+            <select
+              name="measuringResolutionUnit"
+              data-type="misc"
+              value={tolerance.measuringResolutionUnit || nominal.unit}
+              onChange={handleChange}
+            >
+              {unitOptions
+                .filter((u) => u !== "%" && u !== "ppm")
+                .map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+            </select>
+          </div>
         </div>
       )}
     </>
@@ -341,15 +383,14 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
 
       Object.keys(componentDefinitions).forEach((key) => {
         const component = cleaned[key];
-        // If the component object exists but its primary value ('high') is empty or zero, remove the whole component
         if (component && !parseFloat(component.high)) {
           delete cleaned[key];
         }
       });
 
-      // Clean up measuringResolution if it's 0 or empty
       if (!parseFloat(cleaned.measuringResolution)) {
         delete cleaned.measuringResolution;
+        delete cleaned.measuringResolutionUnit;
       }
       return cleaned;
     };
@@ -383,23 +424,25 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
           </button>
         </div>
 
-        {activeTab === "UUT" && (
-          <ToleranceFormContent
-            tolerance={uutTolerance}
-            setTolerance={setUutTolerance}
-            isUUT={true}
-            nominal={testPointData.testPointInfo.parameter}
-          />
-        )}
+        <div className="modal-body-scrollable">
+            {activeTab === "UUT" && (
+            <ToleranceFormContent
+                tolerance={uutTolerance}
+                setTolerance={setUutTolerance}
+                isUUT={true}
+                nominal={testPointData.testPointInfo.parameter}
+            />
+            )}
 
-        {activeTab === "TMDE" && (
-          <ToleranceFormContent
-            tolerance={tmdeTolerance}
-            setTolerance={setTmdeTolerance}
-            isUUT={false}
-            nominal={testPointData.testPointInfo.parameter}
-          />
-        )}
+            {activeTab === "TMDE" && (
+            <ToleranceFormContent
+                tolerance={tmdeTolerance}
+                setTolerance={setTmdeTolerance}
+                isUUT={false}
+                nominal={testPointData.testPointInfo.parameter}
+            />
+            )}
+        </div>
 
         <div className="modal-actions">
           <button
