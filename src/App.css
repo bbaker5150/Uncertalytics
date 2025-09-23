@@ -344,6 +344,7 @@ select:focus {
   color: #856404;
   border-radius: 4px;
   margin-bottom: 20px;
+  margin-top: 20px;
 }
 
 .form-section-warning p {
@@ -1795,4 +1796,23 @@ body.dark-mode .sidebar-action-button.delete:hover {
   text-align: center;
   margin: -0.5rem 0 0.5rem 0;
   font-style: italic;
+}
+
+.limit-value-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.limit-value-display strong {
+  font-size: 1.1em;
+}
+
+.limit-value-display select {
+  font-size: 0.8rem;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background-color: var(--background-color);
+  max-width: 100px;
+  border: 1px solid var(--border-color);
 }

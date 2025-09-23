@@ -131,6 +131,7 @@ export const calculateUncertaintyFromToleranceObject = (
     const value = parseFloat(tolComp.high);
     const unit = tolComp.unit;
     const divisor = parseFloat(tolComp.distribution) || 1.732;
+    const distributionLabel = errorDistributions.find(d => d.value === String(tolComp.distribution))?.label || 'Rectangular';
 
     let valueInNominalUnits;
     let explanation = "";
@@ -166,6 +167,7 @@ export const calculateUncertaintyFromToleranceObject = (
         ppm: Math.abs(ppm),
         u_i,
         divisor,
+        distributionLabel,
       });
     }
   };
@@ -188,6 +190,7 @@ export const calculateUncertaintyFromToleranceObject = (
     const dbMult = parseFloat(dbTolComp.multiplier) || 20;
     const dbRef = parseFloat(dbTolComp.ref) || 1;
     const divisor = parseFloat(dbTolComp.distribution) || 1.732;
+    const distributionLabel = errorDistributions.find(d => d.value === String(dbTolComp.distribution))?.label || 'Rectangular';
     const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
     const absoluteDeviation = Math.abs(
       dbRef * Math.pow(10, (dbNominal + dbTol) / dbMult) - nominalValue
@@ -211,6 +214,7 @@ export const calculateUncertaintyFromToleranceObject = (
         ppm: Math.abs(ppm),
         u_i,
         divisor,
+        distributionLabel,
       });
     }
   }
@@ -231,6 +235,7 @@ export const calculateUncertaintyFromToleranceObject = (
         ppm: Math.abs(resPpm / 2),
         u_i,
         divisor,
+        distributionLabel: 'Rectangular',
       });
     }
   }
@@ -1358,8 +1363,11 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
     );
 
     const resolutionComponents = [];
-    const resolutionValue = parseFloat(testPointData.uutTolerance?.measuringResolution);
-    const resolutionUnit = testPointData.uutTolerance?.measuringResolutionUnit || nominal?.unit;
+    const resolutionValue = parseFloat(
+      testPointData.uutTolerance?.measuringResolution
+    );
+    const resolutionUnit =
+      testPointData.uutTolerance?.measuringResolutionUnit || nominal?.unit;
 
     // Specifically check for the resolution value from the UUT tolerance object
     if (resolutionValue > 0 && nominal) {
@@ -1367,7 +1375,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
         resolutionValue,
         resolutionUnit,
         nominal.value, // Corrected order
-        nominal.unit   // Corrected order
+        nominal.unit // Corrected order
       );
 
       if (!isNaN(resPpm)) {
@@ -2350,21 +2358,7 @@ function App() {
             section: formData.section,
             uutDescription: formData.uutDescription,
             tmdeDescription: formData.tmdeDescription,
-            testPointInfo: {
-              parameter: {
-                name: formData.paramName,
-                value: formData.paramValue,
-                unit: formData.paramUnit,
-              },
-              qualifier: {
-                name: formData.qualName,
-                value: formData.qualValue,
-                unit: formData.qualUnit,
-              },
-              uut: formData.uutDescription,
-              tmde: formData.tmdeDescription,
-              section: formData.section,
-            },
+            testPointInfo: formData.testPointInfo,
           };
           setSelectedTestPointId(newTestPoint.id);
           return {
