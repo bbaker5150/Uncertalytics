@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { unitSystem, errorDistributions } from "../App";
+import ContextMenu from "./ContextMenu";
+import NotificationModal from "./NotificationModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrashAlt, faCheck, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faTrashAlt, faCheck, faTimes, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 
 // Define all possible tolerance components and their default states
 const componentDefinitions = {
@@ -27,8 +29,6 @@ const componentDefinitions = {
  * A dynamic form for building a tolerance specification by adding/removing components.
  */
 const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
-  const [componentToAdd, setComponentToAdd] = useState("");
-
   const unitOptions = useMemo(() => {
     return nominal?.unit
       ? unitSystem.getRelevantUnits(nominal.unit)
@@ -60,14 +60,14 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
     }));
   };
 
-  // Adds a selected component to the tolerance object
-  const handleAddComponent = () => {
-    if (componentToAdd && !tolerance[componentToAdd]) {
+  // Adds a selected component to the tolerance object when selected from the dropdown
+  const handleComponentSelect = (e) => {
+    const componentKey = e.target.value;
+    if (componentKey && !tolerance[componentKey]) {
       setTolerance((prev) => ({
         ...prev,
-        [componentToAdd]: componentDefinitions[componentToAdd].defaultState,
+        [componentKey]: componentDefinitions[componentKey].defaultState,
       }));
-      setComponentToAdd(""); // Reset dropdown after adding
     }
   };
 
@@ -294,8 +294,8 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
 
       <div className="add-component-section">
         <select
-          value={componentToAdd}
-          onChange={(e) => setComponentToAdd(e.target.value)}
+          value=""
+          onChange={handleComponentSelect}
           disabled={availableComponents.length === 0}
         >
           <option value="">-- Select component to add --</option>
@@ -305,14 +305,6 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
             </option>
           ))}
         </select>
-        <button
-          className="tolerance-add-btn"
-          onClick={handleAddComponent}
-          disabled={!componentToAdd}
-          title="Add Component"
-        >
-          <FontAwesomeIcon icon={faPlus} />
-        </button>
       </div>
 
       {isUUT && (
@@ -357,22 +349,72 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
 };
 
 const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
-  const [activeTab, setActiveTab] = useState("UUT");
+  const [activeTab, setActiveTab] = useState("UUT"); // 'UUT' or a TMDE object's id
   const [uutTolerance, setUutTolerance] = useState({});
-  const [tmdeTolerance, setTmdeTolerance] = useState({});
+  const [tmdeTolerances, setTmdeTolerances] = useState([]); // Array of TMDE objects
+  const [contextMenu, setContextMenu] = useState(null);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen && testPointData) {
-      // Ensure we load a clean object, removing any undefined keys from older data structures
       const cleanObject = (obj) =>
         Object.fromEntries(
           Object.entries(obj || {}).filter(([_, v]) => v !== undefined)
         );
-      setUutTolerance(cleanObject(testPointData.uutTolerance));
-      setTmdeTolerance(cleanObject(testPointData.tmdeTolerance));
+
+      const initialUutTolerance = cleanObject(testPointData.uutTolerance);
+      if (!initialUutTolerance.name) {
+        initialUutTolerance.name = 'UUT'; // Default name if not present
+      }
+      setUutTolerance(initialUutTolerance);
+
+      // Load new array format, or migrate from old object format
+      let loadedTmde = testPointData.tmdeTolerances || [];
+      if (loadedTmde.length === 0 && testPointData.tmdeTolerance && Object.keys(testPointData.tmdeTolerance).length > 0) {
+          loadedTmde = [{
+              id: Date.now(),
+              name: 'TMDE', // Default name for migrated data
+              ...cleanObject(testPointData.tmdeTolerance)
+          }];
+      }
+      setTmdeTolerances(loadedTmde.map(t => ({...t, ...cleanObject(t)})));
+      
       setActiveTab("UUT");
     }
   }, [isOpen, testPointData]);
+
+  const handleAddTmde = () => {
+    const newTmde = {
+      id: Date.now(),
+      name: `TMDE ${tmdeTolerances.length + 1}`,
+    };
+    setTmdeTolerances(prev => [...prev, newTmde]);
+    setActiveTab(newTmde.id);
+  };
+
+  const handleRemoveTmde = (idToRemove) => {
+    setTmdeTolerances(prev => prev.filter(t => t.id !== idToRemove));
+    if (activeTab === idToRemove) {
+      setActiveTab("UUT");
+    }
+  };
+  
+  const handleTmdeNameChange = (id, newName) => {
+      setTmdeTolerances(prev => prev.map(t => 
+        t.id === id ? { ...t, name: newName } : t
+      ));
+  };
+
+  const handleTmdeToleranceChange = (id, setter) => {
+    setTmdeTolerances(prevTolerances => 
+        prevTolerances.map(t => {
+            if (t.id === id) {
+                return typeof setter === 'function' ? setter(t) : setter;
+            }
+            return t;
+        })
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -397,13 +439,36 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
 
     onSave({
       uutTolerance: cleanupTolerance(uutTolerance),
-      tmdeTolerance: cleanupTolerance(tmdeTolerance),
+      tmdeTolerances: tmdeTolerances.map(t => cleanupTolerance(t)),
+      tmdeTolerance: undefined, // Explicitly remove the old key
     });
+    onClose();
   };
+  
+  const infoMessage = "• Add TMDE: Click the '+' button in the tab bar.\n\n" +
+                      "• Delete TMDE: Right-click on a TMDE's tab to open the delete option.\n\n" +
+                      "• Add Component: Select a tolerance component from the dropdown list to add it to the budget.";
+
+  const activeTmde = tmdeTolerances.find(t => t.id === activeTab);
 
   return (
     <div className="modal-overlay">
+       {contextMenu && (
+        <ContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />
+      )}
+      <NotificationModal
+            isOpen={isInfoModalOpen}
+            onClose={() => setIsInfoModalOpen(false)}
+            title="Navigating the Editor"
+            message={infoMessage}
+      />
       <div className="modal-content" style={{ maxWidth: "600px" }}>
+        <FontAwesomeIcon 
+                icon={faInfoCircle} 
+                className="info-icon-modal" 
+                onClick={() => setIsInfoModalOpen(true)}
+                title="How to use this editor"
+        />
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>
@@ -414,33 +479,81 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
             className={`modal-tab ${activeTab === "UUT" ? "active" : ""}`}
             onClick={() => setActiveTab("UUT")}
           >
-            UUT
+            {uutTolerance.name || 'UUT'}
           </button>
-          <button
-            className={`modal-tab ${activeTab === "TMDE" ? "active" : ""}`}
-            onClick={() => setActiveTab("TMDE")}
-          >
-            TMDE
+          {tmdeTolerances.map(tmde => (
+              <button
+                key={tmde.id}
+                className={`modal-tab ${activeTab === tmde.id ? "active" : ""}`}
+                onClick={() => setActiveTab(tmde.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  const menuItems = [
+                    {
+                      label: `Delete "${tmde.name}"`,
+                      action: () => handleRemoveTmde(tmde.id),
+                      icon: faTrashAlt,
+                      className: 'destructive',
+                    },
+                  ];
+                  setContextMenu({
+                    x: e.pageX,
+                    y: e.pageY,
+                    items: menuItems,
+                  });
+                }}
+              >
+                {tmde.name}
+              </button>
+          ))}
+          <button className="modal-tab-add" onClick={handleAddTmde} title="Add New TMDE">
+            <FontAwesomeIcon icon={faPlus} />
           </button>
         </div>
 
         <div className="modal-body-scrollable">
             {activeTab === "UUT" && (
-            <ToleranceFormContent
-                tolerance={uutTolerance}
-                setTolerance={setUutTolerance}
-                isUUT={true}
-                nominal={testPointData.testPointInfo.parameter}
-            />
+            <>
+                <div className="uut-header">
+                    <div className='form-section' style={{marginBottom: 0, paddingBottom: 0}}>
+                        <label>UUT Name</label>
+                        <input
+                            type="text"
+                            value={uutTolerance.name || ''}
+                            onChange={(e) => setUutTolerance(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="e.g., Device Under Test"
+                        />
+                    </div>
+                </div>
+                <ToleranceFormContent
+                    tolerance={uutTolerance}
+                    setTolerance={setUutTolerance}
+                    isUUT={true}
+                    nominal={testPointData.testPointInfo.parameter}
+                />
+            </>
             )}
 
-            {activeTab === "TMDE" && (
-            <ToleranceFormContent
-                tolerance={tmdeTolerance}
-                setTolerance={setTmdeTolerance}
-                isUUT={false}
-                nominal={testPointData.testPointInfo.parameter}
-            />
+            {activeTmde && (
+            <>
+                <div className="tmde-header">
+                    <div className='form-section' style={{marginBottom: 0, paddingBottom: 0}}>
+                        <label>TMDE Name</label>
+                        <input
+                            type="text"
+                            value={activeTmde.name}
+                            onChange={(e) => handleTmdeNameChange(activeTmde.id, e.target.value)}
+                            placeholder="e.g., Standard DMM"
+                        />
+                    </div>
+                </div>
+                <ToleranceFormContent
+                    tolerance={activeTmde}
+                    setTolerance={(setter) => handleTmdeToleranceChange(activeTmde.id, setter)}
+                    isUUT={false}
+                    nominal={testPointData.testPointInfo.parameter}
+                />
+            </>
             )}
         </div>
 

@@ -2,23 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faTimes, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import { unitSystem } from '../App';
-
-// A generic notification modal for displaying errors or messages
-const NotificationModal = ({ isOpen, onClose, title, message }) => {
-    if (!isOpen) return null;
-    return (
-        <div className="modal-overlay">
-            <div className="modal-content">
-                <button onClick={onClose} className="modal-close-button">&times;</button>
-                <h3>{title}</h3>
-                <p style={{ textAlign: 'center' }}>{message}</p>
-                <div className="modal-actions" style={{ justifyContent: 'center' }}>
-                    <button className="button" onClick={onClose}>OK</button>
-                </div>
-            </div>
-        </div>
-    );
-};
+import NotificationModal from './NotificationModal';
 
 // A new reusable component for searchable unit dropdowns
 const SearchableDropdown = ({ name, value, onChange, options }) => {

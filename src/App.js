@@ -172,7 +172,7 @@ export const calculateUncertaintyFromToleranceObject = (
     }
   };
 
-  addComponent(toleranceObject.reading, nominalValue, "Reading");
+  addComponent(toleranceObject.reading, "Reading", nominalValue, "Reading");
   addComponent(
     toleranceObject.range,
     parseFloat(toleranceObject.range?.value),
@@ -1161,13 +1161,16 @@ const oldErrorDistributions = [
   { value: "1.000", label: "Standard Uncertainty (Input is uᵢ)" },
 ];
 
-const getBudgetComponentsFromTolerance = (toleranceObject, prefix, nominal) => {
+const getBudgetComponentsFromTolerance = (toleranceObject, nominal) => {
   if (!toleranceObject || !nominal || !nominal.value || !nominal.unit) {
     return [];
   }
 
   const budgetComponents = [];
   const nominalValue = parseFloat(nominal.value);
+  const prefix =
+    toleranceObject.name ||
+    (toleranceObject.measuringResolution ? "UUT" : "TMDE");
 
   const processComponent = (
     tolComp,
@@ -1182,13 +1185,15 @@ const getBudgetComponentsFromTolerance = (toleranceObject, prefix, nominal) => {
       : parseFloat(tolComp?.high);
     if (isNaN(value) || value === 0) return;
 
-    const unit = isResolution ? nominal.unit : tolComp.unit;
+    const unit = isResolution
+      ? toleranceObject.measuringResolutionUnit || nominal.unit
+      : tolComp.unit;
     const distributionDivisor = isResolution
       ? Math.sqrt(3)
       : parseFloat(tolComp.distribution) || Math.sqrt(3);
     const distributionLabel = isResolution
       ? "Rectangular"
-      : errorDistributions.find((d) => d.value === tolComp.distribution)
+      : errorDistributions.find((d) => d.value === String(tolComp.distribution))
           ?.label || "Rectangular";
 
     let valueInPPM;
@@ -1215,7 +1220,9 @@ const getBudgetComponentsFromTolerance = (toleranceObject, prefix, nominal) => {
     if (!isNaN(valueInPPM)) {
       const u_i = Math.abs(valueInPPM / distributionDivisor);
       budgetComponents.push({
-        id: `${prefix}_${name.toLowerCase().replace(/\s/g, "")}`,
+        id: `${prefix}_${name
+          .toLowerCase()
+          .replace(/\s/g, "")}_${Math.random()}`,
         name: `${prefix} - ${name}`,
         type: "B",
         value: u_i,
@@ -1253,11 +1260,11 @@ const getBudgetComponentsFromTolerance = (toleranceObject, prefix, nominal) => {
         parseFloat(toleranceObject.db.distribution) || Math.sqrt(3);
       const distributionLabel =
         errorDistributions.find(
-          (d) => d.value === toleranceObject.db.distribution
+          (d) => d.value === String(toleranceObject.db.distribution)
         )?.label || "Rectangular";
       const u_i = Math.abs(ppm / distributionDivisor);
       budgetComponents.push({
-        id: `${prefix}_db`,
+        id: `${prefix}_db_${Math.random()}`,
         name: `${prefix} - dB`,
         type: "B",
         value: u_i,
@@ -1268,7 +1275,7 @@ const getBudgetComponentsFromTolerance = (toleranceObject, prefix, nominal) => {
     }
   }
 
-  if (prefix === "UUT") {
+  if (toleranceObject.measuringResolution) {
     processComponent(
       toleranceObject.measuringResolution,
       "Resolution",
@@ -1356,51 +1363,36 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
 
   const allComponents = useMemo(() => {
     const nominal = testPointData?.testPointInfo?.parameter;
-    const tmdeBudgetComponents = getBudgetComponentsFromTolerance(
-      testPointData.tmdeTolerance,
-      "TMDE",
-      nominal
+    
+    const tmdeTolerances = testPointData.tmdeTolerances || [];
+    const tmdeBudgetComponents = tmdeTolerances.flatMap(tmde => 
+        getBudgetComponentsFromTolerance(
+            tmde,
+            nominal
+        )
     );
-
-    const resolutionComponents = [];
-    const resolutionValue = parseFloat(
-      testPointData.uutTolerance?.measuringResolution
-    );
-    const resolutionUnit =
-      testPointData.uutTolerance?.measuringResolutionUnit || nominal?.unit;
-
-    // Specifically check for the resolution value from the UUT tolerance object
-    if (resolutionValue > 0 && nominal) {
-      const resPpm = convertToPPM(
-        resolutionValue,
-        resolutionUnit,
-        nominal.value, // Corrected order
-        nominal.unit // Corrected order
-      );
-
-      if (!isNaN(resPpm)) {
-        // Resolution uncertainty is a rectangular distribution over +/- half the least significant digit.
-        // The standard uncertainty is (limit / sqrt(3)), where the limit is resolutionValue / 2.
-        const u_i = Math.abs(resPpm / 2 / Math.sqrt(3));
-        resolutionComponents.push({
-          id: "uut_resolution",
-          name: "UUT - Resolution",
-          type: "B",
-          value: u_i,
-          dof: Infinity,
-          isCore: true,
-          distribution: "Rectangular",
-        });
-      }
+    // Handle legacy data if tmdeTolerances is missing/empty
+    if (tmdeTolerances.length === 0 && testPointData.tmdeTolerance) {
+        tmdeBudgetComponents.push(...getBudgetComponentsFromTolerance(
+            testPointData.tmdeTolerance,
+            nominal
+        ));
     }
+
+    // Get UUT components separately, including resolution
+    const uutBudgetComponents = getBudgetComponentsFromTolerance(
+        testPointData.uutTolerance,
+        nominal
+    );
 
     return [
       ...manualComponents,
       ...tmdeBudgetComponents,
-      ...resolutionComponents,
+      ...uutBudgetComponents,
     ];
   }, [
     manualComponents,
+    testPointData.tmdeTolerances,
     testPointData.tmdeTolerance,
     testPointData.uutTolerance,
     testPointData.testPointInfo,
@@ -1587,18 +1579,32 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
     );
     const uCal = Math.sqrt(calVariance);
 
-    const { totalToleranceForTar: tmdeToleranceSpan } =
-      calculateUncertaintyFromToleranceObject(
-        testPointData.tmdeTolerance,
-        nominal,
-        false
-      );
+    const tmdeTolerances = testPointData.tmdeTolerances || [];
+    let tmdeToleranceSpan = 0;
+
+    if (tmdeTolerances.length > 0) {
+        tmdeToleranceSpan = tmdeTolerances.reduce((totalSpan, tmde) => {
+            const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(
+                tmde,
+                nominal,
+                false
+            );
+            return totalSpan + totalToleranceForTar;
+        }, 0);
+    } else if (testPointData.tmdeTolerance) { // Legacy fallback
+        const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(
+            testPointData.tmdeTolerance,
+            nominal,
+            false
+        );
+        tmdeToleranceSpan = totalToleranceForTar;
+    }
 
     if (tmdeToleranceSpan === 0 && LUp - LLow > 0) {
       setNotification({
         title: "Missing Component",
         message:
-          "Could not find TMDE tolerances required for the TAR calculation. Please define them on the 'Uncertainty Tool' tab.",
+          "Could not find any TMDE tolerances required for the TAR calculation. Please define them using the Tolerance Editor.",
       });
     }
 
@@ -1657,7 +1663,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
     const pfrResult =
       isNaN(pfr_term1) || isNaN(pfr_term2) ? 0 : pfr_term1 + pfr_term2;
 
-    const turResult = (LUp - LLow) / (2 * calcResults.expanded_uncertainty);
+    const turResult = (LUp - LLow) / (calcResults.expanded_uncertainty); // Adjusted TUR from 2*U to just U
     const tarResult =
       tmdeToleranceSpan !== 0 ? (LUp - LLow) / tmdeToleranceSpan : 0;
 
@@ -2133,7 +2139,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
                     </strong>
                   </span>
                   <small>
-                    Derived from UUT input on the 'Uncertainty Tool' tab.
+                    Derived from UUT tolerance specifications.
                   </small>
                 </div>
                 <div className="config-column">
@@ -2194,7 +2200,7 @@ function App() {
       uutDescription: "",
       tmdeDescription: "",
       uutTolerance: {},
-      tmdeTolerance: {},
+      tmdeTolerances: [],
       specifications: {
         mfg: { uncertainty: "", k: 2 },
         navy: { uncertainty: "", k: 2 },
@@ -2461,7 +2467,6 @@ function App() {
           onClose={() => setIsToleranceModalOpen(false)}
           onSave={(data) => {
             handleDataSave(data);
-            setIsToleranceModalOpen(false);
           }}
           testPointData={testPointData}
         />
