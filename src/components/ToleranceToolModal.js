@@ -1,138 +1,143 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { unitSystem, errorDistributions } from "../App";
+import { unitSystem, errorDistributions, getToleranceUnitOptions } from "../App";
 import ContextMenu from "./ContextMenu";
-import NotificationModal from "./NotificationModal";
+import { NotificationModal } from "../App";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrashAlt, faCheck, faTimes, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 
 // Define all possible tolerance components and their default states
 const componentDefinitions = {
   reading: {
-    label: "% of Reading",
-    defaultState: { high: "", unit: "%", distribution: "1.732" },
+    label: "Reading (e.g., % of Value)",
+    defaultState: { high: "", low: "", unit: "%", distribution: "1.960", symmetric: true },
   },
   range: {
-    label: "% of Full Scale (Range)",
-    defaultState: { value: "", high: "", unit: "%", distribution: "1.732" },
+    label: "Range (e.g., % of Full Scale)",
+    defaultState: { value: "", high: "", low: "", unit: "%", distribution: "1.960", symmetric: true },
   },
   floor: {
-    label: "Floor (Absolute)",
-    defaultState: { high: "", unit: "", distribution: "1.732" },
+    label: "Floor (Absolute Value)",
+    defaultState: { high: "", low: "", unit: "", distribution: "1.960", symmetric: true },
   },
   db: {
     label: "dB Component",
-    defaultState: { high: "", multiplier: 20, ref: 1, distribution: "1.732" },
+    defaultState: { high: "", low: "", multiplier: 20, ref: 1, distribution: "1.960", symmetric: true },
   },
 };
 
 /**
  * A dynamic form for building a tolerance specification by adding/removing components.
  */
-const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
-  const unitOptions = useMemo(() => {
-    return nominal?.unit
-      ? unitSystem.getRelevantUnits(nominal.unit)
-      : ["%", "ppm"];
-  }, [nominal]);
+const ToleranceFormContent = ({ tolerance, setTolerance, isTMDE, nominal, referenceMeasurementPoint }) => {
+  const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
+  
+  const toleranceUnitOptions = useMemo(() => {
+    const refUnit = isTMDE ? referenceMeasurementPoint?.unit : nominal?.unit;
+    return getToleranceUnitOptions(refUnit);
+  }, [nominal, referenceMeasurementPoint, isTMDE]);
 
-  // Set the default unit for the 'floor' component based on the nominal parameter's unit
   useEffect(() => {
-    if (nominal?.unit) {
-      componentDefinitions.floor.defaultState.unit = nominal.unit;
+    const refUnit = isTMDE ? referenceMeasurementPoint?.unit : nominal?.unit;
+    if (refUnit && !componentDefinitions.floor.defaultState.unit) {
+      componentDefinitions.floor.defaultState.unit = refUnit;
     }
-  }, [nominal]);
+  }, [nominal, referenceMeasurementPoint, isTMDE]);
 
-  // Generic handler to update any field in the tolerance state
   const handleChange = (e) => {
-    const { name, value, dataset } = e.target;
-    const { field, type } = dataset; // `type` is 'reading', 'range', 'misc', etc.
+    const { name, value, type, checked, dataset } = e.target;
+    const { field, componentKey } = dataset;
 
     if (type === "misc") {
-      // For standalone fields like measuringResolution
       setTolerance((prev) => ({ ...prev, [name]: value }));
       return;
     }
 
-    // For fields within a component (e.g., the 'high' field of the 'reading' component)
-    setTolerance((prev) => ({
-      ...prev,
-      [type]: { ...prev[type], [field]: value },
-    }));
+    setTolerance((prev) => {
+        const newTol = { ...prev };
+        const comp = { ...newTol[componentKey] };
+
+        if (field === 'symmetric') {
+            comp.symmetric = checked;
+            if (checked && comp.high) {
+                const highVal = parseFloat(comp.high);
+                if (!isNaN(highVal)) {
+                    comp.low = -highVal;
+                }
+            }
+        } else if (field === 'high' && comp.symmetric) {
+            comp.high = value;
+            const highVal = parseFloat(value);
+            comp.low = !isNaN(highVal) ? -highVal : '';
+        } else {
+            comp[field] = value;
+        }
+
+        newTol[componentKey] = comp;
+        return newTol;
+    });
   };
 
-  // Adds a selected component to the tolerance object when selected from the dropdown
   const handleComponentSelect = (e) => {
     const componentKey = e.target.value;
     if (componentKey && !tolerance[componentKey]) {
       setTolerance((prev) => ({
         ...prev,
-        [componentKey]: componentDefinitions[componentKey].defaultState,
+        [componentKey]: { ...componentDefinitions[componentKey].defaultState },
       }));
     }
   };
 
-  // Removes a component from the tolerance object
   const handleRemoveComponent = (key) => {
     setTolerance((prev) => {
-      const newTolerance = { ...prev };
-      delete newTolerance[key];
-      return newTolerance;
+      const { [key]: _, ...rest } = prev;
+      return rest;
     });
   };
 
-  // Renders the form inputs for a specific component card
   const renderComponentCard = (key) => {
     const componentData = tolerance[key];
     if (!componentData) return null;
 
     let content = null;
     const distributionOptions = errorDistributions.filter(d => d.label !== 'Std. Uncertainty');
+    const refUnit = isTMDE ? referenceMeasurementPoint?.unit : nominal?.unit;
+
+    const commonFields = (
+        <>
+            <div className="input-group-asymmetric">
+                <div>
+                    <label>Upper Limit</label>
+                    <input type="number" step="any" data-component-key={key} data-field="high" value={componentData.high || ""} onChange={handleChange} placeholder="+ value" />
+                </div>
+                <div>
+                    <label>Lower Limit</label>
+                    <input type="number" step="any" data-component-key={key} data-field="low" value={componentData.low || ""} onChange={handleChange} disabled={componentData.symmetric} placeholder="- value"/>
+                </div>
+            </div>
+            <div className="symmetric-toggle">
+                <input type="checkbox" id={`symmetric_${key}_${tolerance.id}`} data-component-key={key} data-field="symmetric" checked={!!componentData.symmetric} onChange={handleChange} />
+                <label htmlFor={`symmetric_${key}_${tolerance.id}`}>Symmetric</label>
+            </div>
+        </>
+    );
 
     const distributionSelect = (
       <>
         <label>Distribution</label>
-        <select
-          data-type={key}
-          data-field="distribution"
-          value={componentData.distribution || "1.732"}
-          onChange={handleChange}
-        >
-          {distributionOptions.map((dist) => (
-            <option key={dist.value} value={dist.value}>
-              {dist.label}
-            </option>
-          ))}
+        <select data-component-key={key} data-field="distribution" value={componentData.distribution || "1.732"} onChange={handleChange} >
+          {distributionOptions.map((dist) => (<option key={dist.value} value={dist.value}>{dist.label}</option>))}
         </select>
       </>
     );
-
 
     switch (key) {
       case "reading":
         content = (
           <div className="config-stack">
-            <label>Tolerance (±)</label>
-            <input
-              type="number"
-              step="any"
-              data-type="reading"
-              data-field="high"
-              value={componentData.high || ""}
-              onChange={handleChange}
-              placeholder="e.g., 0.1"
-            />
+            {commonFields}
             <label>Units</label>
-            <select
-              data-type="reading"
-              data-field="unit"
-              value={componentData.unit || "%"}
-              onChange={handleChange}
-            >
-              {["%", "ppm"].map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
+            <select data-component-key="reading" data-field="unit" value={componentData.unit || "%"} onChange={handleChange} >
+              {toleranceUnitOptions.map((u) => (<option key={u} value={u}>{u}</option>))}
             </select>
             {distributionSelect}
           </div>
@@ -142,37 +147,11 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
         content = (
           <div className="config-stack">
             <label>Range (FS) Value</label>
-            <input
-              type="number"
-              step="any"
-              data-type="range"
-              data-field="value"
-              value={componentData.value || ""}
-              onChange={handleChange}
-              placeholder="e.g., 100"
-            />
-            <label>Tolerance (±)</label>
-            <input
-              type="number"
-              step="any"
-              data-type="range"
-              data-field="high"
-              value={componentData.high || ""}
-              onChange={handleChange}
-              placeholder="e.g., 0.05"
-            />
+            <input type="number" step="any" data-component-key="range" data-field="value" value={componentData.value || ""} onChange={handleChange} placeholder="e.g., 100" />
+            {commonFields}
             <label>Units</label>
-            <select
-              data-type="range"
-              data-field="unit"
-              value={componentData.unit || "%"}
-              onChange={handleChange}
-            >
-              {["%"].map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
+            <select data-component-key="range" data-field="unit" value={componentData.unit || "%"} onChange={handleChange}>
+              {toleranceUnitOptions.map((u) => (<option key={u} value={u}>{u}</option>))}
             </select>
             {distributionSelect}
           </div>
@@ -181,30 +160,10 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
       case "floor":
         content = (
           <div className="config-stack">
-            <label>Tolerance (±)</label>
-            <input
-              type="number"
-              step="any"
-              data-type="floor"
-              data-field="high"
-              value={componentData.high || ""}
-              onChange={handleChange}
-              placeholder="e.g., 0.001"
-            />
+            {commonFields}
             <label>Units</label>
-            <select
-              data-type="floor"
-              data-field="unit"
-              value={componentData.unit || nominal.unit}
-              onChange={handleChange}
-            >
-              {unitOptions
-                .filter((u) => u !== "%" && u !== "ppm")
-                .map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
+            <select data-component-key="floor" data-field="unit" value={componentData.unit || refUnit} onChange={handleChange}>
+              {allUnits.filter((u) => !["%", "ppm", "dB"].includes(u)).map((u) => (<option key={u} value={u}>{u}</option>))}
             </select>
             {distributionSelect}
           </div>
@@ -213,34 +172,11 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
       case "db":
         content = (
           <div className="config-stack">
-            <label>Tolerance (± dB)</label>
-            <input
-              type="number"
-              step="any"
-              data-type="db"
-              data-field="high"
-              value={componentData.high || ""}
-              onChange={handleChange}
-              placeholder="e.g., 0.5"
-            />
+            {commonFields}
             <label>dB Equation Multiplier</label>
-            <input
-              type="number"
-              step="any"
-              data-type="db"
-              data-field="multiplier"
-              value={componentData.multiplier || 20}
-              onChange={handleChange}
-            />
+            <input type="number" step="any" data-component-key="db" data-field="multiplier" value={componentData.multiplier || 20} onChange={handleChange}/>
             <label>dB Reference Value</label>
-            <input
-              type="number"
-              step="any"
-              data-type="db"
-              data-field="ref"
-              value={componentData.ref || 1}
-              onChange={handleChange}
-            />
+            <input type="number" step="any" data-component-key="db" data-field="ref" value={componentData.ref || 1} onChange={handleChange}/>
             {distributionSelect}
           </div>
         );
@@ -307,7 +243,7 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
         </select>
       </div>
 
-      {isUUT && (
+      {isTMDE && (
         <div
           className="form-section"
           style={{
@@ -330,11 +266,11 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
             <select
               name="measuringResolutionUnit"
               data-type="misc"
-              value={tolerance.measuringResolutionUnit || nominal.unit}
+              value={tolerance.measuringResolutionUnit || referenceMeasurementPoint?.unit}
               onChange={handleChange}
             >
-              {unitOptions
-                .filter((u) => u !== "%" && u !== "ppm")
+              {allUnits
+                .filter((u) => !["%", "ppm", "dB"].includes(u))
                 .map((u) => (
                   <option key={u} value={u}>
                     {u}
@@ -349,31 +285,31 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, nominal }) => {
 };
 
 const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
-  const [activeTab, setActiveTab] = useState("UUT"); // 'UUT' or a TMDE object's id
+  const [activeTab, setActiveTab] = useState("UUT");
   const [uutTolerance, setUutTolerance] = useState({});
-  const [tmdeTolerances, setTmdeTolerances] = useState([]); // Array of TMDE objects
+  const [tmdeTolerances, setTmdeTolerances] = useState([]);
   const [contextMenu, setContextMenu] = useState(null);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
 
   useEffect(() => {
     if (isOpen && testPointData) {
       const cleanObject = (obj) =>
         Object.fromEntries(
-          Object.entries(obj || {}).filter(([_, v]) => v !== undefined)
+          Object.entries(obj || {}).filter(([_, v]) => v !== undefined && v !== null)
         );
 
       const initialUutTolerance = cleanObject(testPointData.uutTolerance);
       if (!initialUutTolerance.name) {
-        initialUutTolerance.name = 'UUT'; // Default name if not present
+        initialUutTolerance.name = 'UUT';
       }
       setUutTolerance(initialUutTolerance);
 
-      // Load new array format, or migrate from old object format
       let loadedTmde = testPointData.tmdeTolerances || [];
       if (loadedTmde.length === 0 && testPointData.tmdeTolerance && Object.keys(testPointData.tmdeTolerance).length > 0) {
           loadedTmde = [{
               id: Date.now(),
-              name: 'TMDE', // Default name for migrated data
+              name: 'TMDE',
               ...cleanObject(testPointData.tmdeTolerance)
           }];
       }
@@ -387,6 +323,7 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
     const newTmde = {
       id: Date.now(),
       name: `TMDE ${tmdeTolerances.length + 1}`,
+      measurementPoint: { value: '', unit: testPointData.testPointInfo.parameter.unit }
     };
     setTmdeTolerances(prev => [...prev, newTmde]);
     setActiveTab(newTmde.id);
@@ -398,11 +335,16 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
       setActiveTab("UUT");
     }
   };
-  
-  const handleTmdeNameChange = (id, newName) => {
-      setTmdeTolerances(prev => prev.map(t => 
-        t.id === id ? { ...t, name: newName } : t
-      ));
+
+  const handleTmdePropChange = (id, field, value, parentField = null) => {
+    setTmdeTolerances(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      if (parentField) {
+        const updatedParent = { ...(t[parentField] || {}), [field]: value };
+        return { ...t, [parentField]: updatedParent };
+      }
+      return { ...t, [field]: value };
+    }));
   };
 
   const handleTmdeToleranceChange = (id, setter) => {
@@ -419,17 +361,14 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
   if (!isOpen) return null;
 
   const handleSave = () => {
-    // Helper to remove any components the user added but left empty
     const cleanupTolerance = (tol) => {
       const cleaned = { ...tol };
-
       Object.keys(componentDefinitions).forEach((key) => {
         const component = cleaned[key];
-        if (component && !parseFloat(component.high)) {
+        if (component && (component.high === '' || isNaN(parseFloat(component.high)))) {
           delete cleaned[key];
         }
       });
-
       if (!parseFloat(cleaned.measuringResolution)) {
         delete cleaned.measuringResolution;
         delete cleaned.measuringResolutionUnit;
@@ -440,7 +379,7 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
     onSave({
       uutTolerance: cleanupTolerance(uutTolerance),
       tmdeTolerances: tmdeTolerances.map(t => cleanupTolerance(t)),
-      tmdeTolerance: undefined, // Explicitly remove the old key
+      tmdeTolerance: undefined, // Clear out old single TMDE object
     });
     onClose();
   };
@@ -529,6 +468,7 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
                     tolerance={uutTolerance}
                     setTolerance={setUutTolerance}
                     isUUT={true}
+                    isTMDE={false}
                     nominal={testPointData.testPointInfo.parameter}
                 />
             </>
@@ -537,21 +477,41 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
             {activeTmde && (
             <>
                 <div className="tmde-header">
-                    <div className='form-section' style={{marginBottom: 0, paddingBottom: 0}}>
+                    <div className='form-section'>
                         <label>TMDE Name</label>
                         <input
                             type="text"
                             value={activeTmde.name}
-                            onChange={(e) => handleTmdeNameChange(activeTmde.id, e.target.value)}
+                            onChange={(e) => handleTmdePropChange(activeTmde.id, 'name', e.target.value)}
                             placeholder="e.g., Standard DMM"
                         />
+                    </div>
+                     <div className='form-section' style={{marginBottom: 0, paddingBottom: 0}}>
+                        <label>Reference Measurement Point</label>
+                        <div className="input-with-unit">
+                            <input
+                                type="text"
+                                placeholder="Value"
+                                value={activeTmde.measurementPoint?.value || ''}
+                                onChange={(e) => handleTmdePropChange(activeTmde.id, 'value', e.target.value, 'measurementPoint')}
+                            />
+                            <select
+                                value={activeTmde.measurementPoint?.unit || ''}
+                                onChange={(e) => handleTmdePropChange(activeTmde.id, 'unit', e.target.value, 'measurementPoint')}
+                            >
+                                <option value="">-- Unit --</option>
+                                {allUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <ToleranceFormContent
                     tolerance={activeTmde}
                     setTolerance={(setter) => handleTmdeToleranceChange(activeTmde.id, setter)}
                     isUUT={false}
+                    isTMDE={true}
                     nominal={testPointData.testPointInfo.parameter}
+                    referenceMeasurementPoint={activeTmde.measurementPoint}
                 />
             </>
             )}

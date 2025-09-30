@@ -21,62 +21,100 @@ import {
   faSlidersH,
 } from "@fortawesome/free-solid-svg-icons";
 
-// --- NEW: UNIT MANAGEMENT SYSTEM ---
+// --- NEW, ROBUST UNIT MANAGEMENT SYSTEM ---
 export const unitSystem = {
-  families: {
-    Voltage: { base: "V", units: ["V", "mV", "uV"] },
-    Current: { base: "A", units: ["A", "mA", "uA"] },
-    Frequency: { base: "Hz", units: ["Hz", "kHz", "MHz", "GHz"] },
-    Resistance: { base: "Ohm", units: ["Ohm", "kOhm", "MOhm"] },
-    Length: { base: "m", units: ["m", "cm", "mm", "µm", "inch", "µinch"] },
-    Relative: { base: null, units: ["%", "ppm"] },
-    Temperature: { base: "deg C", units: ["deg C", "deg F"] },
-    dB: { base: null, units: ["dB"] },
+  units: {
+    // Voltage
+    V: { quantity: "Voltage", to_si: 1 },
+    mV: { quantity: "Voltage", to_si: 1e-3 },
+    uV: { quantity: "Voltage", to_si: 1e-6 },
+    nV: { quantity: "Voltage", to_si: 1e-9 },
+    pV: { quantity: "Voltage", to_si: 1e-12 },
+    // Current
+    A: { quantity: "Current", to_si: 1 },
+    mA: { quantity: "Current", to_si: 1e-3 },
+    uA: { quantity: "Current", to_si: 1e-6 },
+    nA: { quantity: "Current", to_si: 1e-9 },
+    pA: { quantity: "Current", to_si: 1e-12 },
+    // Frequency
+    Hz: { quantity: "Frequency", to_si: 1 },
+    kHz: { quantity: "Frequency", to_si: 1e3 },
+    MHz: { quantity: "Frequency", to_si: 1e6 },
+    GHz: { quantity: "Frequency", to_si: 1e9 },
+    mHz: { quantity: "Frequency", to_si: 1e-3 },
+    uHz: { quantity: "Frequency", to_si: 1e-6 },
+    // Resistance
+    Ohm: { quantity: "Resistance", to_si: 1 },
+    kOhm: { quantity: "Resistance", to_si: 1e3 },
+    MOhm: { quantity: "Resistance", to_si: 1e6 },
+    // Length
+    m: { quantity: "Length", to_si: 1 },
+    cm: { quantity: "Length", to_si: 1e-2 },
+    mm: { quantity: "Length", to_si: 1e-3 },
+    "µm": { quantity: "Length", to_si: 1e-6 },
+    nm: { quantity: "Length", to_si: 1e-9 },
+    pm: { quantity: "Length", to_si: 1e-12 },
+    in: { quantity: "Length", to_si: 0.0254 },
+    "µin": { quantity: "Length", to_si: 2.54e-8 },
+    ft: { quantity: "Length", to_si: 0.3048 },
+    yd: { quantity: "Length", to_si: 0.9144 },
+    mi: { quantity: "Length", to_si: 1609.34 },
+    // Mass
+    kg: { quantity: "Mass", to_si: 1 },
+    g: { quantity: "Mass", to_si: 1e-3 },
+    mg: { quantity: "Mass", to_si: 1e-6 },
+    lb: { quantity: "Mass", to_si: 0.453592 },
+    oz: { quantity: "Mass", to_si: 0.0283495 },
+    // Force
+    N: { quantity: "Force", to_si: 1 },
+    kN: { quantity: "Force", to_si: 1000 },
+    lbf: { quantity: "Force", to_si: 4.44822 },
+    ozf: { quantity: "Force", to_si: 0.278014 },
+    // Torque
+    "N-m": { quantity: "Torque", to_si: 1 },
+    "ft-lbf": { quantity: "Torque", to_si: 1.35582 },
+    "in-lbf": { quantity: "Torque", to_si: 0.112985 },
+    "in-ozf": { quantity: "Torque", to_si: 0.00706155 },
+    // Relative, Temp, dB
+    "%": { quantity: "Relative", to_si: 1e-2 },
+    ppm: { quantity: "Relative", to_si: 1e-6 },
+    "deg C": { quantity: "Temperature", to_si: 1 },
+    "deg F": { quantity: "Temperature", to_si: NaN },
+    dB: { quantity: "dB", to_si: null },
   },
-  conversions: {
-    V: 1,
-    mV: 1e-3,
-    uV: 1e-6,
-    A: 1,
-    mA: 1e-3,
-    uA: 1e-6,
-    Hz: 1,
-    kHz: 1e3,
-    MHz: 1e6,
-    GHz: 1e9,
-    Ohm: 1,
-    kOhm: 1e3,
-    MOhm: 1e6,
-    m: 1,
-    cm: 1e-2,
-    mm: 1e-3,
-    µm: 1e-6,
-    inch: 0.0254,
-    µinch: 0.0254e-6,
-    "%": 1e-2,
-    ppm: 1e-6,
-    "deg C": 1,
-    "deg F": NaN, // Temp conversion is special case
+
+  getQuantity(unit) {
+    return this.units[unit]?.quantity || null;
   },
-  getFamily(unit) {
-    for (const familyName in this.families) {
-      if (this.families[familyName].units.includes(unit)) {
-        return familyName;
-      }
-    }
-    return null;
+
+  getRelevantUnits(unit) {
+    const quantity = this.getQuantity(unit);
+    const quantitiesToAlwaysInclude = ["Relative", "dB"];
+    if (!quantity) return ["%", "ppm", "dB"];
+
+    const relevant = Object.keys(this.units).filter(u => {
+      const uQuantity = this.units[u].quantity;
+      return uQuantity === quantity || quantitiesToAlwaysInclude.includes(uQuantity);
+    });
+    return [...new Set(relevant)];
   },
-  getRelevantUnits(nominalUnit) {
-    const family = this.getFamily(nominalUnit);
-    if (!family)
-      return [...this.families.Relative.units, ...this.families.dB.units];
-    return [...this.families[family].units, ...this.families.Relative.units];
-  },
+
   toBaseUnit(value, fromUnit) {
-    const factor = this.conversions[fromUnit];
-    if (factor === undefined) return NaN;
+    const factor = this.units[fromUnit]?.to_si;
+    if (factor === undefined || isNaN(factor)) return NaN;
     return parseFloat(value) * factor;
   },
+};
+
+export const getToleranceUnitOptions = (referenceUnit) => {
+    const quantity = unitSystem.getQuantity(referenceUnit);
+    if (!quantity) return ["%", "ppm"];
+    
+    const physicalUnits = Object.keys(unitSystem.units).filter(
+        u => unitSystem.units[u].quantity === quantity
+    );
+
+    return ["%", "ppm", ...physicalUnits];
 };
 
 export const errorDistributions = [
@@ -92,147 +130,157 @@ export const errorDistributions = [
   { value: "1.000", label: "Std. Uncertainty" },
 ];
 
-// --- HELPER FUNCTIONS & SHARED SUB-COMPONENTS ---
-
 export const getToleranceSummary = (toleranceData) => {
   if (!toleranceData || Object.keys(toleranceData).length === 0)
     return "Not Set";
-  const { reading, range, floor, db } = toleranceData;
+  
+  const formatPart = (part) => {
+    if (!part || (isNaN(parseFloat(part.high)) && isNaN(parseFloat(part.low)))) return null;
+    const high = parseFloat(part.high || 0);
+    const low = parseFloat(part.low || -high);
+    if (Math.abs(high + low) < 1e-9 && high > 0) return `±${high} ${part.unit || ''}`;
+    return `+${high}/${low} ${part.unit || ''}`;
+  }
+
   const parts = [];
-  if (parseFloat(reading?.high)) parts.push(`±${reading.high} ${reading.unit}`);
-  if (parseFloat(range?.high)) parts.push(`±${range.high} ${range.unit} of FS`);
-  if (parseFloat(floor?.high)) parts.push(`±${floor.high} ${floor.unit}`);
-  if (parseFloat(db?.high)) parts.push(`±${db.high} dB`);
-  return parts.length > 0 ? parts.join(" + ") : "Not Set";
+  if (toleranceData.reading) parts.push(formatPart(toleranceData.reading));
+  if (toleranceData.range) parts.push(`${formatPart(toleranceData.range)} of FS`);
+  if (toleranceData.floor) parts.push(formatPart(toleranceData.floor));
+  if (toleranceData.db) parts.push(formatPart(toleranceData.db));
+
+  return parts.filter(p => p).join(" + ") || "Not Set";
 };
 
 export const calculateUncertaintyFromToleranceObject = (
   toleranceObject,
-  nominal,
-  isUUT
+  referenceMeasurementPoint
 ) => {
-  if (!toleranceObject || !nominal || !nominal.value || !nominal.unit) {
+  if (!toleranceObject || !referenceMeasurementPoint || !referenceMeasurementPoint.value || !referenceMeasurementPoint.unit) {
     return { standardUncertainty: 0, totalToleranceForTar: 0, breakdown: [] };
   }
 
-  const nominalValue = parseFloat(nominal.value);
+  const nominalValue = parseFloat(referenceMeasurementPoint.value);
+  const nominalUnit = referenceMeasurementPoint.unit;
   let totalVariance = 0;
   let totalLinearTolerance = 0;
   const breakdown = [];
 
-  const addComponent = (tolComp, baseValueForRelative, name) => {
-    if (
-      !tolComp ||
-      isNaN(parseFloat(tolComp.high)) ||
-      parseFloat(tolComp.high) === 0
-    )
-      return;
+  const addComponent = (tolComp, name, baseValueForRelative) => {
+    if (!tolComp || (isNaN(parseFloat(tolComp.high)) && isNaN(parseFloat(tolComp.low)))) return;
 
-    const value = parseFloat(tolComp.high);
+    const high = parseFloat(tolComp.high || 0);
+    const low = parseFloat(tolComp.low || -high);
+    const halfSpan = (high - low) / 2;
+
+    if (halfSpan === 0) return;
+
     const unit = tolComp.unit;
     const divisor = parseFloat(tolComp.distribution) || 1.732;
     const distributionLabel = errorDistributions.find(d => d.value === String(tolComp.distribution))?.label || 'Rectangular';
+    
+    let specString = (Math.abs(high + low) < 1e-9) ? `±${high} ${unit}` : `+${high}/${low} ${unit}`;
 
     let valueInNominalUnits;
     let explanation = "";
+
     if (unit === "%" || unit === "ppm") {
-      valueInNominalUnits =
-        value * unitSystem.conversions[unit] * baseValueForRelative;
-      explanation = `${value}${unit} of ${baseValueForRelative}${
-        nominal.unit
-      } = ${valueInNominalUnits.toExponential(3)} ${nominal.unit}`;
+        valueInNominalUnits = halfSpan * unitSystem.units[unit].to_si * baseValueForRelative;
+        explanation = `${halfSpan.toExponential(3)}${unit} of ${baseValueForRelative}${nominalUnit}`;
     } else {
-      const valueInBase = unitSystem.toBaseUnit(value, unit);
-      const nominalUnitInBase = unitSystem.toBaseUnit(1, nominal.unit);
-      valueInNominalUnits = valueInBase / nominalUnitInBase;
-      explanation = `${value} ${unit} = ${valueInNominalUnits.toExponential(
-        3
-      )} ${nominal.unit}`;
+        const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
+        const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
+        valueInNominalUnits = valueInBase / nominalUnitInBase;
+        explanation = `${halfSpan.toExponential(3)} ${unit}`;
     }
 
-    const ppm = convertToPPM(
-      valueInNominalUnits,
-      nominal.unit,
-      nominal.value,
-      nominal.unit
-    );
+    const rangeFsValue = parseFloat(toleranceObject.range?.value);
+    const ppm = convertToPPM(valueInNominalUnits, nominalUnit, nominalValue, nominalUnit, rangeFsValue);
+    
     if (!isNaN(ppm)) {
       const u_i = Math.abs(ppm / divisor);
       totalLinearTolerance += Math.abs(ppm);
       totalVariance += Math.pow(u_i, 2);
+
+      // Calculate absolute deviations and final limits
+      const highDeviation = (high / halfSpan) * valueInNominalUnits;
+      const lowDeviation = (low / halfSpan) * valueInNominalUnits;
+      const absoluteHigh = nominalValue + highDeviation;
+      const absoluteLow = nominalValue + lowDeviation;
+
       breakdown.push({
         name,
-        input: `±${value} ${unit}`,
+        input: specString,
         explanation,
         ppm: Math.abs(ppm),
         u_i,
         divisor,
         distributionLabel,
+        absoluteLow,
+        absoluteHigh,
       });
     }
   };
 
-  addComponent(toleranceObject.reading, "Reading", nominalValue, "Reading");
-  addComponent(
-    toleranceObject.range,
-    parseFloat(toleranceObject.range?.value),
-    "Range"
-  );
-  addComponent(toleranceObject.floor, nominalValue, "Floor");
+  addComponent(toleranceObject.reading, "Reading", nominalValue);
+  addComponent(toleranceObject.range, "Range", parseFloat(toleranceObject.range?.value));
+  addComponent(toleranceObject.floor, "Floor", nominalValue);
 
   const dbTolComp = toleranceObject.db;
-  if (
-    dbTolComp &&
-    !isNaN(parseFloat(dbTolComp.high)) &&
-    parseFloat(dbTolComp.high) > 0
-  ) {
-    const dbTol = parseFloat(dbTolComp.high);
-    const dbMult = parseFloat(dbTolComp.multiplier) || 20;
-    const dbRef = parseFloat(dbTolComp.ref) || 1;
-    const divisor = parseFloat(dbTolComp.distribution) || 1.732;
-    const distributionLabel = errorDistributions.find(d => d.value === String(dbTolComp.distribution))?.label || 'Rectangular';
-    const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
-    const absoluteDeviation = Math.abs(
-      dbRef * Math.pow(10, (dbNominal + dbTol) / dbMult) - nominalValue
-    );
-    const ppm = convertToPPM(
-      absoluteDeviation,
-      nominal.unit,
-      nominal.value,
-      nominal.unit
-    );
-    if (!isNaN(ppm)) {
-      const u_i = Math.abs(ppm / divisor);
-      totalLinearTolerance += Math.abs(ppm);
-      totalVariance += Math.pow(u_i, 2);
-      breakdown.push({
-        name: "dB",
-        input: `±${dbTol} dB`,
-        explanation: `Calculates to ${absoluteDeviation.toExponential(3)} ${
-          nominal.unit
-        } deviation`,
-        ppm: Math.abs(ppm),
-        u_i,
-        divisor,
-        distributionLabel,
-      });
+   if (dbTolComp && !isNaN(parseFloat(dbTolComp.high))) {
+    const highDb = parseFloat(dbTolComp.high || 0);
+    const lowDb = parseFloat(dbTolComp.low || -highDb);
+    const dbTol = (highDb - lowDb) / 2;
+
+    if (dbTol > 0 && nominalValue > 0) {
+      const dbMult = parseFloat(dbTolComp.multiplier) || 20;
+      const dbRef = parseFloat(dbTolComp.ref) || 1;
+      const divisor = parseFloat(dbTolComp.distribution) || 1.732;
+      const distributionLabel = errorDistributions.find(d => d.value === String(dbTolComp.distribution))?.label || 'Rectangular';
+      
+      const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
+      const absoluteHigh = dbRef * Math.pow(10, (dbNominal + highDb) / dbMult);
+      const absoluteLow = dbRef * Math.pow(10, (dbNominal + lowDb) / dbMult);
+      const centerValue = (absoluteHigh + absoluteLow) / 2;
+      const absoluteDeviation = absoluteHigh - centerValue;
+      
+      const ppm = convertToPPM(absoluteDeviation, nominalUnit, nominalValue, nominalUnit);
+
+      if (!isNaN(ppm)) {
+        const u_i = Math.abs(ppm / divisor);
+        totalLinearTolerance += Math.abs(ppm);
+        totalVariance += Math.pow(u_i, 2);
+        const specString = (Math.abs(highDb + lowDb) < 1e-9) ? `±${highDb} dB` : `+${highDb}/${lowDb} dB`;
+        breakdown.push({
+          name: "dB",
+          input: specString,
+          explanation: `Calculates to a half-span of ${absoluteDeviation.toExponential(3)} ${nominalUnit}`,
+          ppm: Math.abs(ppm),
+          u_i,
+          divisor,
+          distributionLabel,
+          absoluteLow,
+          absoluteHigh,
+        });
+      }
     }
   }
 
-  if (isUUT && parseFloat(toleranceObject.measuringResolution) > 0) {
+  if (parseFloat(toleranceObject.measuringResolution) > 0) {
     const res = parseFloat(toleranceObject.measuringResolution);
-    const resUnit = toleranceObject.measuringResolutionUnit || nominal.unit; // Get the unit
+    const resUnit = toleranceObject.measuringResolutionUnit || nominalUnit;
 
-    const resPpm = convertToPPM(res, resUnit, nominal.value, nominal.unit); // Use the unit
+    const resPpm = convertToPPM(res / 2, resUnit, nominalValue, nominalUnit);
     if (!isNaN(resPpm)) {
-      const divisor = Math.sqrt(3);
-      const u_i = Math.abs(resPpm / 2 / divisor);
+      const divisor = 1.732; // sqrt(3)
+      const u_i = Math.abs(resPpm / divisor);
       totalVariance += Math.pow(u_i, 2);
+      
+      // Resolution has no absolute limits relative to nominal, so we don't add them.
       breakdown.push({
         name: "Resolution",
-        input: `±${res / 2} ${resUnit}`, // Display the correct unit
+        input: `±${res / 2} ${resUnit}`,
         explanation: `Rectangular distribution over ± half the least significant digit.`,
-        ppm: Math.abs(resPpm / 2),
+        ppm: Math.abs(resPpm),
         u_i,
         divisor,
         distributionLabel: 'Rectangular',
@@ -342,60 +390,49 @@ const convertToPPM = (
   unit,
   nominalValue,
   nominalUnit,
+  fallbackReferenceValue = null, // Added fallback for when nominal is 0
   getExplanation = false
 ) => {
   const parsedValue = parseFloat(value);
-  const parsedNominal = parseFloat(nominalValue);
+  let parsedNominal = parseFloat(nominalValue);
 
   if (isNaN(parsedValue)) return getExplanation ? { value: NaN } : NaN;
   if (unit === "ppm")
     return getExplanation ? { value: parsedValue } : parsedValue;
+    
+  // Use fallback if nominal is 0 and a fallback is provided
+  if (parsedNominal === 0 && fallbackReferenceValue) {
+    parsedNominal = parseFloat(fallbackReferenceValue);
+  }
 
-  const nominalFamily = unitSystem.getFamily(nominalUnit);
-  const valueFamily = unitSystem.getFamily(unit);
+  const nominalQuantity = unitSystem.getQuantity(nominalUnit);
+  const valueQuantity = unitSystem.getQuantity(unit);
 
-  if (!nominalFamily)
-    return getExplanation
-      ? {
-          value: NaN,
-          warning: `Unknown unit family for nominal unit '${nominalUnit}'.`,
-        }
-      : NaN;
+  if (!nominalQuantity)
+    return getExplanation ? { value: NaN, warning: `Unknown quantity for nominal unit '${nominalUnit}'.`} : NaN;
 
   let valueInBase;
   if (unit === "%") {
-    valueInBase =
-      (parsedValue / 100) * unitSystem.toBaseUnit(parsedNominal, nominalUnit);
-  } else if (valueFamily && valueFamily === nominalFamily) {
+    valueInBase = (parsedValue / 100) * unitSystem.toBaseUnit(parsedNominal, nominalUnit);
+  } else if (valueQuantity && (valueQuantity === nominalQuantity || valueQuantity === 'Relative')) {
     valueInBase = unitSystem.toBaseUnit(parsedValue, unit);
-  } else if (valueFamily && nominalFamily && valueFamily !== nominalFamily) {
-    return getExplanation
-      ? {
-          value: NaN,
-          warning: `Unit mismatch: Cannot convert ${unit} (${valueFamily}) to ${nominalUnit} (${nominalFamily}).`,
-        }
-      : NaN;
+  } else if (valueQuantity && nominalQuantity && valueQuantity !== nominalQuantity) {
+    return getExplanation ? { value: NaN, warning: `Unit mismatch: Cannot convert ${unit} (${valueQuantity}) to ${nominalUnit} (${nominalQuantity}).`} : NaN;
   } else {
     valueInBase = unitSystem.toBaseUnit(parsedValue, unit);
   }
 
   if (isNaN(valueInBase))
-    return getExplanation
-      ? { value: NaN, warning: `Unsupported unit conversion for '${unit}'.` }
-      : NaN;
+    return getExplanation ? { value: NaN, warning: `Unsupported unit conversion for '${unit}'.` } : NaN;
 
   const nominalInBase = unitSystem.toBaseUnit(parsedNominal, nominalUnit);
   if (isNaN(nominalInBase) || nominalInBase === 0)
     return getExplanation ? { value: NaN } : NaN;
 
-  const ppmValue = (valueInBase / nominalInBase) * 1e6;
+  const ppmValue = (valueInBase / Math.abs(nominalInBase)) * 1e6;
 
   if (getExplanation) {
-    const explanation = `((${valueInBase.toExponential(4)} ${
-      unitSystem.families[nominalFamily].base
-    }) / ${nominalInBase.toExponential(4)} ${
-      unitSystem.families[nominalFamily].base
-    }) × 1,000,000 = ${ppmValue.toFixed(2)} ppm`;
+    const explanation = `((${valueInBase.toExponential(4)}) / ${Math.abs(nominalInBase).toExponential(4)}) × 1,000,000 = ${ppmValue.toFixed(2)} ppm`;
     return { value: ppmValue, explanation };
   }
 
@@ -1161,68 +1198,51 @@ const oldErrorDistributions = [
   { value: "1.000", label: "Standard Uncertainty (Input is uᵢ)" },
 ];
 
-const getBudgetComponentsFromTolerance = (toleranceObject, nominal) => {
-  if (!toleranceObject || !nominal || !nominal.value || !nominal.unit) {
+const getBudgetComponentsFromTolerance = (toleranceObject, referenceMeasurementPoint) => {
+  if (!toleranceObject || !referenceMeasurementPoint || !referenceMeasurementPoint.value || !referenceMeasurementPoint.unit) {
     return [];
   }
 
   const budgetComponents = [];
-  const nominalValue = parseFloat(nominal.value);
-  const prefix =
-    toleranceObject.name ||
-    (toleranceObject.measuringResolution ? "UUT" : "TMDE");
+  const nominalValue = parseFloat(referenceMeasurementPoint.value);
+  const nominalUnit = referenceMeasurementPoint.unit;
+  const prefix = toleranceObject.name || (toleranceObject.measuringResolution ? "UUT" : "TMDE");
 
-  const processComponent = (
-    tolComp,
-    name,
-    baseValueForRelative,
-    isResolution = false
-  ) => {
+  const processComponent = (tolComp, name, baseValueForRelative, isResolution = false) => {
     if (!tolComp && !isResolution) return;
 
-    const value = isResolution
-      ? parseFloat(tolComp)
-      : parseFloat(tolComp?.high);
-    if (isNaN(value) || value === 0) return;
+    let halfSpanPPM;
+    const distributionDivisor = isResolution ? 1.732 : parseFloat(tolComp.distribution) || 1.732;
+    const distributionLabel = isResolution ? "Rectangular" : errorDistributions.find((d) => d.value === String(tolComp.distribution))?.label || "Rectangular";
 
-    const unit = isResolution
-      ? toleranceObject.measuringResolutionUnit || nominal.unit
-      : tolComp.unit;
-    const distributionDivisor = isResolution
-      ? Math.sqrt(3)
-      : parseFloat(tolComp.distribution) || Math.sqrt(3);
-    const distributionLabel = isResolution
-      ? "Rectangular"
-      : errorDistributions.find((d) => d.value === String(tolComp.distribution))
-          ?.label || "Rectangular";
-
-    let valueInPPM;
     if (isResolution) {
-      valueInPPM = convertToPPM(value / 2, unit, nominalValue, nominal.unit);
+      const value = parseFloat(tolComp);
+      if (isNaN(value) || value === 0) return;
+      const unit = toleranceObject.measuringResolutionUnit || nominalUnit;
+      halfSpanPPM = convertToPPM(value / 2, unit, nominalValue, nominalUnit);
     } else {
+      const high = parseFloat(tolComp?.high || 0);
+      const low = parseFloat(tolComp?.low || -high);
+      const halfSpan = (high - low) / 2;
+      if (halfSpan === 0) return;
+
+      const unit = tolComp.unit;
       let valueInNominalUnits;
+
       if (unit === "%" || unit === "ppm") {
-        valueInNominalUnits =
-          value * unitSystem.conversions[unit] * baseValueForRelative;
+        valueInNominalUnits = halfSpan * unitSystem.units[unit].to_si * baseValueForRelative;
       } else {
-        const valueInBase = unitSystem.toBaseUnit(value, unit);
-        const nominalUnitInBase = unitSystem.toBaseUnit(1, nominal.unit);
+        const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
+        const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
         valueInNominalUnits = valueInBase / nominalUnitInBase;
       }
-      valueInPPM = convertToPPM(
-        valueInNominalUnits,
-        nominal.unit,
-        nominalValue,
-        nominal.unit
-      );
+      halfSpanPPM = convertToPPM(valueInNominalUnits, nominalUnit, nominalValue, nominalUnit);
     }
-
-    if (!isNaN(valueInPPM)) {
-      const u_i = Math.abs(valueInPPM / distributionDivisor);
+    
+    if (!isNaN(halfSpanPPM)) {
+      const u_i = Math.abs(halfSpanPPM / distributionDivisor);
       budgetComponents.push({
-        id: `${prefix}_${name
-          .toLowerCase()
-          .replace(/\s/g, "")}_${Math.random()}`,
+        id: `${prefix}_${name.toLowerCase().replace(/\s/g, "")}_${Math.random()}`,
         name: `${prefix} - ${name}`,
         type: "B",
         value: u_i,
@@ -1234,54 +1254,43 @@ const getBudgetComponentsFromTolerance = (toleranceObject, nominal) => {
   };
 
   processComponent(toleranceObject.reading, "Reading", nominalValue);
-  processComponent(
-    toleranceObject.range,
-    "Range",
-    parseFloat(toleranceObject.range?.value)
-  );
+  processComponent(toleranceObject.range, "Range", parseFloat(toleranceObject.range?.value));
   processComponent(toleranceObject.floor, "Floor", nominalValue);
 
-  if (toleranceObject.db && parseFloat(toleranceObject.db.high) > 0) {
-    const dbTol = parseFloat(toleranceObject.db.high);
-    const dbMult = parseFloat(toleranceObject.db.multiplier) || 20;
-    const dbRef = parseFloat(toleranceObject.db.ref) || 1;
-    const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
-    const absoluteDeviation = Math.abs(
-      dbRef * Math.pow(10, (dbNominal + dbTol) / dbMult) - nominalValue
-    );
-    const ppm = convertToPPM(
-      absoluteDeviation,
-      nominal.unit,
-      nominalValue,
-      nominal.unit
-    );
-    if (!isNaN(ppm)) {
-      const distributionDivisor =
-        parseFloat(toleranceObject.db.distribution) || Math.sqrt(3);
-      const distributionLabel =
-        errorDistributions.find(
-          (d) => d.value === String(toleranceObject.db.distribution)
-        )?.label || "Rectangular";
-      const u_i = Math.abs(ppm / distributionDivisor);
-      budgetComponents.push({
-        id: `${prefix}_db_${Math.random()}`,
-        name: `${prefix} - dB`,
-        type: "B",
-        value: u_i,
-        dof: Infinity,
-        isCore: true,
-        distribution: distributionLabel,
-      });
+  if (toleranceObject.db && !isNaN(parseFloat(toleranceObject.db.high))) {
+    const highDb = parseFloat(toleranceObject.db.high || 0);
+    const lowDb = parseFloat(toleranceObject.db.low || -highDb);
+    const dbTol = (highDb - lowDb) / 2;
+    if (dbTol > 0) {
+      const dbMult = parseFloat(toleranceObject.db.multiplier) || 20;
+      const dbRef = parseFloat(toleranceObject.db.ref) || 1;
+      const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
+
+      const centerDb = (highDb + lowDb) / 2;
+      const nominalAtCenterTol = dbRef * Math.pow(10, (dbNominal + centerDb) / dbMult);
+      const upperValue = dbRef * Math.pow(10, (dbNominal + highDb) / dbMult);
+      const absoluteDeviation = Math.abs(upperValue - nominalAtCenterTol);
+
+      const ppm = convertToPPM(absoluteDeviation, nominalUnit, nominalValue, nominalUnit);
+      if (!isNaN(ppm)) {
+        const distributionDivisor = parseFloat(toleranceObject.db.distribution) || 1.732;
+        const distributionLabel = errorDistributions.find((d) => d.value === String(toleranceObject.db.distribution))?.label || "Rectangular";
+        const u_i = Math.abs(ppm / distributionDivisor);
+        budgetComponents.push({
+          id: `${prefix}_db_${Math.random()}`,
+          name: `${prefix} - dB`,
+          type: "B",
+          value: u_i,
+          dof: Infinity,
+          isCore: true,
+          distribution: distributionLabel,
+        });
+      }
     }
   }
 
   if (toleranceObject.measuringResolution) {
-    processComponent(
-      toleranceObject.measuringResolution,
-      "Resolution",
-      nominalValue,
-      true
-    );
+    processComponent(toleranceObject.measuringResolution, "Resolution", nominalValue, true);
   }
 
   return budgetComponents;
@@ -1346,8 +1355,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
     const nominal = testPointData?.testPointInfo?.parameter;
     const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(
       testPointData.uutTolerance,
-      nominal,
-      true
+      nominal
     );
 
     if (totalToleranceForTar > 0) {
@@ -1362,27 +1370,27 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
   }, [testPointData]);
 
   const allComponents = useMemo(() => {
-    const nominal = testPointData?.testPointInfo?.parameter;
+    const uutNominal = testPointData?.testPointInfo?.parameter;
     
     const tmdeTolerances = testPointData.tmdeTolerances || [];
-    const tmdeBudgetComponents = tmdeTolerances.flatMap(tmde => 
-        getBudgetComponentsFromTolerance(
-            tmde,
-            nominal
-        )
-    );
+    const tmdeBudgetComponents = tmdeTolerances.flatMap(tmde => {
+        if (tmde.measurementPoint && tmde.measurementPoint.value) {
+            return getBudgetComponentsFromTolerance(tmde, tmde.measurementPoint);
+        }
+        return [];
+    });
+
     // Handle legacy data if tmdeTolerances is missing/empty
     if (tmdeTolerances.length === 0 && testPointData.tmdeTolerance) {
         tmdeBudgetComponents.push(...getBudgetComponentsFromTolerance(
             testPointData.tmdeTolerance,
-            nominal
+            uutNominal
         ));
     }
 
-    // Get UUT components separately, including resolution
     const uutBudgetComponents = getBudgetComponentsFromTolerance(
         testPointData.uutTolerance,
-        nominal
+        uutNominal
     );
 
     return [
@@ -1569,7 +1577,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
       return;
     }
 
-    const nominal = testPointData?.testPointInfo?.parameter;
+    const uutNominal = testPointData?.testPointInfo?.parameter;
     const calibrationComponents = allComponents.filter(
       (c) => !c.name.startsWith("UUT")
     );
@@ -1581,26 +1589,34 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
 
     const tmdeTolerances = testPointData.tmdeTolerances || [];
     let tmdeToleranceSpan = 0;
+    let missingTmdeRef = false;
 
     if (tmdeTolerances.length > 0) {
         tmdeToleranceSpan = tmdeTolerances.reduce((totalSpan, tmde) => {
+            if (!tmde.measurementPoint || !tmde.measurementPoint.value) {
+                missingTmdeRef = true;
+                return totalSpan;
+            }
             const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(
                 tmde,
-                nominal,
-                false
+                tmde.measurementPoint
             );
             return totalSpan + totalToleranceForTar;
         }, 0);
     } else if (testPointData.tmdeTolerance) { // Legacy fallback
         const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(
             testPointData.tmdeTolerance,
-            nominal,
-            false
+            uutNominal
         );
         tmdeToleranceSpan = totalToleranceForTar;
     }
 
-    if (tmdeToleranceSpan === 0 && LUp - LLow > 0) {
+    if (missingTmdeRef) {
+      setNotification({
+        title: "Missing Information",
+        message: "One or more TMDE components are missing a Reference Measurement Point, which is required for TAR calculation. They will be ignored.",
+      });
+    } else if (tmdeToleranceSpan === 0 && LUp - LLow > 0) {
       setNotification({
         title: "Missing Component",
         message:
@@ -1663,7 +1679,7 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
     const pfrResult =
       isNaN(pfr_term1) || isNaN(pfr_term2) ? 0 : pfr_term1 + pfr_term2;
 
-    const turResult = (LUp - LLow) / (calcResults.expanded_uncertainty); // Adjusted TUR from 2*U to just U
+    const turResult = (LUp - LLow) / (calcResults.expanded_uncertainty);
     const tarResult =
       tmdeToleranceSpan !== 0 ? (LUp - LLow) / tmdeToleranceSpan : 0;
 
@@ -2309,6 +2325,9 @@ function App() {
       if (newSessions.length === 0) {
         const firstSession = createNewSession();
         setEditingSession(firstSession);
+        // FIX: These lines ensure the app state is correct after deleting the last session
+        setSelectedSessionId(firstSession.id);
+        setSelectedTestPointId(null);
         return [firstSession];
       }
       return newSessions;
@@ -2567,8 +2586,9 @@ function App() {
               {currentTestPoints.length > 0 ? (
                 currentTestPoints.map((tp) => {
                   const uutSummary = getToleranceSummary(tp.uutTolerance);
-                  const tmdeSummary = getToleranceSummary(tp.tmdeTolerance);
-                  const tooltipText = `UUT: ${uutSummary}\nTMDE: ${tmdeSummary}`;
+                  const tmdeSummary = (tp.tmdeTolerances || []).map(t => getToleranceSummary(t)).join('; ');
+
+                  const tooltipText = `UUT: ${uutSummary}\nTMDEs: ${tmdeSummary || 'Not Set'}`;
 
                   return (
                     <button

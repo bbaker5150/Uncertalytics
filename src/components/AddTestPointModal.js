@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faTimes, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import { unitSystem } from '../App';
-import NotificationModal from './NotificationModal';
+import { NotificationModal } from '../App';
 
-// A new reusable component for searchable unit dropdowns
+// A reusable component for searchable unit dropdowns
 const SearchableDropdown = ({ name, value, onChange, options }) => {
     const [searchTerm, setSearchTerm] = useState(value);
     const [isOpen, setIsOpen] = useState(false);
@@ -66,14 +66,15 @@ const SearchableDropdown = ({ name, value, onChange, options }) => {
 
 const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
     const [formData, setFormData] = useState({
-        section: '', uutDescription: '', tmdeDescription: '',
-        paramName: 'DC Voltage', paramValue: '10', paramUnit: 'V',
+        section: '', uutDescription: '',
+        paramName: '', paramValue: '', paramUnit: '',
         qualName: 'Frequency', qualValue: '', qualUnit: 'kHz',
     });
     const [hasQualifier, setHasQualifier] = useState(false);
     const [notification, setNotification] = useState(null);
 
-    const availableUnits = useMemo(() => Object.keys(unitSystem.conversions), []);
+    // FIX: Changed unitSystem.conversions to unitSystem.units to match the new structure
+    const availableUnits = useMemo(() => Object.keys(unitSystem.units), []);
 
     useEffect(() => {
         if (initialData) {
@@ -82,22 +83,23 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
             setFormData({
                 section: initialData.section || '',
                 uutDescription: initialData.uutDescription || '',
-                tmdeDescription: initialData.tmdeDescription || '',
-                paramName: initialData.testPointInfo.parameter.name || 'DC Voltage',
-                paramValue: initialData.testPointInfo.parameter.value || '10',
-                paramUnit: initialData.testPointInfo.parameter.unit || 'V',
-                qualName: initialData.testPointInfo.qualifier.name ?? 'Frequency',
-                qualValue: initialData.testPointInfo.qualifier.value ?? '',
-                qualUnit: initialData.testPointInfo.qualifier.unit ?? 'kHz',
+                paramName: initialData.testPointInfo.parameter.name || '',
+                paramValue: initialData.testPointInfo.parameter.value || '',
+                paramUnit: initialData.testPointInfo.parameter.unit || '',
+                qualName: initialData.testPointInfo.qualifier?.name || 'Frequency',
+                qualValue: initialData.testPointInfo.qualifier?.value || '',
+                qualUnit: initialData.testPointInfo.qualifier?.unit || 'kHz',
             });
         } else {
+            // Reset to blank state for a new point
             setHasQualifier(false);
             setFormData({
-                section: '', uutDescription: '', tmdeDescription: '', paramName: 'DC Voltage',
-                paramValue: '10', paramUnit: 'V', qualName: 'Frequency', qualValue: '', qualUnit: 'kHz'
+                section: '', uutDescription: '',
+                paramName: '', paramValue: '', paramUnit: '',
+                qualName: 'Frequency', qualValue: '', qualUnit: 'kHz',
             });
         }
-    }, [initialData]);
+    }, [initialData, isOpen]);
 
     if (!isOpen) return null;
 
@@ -107,25 +109,21 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
     };
 
     const handleSave = () => {
-        if (!formData.section || !formData.uutDescription || !formData.tmdeDescription || !formData.paramValue) {
-             setNotification({ title: 'Missing Information', message: 'Please fill out Section, UUT, TMDE, and Parameter Value fields.' });
+        if (!formData.section || !formData.uutDescription || !formData.paramValue || !formData.paramUnit) {
+             setNotification({ title: 'Missing Information', message: 'Please fill out all Identification and Parameter fields, including units.' });
             return;
         }
 
         const qualifierData = hasQualifier
             ? { name: formData.qualName, value: formData.qualValue, unit: formData.qualUnit }
-            : { name: '', value: '', unit: '' };
+            : null;
 
         const finalData = {
             section: formData.section,
             uutDescription: formData.uutDescription,
-            tmdeDescription: formData.tmdeDescription,
             testPointInfo: {
                 parameter: { name: formData.paramName, value: formData.paramValue, unit: formData.paramUnit },
                 qualifier: qualifierData,
-                uut: formData.uutDescription,
-                tmde: formData.tmdeDescription,
-                section: formData.section
             },
         };
 
@@ -152,18 +150,16 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                         <input type="text" name="section" value={formData.section} onChange={handleChange} placeholder="e.g., 4.1.a" />
                         <label>UUT – Unit Under Test</label>
                         <input type="text" name="uutDescription" value={formData.uutDescription} onChange={handleChange} placeholder="UUT model or ID" />
-                        <label>TMDE – Test Equipment</label>
-                        <input type="text" name="tmdeDescription" value={formData.tmdeDescription} onChange={handleChange} placeholder="Test Equipment model or ID" />
                     </div>
 
                     <div className="modal-form-section">
                         <h4>Parameter</h4>
                         <label>Parameter Name</label>
-                        <input type="text" name="paramName" value={formData.paramName} onChange={handleChange} />
+                        <input type="text" name="paramName" value={formData.paramName} onChange={handleChange} placeholder="e.g., DC Voltage"/>
                         <div className="input-group">
                             <div>
                                 <label>Value</label>
-                                <input type="text" name="paramValue" value={formData.paramValue} onChange={handleChange} />
+                                <input type="text" name="paramValue" value={formData.paramValue} onChange={handleChange} placeholder="e.g., 10"/>
                             </div>
                             <div>
                                 <label>Units</label>
