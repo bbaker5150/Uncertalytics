@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import ToleranceForm from "./ToleranceForm";
 import { unitSystem } from "../App";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,11 +7,11 @@ import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
 const AddTmdeModal = ({ isOpen, onClose, onSave, testPointData }) => {
     const uutMeasurementPoint = testPointData.testPointInfo.parameter;
 
-    const getInitialState = () => ({
+    const getInitialState = useCallback(() => ({
         id: Date.now(),
         name: "New TMDE",
         measurementPoint: { ...uutMeasurementPoint },
-    });
+    }), [uutMeasurementPoint]);
 
     const [tmde, setTmde] = useState(getInitialState());
     const [useUutRef, setUseUutRef] = useState(true);
@@ -22,7 +22,7 @@ const AddTmdeModal = ({ isOpen, onClose, onSave, testPointData }) => {
             setTmde(getInitialState());
             setUseUutRef(true);
         }
-    }, [isOpen]);
+    }, [isOpen, getInitialState]);
 
     useEffect(() => {
         if (useUutRef) {

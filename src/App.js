@@ -1548,10 +1548,6 @@ function Analysis({
     return `${month}/${day}/${year}`;
   };
 
-  const componentsToDisplay = [
-    testPointData.uutTolerance,
-    ...(testPointData.tmdeTolerances || []),
-  ];
   const [isAddTmdeModalOpen, setAddTmdeModalOpen] = useState(false);
   const [analysisMode, setAnalysisMode] = useState("uncertaintyTool");
   const [manualComponents, setManualComponents] = useState(
@@ -1583,6 +1579,9 @@ function Analysis({
   const [isAddComponentModalOpen, setAddComponentModalOpen] = useState(false);
   const [displayUnit, setDisplayUnit] = useState("ppm");
 
+  const uutToleranceData = useMemo(() => sessionData.uutTolerance || {}, [sessionData.uutTolerance]);
+  const tmdeTolerancesData = useMemo(() => testPointData.tmdeTolerances || [], [testPointData.tmdeTolerances]);
+
   useEffect(() => {
     const {
       specifications: newSpecs,
@@ -1608,7 +1607,7 @@ function Analysis({
   useEffect(() => {
     const nominal = testPointData?.testPointInfo?.parameter;
     const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(
-      testPointData.uutTolerance,
+      uutToleranceData, // Use session-level UUT tolerance
       nominal
     );
 
@@ -1621,38 +1620,20 @@ function Analysis({
     } else {
       setRiskInputs((prev) => ({ ...prev, LLow: "", LUp: "" }));
     }
-  }, [testPointData]);
+  }, [testPointData, uutToleranceData]);
 
   const allComponents = useMemo(() => {
     const uutNominal = testPointData?.testPointInfo?.parameter;
 
-    const tmdeTolerances = testPointData.tmdeTolerances || [];
-    const tmdeBudgetComponents = tmdeTolerances.flatMap((tmde) => {
+    const tmdeBudgetComponents = tmdeTolerancesData.flatMap((tmde) => {
       if (tmde.measurementPoint && tmde.measurementPoint.value) {
         return getBudgetComponentsFromTolerance(tmde, tmde.measurementPoint);
       }
       return [];
     });
 
-    // Handle legacy data if tmdeTolerances is missing/empty
-    if (tmdeTolerances.length === 0 && testPointData.tmdeTolerance) {
-      tmdeBudgetComponents.push(
-        ...getBudgetComponentsFromTolerance(
-          testPointData.tmdeTolerance,
-          uutNominal
-        )
-      );
-    }
-
-    // Isolate UUT resolution as its only contribution to the budget.
-    const uutResolutionComponent = {
-      name: testPointData.uutDescription || "UUT",
-      measuringResolution: testPointData.uutTolerance?.measuringResolution,
-      measuringResolutionUnit:
-        testPointData.uutTolerance?.measuringResolutionUnit,
-    };
     const uutBudgetComponents = getBudgetComponentsFromTolerance(
-      uutResolutionComponent,
+      uutToleranceData,
       uutNominal
     );
 
@@ -1663,9 +1644,8 @@ function Analysis({
     ];
   }, [
     manualComponents,
-    testPointData.tmdeTolerances,
-    testPointData.tmdeTolerance,
-    testPointData.uutTolerance,
+    tmdeTolerancesData,
+    uutToleranceData,
     testPointData.testPointInfo,
   ]);
 
@@ -1703,8 +1683,7 @@ function Analysis({
   }, [allComponents, useTDistribution, onDataSave, manualComponents]);
 
   const handleSaveTmde = (newTmde) => {
-    const currentTmdes = testPointData.tmdeTolerances || [];
-    const updatedTolerances = [...currentTmdes, newTmde];
+    const updatedTolerances = [...tmdeTolerancesData, newTmde];
     onDataSave({ tmdeTolerances: updatedTolerances });
     setAddTmdeModalOpen(false);
   };
@@ -1857,12 +1836,11 @@ function Analysis({
     );
     const uCal = Math.sqrt(calVariance);
 
-    const tmdeTolerances = testPointData.tmdeTolerances || [];
     let tmdeToleranceSpan = 0;
     let missingTmdeRef = false;
 
-    if (tmdeTolerances.length > 0) {
-      tmdeToleranceSpan = tmdeTolerances.reduce((totalSpan, tmde) => {
+    if (tmdeTolerancesData.length > 0) {
+      tmdeToleranceSpan = tmdeTolerancesData.reduce((totalSpan, tmde) => {
         if (!tmde.measurementPoint || !tmde.measurementPoint.value) {
           missingTmdeRef = true;
           return totalSpan;
@@ -2273,34 +2251,32 @@ function Analysis({
 
   return (
     <div>
-      {sessionData && (
-        <div className="analysis-session-header">
-          <div className="session-info-item">
-            <span className="session-info-label">Equipment</span>
-            <span className="session-info-value">
-              {sessionData.equipmentName || "N/A"}
-            </span>
-          </div>
-          <div className="session-info-item">
-            <span className="session-info-label">Analyst</span>
-            <span className="session-info-value">
-              {sessionData.analyst || "N/A"}
-            </span>
-          </div>
-          <div className="session-info-item">
-            <span className="session-info-label">Document</span>
-            <span className="session-info-value">
-              {sessionData.document || "N/A"}
-            </span>
-          </div>
-          <div className="session-info-item">
-            <span className="session-info-label">Date</span>
-            <span className="session-info-value">
-              {formatDate(sessionData.documentDate)}
-            </span>
-          </div>
+      <div className="analysis-session-header">
+        <div className="session-info-item">
+          <span className="session-info-label">UUT</span>
+          <span className="session-info-value">
+            {sessionData.uutDescription || "N/A"}
+          </span>
         </div>
-      )}
+        <div className="session-info-item">
+          <span className="session-info-label">Analyst</span>
+          <span className="session-info-value">
+            {sessionData.analyst || "N/A"}
+          </span>
+        </div>
+        <div className="session-info-item">
+          <span className="session-info-label">Document</span>
+          <span className="session-info-value">
+            {sessionData.document || "N/A"}
+          </span>
+        </div>
+        <div className="session-info-item">
+          <span className="session-info-label">Date</span>
+          <span className="session-info-value">
+            {formatDate(sessionData.documentDate)}
+          </span>
+        </div>
+      </div>
       <NotificationModal
         isOpen={!!notification}
         onClose={() => setNotification(null)}
@@ -2397,85 +2373,98 @@ function Analysis({
             testPointData={testPointData}
           />
           <div className="configuration-panel">
-            <h4 className="analyzed-components-title">Analyzed Components</h4>
-            <div className="analyzed-components-container">
-              {componentsToDisplay.map((comp, index) => {
-                if (!comp) return null;
-                const isUut = index === 0;
-                const referencePoint = isUut
-                  ? testPointData.testPointInfo.parameter
-                  : comp.measurementPoint;
-                const toleranceSummary = getToleranceSummary(comp); // Use the original summary function
-                const absoluteLimits = getAbsoluteLimits(comp, referencePoint);
+            <h4 className="uut-components-title">Unit Under Test</h4>
+            <div className="uut-seal-container">
+              <div className="uut-seal">
+                <div className="uut-seal-content">
+                  <span className="seal-label">Unit Under Test</span>
+                  <h4 className="seal-title">
+                    {sessionData.uutDescription || "N/A"}
+                  </h4>
 
-                if (!isUut && !referencePoint?.value) return null;
+                  <div className="seal-info-item">
+                    <span>Current Point</span>
+                    <strong>
+                      {testPointData.testPointInfo.parameter.value}{" "}
+                      {testPointData.testPointInfo.parameter.unit}
+                    </strong>
+                  </div>
+
+                  <div className="seal-info-item">
+                    <span>Tolerance Spec</span>
+                    <strong>{getToleranceSummary(uutToleranceData)}</strong>
+                  </div>
+
+                  <div className="seal-limits-split">
+                    <div className="seal-info-item">
+                      <span>Low Limit</span>
+                      <strong className="calculated-limit">
+                        {
+                          getAbsoluteLimits(
+                            uutToleranceData,
+                            testPointData.testPointInfo.parameter
+                          ).low
+                        }
+                      </strong>
+                    </div>
+                    <div className="seal-info-item">
+                      <span>High Limit</span>
+                      <strong className="calculated-limit">
+                        {
+                          getAbsoluteLimits(
+                            uutToleranceData,
+                            testPointData.testPointInfo.parameter
+                          ).high
+                        }
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <h4 className="analyzed-components-title">Test Measurement Device Equipment</h4>
+            <div className="analyzed-components-container">
+              {tmdeTolerancesData.map((tmde, index) => {
+                const referencePoint = tmde.measurementPoint;
+                if (!referencePoint?.value) return null;
 
                 return (
-                  <div
-                    key={comp.id || index}
-                    className="component-summary-card"
-                  >
-                    <div className="component-card-header">
-                      <span
-                        className={`component-card-type ${
-                          isUut ? "uut" : "tmde"
-                        }`}
-                      >
-                        {isUut ? "UUT" : "TMDE"}
-                      </span>
-                      <span className="component-card-name">
-                        {isUut
-                          ? testPointData.uutDescription || "UUT"
-                          : comp.name || "TMDE"}
-                      </span>
-                    </div>
-                    <div className="component-card-body">
-                      <div className="component-info-item">
-                        <span className="component-info-label">
-                          Measurement Point
-                        </span>
-                        <span className="component-info-value">
-                          {referencePoint
-                            ? `${referencePoint.value} ${referencePoint.unit}`
-                            : "Not Set"}
-                        </span>
+                  <div key={tmde.id || index} className="tmde-seal">
+                    <div className="uut-seal-content">
+                      <span className="seal-label">TMDE</span>
+                      <h4 className="seal-title">{tmde.name || "TMDE"}</h4>
+
+                      <div className="seal-info-item">
+                        <span>Measurement Point</span>
+                        <strong>
+                          {referencePoint.value} {referencePoint.unit}
+                        </strong>
                       </div>
 
-                      {/* This section is now reverted to its original, simpler format */}
-                      <div className="component-info-item">
-                        <span className="component-info-label">
-                          Tolerance Spec
-                        </span>
-                        <span className="component-info-value">
-                          {toleranceSummary}
-                        </span>
+                      <div className="seal-info-item">
+                        <span>Tolerance Spec</span>
+                        <strong>{getToleranceSummary(tmde)}</strong>
                       </div>
 
-                      {/* <hr className="card-divider" /> */}
-
-                      <div className="component-info-item-split">
-                        <div className="split-column">
-                          <span className="component-info-label">
-                            Calculated Low Limit
-                          </span>
-                          <span className="component-info-value calculated-limit">
-                            {absoluteLimits.low}
-                          </span>
+                      <div className="seal-limits-split">
+                        <div className="seal-info-item">
+                          <span>Low Limit</span>
+                          <strong className="calculated-limit">
+                            {getAbsoluteLimits(tmde, referencePoint).low}
+                          </strong>
                         </div>
-                        <div className="split-column">
-                          <span className="component-info-label">
-                            Calculated High Limit
-                          </span>
-                          <span className="component-info-value calculated-limit">
-                            {absoluteLimits.high}
-                          </span>
+                        <div className="seal-info-item">
+                          <span>High Limit</span>
+                          <strong className="calculated-limit">
+                            {getAbsoluteLimits(tmde, referencePoint).high}
+                          </strong>
                         </div>
                       </div>
                     </div>
                   </div>
                 );
               })}
-              <div className="component-summary-card add-tmde-card">
+              <div className="add-tmde-card">
                 <button
                   className="add-tmde-button"
                   onClick={() => setAddTmdeModalOpen(true)}
@@ -2600,9 +2589,7 @@ function App() {
   const defaultTestPoint = useMemo(
     () => ({
       section: "",
-      uutDescription: "",
       tmdeDescription: "",
-      uutTolerance: {},
       tmdeTolerances: [],
       specifications: {
         mfg: { uncertainty: "", k: 2 },
@@ -2618,12 +2605,13 @@ function App() {
     () => ({
       id: Date.now(),
       name: "New Session",
-      equipmentName: "",
+      uutDescription: "",
       analyst: "",
       organization: "",
       document: "",
       documentDate: "",
       notes: "",
+      uutTolerance: {},
       testPoints: [],
     }),
     []
@@ -2731,7 +2719,7 @@ function App() {
   const handleSaveToFile = () => {
     const currentSession = sessions.find((s) => s.id === selectedSessionId);
     if (!currentSession) return;
-    const fileName = `MUA ${currentSession.equipmentName || "Session"}.json`;
+    const fileName = `MUA ${currentSession.uutDescription || "Session"}.json`;
     const dataToSave = JSON.stringify(currentSession, null, 2);
     const blob = new Blob([dataToSave], { type: "application/json" });
     const href = URL.createObjectURL(blob);
@@ -2757,9 +2745,7 @@ function App() {
                 ...tp, // Keep existing data
                 // Overwrite with new form data
                 section: formData.section,
-                uutDescription: formData.uutDescription,
                 testPointInfo: { ...formData.testPointInfo },
-                uutTolerance: formData.uutTolerance, // Replace the tolerance object
               };
             }
             return tp;
@@ -2774,9 +2760,7 @@ function App() {
             ...defaultTestPoint, // Start with defaults
             // Overwrite with new form data
             section: formData.section,
-            uutDescription: formData.uutDescription,
             testPointInfo: formData.testPointInfo,
-            uutTolerance: formData.uutTolerance,
           };
           setSelectedTestPointId(newTestPoint.id);
           return {
@@ -2842,16 +2826,27 @@ function App() {
     () => sessions.find((s) => s.id === selectedSessionId),
     [sessions, selectedSessionId]
   );
-  const testPointData = useMemo(() => {
-    if (!currentSessionData || !selectedTestPointId) return null;
-    return currentSessionData.testPoints.find(
-      (p) => p.id === selectedTestPointId
-    );
-  }, [currentSessionData, selectedTestPointId]);
+
   const currentTestPoints = useMemo(
     () => currentSessionData?.testPoints || [],
     [currentSessionData]
   );
+
+  const testPointData = useMemo(() => {
+    if (!currentSessionData || !selectedTestPointId) return null;
+    const pointData = currentTestPoints.find(
+      (p) => p.id === selectedTestPointId
+    );
+    if (!pointData) return null;
+
+    // This creates a complete object for the Analysis component to use,
+    // combining the point's data with the session's UUT data.
+    return {
+      ...pointData,
+      uutDescription: currentSessionData.uutDescription,
+      uutTolerance: currentSessionData.uutTolerance,
+    };
+  }, [currentSessionData, selectedTestPointId, currentTestPoints]);
 
   return (
     <div className="App">
@@ -2978,7 +2973,9 @@ function App() {
             <div className="measurement-point-list">
               {currentTestPoints.length > 0 ? (
                 currentTestPoints.map((tp) => {
-                  const uutSummary = getToleranceSummary(tp.uutTolerance);
+                  const uutSummary = getToleranceSummary(
+                    currentSessionData.uutTolerance
+                  );
                   const tmdeSummary = (tp.tmdeTolerances || [])
                     .map((t) => getToleranceSummary(t))
                     .join("; ");
@@ -2994,6 +2991,11 @@ function App() {
                       title={tooltipText}
                       onContextMenu={(e) => {
                         e.preventDefault();
+                        const completeTestPointForMenu = {
+                          ...tp,
+                          uutTolerance: currentSessionData.uutTolerance,
+                          uutDescription: currentSessionData.uutDescription,
+                        };
                         const menuItems = [
                           {
                             label: "Edit Details",
@@ -3011,12 +3013,14 @@ function App() {
                           { type: "divider" },
                           {
                             label: "View Details",
-                            action: () => setInfoModalPoint(tp),
+                            action: () =>
+                              setInfoModalPoint(completeTestPointForMenu),
                             icon: faInfoCircle,
                           },
                           {
                             label: "View Calculation",
-                            action: () => setBreakdownPoint(tp),
+                            action: () =>
+                              setBreakdownPoint(completeTestPointForMenu),
                             icon: faCalculator,
                           },
                           { type: "divider" },
