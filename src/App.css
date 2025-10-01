@@ -160,7 +160,7 @@ select:focus {
 /* =================================================================== */
 .App {
   text-align: center;
-  max-width: 1400px;
+  max-width: 1800px;
   margin: 0 auto;
   padding: 2rem;
 }
@@ -1064,10 +1064,176 @@ select:focus {
   font-weight: 500;
 }
 
+.static-display-field {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    margin: 0;
+    font-size: 1rem;
+    min-height: 44px; /* Match height of other inputs */
+}
 
 /* =================================================================== */
 /* 6. UNCERTAINTY ANALYSIS                                             */
 /* =================================================================== */
+.analysis-session-header {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 1.5rem;
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.session-info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex-basis: 0;
+  flex-grow: 1;
+}
+
+.session-info-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.session-info-value {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.analyzed-components-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.analyzed-components-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.component-summary-card {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.component-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--content-background);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.component-card-type {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    color: #fff;
+}
+
+.component-card-type.uut {
+    background-color: var(--primary-color);
+}
+
+.component-card-type.tmde {
+    background-color: var(--text-color-muted);
+}
+
+.component-card-name {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.component-card-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.component-info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.component-info-label {
+    font-size: 0.8rem;
+    color: var(--text-color-muted);
+    margin-bottom: 2px;
+}
+
+.component-info-value {
+    font-weight: 500;
+    color: var(--text-color);
+    background-color: var(--content-background);
+    padding: 6px 10px;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+.component-card-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* Increased gap for better separation */
+}
+
+.component-info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.component-info-item-split {
+    display: flex;
+    gap: 1rem;
+}
+
+.split-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.tolerance-values {
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* Space between multiple tolerance parts */
+}
+
 .analysis-dashboard {
   display: grid;
   grid-template-columns: 1fr;
@@ -1187,6 +1353,22 @@ select:focus {
   font-weight: normal;
 }
 
+.header-with-select {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-with-select select {
+  padding: 2px 4px;
+  border-radius: 4px;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  max-width: 80px;
+
+}
 /* =================================================================== */
 /* 7. RISK ANALYSIS & DASHBOARD                                        */
 /* =================================================================== */
@@ -1444,6 +1626,15 @@ body.dark-mode .modal-content p {
   color: var(--text-color);
 }
 
+body.dark-mode .analysis-session-header {
+  background-color: #1A202C;
+  border-color: #4A5568;
+}
+
+body.dark-mode .modal-content h3 {
+  color: var(--text-color);
+}
+
 body.dark-mode .form-section label {
   color: #cbd5e0;
 }
@@ -1600,6 +1791,28 @@ body.dark-mode .sidebar-action-button.delete:hover {
   color: white;
 }
 
+body.dark-mode .analyzed-components-title {
+    border-bottom-color: #4A5568;
+}
+
+body.dark-mode .component-summary-card {
+    background-color: #1A202C;
+    border-color: #4A5568;
+}
+
+body.dark-mode .component-card-header {
+    background-color: #2D3748;
+    border-bottom-color: #4A5568;
+}
+
+body.dark-mode .component-card-type.uut {
+    background-color: var(--primary-color-dark);
+    color: #1A202C;
+}
+
+body.dark-mode .component-info-value {
+    background-color: #2D3748;
+}
 
 /* =================================================================== */
 /* 10. MEDIA QUERIES                                                   */

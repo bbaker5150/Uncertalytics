@@ -1,33 +1,6 @@
 import React, { useState, useMemo } from "react";
 import Latex from "react-latex-next";
-import { calculateUncertaintyFromToleranceObject, unitSystem } from "../App";
-
-const convertPpmToUnit = (ppmValue, targetUnit, referencePoint) => {
-    const nominalValue = parseFloat(referencePoint.value);
-    if (isNaN(ppmValue) || !referencePoint) return "N/A";
-    if (targetUnit === "ppm") return ppmValue;
-
-    if (isNaN(nominalValue)) return "N/A";
-
-    if (nominalValue === 0) {
-        if (targetUnit === '%') return ppmValue / 10000;
-        return "N/A (Nominal is 0)";
-    }
-
-    const nominalInBase = unitSystem.toBaseUnit(nominalValue, referencePoint.unit);
-    const deviationInBase = (ppmValue / 1e6) * Math.abs(nominalInBase);
-
-    if (targetUnit === "%") {
-        return (deviationInBase / Math.abs(nominalInBase)) * 100;
-    }
-
-    const targetUnitInfo = unitSystem.units[targetUnit];
-    if (targetUnitInfo?.to_si) {
-        return deviationInBase / targetUnitInfo.to_si;
-    }
-
-    return ppmValue; // Fallback
-};
+import { calculateUncertaintyFromToleranceObject, unitSystem, convertPpmToUnit } from "../App";
 
 const BreakdownItem = ({ comp, nominal }) => {
   const [displayUnit, setDisplayUnit] = useState(nominal?.unit || "ppm");

@@ -65,39 +65,61 @@ const SearchableDropdown = ({ name, value, onChange, options }) => {
 
 
 const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
-    const [formData, setFormData] = useState({
+    // Initial state now includes a simplified structure for UUT tolerance
+    const getInitialFormData = () => ({
         section: '', uutDescription: '',
         paramName: '', paramValue: '', paramUnit: '',
         qualName: 'Frequency', qualValue: '', qualUnit: 'kHz',
+        uutTolerance: {
+            reading: { value: '', unit: '%' },
+            floor: { value: '', unit: '' },
+            resolution: { value: '', unit: '' },
+        }
     });
+
+    const [formData, setFormData] = useState(getInitialFormData());
     const [hasQualifier, setHasQualifier] = useState(false);
     const [notification, setNotification] = useState(null);
 
-    // FIX: Changed unitSystem.conversions to unitSystem.units to match the new structure
     const availableUnits = useMemo(() => Object.keys(unitSystem.units), []);
+    const physicalUnits = useMemo(() => availableUnits.filter(u => !['%', 'ppm', 'dB'].includes(u)), [availableUnits]);
 
     useEffect(() => {
-        if (initialData) {
-            const qualExists = !!initialData.testPointInfo.qualifier?.value;
-            setHasQualifier(qualExists);
-            setFormData({
-                section: initialData.section || '',
-                uutDescription: initialData.uutDescription || '',
-                paramName: initialData.testPointInfo.parameter.name || '',
-                paramValue: initialData.testPointInfo.parameter.value || '',
-                paramUnit: initialData.testPointInfo.parameter.unit || '',
-                qualName: initialData.testPointInfo.qualifier?.name || 'Frequency',
-                qualValue: initialData.testPointInfo.qualifier?.value || '',
-                qualUnit: initialData.testPointInfo.qualifier?.unit || 'kHz',
-            });
-        } else {
-            // Reset to blank state for a new point
-            setHasQualifier(false);
-            setFormData({
-                section: '', uutDescription: '',
-                paramName: '', paramValue: '', paramUnit: '',
-                qualName: 'Frequency', qualValue: '', qualUnit: 'kHz',
-            });
+        if (isOpen) {
+            if (initialData) {
+                const qualExists = !!initialData.testPointInfo.qualifier?.value;
+                const paramUnit = initialData.testPointInfo.parameter.unit || '';
+                setHasQualifier(qualExists);
+                setFormData({
+                    section: initialData.section || '',
+                    uutDescription: initialData.uutDescription || '',
+                    paramName: initialData.testPointInfo.parameter.name || '',
+                    paramValue: initialData.testPointInfo.parameter.value || '',
+                    paramUnit: paramUnit,
+                    qualName: initialData.testPointInfo.qualifier?.name || 'Frequency',
+                    qualValue: initialData.testPointInfo.qualifier?.value || '',
+                    qualUnit: initialData.testPointInfo.qualifier?.unit || 'kHz',
+                    // Deconstruct existing tolerance data into the simplified form state
+                    uutTolerance: {
+                        reading: {
+                            value: initialData.uutTolerance?.reading?.high || '',
+                            unit: initialData.uutTolerance?.reading?.unit || '%'
+                        },
+                        floor: {
+                            value: initialData.uutTolerance?.floor?.high || '',
+                            unit: initialData.uutTolerance?.floor?.unit || paramUnit
+                        },
+                        resolution: {
+                            value: initialData.uutTolerance?.measuringResolution || '',
+                            unit: initialData.uutTolerance?.measuringResolutionUnit || paramUnit
+                        }
+                    }
+                });
+            } else {
+                // Reset to blank state for a new point
+                setHasQualifier(false);
+                setFormData(getInitialFormData());
+            }
         }
     }, [initialData, isOpen]);
 
@@ -106,6 +128,23 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    // New handler for the nested tolerance state
+    const handleToleranceChange = (e) => {
+        const { name, value } = e.target;
+        const [component, field] = name.split('.'); // e.g., name="reading.value"
+
+        setFormData(prev => ({
+            ...prev,
+            uutTolerance: {
+                ...prev.uutTolerance,
+                [component]: {
+                    ...prev.uutTolerance[component],
+                    [field]: value
+                }
+            }
+        }));
     };
 
     const handleSave = () => {
@@ -118,6 +157,32 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
             ? { name: formData.qualName, value: formData.qualValue, unit: formData.qualUnit }
             : null;
 
+        // Construct the full uutTolerance object from the simplified form state
+        const newUutTolerance = {};
+        const { reading, floor, resolution } = formData.uutTolerance;
+
+        const addComponentIfValid = (key, data, unit) => {
+            const numValue = parseFloat(data.value);
+            if (!isNaN(numValue) && data.value !== '') {
+                newUutTolerance[key] = {
+                    high: String(numValue),
+                    low: String(-numValue),
+                    unit: data.unit || unit,
+                    distribution: '1.960',
+                    symmetric: true,
+                };
+            }
+        };
+
+        addComponentIfValid('reading', reading, '%');
+        addComponentIfValid('floor', floor, formData.paramUnit);
+
+        const resValue = parseFloat(resolution.value);
+        if (!isNaN(resValue) && resolution.value !== '') {
+            newUutTolerance.measuringResolution = String(resValue);
+            newUutTolerance.measuringResolutionUnit = resolution.unit || formData.paramUnit;
+        }
+
         const finalData = {
             section: formData.section,
             uutDescription: formData.uutDescription,
@@ -125,10 +190,12 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                 parameter: { name: formData.paramName, value: formData.paramValue, unit: formData.paramUnit },
                 qualifier: qualifierData,
             },
+            uutTolerance: newUutTolerance, // Add the constructed tolerance object
         };
 
+        // The onSave function now expects the ID and the full data object
         if (initialData) {
-            onSave({ id: initialData.id, testPointData: finalData });
+            onSave({ id: initialData.id, ...finalData });
         } else {
             onSave(finalData);
         }
@@ -197,6 +264,48 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                         )}
                     </div>
                 </div>
+
+                {/* --- NEW UUT TOLERANCE SECTION --- */}
+                <div className="modal-form-section" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '15px' }}>
+                    <h4 style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: '15px' }}>UUT Tolerance (Optional)</h4>
+                    <div className="modal-form-grid">
+                        <div className="modal-form-section" style={{paddingTop: 0}}>
+                             <label>Reading Tolerance (±)</label>
+                            <div className="input-group">
+                                <div>
+                                    <input type="number" step="any" name="reading.value" value={formData.uutTolerance.reading.value} onChange={handleToleranceChange} placeholder="Value"/>
+                                </div>
+                                <div>
+                                    <select name="reading.unit" value={formData.uutTolerance.reading.unit} onChange={handleToleranceChange}>
+                                        <option value="%">%</option>
+                                        <option value="ppm">ppm</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <label>Floor Tolerance (±)</label>
+                            <div className="input-group">
+                                <div>
+                                    <input type="number" step="any" name="floor.value" value={formData.uutTolerance.floor.value} onChange={handleToleranceChange} placeholder="Value"/>
+                                </div>
+                                <div>
+                                    <SearchableDropdown name="floor.unit" value={formData.uutTolerance.floor.unit || formData.paramUnit} onChange={handleToleranceChange} options={physicalUnits} />
+                                </div>
+                            </div>
+                        </div>
+                         <div className="modal-form-section" style={{paddingTop: 0}}>
+                            <label>Measuring Resolution (LSD)</label>
+                             <div className="input-group">
+                                <div>
+                                    <input type="number" step="any" name="resolution.value" value={formData.uutTolerance.resolution.value} onChange={handleToleranceChange} placeholder="Value"/>
+                                </div>
+                                <div>
+                                    <SearchableDropdown name="resolution.unit" value={formData.uutTolerance.resolution.unit || formData.paramUnit} onChange={handleToleranceChange} options={physicalUnits} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
 
                  <div className="modal-actions">
                     <button className="modal-icon-button secondary" onClick={onClose} title="Cancel">
