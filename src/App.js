@@ -1632,9 +1632,14 @@ function Analysis({
       return [];
     });
 
-    const uutBudgetComponents = getBudgetComponentsFromTolerance(
+    const allUutComponents = getBudgetComponentsFromTolerance(
       uutToleranceData,
       uutNominal
+    );
+
+    // Only include the UUT's resolution in the uncertainty budget, not its own tolerance spec.
+    const uutBudgetComponents = allUutComponents.filter((comp) =>
+      comp.name.endsWith(" - Resolution")
     );
 
     return [
