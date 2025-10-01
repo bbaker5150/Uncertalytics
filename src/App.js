@@ -217,6 +217,8 @@ export const calculateUncertaintyFromToleranceObject = (
         distributionLabel,
         absoluteLow,
         absoluteHigh,
+        originalHalfSpan: Math.abs(halfSpan),
+        originalUnit: unit,
       });
     }
   };
@@ -260,6 +262,8 @@ export const calculateUncertaintyFromToleranceObject = (
           distributionLabel,
           absoluteLow,
           absoluteHigh,
+          originalHalfSpan: Math.abs(dbTol),
+          originalUnit: 'dB',
         });
       }
     }
@@ -268,8 +272,9 @@ export const calculateUncertaintyFromToleranceObject = (
   if (parseFloat(toleranceObject.measuringResolution) > 0) {
     const res = parseFloat(toleranceObject.measuringResolution);
     const resUnit = toleranceObject.measuringResolutionUnit || nominalUnit;
+    const halfSpan = res / 2;
 
-    const resPpm = convertToPPM(res / 2, resUnit, nominalValue, nominalUnit);
+    const resPpm = convertToPPM(halfSpan, resUnit, nominalValue, nominalUnit);
     if (!isNaN(resPpm)) {
       const divisor = 1.732; // sqrt(3)
       const u_i = Math.abs(resPpm / divisor);
@@ -278,12 +283,14 @@ export const calculateUncertaintyFromToleranceObject = (
       // Resolution has no absolute limits relative to nominal, so we don't add them.
       breakdown.push({
         name: "Resolution",
-        input: `±${res / 2} ${resUnit}`,
+        input: `±${halfSpan} ${resUnit}`,
         explanation: `Rectangular distribution over ± half the least significant digit.`,
         ppm: Math.abs(resPpm),
         u_i,
         divisor,
         distributionLabel: 'Rectangular',
+        originalHalfSpan: halfSpan,
+        originalUnit: resUnit,
       });
     }
   }
@@ -1388,8 +1395,14 @@ function Analysis({ testPointData, onDataSave, defaultTestPoint }) {
         ));
     }
 
+    // Isolate UUT resolution as its only contribution to the budget.
+    const uutResolutionComponent = {
+      name: testPointData.uutTolerance?.name || 'UUT',
+      measuringResolution: testPointData.uutTolerance?.measuringResolution,
+      measuringResolutionUnit: testPointData.uutTolerance?.measuringResolutionUnit
+    };
     const uutBudgetComponents = getBudgetComponentsFromTolerance(
-        testPointData.uutTolerance,
+        uutResolutionComponent,
         uutNominal
     );
 

@@ -28,7 +28,7 @@ const componentDefinitions = {
 /**
  * A dynamic form for building a tolerance specification by adding/removing components.
  */
-const ToleranceFormContent = ({ tolerance, setTolerance, isTMDE, nominal, referenceMeasurementPoint }) => {
+const ToleranceFormContent = ({ tolerance, setTolerance, isUUT, isTMDE, nominal, referenceMeasurementPoint }) => {
   const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
   
   const toleranceUnitOptions = useMemo(() => {
@@ -44,33 +44,51 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isTMDE, nominal, refere
   }, [nominal, referenceMeasurementPoint, isTMDE]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked, dataset } = e.target;
-    const { field, componentKey } = dataset;
+    const { name, value, checked, dataset } = e.target;
 
-    if (type === "misc") {
+    // This condition is now correct
+    if (dataset.type === "misc") {
       setTolerance((prev) => ({ ...prev, [name]: value }));
       return;
     }
+
+    const { field, componentKey } = dataset;
 
     setTolerance((prev) => {
         const newTol = { ...prev };
         const comp = { ...newTol[componentKey] };
 
+        // Create temporary variables to hold the next state
+        let newHigh = comp.high;
+        let newLow = comp.low;
+        let newSymmetric = comp.symmetric;
+
+        // Update the variable that was changed by the user
         if (field === 'symmetric') {
-            comp.symmetric = checked;
-            if (checked && comp.high) {
-                const highVal = parseFloat(comp.high);
-                if (!isNaN(highVal)) {
-                    comp.low = -highVal;
-                }
-            }
-        } else if (field === 'high' && comp.symmetric) {
-            comp.high = value;
-            const highVal = parseFloat(value);
-            comp.low = !isNaN(highVal) ? -highVal : '';
+            newSymmetric = checked;
+        } else if (field === 'high') {
+            newHigh = value;
+        } else if (field === 'low') {
+            newLow = value;
         } else {
+            // Handles other fields like 'unit', 'value', 'multiplier', etc.
             comp[field] = value;
         }
+        
+        // If symmetric is enabled, enforce the relationship
+        if (newSymmetric) {
+            // If the high field was just changed, or if symmetric was just turned on
+            if (field === 'high' || (field === 'symmetric' && newHigh)) {
+                const highVal = parseFloat(newHigh);
+                // Ensure the 'low' value is always a STRING for the input field
+                newLow = !isNaN(highVal) ? String(-highVal) : '';
+            }
+        }
+        
+        // Update the component object with the new values
+        comp.high = newHigh;
+        comp.low = newLow;
+        comp.symmetric = newSymmetric;
 
         newTol[componentKey] = comp;
         return newTol;
@@ -124,7 +142,7 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isTMDE, nominal, refere
     const distributionSelect = (
       <>
         <label>Distribution</label>
-        <select data-component-key={key} data-field="distribution" value={componentData.distribution || "1.732"} onChange={handleChange} >
+        <select data-component-key={key} data-field="distribution" value={componentData.distribution || "1.960"} onChange={handleChange} >
           {distributionOptions.map((dist) => (<option key={dist.value} value={dist.value}>{dist.label}</option>))}
         </select>
       </>
@@ -243,7 +261,7 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isTMDE, nominal, refere
         </select>
       </div>
 
-      {isTMDE && (
+      {isUUT && (
         <div
           className="form-section"
           style={{
@@ -266,7 +284,7 @@ const ToleranceFormContent = ({ tolerance, setTolerance, isTMDE, nominal, refere
             <select
               name="measuringResolutionUnit"
               data-type="misc"
-              value={tolerance.measuringResolutionUnit || referenceMeasurementPoint?.unit}
+              value={tolerance.measuringResolutionUnit || nominal?.unit}
               onChange={handleChange}
             >
               {allUnits
@@ -313,7 +331,10 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
               ...cleanObject(testPointData.tmdeTolerance)
           }];
       }
-      setTmdeTolerances(loadedTmde.map(t => ({...t, ...cleanObject(t)})));
+      setTmdeTolerances(loadedTmde.map(t => {
+        const { measuringResolution, measuringResolutionUnit, ...rest } = t;
+        return { ...rest, ...cleanObject(rest) };
+      }));
       
       setActiveTab("UUT");
     }
@@ -361,7 +382,7 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
   if (!isOpen) return null;
 
   const handleSave = () => {
-    const cleanupTolerance = (tol) => {
+    const cleanupTolerance = (tol, isUut = false) => {
       const cleaned = { ...tol };
       Object.keys(componentDefinitions).forEach((key) => {
         const component = cleaned[key];
@@ -369,15 +390,17 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
           delete cleaned[key];
         }
       });
-      if (!parseFloat(cleaned.measuringResolution)) {
-        delete cleaned.measuringResolution;
-        delete cleaned.measuringResolutionUnit;
+      if (isUut) {
+        if (!parseFloat(cleaned.measuringResolution)) {
+          delete cleaned.measuringResolution;
+          delete cleaned.measuringResolutionUnit;
+        }
       }
       return cleaned;
     };
 
     onSave({
-      uutTolerance: cleanupTolerance(uutTolerance),
+      uutTolerance: cleanupTolerance(uutTolerance, true),
       tmdeTolerances: tmdeTolerances.map(t => cleanupTolerance(t)),
       tmdeTolerance: undefined, // Clear out old single TMDE object
     });
