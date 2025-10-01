@@ -799,8 +799,6 @@ select:focus {
   opacity: 0.65;
 }
 
-/* Add to Section 4: MODALS & OVERLAYS */
-
 .modal-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -872,7 +870,29 @@ select:focus {
   font-size: 1rem;
 }
 
-/* Add to Section 5: ACCORDION & INPUTS */
+.symmetric-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+.symmetric-toggle input[type="checkbox"] {
+    width: auto;
+    height: auto;
+    margin: 0;
+}
+.symmetric-toggle label {
+    margin: 0;
+    font-weight: normal;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.input-group-asymmetric {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
 
 .searchable-dropdown {
   position: relative;
@@ -1369,6 +1389,47 @@ select:focus {
   max-width: 80px;
 
 }
+
+.add-tmde-card {
+    background-color: transparent;
+    border: 2px dashed var(--border-color);
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease-in-out;
+}
+
+.add-tmde-card:hover {
+    border-color: var(--primary-color);
+    background-color: var(--primary-color-light);
+}
+
+.add-tmde-button {
+    background: none;
+    border: none;
+    color: var(--text-color-muted);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 100%;
+    transition: color 0.2s ease-in-out;
+}
+
+.add-tmde-card:hover .add-tmde-button {
+    color: var(--primary-color);
+}
+
+.add-tmde-button .fa-plus {
+    font-size: 1.5rem;
+}
+
 /* =================================================================== */
 /* 7. RISK ANALYSIS & DASHBOARD                                        */
 /* =================================================================== */

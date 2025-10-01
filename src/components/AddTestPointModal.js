@@ -65,7 +65,6 @@ const SearchableDropdown = ({ name, value, onChange, options }) => {
 
 
 const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
-    // Initial state now includes a simplified structure for UUT tolerance
     const getInitialFormData = () => ({
         section: '', uutDescription: '',
         paramName: '', paramValue: '', paramUnit: '',
@@ -99,7 +98,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                     qualName: initialData.testPointInfo.qualifier?.name || 'Frequency',
                     qualValue: initialData.testPointInfo.qualifier?.value || '',
                     qualUnit: initialData.testPointInfo.qualifier?.unit || 'kHz',
-                    // Deconstruct existing tolerance data into the simplified form state
                     uutTolerance: {
                         reading: {
                             value: initialData.uutTolerance?.reading?.high || '',
@@ -116,7 +114,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                     }
                 });
             } else {
-                // Reset to blank state for a new point
                 setHasQualifier(false);
                 setFormData(getInitialFormData());
             }
@@ -130,11 +127,9 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    // New handler for the nested tolerance state
     const handleToleranceChange = (e) => {
         const { name, value } = e.target;
-        const [component, field] = name.split('.'); // e.g., name="reading.value"
-
+        const [component, field] = name.split('.'); 
         setFormData(prev => ({
             ...prev,
             uutTolerance: {
@@ -149,34 +144,35 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
 
     const handleSave = () => {
         if (!formData.section || !formData.uutDescription || !formData.paramValue || !formData.paramUnit) {
-             setNotification({ title: 'Missing Information', message: 'Please fill out all Identification and Parameter fields, including units.' });
+             setNotification({ title: 'Missing Information', message: 'Please fill out all Identification and Parameter fields.' });
             return;
         }
 
-        const qualifierData = hasQualifier
-            ? { name: formData.qualName, value: formData.qualValue, unit: formData.qualUnit }
-            : null;
-
-        // Construct the full uutTolerance object from the simplified form state
-        const newUutTolerance = {};
         const { reading, floor, resolution } = formData.uutTolerance;
+        if (!reading.value && !floor.value && !resolution.value) {
+            setNotification({
+                title: 'Missing Tolerance',
+                message: 'Please define at least one UUT tolerance component (Reading, Floor, or Resolution) before saving.'
+            });
+            return;
+        }
+
+        const qualifierData = hasQualifier ? { name: formData.qualName, value: formData.qualValue, unit: formData.qualUnit } : null;
+        const newUutTolerance = {};
 
         const addComponentIfValid = (key, data, unit) => {
             const numValue = parseFloat(data.value);
             if (!isNaN(numValue) && data.value !== '') {
                 newUutTolerance[key] = {
-                    high: String(numValue),
-                    low: String(-numValue),
-                    unit: data.unit || unit,
-                    distribution: '1.960',
-                    symmetric: true,
+                    high: String(numValue), low: String(-numValue),
+                    unit: data.unit || unit, distribution: '1.960', symmetric: true,
                 };
             }
         };
 
         addComponentIfValid('reading', reading, '%');
         addComponentIfValid('floor', floor, formData.paramUnit);
-
+        
         const resValue = parseFloat(resolution.value);
         if (!isNaN(resValue) && resolution.value !== '') {
             newUutTolerance.measuringResolution = String(resValue);
@@ -190,10 +186,9 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                 parameter: { name: formData.paramName, value: formData.paramValue, unit: formData.paramUnit },
                 qualifier: qualifierData,
             },
-            uutTolerance: newUutTolerance, // Add the constructed tolerance object
+            uutTolerance: newUutTolerance,
         };
 
-        // The onSave function now expects the ID and the full data object
         if (initialData) {
             onSave({ id: initialData.id, ...finalData });
         } else {
@@ -218,7 +213,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                         <label>UUT – Unit Under Test</label>
                         <input type="text" name="uutDescription" value={formData.uutDescription} onChange={handleChange} placeholder="UUT model or ID" />
                     </div>
-
                     <div className="modal-form-section">
                         <h4>Parameter</h4>
                         <label>Parameter Name</label>
@@ -233,16 +227,12 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                                 <SearchableDropdown name="paramUnit" value={formData.paramUnit} onChange={handleChange} options={availableUnits} />
                             </div>
                         </div>
-
                         <hr />
-
                         {hasQualifier ? (
                             <>
                                 <div className="qualifier-header">
                                     <h4>Qualifier</h4>
-                                    <button onClick={() => setHasQualifier(false)} title="Remove Qualifier">
-                                        <FontAwesomeIcon icon={faTrashAlt} />
-                                    </button>
+                                    <button onClick={() => setHasQualifier(false)} title="Remove Qualifier"><FontAwesomeIcon icon={faTrashAlt} /></button>
                                 </div>
                                 <label>Qualifier Name</label>
                                 <input type="text" name="qualName" value={formData.qualName} onChange={handleChange} />
@@ -264,10 +254,8 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                         )}
                     </div>
                 </div>
-
-                {/* --- NEW UUT TOLERANCE SECTION --- */}
                 <div className="modal-form-section" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '15px' }}>
-                    <h4 style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: '15px' }}>UUT Tolerance (Optional)</h4>
+                    <h4 style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: '15px' }}>UUT Tolerance Specification</h4>
                     <div className="modal-form-grid">
                         <div className="modal-form-section" style={{paddingTop: 0}}>
                              <label>Reading Tolerance (±)</label>
@@ -305,15 +293,9 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                         </div>
                     </div>
                 </div>
-
-
                  <div className="modal-actions">
-                    <button className="modal-icon-button secondary" onClick={onClose} title="Cancel">
-                        <FontAwesomeIcon icon={faTimes} />
-                    </button>
-                    <button className="modal-icon-button primary" onClick={handleSave} title="Save Changes">
-                        <FontAwesomeIcon icon={faCheck} />
-                    </button>
+                    <button className="modal-icon-button secondary" onClick={onClose} title="Cancel"><FontAwesomeIcon icon={faTimes} /></button>
+                    <button className="modal-icon-button primary" onClick={handleSave} title="Save Changes"><FontAwesomeIcon icon={faCheck} /></button>
                 </div>
             </div>
         </div>

@@ -10,6 +10,7 @@ import EditSessionModal from "./components/EditSessionModal";
 import ContextMenu from "./components/ContextMenu";
 import FullBreakdownModal from "./components/FullBreakdownModal";
 import TestPointInfoModal from "./components/TestPointInfoModal";
+import AddTmdeModal from "./components/AddTmdeModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faInfoCircle,
@@ -1551,7 +1552,7 @@ function Analysis({
     testPointData.uutTolerance,
     ...(testPointData.tmdeTolerances || []),
   ];
-
+  const [isAddTmdeModalOpen, setAddTmdeModalOpen] = useState(false);
   const [analysisMode, setAnalysisMode] = useState("uncertaintyTool");
   const [manualComponents, setManualComponents] = useState(
     initialManualComponents || []
@@ -1700,6 +1701,13 @@ function Analysis({
     setCalcResults(newResults);
     onDataSave({ ...newResults, components: manualComponents });
   }, [allComponents, useTDistribution, onDataSave, manualComponents]);
+
+  const handleSaveTmde = (newTmde) => {
+    const currentTmdes = testPointData.tmdeTolerances || [];
+    const updatedTolerances = [...currentTmdes, newTmde];
+    onDataSave({ tmdeTolerances: updatedTolerances });
+    setAddTmdeModalOpen(false);
+  };
 
   const handleAddComponent = () => {
     let valueInPPM = NaN;
@@ -2382,54 +2390,100 @@ function Analysis({
 
       {analysisMode === "uncertaintyTool" && (
         <div className="analysis-dashboard">
+          <AddTmdeModal
+            isOpen={isAddTmdeModalOpen}
+            onClose={() => setAddTmdeModalOpen(false)}
+            onSave={handleSaveTmde}
+            testPointData={testPointData}
+          />
           <div className="configuration-panel">
             <h4 className="analyzed-components-title">Analyzed Components</h4>
             <div className="analyzed-components-container">
-                {componentsToDisplay.map((comp, index) => {
-                    if (!comp) return null; 
-                    const isUut = index === 0;
-                    const referencePoint = isUut ? testPointData.testPointInfo.parameter : comp.measurementPoint;
-                    const toleranceSummary = getToleranceSummary(comp); // Use the original summary function
-                    const absoluteLimits = getAbsoluteLimits(comp, referencePoint);
+              {componentsToDisplay.map((comp, index) => {
+                if (!comp) return null;
+                const isUut = index === 0;
+                const referencePoint = isUut
+                  ? testPointData.testPointInfo.parameter
+                  : comp.measurementPoint;
+                const toleranceSummary = getToleranceSummary(comp); // Use the original summary function
+                const absoluteLimits = getAbsoluteLimits(comp, referencePoint);
 
-                    if (!isUut && !referencePoint?.value) return null;
+                if (!isUut && !referencePoint?.value) return null;
 
-                    return (
-                        <div key={comp.id || index} className="component-summary-card">
-                            <div className="component-card-header">
-                                <span className={`component-card-type ${isUut ? 'uut' : 'tmde'}`}>{isUut ? 'UUT' : 'TMDE'}</span>
-                                <span className="component-card-name">{isUut ? (testPointData.uutDescription || 'UUT') : (comp.name || 'TMDE')}</span>
-                            </div>
-                            <div className="component-card-body">
-                                <div className="component-info-item">
-                                    <span className="component-info-label">Measurement Point</span>
-                                    <span className="component-info-value">
-                                        {referencePoint ? `${referencePoint.value} ${referencePoint.unit}` : 'Not Set'}
-                                    </span>
-                                </div>
-                                
-                                {/* This section is now reverted to its original, simpler format */}
-                                <div className="component-info-item">
-                                    <span className="component-info-label">Tolerance Spec</span>
-                                    <span className="component-info-value">{toleranceSummary}</span>
-                                </div>
-                                
-                                {/* <hr className="card-divider" /> */}
+                return (
+                  <div
+                    key={comp.id || index}
+                    className="component-summary-card"
+                  >
+                    <div className="component-card-header">
+                      <span
+                        className={`component-card-type ${
+                          isUut ? "uut" : "tmde"
+                        }`}
+                      >
+                        {isUut ? "UUT" : "TMDE"}
+                      </span>
+                      <span className="component-card-name">
+                        {isUut
+                          ? testPointData.uutDescription || "UUT"
+                          : comp.name || "TMDE"}
+                      </span>
+                    </div>
+                    <div className="component-card-body">
+                      <div className="component-info-item">
+                        <span className="component-info-label">
+                          Measurement Point
+                        </span>
+                        <span className="component-info-value">
+                          {referencePoint
+                            ? `${referencePoint.value} ${referencePoint.unit}`
+                            : "Not Set"}
+                        </span>
+                      </div>
 
-                                <div className="component-info-item-split">
-                                    <div className="split-column">
-                                        <span className="component-info-label">Calculated Low Limit</span>
-                                        <span className="component-info-value calculated-limit">{absoluteLimits.low}</span>
-                                    </div>
-                                    <div className="split-column">
-                                        <span className="component-info-label">Calculated High Limit</span>
-                                        <span className="component-info-value calculated-limit">{absoluteLimits.high}</span>
-                                    </div>
-                                </div>
-                            </div>
+                      {/* This section is now reverted to its original, simpler format */}
+                      <div className="component-info-item">
+                        <span className="component-info-label">
+                          Tolerance Spec
+                        </span>
+                        <span className="component-info-value">
+                          {toleranceSummary}
+                        </span>
+                      </div>
+
+                      {/* <hr className="card-divider" /> */}
+
+                      <div className="component-info-item-split">
+                        <div className="split-column">
+                          <span className="component-info-label">
+                            Calculated Low Limit
+                          </span>
+                          <span className="component-info-value calculated-limit">
+                            {absoluteLimits.low}
+                          </span>
                         </div>
-                    );
-                })}
+                        <div className="split-column">
+                          <span className="component-info-label">
+                            Calculated High Limit
+                          </span>
+                          <span className="component-info-value calculated-limit">
+                            {absoluteLimits.high}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="component-summary-card add-tmde-card">
+                <button
+                  className="add-tmde-button"
+                  onClick={() => setAddTmdeModalOpen(true)}
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                  <span>Add TMDE</span>
+                </button>
+              </div>
             </div>
             <Accordion
               title="Uncertainty Budget"
@@ -2711,8 +2765,8 @@ function App() {
             return tp;
           });
           return { ...session, testPoints: updatedTestPoints };
-        } 
-        
+        }
+
         // Logic for ADDING a new test point
         else {
           const newTestPoint = {
