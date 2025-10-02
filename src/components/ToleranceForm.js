@@ -1,11 +1,11 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState, useRef } from "react";
 import {
   unitSystem,
   errorDistributions,
   getToleranceUnitOptions,
 } from "../App";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrashAlt } from "@fortawesome/free-solid-svg-icons";
+import { faTrashAlt, faPlus } from "@fortawesome/free-solid-svg-icons";
 
 // Define all possible tolerance components and their default states
 const componentDefinitions = {
@@ -59,11 +59,24 @@ const ToleranceForm = ({
   isUUT,
   referencePoint,
 }) => {
+  const [isAddComponentVisible, setAddComponentVisible] = useState(false);
+  const addComponentRef = useRef(null);
   const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
 
   const toleranceUnitOptions = useMemo(() => {
     return getToleranceUnitOptions(referencePoint?.unit);
   }, [referencePoint]);
+  
+  // Effect to handle clicks outside the dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+        if (addComponentRef.current && !addComponentRef.current.contains(event.target)) {
+            setAddComponentVisible(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (referencePoint?.unit && !componentDefinitions.floor.defaultState.unit) {
@@ -108,14 +121,14 @@ const ToleranceForm = ({
     });
   };
 
-  const handleComponentSelect = (e) => {
-    const componentKey = e.target.value;
+  const handleAddComponent = (componentKey) => {
     if (componentKey && !tolerance[componentKey]) {
       setTolerance((prev) => ({
         ...prev,
         [componentKey]: { ...componentDefinitions[componentKey].defaultState },
       }));
     }
+    setAddComponentVisible(false); // Hide menu after adding
   };
 
   const handleRemoveComponent = (key) => {
@@ -243,12 +256,32 @@ const ToleranceForm = ({
           </div>
         )}
       </div>
-      <div className="add-component-section">
-        <select value="" onChange={handleComponentSelect} disabled={availableComponents.length === 0}>
-          <option value="">-- Select component to add --</option>
-          {availableComponents.map((key) => (<option key={key} value={key}>{componentDefinitions[key].label}</option>))}
-        </select>
+
+      <div className="add-component-wrapper" ref={addComponentRef}>
+          {availableComponents.length > 0 && (
+              <button
+                  className="add-component-button"
+                  onClick={() => setAddComponentVisible(prev => !prev)}
+                  title="Add new tolerance component"
+              >
+                  <FontAwesomeIcon icon={faPlus} />
+                  <span>Add Tolerance</span>
+              </button>
+          )}
+
+          {isAddComponentVisible && availableComponents.length > 0 && (
+              <div className="add-component-dropdown">
+                  <ul>
+                      {availableComponents.map(key => (
+                          <li key={key} onClick={() => handleAddComponent(key)}>
+                              {componentDefinitions[key].label}
+                          </li>
+                      ))}
+                  </ul>
+              </div>
+          )}
       </div>
+      
       {isUUT && (
         <div className="form-section" style={{ marginTop: "20px", borderTop: "1px solid var(--border-color)", paddingTop: "20px" }}>
           <label>Measuring Resolution (Least Significant Digit)</label>

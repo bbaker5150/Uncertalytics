@@ -4,34 +4,53 @@ import { unitSystem } from "../App";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
 
-const AddTmdeModal = ({ isOpen, onClose, onSave, testPointData }) => {
+const AddTmdeModal = ({ isOpen, onClose, onSave, testPointData, initialTmdeData = null }) => {
     const uutMeasurementPoint = testPointData.testPointInfo.parameter;
 
-    const getInitialState = useCallback(() => ({
-        id: Date.now(),
-        name: "New TMDE",
-        measurementPoint: { ...uutMeasurementPoint },
-    }), [uutMeasurementPoint]);
+    const getInitialState = useCallback(() => {
+        if (initialTmdeData) {
+            return JSON.parse(JSON.stringify(initialTmdeData));
+        }
+        return {
+            id: Date.now(),
+            name: "New TMDE",
+            measurementPoint: { ...uutMeasurementPoint },
+        };
+    }, [uutMeasurementPoint, initialTmdeData]);
 
     const [tmde, setTmde] = useState(getInitialState());
-    const [useUutRef, setUseUutRef] = useState(true);
+    
+    const [useUutRef, setUseUutRef] = useState(() => {
+        if (!initialTmdeData) return true;
+        const tmdePoint = initialTmdeData.measurementPoint;
+        return uutMeasurementPoint.value === tmdePoint.value && uutMeasurementPoint.unit === tmdePoint.unit;
+    });
+
     const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
 
     useEffect(() => {
         if(isOpen) {
-            setTmde(getInitialState());
-            setUseUutRef(true);
+            const initialState = getInitialState();
+            setTmde(initialState);
+            if (initialTmdeData) {
+                 const tmdePoint = initialTmdeData.measurementPoint;
+                 const refsMatch = uutMeasurementPoint.value === tmdePoint.value && uutMeasurementPoint.unit === tmdePoint.unit;
+                 setUseUutRef(refsMatch);
+            } else {
+                 setUseUutRef(true);
+            }
         }
-    }, [isOpen, getInitialState]);
+    }, [isOpen, getInitialState, initialTmdeData, uutMeasurementPoint]);
 
     useEffect(() => {
         if (useUutRef) {
             setTmde(prev => ({ ...prev, measurementPoint: uutMeasurementPoint }));
         } else {
-            // Keep the last unit but clear the value
-            setTmde(prev => ({...prev, measurementPoint: { value: '', unit: prev.measurementPoint.unit}}))
+            if (!initialTmdeData) { 
+                setTmde(prev => ({...prev, measurementPoint: { value: '', unit: prev.measurementPoint.unit}}))
+            }
         }
-    }, [useUutRef, uutMeasurementPoint]);
+    }, [useUutRef, uutMeasurementPoint, initialTmdeData]);
 
     const handleSave = () => {
         const cleanupTolerance = (tol) => {
@@ -54,7 +73,7 @@ const AddTmdeModal = ({ isOpen, onClose, onSave, testPointData }) => {
         <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: "600px" }}>
                 <button onClick={onClose} className="modal-close-button">&times;</button>
-                <h3>Add New TMDE</h3>
+                <h3>{initialTmdeData ? 'Edit TMDE' : 'Add New TMDE'}</h3>
 
                 <div className="modal-body-scrollable">
                     <div className="tmde-header">
@@ -64,16 +83,42 @@ const AddTmdeModal = ({ isOpen, onClose, onSave, testPointData }) => {
                         </div>
                         <div className="form-section">
                             <label>Reference Measurement Point</label>
-                             <div className="symmetric-toggle" style={{ marginBottom: '10px' }}>
-                                <input type="checkbox" id="useUutRef" checked={useUutRef} onChange={(e) => setUseUutRef(e.target.checked)} />
-                                <label htmlFor="useUutRef">Use UUT Measurement Point ({uutMeasurementPoint.value} {uutMeasurementPoint.unit})</label>
-                            </div>
-                            <div className="input-with-unit">
-                                <input type="text" placeholder="Value" disabled={useUutRef} value={tmde.measurementPoint?.value || ""} onChange={(e) => setTmde({...tmde, measurementPoint: {...tmde.measurementPoint, value: e.target.value}})} />
-                                <select disabled={useUutRef} value={tmde.measurementPoint?.unit || ""} onChange={(e) => setTmde({...tmde, measurementPoint: {...tmde.measurementPoint, unit: e.target.value}})}>
-                                    <option value="">-- Unit --</option>
-                                    {allUnits.map((u) => (<option key={u} value={u}>{u}</option>))}
-                                </select>
+                            <div className="reference-point-control">
+                                <div className="toggle-switch-container">
+                                    <input 
+                                        type="checkbox" 
+                                        id="useUutRef" 
+                                        className="toggle-switch-checkbox"
+                                        checked={useUutRef} 
+                                        onChange={(e) => setUseUutRef(e.target.checked)} 
+                                    />
+                                    <label className="toggle-switch-label" htmlFor="useUutRef">
+                                        <span className="toggle-switch-switch" />
+                                    </label>
+                                    <label htmlFor="useUutRef" className="toggle-option-label">
+                                        Use UUT Measurement Point
+                                        <span className="uut-point-display">({uutMeasurementPoint.value} {uutMeasurementPoint.unit})</span>
+                                    </label>
+                                </div>
+                                <div className={`manual-input-container ${useUutRef ? 'disabled' : ''}`}>
+                                    <div className="input-with-unit">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Value" 
+                                            disabled={useUutRef} 
+                                            value={tmde.measurementPoint?.value || ""} 
+                                            onChange={(e) => setTmde({...tmde, measurementPoint: {...tmde.measurementPoint, value: e.target.value}})} 
+                                        />
+                                        <select 
+                                            disabled={useUutRef} 
+                                            value={tmde.measurementPoint?.unit || ""} 
+                                            onChange={(e) => setTmde({...tmde, measurementPoint: {...tmde.measurementPoint, unit: e.target.value}})}
+                                        >
+                                            <option value="">-- Unit --</option>
+                                            {allUnits.map((u) => (<option key={u} value={u}>{u}</option>))}
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

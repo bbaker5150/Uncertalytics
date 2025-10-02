@@ -215,10 +215,10 @@ select:focus {
 }
 
 .add-point-button {
-  background: none;
+  background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-color-muted);
-  font-size: 1rem;
+  font-size: 0.9rem;
   cursor: pointer;
   width: 32px;
   height: 32px;
@@ -226,8 +226,6 @@ select:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  line-height: 1;
   transition: all 0.2s ease;
 }
 
@@ -572,7 +570,7 @@ select:focus {
 
 .modal-content.edit-session-modal {
     display: flex;
-    flex-direction: row;
+    flex-direction: column; /* Changed from row */
     width: 90vw;
     max-width: 1000px;
     height: 80vh;
@@ -580,45 +578,118 @@ select:focus {
     text-align: left;
 }
 
-.modal-nav {
-    flex: 0 0 220px;
-    background-color: var(--background-color-light);
-    border-right: 1px solid var(--border-color);
-    padding: 25px;
-    display: flex;
-    flex-direction: column;
+.tmde-management-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Adds space between each measurement point card */
 }
 
-.modal-nav h3 {
-    font-size: 1.2rem;
-    margin: 0 0 20px 0;
-    padding-bottom: 15px;
-    border-bottom: 1px solid var(--border-color);
+.tmde-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Adds space between TMDE items within a card */
 }
 
-.modal-nav-button {
-    background: none;
-    border: none;
-    text-align: left;
-    padding: 12px 15px;
-    width: 100%;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-color-muted);
-    cursor: pointer;
-    margin-bottom: 5px;
-    transition: all 0.2s ease-in-out;
+.tmde-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background-color: var(--background-color);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
 }
 
-.modal-nav-button:hover {
-    background-color: var(--background-color-offset);
-    color: var(--text-color);
+.tmde-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px; /* Adds a small space between the TMDE name and its spec summary */
 }
 
-.modal-nav-button.active {
-    background-color: var(--primary-color-light);
-    color: var(--primary-color-dark);
+.tmde-info span {
+  font-size: 0.85rem;
+  color: var(--text-color-muted);
+}
+
+.reference-point-control {
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.toggle-switch-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle-option-label {
+  font-weight: 500;
+  color: var(--text-color);
+  cursor: pointer;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.uut-point-display {
+  font-weight: normal;
+  color: var(--text-color-muted);
+  margin-left: 8px;
+  font-size: 0.9rem;
+}
+
+.toggle-switch-checkbox {
+  display: none;
+}
+
+.toggle-switch-label {
+  display: block;
+  position: relative;
+  width: 50px;
+  height: 28px;
+  background-color: var(--border-color);
+  border-radius: 28px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  flex-shrink: 0;
+}
+
+.toggle-switch-switch {
+  display: block;
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: #fff;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s ease-in-out;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.toggle-switch-checkbox:checked + .toggle-switch-label {
+  background-color: var(--primary-color);
+}
+
+.toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-switch {
+  transform: translateX(22px);
+}
+
+.manual-input-container {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.manual-input-container.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  filter: grayscale(50%);
 }
 
 .modal-main-content {
@@ -651,6 +722,9 @@ select:focus {
 
 .tmde-header,
 .uut-header {
+  display: flex;          /* Add this */
+  flex-direction: column; /* Add this */
+  gap: 1.25rem;           /* Add this to control spacing (adjust value as needed) */
   padding-bottom: 1.5rem;
   margin-bottom: 1rem;
   border-bottom: 1px solid var(--border-color);
@@ -765,6 +839,108 @@ select:focus {
     color: var(--text-color);
 }
 
+.tmde-test-point-group {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.tmde-test-point-group:last-child {
+  border-bottom: none;
+}
+
+.tmde-group-header {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 1rem;
+}
+
+.tmde-seals-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.tmde-seal-clickable-container {
+  position: relative;
+}
+
+.remove-component-btn.on-seal {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 2;
+  background-color: var(--content-background);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tmde-seal-clickable {
+  width: 200px;
+  height: 200px;
+  border-radius: 20px;
+  border: 3px solid var(--seal-tmde-background-color);
+  background-color: var(--background-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-align: center;
+}
+
+.tmde-seal-clickable:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  border-color: var(--primary-color);
+}
+
+.tmde-seal-clickable .seal-title {
+  color: var(--text-color);
+  font-size: 1.1rem; /* Smaller font for smaller seal */
+  word-break: break-word;
+}
+
+/* Small Add TMDE Card */
+.add-tmde-card-small {
+  width: 200px;
+  height: 200px;
+  border-radius: 20px;
+  border: 2px dashed var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.add-tmde-card-small:hover {
+  border-color: var(--primary-color);
+  background-color: var(--primary-color-light);
+}
+
+.add-tmde-button-small {
+  background: none;
+  border: none;
+  color: var(--text-color-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.2s ease-in-out;
+}
+
+.add-tmde-card-small:hover .add-tmde-button-small {
+  color: var(--primary-color);
+}
+
+.add-tmde-button-small .fa-plus {
+  font-size: 1.2rem;
+}
+
 .info-icon-modal {
     position: absolute;
     top: 17px;
@@ -790,6 +966,66 @@ select:focus {
 
 .add-component-section select {
     width: 100%;
+}
+
+.add-component-wrapper {
+  position: relative;
+  margin-top: 15px;
+}
+
+.add-component-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  color: var(--text-color-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-component-button:hover {
+  border-color: var(--primary-color);
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+}
+
+.add-component-dropdown {
+  position: absolute;
+  bottom: 100%; 
+  left: 0;
+  margin-bottom: 8px; 
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  z-index: 1050; 
+  min-width: 200px;
+  animation: context-menu-fade-in 0.1s ease-out;
+}
+
+.add-component-dropdown ul {
+  list-style: none;
+  padding: 6px;
+  margin: 0;
+}
+
+.add-component-dropdown li {
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.add-component-dropdown li:hover {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
 }
 
 .breakdown-modal-content {

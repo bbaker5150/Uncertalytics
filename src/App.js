@@ -1579,8 +1579,14 @@ function Analysis({
   const [isAddComponentModalOpen, setAddComponentModalOpen] = useState(false);
   const [displayUnit, setDisplayUnit] = useState("ppm");
 
-  const uutToleranceData = useMemo(() => sessionData.uutTolerance || {}, [sessionData.uutTolerance]);
-  const tmdeTolerancesData = useMemo(() => testPointData.tmdeTolerances || [], [testPointData.tmdeTolerances]);
+  const uutToleranceData = useMemo(
+    () => sessionData.uutTolerance || {},
+    [sessionData.uutTolerance]
+  );
+  const tmdeTolerancesData = useMemo(
+    () => testPointData.tmdeTolerances || [],
+    [testPointData.tmdeTolerances]
+  );
 
   useEffect(() => {
     const {
@@ -2427,7 +2433,9 @@ function Analysis({
                 </div>
               </div>
             </div>
-            <h4 className="analyzed-components-title">Test Measurement Device Equipment</h4>
+            <h4 className="analyzed-components-title">
+              Test Measurement Device Equipment
+            </h4>
             <div className="analyzed-components-container">
               {tmdeTolerancesData.map((tmde, index) => {
                 const referencePoint = tmde.measurementPoint;
@@ -2878,7 +2886,21 @@ function App() {
           isOpen={isToleranceModalOpen}
           onClose={() => setIsToleranceModalOpen(false)}
           onSave={(data) => {
-            handleDataSave(data);
+            const { uutTolerance, ...testPointSpecificData } = data;
+
+            // Update session-level UUT tolerance if it exists
+            if (uutTolerance) {
+              setSessions((prev) =>
+                prev.map((session) =>
+                  session.id === selectedSessionId
+                    ? { ...session, uutTolerance: uutTolerance }
+                    : session
+                )
+              );
+            }
+
+            // Update test point-level data (e.g., tmdeTolerances)
+            handleDataSave(testPointSpecificData);
           }}
           testPointData={testPointData}
         />
@@ -2969,7 +2991,7 @@ function App() {
                 onClick={() => setIsAddModalOpen(true)}
                 title="Add New Measurement Point"
               >
-                +
+                <FontAwesomeIcon icon={faPlus} />
               </button>
             </div>
             <p className="sidebar-hint">
