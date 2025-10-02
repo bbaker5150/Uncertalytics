@@ -46,7 +46,7 @@
   --risk-pfa-good-color: #198754;
   --risk-pfa-warning-color: #ffc107;
   --risk-pfa-bad-color: #dc3545;
-  --seal-background-color: #0ea5e9;
+  --seal-background-color: #007bff;
   --seal-tmde-background-color: #6c757d;
 }
 
@@ -72,7 +72,7 @@ body.dark-mode {
   --risk-pfa-good-color: #28a745;
   --risk-pfa-warning-color: #ffc107;
   --risk-pfa-bad-color: #dc3545;
-  --seal-background-color: #38bdf8;
+  --seal-background-color: #007bff;
   --seal-tmde-background-color: #a0aec0;
 }
 

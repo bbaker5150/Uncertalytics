@@ -3049,7 +3049,7 @@ function App() {
                       <span className="measurement-point-content">
                         <span className="point-main">
                           {tp.testPointInfo.parameter.name}:{" "}
-                          {tp.testPointInfo.parameter.value}
+                          {tp.testPointInfo.parameter.value}{" "}
                           {tp.testPointInfo.parameter.unit}
                         </span>
                         {tp.testPointInfo.qualifier &&
