@@ -159,9 +159,23 @@ const ToleranceForm = ({
             <input type="number" step="any" data-component-key={key} data-field="low" value={componentData.low || ""} onChange={handleChange} disabled={componentData.symmetric} placeholder="- value" />
           </div>
         </div>
-        <div className="symmetric-toggle">
-          <input type="checkbox" id={`symmetric_${key}_${tolerance.id || 'new'}`} data-component-key={key} data-field="symmetric" checked={!!componentData.symmetric} onChange={handleChange} />
-          <label htmlFor={`symmetric_${key}_${tolerance.id || 'new'}`}>Symmetric</label>
+        <div className="toggle-switch-container" style={{ margin: '15px 0' }}>
+            <input 
+                type="checkbox" 
+                id={`symmetric_${key}_${tolerance.id || 'new'}`} 
+                data-component-key={key} 
+                data-field="symmetric" 
+                className="toggle-switch-checkbox"
+                checked={!!componentData.symmetric} 
+                onChange={handleChange} 
+            />
+            {/* THIS IS THE CORRECTED LINE */}
+            <label className="toggle-switch-label" htmlFor={`symmetric_${key}_${tolerance.id || 'new'}`}>
+                <span className="toggle-switch-switch" />
+            </label>
+            <label htmlFor={`symmetric_${key}_${tolerance.id || 'new'}`} className="toggle-option-label">
+                Symmetric Limits
+            </label>
         </div>
       </>
     );
@@ -265,7 +279,7 @@ const ToleranceForm = ({
                   title="Add new tolerance component"
               >
                   <FontAwesomeIcon icon={faPlus} />
-                  <span>Add Tolerance</span>
+                  <span>Add Component</span>
               </button>
           )}
 

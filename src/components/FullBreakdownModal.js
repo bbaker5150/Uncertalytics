@@ -53,7 +53,7 @@ const BreakdownItem = ({ comp, nominal }) => {
         {absoluteHalfSpan !== null && (
             <li>
                 <strong>PPM Conversion:</strong>
-                <Latex>{`$$ \\frac{${absoluteHalfSpan.toPrecision(4)} \\text{ ${nominal.unit}}}{${parseFloat(nominal.value)} \\text{ ${nominal.unit}}} \\times 1,000,000 = \\mathbf{${comp.ppm.toFixed(2)}} \\text{ ppm} $$`}</Latex>
+                <Latex>{`$$ \\frac{${absoluteHalfSpan.toPrecision(4)} \\text{ ${nominal.unit}}}{${Math.abs(parseFloat(nominal.value))} \\text{ ${nominal.unit}}} \\times 1,000,000 = \\mathbf{${comp.ppm.toFixed(2)}} \\text{ ppm} $$`}</Latex>
             </li>
         )}
         <li>
@@ -140,7 +140,7 @@ const BreakdownDetails = ({ title, toleranceObject, referencePoint }) => {
         <h4>{title}</h4>
         <div className="breakdown-step" style={{ border: "none", padding: "1rem", textAlign: "center" }}>
           <p style={{ fontStyle: "italic", color: "var(--text-color-muted)" }}>
-            No tolerance components have been defined.
+            No tolerance components have been defined for this item.
           </p>
         </div>
       </div>
@@ -190,41 +190,23 @@ const BreakdownDetails = ({ title, toleranceObject, referencePoint }) => {
   );
 };
 
-const FullBreakdownModal = ({ isOpen, testPoint, onClose }) => {
-    if (!isOpen || !testPoint) return null;
+
+const FullBreakdownModal = ({ isOpen, breakdownData, onClose }) => {
+    if (!isOpen || !breakdownData) return null;
 
     return (
         <div className="modal-overlay">
-            <div className="modal-content breakdown-modal-content" style={{ width: '90vw', maxWidth: '1200px' }}>
+            <div className="modal-content breakdown-modal-content" style={{ maxWidth: '800px' }}>
                 <button onClick={onClose} className="modal-close-button">&times;</button>
                 <h3>Tolerance Calculation Breakdown</h3>
                 
                 <div className="modal-body-scrollable">
-                    {testPoint.testPointInfo && testPoint.testPointInfo.parameter && (
-                      <div className="breakdown-step">
-                          <h5>Nominal Value</h5>
-                          <p>The primary reference value for the UUT: <strong>{testPoint.testPointInfo.parameter.value} {testPoint.testPointInfo.parameter.unit}</strong></p>
-                      </div>
-                    )}
-                    <div className="full-breakdown-container">
-                        {testPoint.testPointInfo && testPoint.testPointInfo.parameter && (
-                            <BreakdownDetails 
-                                title="UUT Breakdown"
-                                toleranceObject={testPoint.uutTolerance}
-                                referencePoint={testPoint.testPointInfo.parameter}
-                            />
-                        )}
-
-                        {(testPoint.tmdeTolerances || []).map((tmde, index) => (
-                            tmde.measurementPoint && tmde.measurementPoint.value && (
-                                <BreakdownDetails
-                                    key={tmde.id || index}
-                                    title={`${tmde.name || 'TMDE'} Breakdown`}
-                                    toleranceObject={tmde}
-                                    referencePoint={tmde.measurementPoint}
-                                />
-                            )
-                        ))}
+                    <div className="full-breakdown-container-single">
+                        <BreakdownDetails 
+                            title={breakdownData.title}
+                            toleranceObject={breakdownData.toleranceObject}
+                            referencePoint={breakdownData.referencePoint}
+                        />
                     </div>
                 </div>
             </div>

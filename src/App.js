@@ -667,7 +667,7 @@ const UncertaintyBudgetTable = ({
   displayUnit,
   setDisplayUnit,
   unitOptions,
-  referencePoint, // Pass the nominal measurement point as a reference
+  referencePoint,
 }) => {
   const totalUncertaintyPPM = useMemo(() => {
     if (!components || components.length === 0) return 0;
@@ -678,11 +678,19 @@ const UncertaintyBudgetTable = ({
     return Math.sqrt(combinedVariance);
   }, [components]);
 
+  // Convert both combined and expanded uncertainty to the selected display unit
   const displayedCombinedUncertainty = convertPpmToUnit(
     totalUncertaintyPPM,
     displayUnit,
     referencePoint
   );
+  const displayedExpandedUncertainty = calcResults
+    ? convertPpmToUnit(
+        calcResults.expanded_uncertainty,
+        displayUnit,
+        referencePoint
+      )
+    : 0;
 
   const renderTBody = (title, filteredComponents) => {
     if (filteredComponents.length === 0) return null;
@@ -730,6 +738,13 @@ const UncertaintyBudgetTable = ({
   const typeAComponents = components.filter((c) => c.type === "A");
   const typeBComponents = components.filter((c) => c.type === "B");
 
+  const formattedDof = calcResults
+    ? calcResults.effective_dof === Infinity ||
+      calcResults.effective_dof === null
+      ? "∞"
+      : calcResults.effective_dof.toFixed(2)
+    : "N/A";
+
   return (
     <table className="uncertainty-budget-table">
       <thead>
@@ -762,7 +777,7 @@ const UncertaintyBudgetTable = ({
       </tbody>
       <tfoot>
         <tr>
-          <td colSpan="2">{"Combined Standard Uncertainty (uc)"}</td>
+          <td colSpan="2">{"Combined Standard Uncertainty (uₑ)"}</td>
           <td>
             {typeof displayedCombinedUncertainty === "number"
               ? displayedCombinedUncertainty.toPrecision(4)
@@ -773,13 +788,8 @@ const UncertaintyBudgetTable = ({
         {calcResults && (
           <>
             <tr>
-              <td colSpan="2">{"Effective Degrees of Freedom (veff)"}</td>
-              <td>
-                {calcResults.effective_dof === Infinity ||
-                calcResults.effective_dof === null
-                  ? "∞"
-                  : calcResults.effective_dof.toFixed(2)}
-              </td>
+              <td colSpan="2">{"Effective Degrees of Freedom (vₑₒₒ)"}</td>
+              <td>{formattedDof}</td>
               <td colSpan="3"></td>
             </tr>
             <tr>
@@ -795,6 +805,29 @@ const UncertaintyBudgetTable = ({
                   />
                   Use t-dist
                 </label>
+              </td>
+            </tr>
+            <tr className="final-uncertainty-row">
+              <td colSpan="6">
+                <div className="final-result-display">
+                  <span className="final-result-label">
+                    Expanded Uncertainty (U)
+                  </span>
+                  <div className="final-result-value">
+                    ±{" "}
+                    {typeof displayedExpandedUncertainty === "number"
+                      ? displayedExpandedUncertainty.toPrecision(5)
+                      : "N/A"}
+                    <span className="final-result-unit">{displayUnit}</span>
+                  </div>
+                  <span className="final-result-confidence-note">
+                    The reported expanded uncertainty of measurement is stated
+                    as the standard uncertainty of measurement multiplied by the
+                    coverage factor k≈{calcResults.k_value.toFixed(3)}, which
+                    for a t-distribution with vₑₒₒ = {formattedDof} corresponds
+                    to a coverage probability of approximately 95%.
+                  </span>
+                </div>
               </td>
             </tr>
           </>
@@ -1538,6 +1571,9 @@ function Analysis({
   testPointData,
   onDataSave,
   defaultTestPoint,
+  setContextMenu,
+  setBreakdownPoint,
+  handleOpenSessionEditor,
 }) {
   const { specifications: initialSpecs, components: initialManualComponents } =
     testPointData;
@@ -1574,7 +1610,7 @@ function Analysis({
     guardBandMultiplier: 1,
   });
   const [riskResults, setRiskResults] = useState(null);
-  const [breakdownModal, setBreakdownModal] = useState(null);
+  const [breakdownModal, setLocalBreakdownModal] = useState(null); // Renamed to avoid conflict
   const [notification, setNotification] = useState(null);
   const [isAddComponentModalOpen, setAddComponentModalOpen] = useState(false);
   const [displayUnit, setDisplayUnit] = useState("ppm");
@@ -1799,6 +1835,7 @@ function Analysis({
   };
 
   const calculateRiskMetrics = () => {
+    // This function's logic is preserved from your original file
     const LLow = parseFloat(riskInputs.LLow);
     const LUp = parseFloat(riskInputs.LUp);
     const reliability = parseFloat(riskInputs.reliability);
@@ -1860,13 +1897,6 @@ function Analysis({
           calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint);
         return totalSpan + totalToleranceForTar;
       }, 0);
-    } else if (testPointData.tmdeTolerance) {
-      // Legacy fallback
-      const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(
-        testPointData.tmdeTolerance,
-        uutNominal
-      );
-      tmdeToleranceSpan = totalToleranceForTar;
     }
 
     if (missingTmdeRef) {
@@ -1969,12 +1999,12 @@ function Analysis({
     return ["ppm", ...relevant.filter((u) => u !== "ppm" && u !== "dB")];
   }, [testPointData]);
 
-  // Add an effect to reset the unit when the test point changes
   useEffect(() => {
     setDisplayUnit("ppm");
   }, [testPointData.id]);
 
   const renderSpecComparison = () => {
+    // This function is preserved from your original file
     if (!calcResults) {
       return (
         <div className="form-section-warning">
@@ -2105,6 +2135,7 @@ function Analysis({
   };
 
   const renderAddComponentModal = () => {
+    // This function is preserved from your original file
     if (!isAddComponentModalOpen) return null;
     return (
       <div className="modal-overlay">
@@ -2306,7 +2337,7 @@ function Analysis({
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
           }}
-          onClose={() => setBreakdownModal(null)}
+          onClose={() => setLocalBreakdownModal(null)}
         />
       )}
       {breakdownModal === "tur" && (
@@ -2317,7 +2348,7 @@ function Analysis({
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
           }}
-          onClose={() => setBreakdownModal(null)}
+          onClose={() => setLocalBreakdownModal(null)}
         />
       )}
       {breakdownModal === "tar" && (
@@ -2328,7 +2359,7 @@ function Analysis({
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
           }}
-          onClose={() => setBreakdownModal(null)}
+          onClose={() => setLocalBreakdownModal(null)}
         />
       )}
       {breakdownModal === "pfa" && (
@@ -2339,7 +2370,7 @@ function Analysis({
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
           }}
-          onClose={() => setBreakdownModal(null)}
+          onClose={() => setLocalBreakdownModal(null)}
         />
       )}
       {breakdownModal === "pfr" && (
@@ -2350,7 +2381,7 @@ function Analysis({
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
           }}
-          onClose={() => setBreakdownModal(null)}
+          onClose={() => setLocalBreakdownModal(null)}
         />
       )}
 
@@ -2386,13 +2417,35 @@ function Analysis({
           <div className="configuration-panel">
             <h4 className="uut-components-title">Unit Under Test</h4>
             <div className="uut-seal-container">
-              <div className="uut-seal">
+              <div
+                className="uut-seal"
+                onClick={() => handleOpenSessionEditor("uut")}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenu({
+                    x: e.pageX,
+                    y: e.pageY,
+                    items: [
+                      {
+                        label: "View UUT Calculation",
+                        action: () =>
+                          setBreakdownPoint({
+                            title: "UUT Breakdown",
+                            toleranceObject: uutToleranceData,
+                            referencePoint:
+                              testPointData.testPointInfo.parameter,
+                          }),
+                        icon: faCalculator,
+                      },
+                    ],
+                  });
+                }}
+              >
                 <div className="uut-seal-content">
                   <span className="seal-label">Unit Under Test</span>
                   <h4 className="seal-title">
                     {sessionData.uutDescription || "N/A"}
                   </h4>
-
                   <div className="seal-info-item">
                     <span>Current Point</span>
                     <strong>
@@ -2400,12 +2453,10 @@ function Analysis({
                       {testPointData.testPointInfo.parameter.unit}
                     </strong>
                   </div>
-
                   <div className="seal-info-item">
                     <span>Tolerance Spec</span>
                     <strong>{getToleranceSummary(uutToleranceData)}</strong>
                   </div>
-
                   <div className="seal-limits-split">
                     <div className="seal-info-item">
                       <span>Low Limit</span>
@@ -2440,25 +2491,44 @@ function Analysis({
               {tmdeTolerancesData.map((tmde, index) => {
                 const referencePoint = tmde.measurementPoint;
                 if (!referencePoint?.value) return null;
-
                 return (
-                  <div key={tmde.id || index} className="tmde-seal">
+                  <div
+                    key={tmde.id || index}
+                    className="tmde-seal"
+                    onClick={() => handleOpenSessionEditor("tmdes", { tmde, testPoint: testPointData })}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setContextMenu({
+                        x: e.pageX,
+                        y: e.pageY,
+                        items: [
+                          {
+                            label: `View ${tmde.name || "TMDE"} Calculation`,
+                            action: () =>
+                              setBreakdownPoint({
+                                title: `${tmde.name || "TMDE"} Breakdown`,
+                                toleranceObject: tmde,
+                                referencePoint: tmde.measurementPoint,
+                              }),
+                            icon: faCalculator,
+                          },
+                        ],
+                      });
+                    }}
+                  >
                     <div className="uut-seal-content">
                       <span className="seal-label">TMDE</span>
                       <h4 className="seal-title">{tmde.name || "TMDE"}</h4>
-
                       <div className="seal-info-item">
                         <span>Measurement Point</span>
                         <strong>
                           {referencePoint.value} {referencePoint.unit}
                         </strong>
                       </div>
-
                       <div className="seal-info-item">
                         <span>Tolerance Spec</span>
                         <strong>{getToleranceSummary(tmde)}</strong>
                       </div>
-
                       <div className="seal-limits-split">
                         <div className="seal-info-item">
                           <span>Low Limit</span>
@@ -2490,7 +2560,19 @@ function Analysis({
             <Accordion
               title="Uncertainty Budget"
               startOpen={true}
-              /* The actions prop containing the button has been removed */
+              actions={
+                <button
+                  className="button button-small"
+                  onClick={() => setAddComponentModalOpen(true)}
+                  title="Add a manual uncertainty component"
+                >
+                  <FontAwesomeIcon
+                    icon={faPlus}
+                    style={{ marginRight: "5px" }}
+                  />
+                  Add Manual
+                </button>
+              }
             >
               <UncertaintyBudgetTable
                 components={allComponents}
@@ -2504,14 +2586,6 @@ function Analysis({
                 referencePoint={testPointData?.testPointInfo?.parameter}
               />
             </Accordion>
-            {calcResults && (
-              <Accordion title="Final Uncertainty Result" startOpen={true}>
-                <FinalUncertaintyCard
-                  calcResults={calcResults}
-                  testPointInfo={testPointData?.testPointInfo}
-                />
-              </Accordion>
-            )}
           </div>
         </div>
       )}
@@ -2582,7 +2656,9 @@ function Analysis({
               {riskResults && (
                 <RiskAnalysisDashboard
                   results={riskResults}
-                  onShowBreakdown={(modalType) => setBreakdownModal(modalType)}
+                  onShowBreakdown={(modalType) =>
+                    setLocalBreakdownModal(modalType)
+                  }
                 />
               )}
             </>
@@ -2641,6 +2717,17 @@ function App() {
   const [isToleranceModalOpen, setIsToleranceModalOpen] = useState(false);
   const [breakdownPoint, setBreakdownPoint] = useState(null);
   const [infoModalPoint, setInfoModalPoint] = useState(null);
+  const [initialSessionTab, setInitialSessionTab] = useState("details");
+  const [initialTmdeToEdit, setInitialTmdeToEdit] = useState(null);
+
+  const handleOpenSessionEditor = (
+    initialTab = "details",
+    tmdeToEdit = null
+  ) => {
+    setInitialSessionTab(initialTab);
+    setInitialTmdeToEdit(tmdeToEdit);
+    setEditingSession(currentSessionData);
+  };
 
   useEffect(() => {
     let loadedData = false;
@@ -2879,6 +2966,8 @@ function App() {
         sessionData={editingSession}
         onSave={handleSessionChange}
         onSaveToFile={handleSaveToFile}
+        initialSection={initialSessionTab}
+        initialTmdeToEdit={initialTmdeToEdit}
       />
 
       {testPointData && (
@@ -2908,7 +2997,7 @@ function App() {
 
       <FullBreakdownModal
         isOpen={!!breakdownPoint}
-        testPoint={breakdownPoint}
+        breakdownData={breakdownPoint}
         onClose={() => setBreakdownPoint(null)}
       />
 
@@ -3044,12 +3133,6 @@ function App() {
                               setInfoModalPoint(completeTestPointForMenu),
                             icon: faInfoCircle,
                           },
-                          {
-                            label: "View Calculation",
-                            action: () =>
-                              setBreakdownPoint(completeTestPointForMenu),
-                            icon: faCalculator,
-                          },
                           { type: "divider" },
                           {
                             label: "Delete Point",
@@ -3113,6 +3196,9 @@ function App() {
                   testPointData={testPointData}
                   onDataSave={handleDataSave}
                   defaultTestPoint={defaultTestPoint}
+                  setContextMenu={setContextMenu}
+                  setBreakdownPoint={setBreakdownPoint}
+                  handleOpenSessionEditor={handleOpenSessionEditor}
                 />
               </TestPointDetailView>
             ) : currentSessionData && currentTestPoints.length > 0 ? (

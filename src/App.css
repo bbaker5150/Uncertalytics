@@ -491,7 +491,7 @@ select:focus {
 .modal-close-button {
   position: absolute;
   top: 15px;
-  right: 15px;
+  right: 25px;
   background: transparent;
   border: none;
   font-size: 1.7rem;
@@ -761,6 +761,10 @@ select:focus {
     box-sizing: border-box;
     transition: background-color 0.3s, border-color 0.3s;
     animation: seal-glow 3s ease-in-out infinite alternate;
+}
+
+.uut-seal, .tmde-seal {
+  cursor: pointer;
 }
 
 .uut-seal-content {
@@ -1975,6 +1979,53 @@ select:focus {
   flex-grow: 1;
 }
 
+/* === Styles for Final Uncertainty in Budget Table Footer === */
+
+.final-uncertainty-row td {
+  padding: 0 !important;
+  border-bottom: none !important;
+}
+
+.final-result-display {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  background-color: var(--background-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.final-result-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color-muted);
+}
+
+.final-result-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1.2;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.final-result-unit {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--text-color-muted);
+}
+
+.final-result-confidence-note {
+  font-size: 0.85rem;
+  color: var(--text-color-muted);
+  max-width: 600px;
+  line-height: 1.5;
+  margin-top: 0.5rem;
+}
+
 .tur-card .risk-value {
   color: var(--primary-color);
 }
@@ -2327,6 +2378,10 @@ body.dark-mode .component-info-value {
     background-color: #2D3748;
 }
 
+body.dark-mode .final-result-display {
+  background-color: #1A202C; /* A dark background */
+}
+
 /* =================================================================== */
 /* 10. MEDIA QUERIES                                                   */
 /* =================================================================== */
@@ -2506,9 +2561,13 @@ body.dark-mode .component-info-value {
 /* FullBreakdownModal */
 .full-breakdown-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr; /* Changed from 1fr 1fr */
   gap: 2rem;
   margin-top: 1rem;
+}
+
+.full-breakdown-container-single {
+  display: block; /* A simple container for the single view */
 }
 
 .full-breakdown-column h4 {

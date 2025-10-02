@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AddTmdeModal from './AddTmdeModal';
 import ToleranceForm from './ToleranceForm';
-import ContextMenu from './ContextMenu'; // Import ContextMenu
+import ContextMenu from './ContextMenu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faTimes, faSave, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 
@@ -27,18 +27,28 @@ const AddTmdeSeal = ({ onClick }) => (
 );
 
 
-const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile }) => {
+const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, initialSection, initialTmdeToEdit }) => {
     const [formData, setFormData] = useState({});
     const [activeSection, setActiveSection] = useState('details');
     const [editingTmde, setEditingTmde] = useState(null);
     const [contextMenu, setContextMenu] = useState(null); // State for context menu
 
+    const handleEditTmdeClick = (tmde, testPoint) => {
+        setEditingTmde({ tmde, testPoint });
+    };
+    
     useEffect(() => {
-        if (isOpen && sessionData) {
-            setFormData({ ...sessionData });
-            setActiveSection('details');
+    if (isOpen && sessionData) {
+        setFormData({ ...sessionData });
+        setActiveSection(initialSection || 'details');
+
+        if (initialTmdeToEdit) {
+            setTimeout(() => {
+                handleEditTmdeClick(initialTmdeToEdit.tmde, initialTmdeToEdit.testPoint);
+            }, 100);
         }
-    }, [isOpen, sessionData]);
+    }
+}, [isOpen, sessionData, initialSection, initialTmdeToEdit]);
 
     if (!isOpen) return null;
 
@@ -66,10 +76,6 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile }
 
     const handleSave = () => {
         onSave(formData);
-    };
-
-    const handleEditTmdeClick = (tmde, testPoint) => {
-        setEditingTmde({ tmde, testPoint });
     };
     
     const handleAddTmdeClick = (testPoint) => {
@@ -192,7 +198,6 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile }
                             {formData.testPoints && formData.testPoints.length > 0 ? (
                                 formData.testPoints.map(tp => (
                                     <div className="tmde-test-point-group" key={tp.id}>
-                                        {/* Measurement point header has been removed per your request */}
                                         <div className="tmde-seals-grid">
                                             {(tp.tmdeTolerances || []).map(tmde => (
                                                 <TmdeSealDisplay
@@ -201,7 +206,7 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile }
                                                     onEditClick={() => handleEditTmdeClick(tmde, tp)}
                                                     onContextMenu={(e) => {
                                                         e.preventDefault();
-                                                        setContextMenu(null); // Close any existing menu first
+                                                        setContextMenu(null);
                                                         setContextMenu({
                                                             x: e.pageX,
                                                             y: e.pageY,
