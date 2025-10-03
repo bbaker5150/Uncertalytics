@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import AddTmdeModal from './AddTmdeModal';
 import ToleranceForm from './ToleranceForm';
 import ContextMenu from './ContextMenu';
@@ -36,16 +36,19 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
         setEditingTmde({ tmde, testPoint });
     };
     
-    useEffect(() => {
-        if (isOpen && sessionData) {
-            setFormData({ ...sessionData });
-            setActiveSection(initialSection || 'details');
+    useLayoutEffect(() => {
+    if (isOpen && sessionData) {
+        setFormData({ ...sessionData });
+        setActiveSection(initialSection || 'details');
 
-            if (initialTmdeToEdit) {
-                handleEditTmdeClick(initialTmdeToEdit.tmde, initialTmdeToEdit.testPoint);
-            }
+        if (initialTmdeToEdit) {
+            handleEditTmdeClick(initialTmdeToEdit.tmde, initialTmdeToEdit.testPoint);
+        } else {
+            // Explicitly clear the nested modal state when not needed
+            setEditingTmde(null);
         }
-    }, [isOpen, sessionData, initialSection, initialTmdeToEdit]);
+    }
+}, [isOpen, sessionData, initialSection, initialTmdeToEdit]);
 
     if (!isOpen) return null;
 

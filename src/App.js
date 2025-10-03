@@ -1671,7 +1671,9 @@ function Analysis({
   const [breakdownModal, setLocalBreakdownModal] = useState(null);
   const [notification, setNotification] = useState(null);
   const [isAddComponentModalOpen, setAddComponentModalOpen] = useState(false);
-  const [displayUnit, setDisplayUnit] = useState(testPointData?.testPointInfo?.parameter?.unit || "ppm");
+  const [displayUnit, setDisplayUnit] = useState(
+    testPointData?.testPointInfo?.parameter?.unit || "ppm"
+  );
 
   const uutToleranceData = useMemo(
     () => sessionData.uutTolerance || {},
@@ -2071,7 +2073,7 @@ function Analysis({
   useEffect(() => {
     const newUnit = testPointData?.testPointInfo?.parameter?.unit || "ppm";
     setDisplayUnit(newUnit);
-}, [testPointData.id, testPointData?.testPointInfo?.parameter?.unit]);
+  }, [testPointData.id, testPointData?.testPointInfo?.parameter?.unit]);
 
   const renderSpecComparison = () => {
     // This function is preserved from your original file
@@ -3077,7 +3079,11 @@ function App() {
 
       <EditSessionModal
         isOpen={!!editingSession}
-        onClose={() => setEditingSession(null)}
+        onClose={() => {
+          setEditingSession(null);
+          setInitialTmdeToEdit(null);
+          setInitialSessionTab('details');
+        }}
         sessionData={editingSession}
         onSave={handleSessionChange}
         onSaveToFile={handleSaveToFile}

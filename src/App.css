@@ -298,6 +298,7 @@ select:focus {
 }
 
 .session-list-item:hover,
+
 .measurement-point-item:hover {
   background-color: var(--background-color);
 }
