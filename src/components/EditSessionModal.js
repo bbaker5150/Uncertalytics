@@ -31,7 +31,8 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
     const [formData, setFormData] = useState({});
     const [activeSection, setActiveSection] = useState('details');
     const [editingTmde, setEditingTmde] = useState(null);
-    const [contextMenu, setContextMenu] = useState(null); // State for context menu
+    const [contextMenu, setContextMenu] = useState(null);
+    // const isLaunchingTmdeEditor = !!initialTmdeToEdit;
 
     const handleEditTmdeClick = (tmde, testPoint) => {
         setEditingTmde({ tmde, testPoint });
@@ -43,9 +44,7 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
         setActiveSection(initialSection || 'details');
 
         if (initialTmdeToEdit) {
-            setTimeout(() => {
-                handleEditTmdeClick(initialTmdeToEdit.tmde, initialTmdeToEdit.testPoint);
-            }, 100);
+            handleEditTmdeClick(initialTmdeToEdit.tmde, initialTmdeToEdit.testPoint);
         }
     }
 }, [isOpen, sessionData, initialSection, initialTmdeToEdit]);
@@ -124,13 +123,19 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
             {editingTmde && (
                 <AddTmdeModal 
                     isOpen={!!editingTmde}
-                    onClose={() => setEditingTmde(null)}
+                    onClose={() => {
+                        setEditingTmde(null); 
+                        if (initialTmdeToEdit) {
+                            onClose();
+                        }
+                    }}
                     onSave={handleSaveTmde}
                     testPointData={editingTmde.testPoint}
                     initialTmdeData={editingTmde.tmde}
+                    hasParentOverlay={true}
                 />
             )}
-            <div className="modal-content edit-session-modal">
+            <div className={`modal-content edit-session-modal ${editingTmde ? 'modal-content-hidden' : ''}`}>
                 <button onClick={onClose} className="modal-close-button">&times;</button>
                 
                 <div className="modal-main-content">

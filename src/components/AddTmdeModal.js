@@ -4,7 +4,7 @@ import { unitSystem } from "../App";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
 
-const AddTmdeModal = ({ isOpen, onClose, onSave, testPointData, initialTmdeData = null }) => {
+const AddTmdeModal = ({ isOpen, onClose, onSave, testPointData, initialTmdeData = null, hasParentOverlay = false }) => {
     const uutMeasurementPoint = testPointData.testPointInfo.parameter;
 
     const getInitialState = useCallback(() => {
@@ -69,71 +69,81 @@ const AddTmdeModal = ({ isOpen, onClose, onSave, testPointData, initialTmdeData 
 
     if (!isOpen) return null;
 
-    return (
-        <div className="modal-overlay">
-            <div className="modal-content" style={{ maxWidth: "600px" }}>
-                <button onClick={onClose} className="modal-close-button">&times;</button>
-                <h3>{initialTmdeData ? 'Edit TMDE' : 'Add New TMDE'}</h3>
+    // Define the modal's content as a reusable variable
+    const modalContent = (
+        <div className="modal-content" style={{ maxWidth: "600px" }}>
+            <button onClick={onClose} className="modal-close-button">&times;</button>
+            <h3>{initialTmdeData ? 'Edit TMDE' : 'Add New TMDE'}</h3>
 
-                <div className="modal-body-scrollable">
-                    <div className="tmde-header">
-                        <div className="form-section">
-                            <label>TMDE Name</label>
-                            <input type="text" value={tmde.name} onChange={(e) => setTmde({...tmde, name: e.target.value})} placeholder="e.g., Standard DMM" />
-                        </div>
-                        <div className="form-section">
-                            <label>Reference Measurement Point</label>
-                            <div className="reference-point-control">
-                                <div className="toggle-switch-container">
+            <div className="modal-body-scrollable">
+                <div className="tmde-header">
+                    <div className="form-section">
+                        <label>TMDE Name</label>
+                        <input type="text" value={tmde.name} onChange={(e) => setTmde({...tmde, name: e.target.value})} placeholder="e.g., Standard DMM" />
+                    </div>
+                    <div className="form-section">
+                        <label>Reference Measurement Point</label>
+                        <div className="reference-point-control">
+                            <div className="toggle-switch-container">
+                                <input 
+                                    type="checkbox" 
+                                    id="useUutRef" 
+                                    className="toggle-switch-checkbox"
+                                    checked={useUutRef} 
+                                    onChange={(e) => setUseUutRef(e.target.checked)} 
+                                />
+                                <label className="toggle-switch-label" htmlFor="useUutRef">
+                                    <span className="toggle-switch-switch" />
+                                </label>
+                                <label htmlFor="useUutRef" className="toggle-option-label">
+                                    Use UUT Measurement Point
+                                    <span className="uut-point-display">({uutMeasurementPoint.value} {uutMeasurementPoint.unit})</span>
+                                </label>
+                            </div>
+                            <div className={`manual-input-container ${useUutRef ? 'disabled' : ''}`}>
+                                <div className="input-with-unit">
                                     <input 
-                                        type="checkbox" 
-                                        id="useUutRef" 
-                                        className="toggle-switch-checkbox"
-                                        checked={useUutRef} 
-                                        onChange={(e) => setUseUutRef(e.target.checked)} 
+                                        type="text" 
+                                        placeholder="Value" 
+                                        disabled={useUutRef} 
+                                        value={tmde.measurementPoint?.value || ""} 
+                                        onChange={(e) => setTmde({...tmde, measurementPoint: {...tmde.measurementPoint, value: e.target.value}})} 
                                     />
-                                    <label className="toggle-switch-label" htmlFor="useUutRef">
-                                        <span className="toggle-switch-switch" />
-                                    </label>
-                                    <label htmlFor="useUutRef" className="toggle-option-label">
-                                        Use UUT Measurement Point
-                                        <span className="uut-point-display">({uutMeasurementPoint.value} {uutMeasurementPoint.unit})</span>
-                                    </label>
-                                </div>
-                                <div className={`manual-input-container ${useUutRef ? 'disabled' : ''}`}>
-                                    <div className="input-with-unit">
-                                        <input 
-                                            type="text" 
-                                            placeholder="Value" 
-                                            disabled={useUutRef} 
-                                            value={tmde.measurementPoint?.value || ""} 
-                                            onChange={(e) => setTmde({...tmde, measurementPoint: {...tmde.measurementPoint, value: e.target.value}})} 
-                                        />
-                                        <select 
-                                            disabled={useUutRef} 
-                                            value={tmde.measurementPoint?.unit || ""} 
-                                            onChange={(e) => setTmde({...tmde, measurementPoint: {...tmde.measurementPoint, unit: e.target.value}})}
-                                        >
-                                            <option value="">-- Unit --</option>
-                                            {allUnits.map((u) => (<option key={u} value={u}>{u}</option>))}
-                                        </select>
-                                    </div>
+                                    <select 
+                                        disabled={useUutRef} 
+                                        value={tmde.measurementPoint?.unit || ""} 
+                                        onChange={(e) => setTmde({...tmde, measurementPoint: {...tmde.measurementPoint, unit: e.target.value}})}
+                                    >
+                                        <option value="">-- Unit --</option>
+                                        {allUnits.map((u) => (<option key={u} value={u}>{u}</option>))}
+                                    </select>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <ToleranceForm tolerance={tmde} setTolerance={setTmde} isUUT={false} referencePoint={tmde.measurementPoint} />
                 </div>
-                
-                <div className="modal-actions">
-                    <button className="modal-icon-button secondary" onClick={onClose} title="Cancel">
-                        <FontAwesomeIcon icon={faTimes} />
-                    </button>
-                    <button className="modal-icon-button primary" onClick={handleSave} title="Save TMDE">
-                        <FontAwesomeIcon icon={faCheck} />
-                    </button>
-                </div>
+                <ToleranceForm tolerance={tmde} setTolerance={setTmde} isUUT={false} referencePoint={tmde.measurementPoint} />
             </div>
+            
+            <div className="modal-actions">
+                <button className="modal-icon-button secondary" onClick={onClose} title="Cancel">
+                    <FontAwesomeIcon icon={faTimes} />
+                </button>
+                <button className="modal-icon-button primary" onClick={handleSave} title="Save TMDE">
+                    <FontAwesomeIcon icon={faCheck} />
+                </button>
+            </div>
+        </div>
+    );
+
+    // If it has a parent overlay, just return the content. Otherwise, wrap it.
+    if (hasParentOverlay) {
+        return modalContent;
+    }
+
+    return (
+        <div className="modal-overlay">
+            {modalContent}
         </div>
     );
 };
