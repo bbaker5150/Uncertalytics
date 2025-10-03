@@ -186,6 +186,59 @@ export const getToleranceSummary = (toleranceData) => {
   return parts.filter((p) => p).join(" + ") || "Not Set";
 };
 
+export const getToleranceErrorSummary = (toleranceObject, referencePoint) => {
+  if (
+    !toleranceObject ||
+    Object.keys(toleranceObject).length <= 1 ||
+    !referencePoint ||
+    !referencePoint.value
+  ) {
+    return "Not Set";
+  }
+
+  const { breakdown } = calculateUncertaintyFromToleranceObject(
+    toleranceObject,
+    referencePoint
+  );
+
+  const nominalValue = parseFloat(referencePoint.value);
+  const nominalUnit = referencePoint.unit;
+
+  if (breakdown.length === 0) {
+    return "Not Calculated";
+  }
+
+  // Filter out components like "Resolution" that don't contribute to tolerance limits
+  const specComponents = breakdown.filter(
+    (comp) => comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
+  );
+
+  if (specComponents.length === 0) {
+    return "N/A";
+  }
+
+  // Sum the high and low deviations from the nominal value
+  const totalHighDeviation = specComponents.reduce((sum, comp) => {
+    return sum + (comp.absoluteHigh - nominalValue);
+  }, 0);
+
+  const totalLowDeviation = specComponents.reduce((sum, comp) => {
+    return sum + (comp.absoluteLow - nominalValue);
+  }, 0);
+
+  // Check for symmetry using a small epsilon for floating-point comparison
+  if (
+    Math.abs(totalHighDeviation + totalLowDeviation) < 1e-9 &&
+    totalHighDeviation > 0
+  ) {
+    return `±${totalHighDeviation.toPrecision(3)} ${nominalUnit}`;
+  }
+
+  return `+${totalHighDeviation.toPrecision(
+    3
+  )} / ${totalLowDeviation.toPrecision(3)} ${nominalUnit}`;
+};
+
 export const getAbsoluteLimits = (toleranceObject, referencePoint) => {
   if (!toleranceObject || !referencePoint || !referencePoint.value) {
     return { high: "N/A", low: "N/A" };
@@ -668,6 +721,7 @@ const UncertaintyBudgetTable = ({
   setDisplayUnit,
   unitOptions,
   referencePoint,
+  uncertaintyConfidence,
 }) => {
   const totalUncertaintyPPM = useMemo(() => {
     if (!components || components.length === 0) return 0;
@@ -677,6 +731,8 @@ const UncertaintyBudgetTable = ({
     }, 0);
     return Math.sqrt(combinedVariance);
   }, [components]);
+
+  const confidencePercent = parseFloat(uncertaintyConfidence) || 95;
 
   // Convert both combined and expanded uncertainty to the selected display unit
   const displayedCombinedUncertainty = convertPpmToUnit(
@@ -795,7 +851,7 @@ const UncertaintyBudgetTable = ({
             <tr>
               <td colSpan="2">{"Coverage Factor (k)"}</td>
               <td>{calcResults.k_value.toFixed(3)}</td>
-              <td colSpan="3" className="k-factor-cell">
+              {/* <td colSpan="3" className="k-factor-cell">
                 <label htmlFor="use-t-dist" className="k-factor-label">
                   <input
                     type="checkbox"
@@ -805,7 +861,7 @@ const UncertaintyBudgetTable = ({
                   />
                   Use t-dist
                 </label>
-              </td>
+              </td> */}
             </tr>
             <tr className="final-uncertainty-row">
               <td colSpan="6">
@@ -823,9 +879,11 @@ const UncertaintyBudgetTable = ({
                   <span className="final-result-confidence-note">
                     The reported expanded uncertainty of measurement is stated
                     as the standard uncertainty of measurement multiplied by the
-                    coverage factor k≈{calcResults.k_value.toFixed(3)}, which
+                    coverage factor{" "}
+                    <strong>k≈{calcResults.k_value.toFixed(3)}</strong>, which
                     for a t-distribution with vₑₒₒ = {formattedDof} corresponds
-                    to a coverage probability of approximately 95%.
+                    to a coverage probability of approximately{" "}
+                    <strong>{confidencePercent}%</strong>.
                   </span>
                 </div>
               </td>
@@ -1610,10 +1668,10 @@ function Analysis({
     guardBandMultiplier: 1,
   });
   const [riskResults, setRiskResults] = useState(null);
-  const [breakdownModal, setLocalBreakdownModal] = useState(null); // Renamed to avoid conflict
+  const [breakdownModal, setLocalBreakdownModal] = useState(null);
   const [notification, setNotification] = useState(null);
   const [isAddComponentModalOpen, setAddComponentModalOpen] = useState(false);
-  const [displayUnit, setDisplayUnit] = useState("ppm");
+  const [displayUnit, setDisplayUnit] = useState(testPointData?.testPointInfo?.parameter?.unit || "ppm");
 
   const uutToleranceData = useMemo(
     () => sessionData.uutTolerance || {},
@@ -1713,9 +1771,14 @@ function Analysis({
       0
     );
     const effectiveDof = denominator > 0 ? numerator / denominator : Infinity;
+    const confidencePercent =
+      parseFloat(sessionData.uncertaintyConfidence) || 95;
+    const probability = 1 - (1 - confidencePercent / 100) / 2;
+
     const kValue = useTDistribution
       ? getKValueFromTDistribution(effectiveDof)
-      : 2;
+      : probit(probability);
+
     const expandedUncertainty = kValue * combinedUncertainty;
 
     const newResults = {
@@ -1727,7 +1790,13 @@ function Analysis({
     };
     setCalcResults(newResults);
     onDataSave({ ...newResults, components: manualComponents });
-  }, [allComponents, useTDistribution, onDataSave, manualComponents]);
+  }, [
+    allComponents,
+    useTDistribution,
+    onDataSave,
+    manualComponents,
+    sessionData.uncertaintyConfidence,
+  ]);
 
   const handleSaveTmde = (newTmde) => {
     const updatedTolerances = [...tmdeTolerancesData, newTmde];
@@ -2000,8 +2069,9 @@ function Analysis({
   }, [testPointData]);
 
   useEffect(() => {
-    setDisplayUnit("ppm");
-  }, [testPointData.id]);
+    const newUnit = testPointData?.testPointInfo?.parameter?.unit || "ppm";
+    setDisplayUnit(newUnit);
+}, [testPointData.id, testPointData?.testPointInfo?.parameter?.unit]);
 
   const renderSpecComparison = () => {
     // This function is preserved from your original file
@@ -2457,6 +2527,15 @@ function Analysis({
                     <span>Tolerance Spec</span>
                     <strong>{getToleranceSummary(uutToleranceData)}</strong>
                   </div>
+                  <div className="seal-info-item">
+                    <span>Calculated Error</span>
+                    <strong>
+                      {getToleranceErrorSummary(
+                        uutToleranceData,
+                        testPointData.testPointInfo.parameter
+                      )}
+                    </strong>
+                  </div>
                   <div className="seal-limits-split">
                     <div className="seal-info-item">
                       <span>Low Limit</span>
@@ -2495,7 +2574,12 @@ function Analysis({
                   <div
                     key={tmde.id || index}
                     className="tmde-seal"
-                    onClick={() => handleOpenSessionEditor("tmdes", { tmde, testPoint: testPointData })}
+                    onClick={() =>
+                      handleOpenSessionEditor("tmdes", {
+                        tmde,
+                        testPoint: testPointData,
+                      })
+                    }
                     onContextMenu={(e) => {
                       e.preventDefault();
                       setContextMenu({
@@ -2529,6 +2613,36 @@ function Analysis({
                         <span>Tolerance Spec</span>
                         <strong>{getToleranceSummary(tmde)}</strong>
                       </div>
+                      <div className="seal-info-item">
+                        <span>Calculated Error</span>
+                        <strong>
+                          {getToleranceErrorSummary(tmde, referencePoint)}
+                        </strong>
+                      </div>
+                      <div className="seal-info-item">
+                        <span>Std. Uncertainty (u)</span>
+                        <strong>
+                          {(() => {
+                            const uncertaintyPpm =
+                              calculateUncertaintyFromToleranceObject(
+                                tmde,
+                                referencePoint
+                              ).standardUncertainty;
+
+                            const uncertaintyInBase = convertPpmToUnit(
+                              uncertaintyPpm,
+                              referencePoint.unit,
+                              referencePoint
+                            );
+
+                            return typeof uncertaintyInBase === "number"
+                              ? `${uncertaintyInBase.toPrecision(3)} ${
+                                  referencePoint.unit
+                                }`
+                              : uncertaintyInBase;
+                          })()}
+                        </strong>
+                      </div>
                       <div className="seal-limits-split">
                         <div className="seal-info-item">
                           <span>Low Limit</span>
@@ -2560,19 +2674,19 @@ function Analysis({
             <Accordion
               title="Uncertainty Budget"
               startOpen={true}
-              actions={
-                <button
-                  className="button button-small"
-                  onClick={() => setAddComponentModalOpen(true)}
-                  title="Add a manual uncertainty component"
-                >
-                  <FontAwesomeIcon
-                    icon={faPlus}
-                    style={{ marginRight: "5px" }}
-                  />
-                  Add Manual
-                </button>
-              }
+              // actions={
+              //   <button
+              //     className="button button-small"
+              //     onClick={() => setAddComponentModalOpen(true)}
+              //     title="Add a manual uncertainty component"
+              //   >
+              //     <FontAwesomeIcon
+              //       icon={faPlus}
+              //       style={{ marginRight: "5px" }}
+              //     />
+              //     Add Manual
+              //   </button>
+              // }
             >
               <UncertaintyBudgetTable
                 components={allComponents}
@@ -2584,6 +2698,7 @@ function Analysis({
                 setDisplayUnit={setDisplayUnit}
                 unitOptions={unitOptions}
                 referencePoint={testPointData?.testPointInfo?.parameter}
+                uncertaintyConfidence={sessionData.uncertaintyConfidence}
               />
             </Accordion>
           </div>

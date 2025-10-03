@@ -169,7 +169,6 @@ const ToleranceForm = ({
                 checked={!!componentData.symmetric} 
                 onChange={handleChange} 
             />
-            {/* THIS IS THE CORRECTED LINE */}
             <label className="toggle-switch-label" htmlFor={`symmetric_${key}_${tolerance.id || 'new'}`}>
                 <span className="toggle-switch-switch" />
             </label>

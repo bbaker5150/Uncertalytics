@@ -6,7 +6,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faTimes, faSave, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 
 const TmdeSealDisplay = ({ tmde, onEditClick, onContextMenu }) => (
-    // The onContextMenu handler is now attached here
     <div className="tmde-seal-clickable-container" onContextMenu={onContextMenu}>
         <div className="tmde-seal-clickable" onClick={onEditClick} title={`Click to edit ${tmde.name}`}>
             <div className="uut-seal-content">
@@ -32,22 +31,21 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
     const [activeSection, setActiveSection] = useState('details');
     const [editingTmde, setEditingTmde] = useState(null);
     const [contextMenu, setContextMenu] = useState(null);
-    // const isLaunchingTmdeEditor = !!initialTmdeToEdit;
 
     const handleEditTmdeClick = (tmde, testPoint) => {
         setEditingTmde({ tmde, testPoint });
     };
     
     useEffect(() => {
-    if (isOpen && sessionData) {
-        setFormData({ ...sessionData });
-        setActiveSection(initialSection || 'details');
+        if (isOpen && sessionData) {
+            setFormData({ ...sessionData });
+            setActiveSection(initialSection || 'details');
 
-        if (initialTmdeToEdit) {
-            handleEditTmdeClick(initialTmdeToEdit.tmde, initialTmdeToEdit.testPoint);
+            if (initialTmdeToEdit) {
+                handleEditTmdeClick(initialTmdeToEdit.tmde, initialTmdeToEdit.testPoint);
+            }
         }
-    }
-}, [isOpen, sessionData, initialSection, initialTmdeToEdit]);
+    }, [isOpen, sessionData, initialSection, initialTmdeToEdit]);
 
     if (!isOpen) return null;
 
@@ -156,6 +154,11 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                             onClick={() => setActiveSection('tmdes')}>
                             TMDE Specifications
                         </button>
+                        <button
+                            className={`modal-tab ${activeSection === 'requirements' ? 'active' : ''}`}
+                            onClick={() => setActiveSection('requirements')}>
+                            Uncertainty Requirements
+                        </button>
                     </div>
 
                     {activeSection === 'details' && (
@@ -236,6 +239,24 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                     <p>This session has no measurement points. <br/> Add measurement points from the main screen to manage their TMDEs here.</p>
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {activeSection === 'requirements' && (
+                        <div className="details-grid">
+                            <div className="form-section">
+                                <label>Uncertainty Confidence Required (%)</label>
+                                <input 
+                                    type="number" 
+                                    name="uncertaintyConfidence" 
+                                    value={formData.uncertaintyConfidence || '95'} 
+                                    onChange={handleChange} 
+                                    placeholder="e.g., 95"
+                                    min="1"
+                                    max="99.999"
+                                    step="0.01"
+                                />
+                            </div>
                         </div>
                     )}
                     

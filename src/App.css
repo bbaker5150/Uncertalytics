@@ -745,26 +745,43 @@ select:focus {
 
 .uut-seal-container {
     display: flex;
-    justify-content: center; /* Center the seal horizontally */
+    justify-content: center;
     padding: 20px 0;
     margin-bottom: 20px;
 }
 
 .uut-seal {
-    width: 375px;
-    height: 375px;
+    min-width: 360px;
+    max-width: 400px;
+    aspect-ratio: 1 / 1;
+    height: auto;
+
     border-radius: 50%;
     background-color: var(--background-color-light);
-    border: 5px solid var(--seal-background-color);
+    border: 4px solid var(--seal-background-color);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
                 inset 0 0 15px rgba(0, 0, 0, 0.05);
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
+    padding: 30px;
     box-sizing: border-box;
     transition: background-color 0.3s, border-color 0.3s;
-    animation: seal-glow 3s ease-in-out infinite alternate;
+    animation: seal-glow 3s infinite alternate;
+    cursor: pointer;
+}
+
+@keyframes seal-glow {
+  from {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
+                inset 0 0 15px rgba(0, 0, 0, 0.05),
+                0 0 0px 0px rgba(14, 165, 233, 0); /* Glow starts invisible */
+  }
+  to {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
+                inset 0 0 15px rgba(0, 0, 0, 0.05),
+                0 0 15px 7px rgba(14, 165, 233, 0.5); /* Glow is now visible */
+  }
 }
 
 .uut-seal, .tmde-seal {
@@ -776,7 +793,14 @@ select:focus {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 12px;
+    gap: 6px;
+    width: 100%;
+    /* max-width: 85%; */
+}
+
+.uut-seal:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), inset 0 0 10px rgba(0, 0, 0, 0.04);
 }
 
 .seal-label {
@@ -788,9 +812,10 @@ select:focus {
 
 .seal-title {
     margin: 0;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     color: var(--seal-background-color);
     font-weight: 600;
+    word-break: break-word;
 }
 
 .seal-info-item {
@@ -808,14 +833,26 @@ select:focus {
 
 .seal-info-item strong {
     font-weight: 500;
+    word-break: break-word;
 }
 
 .seal-limits-split {
     display: flex;
-    gap: 20px;
-    margin-top: 5px;
+    flex-wrap: wrap;         /* This allows the items to stack vertically if they don't fit side-by-side */
+    justify-content: center; /* This will center them whether they are in one row or two */
+    gap: 20px;               /* This provides spacing between them */
+    width: 100%;
+    margin-top: 0.05px;
     border-top: 1px solid var(--border-color);
-    padding-top: 12px;
+    padding-top: 3px;
+}
+
+.calculated-limit {
+    font-size: 0.85rem;     /* Smaller font for the long numbers */
+    font-weight: 600;
+    word-break: break-all;  /* Force wrapping for any overflow */
+    line-height: 1.1;
+    color: var(--seal-background-color);
 }
 
 .seal-limits-split .calculated-limit {
@@ -824,8 +861,11 @@ select:focus {
 }
 
 .tmde-seal {
-    width: 325px;
-    height: 325px;
+    min-width: 325px;
+    max-width: 350px;
+    height: auto;
+    min-height: 325px;
+
     border-radius: 30px;
     background-color: var(--background-color-light);
     border: 4px solid var(--seal-tmde-background-color);
@@ -833,9 +873,20 @@ select:focus {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
+    padding: 25px;
     box-sizing: border-box;
     transition: all 0.3s ease;
+    cursor: pointer;
+    animation: tmdeFuturisticGlow 3s infinite alternate;
+}
+
+@keyframes tmdeFuturisticGlow {
+    from {
+        box-shadow: 0 0 8px 3px rgba(108, 117, 125, 0.4), inset 0 0 10px rgba(0, 0, 0, 0.04);
+    }
+    to {
+        box-shadow: 0 0 10px 5px rgba(226, 225, 225, 0.6), inset 0 0 10px rgba(0, 0, 0, 0.04);
+    }
 }
 
 .tmde-seal:hover {
@@ -1840,7 +1891,7 @@ select:focus {
 
 .add-tmde-card {
     width: 325px;
-    height: 325px;
+    height: 365px;
     border-radius: 30px;
     background-color: transparent;
     border: 2px dashed var(--border-color);
@@ -2242,23 +2293,66 @@ body.dark-mode .view-toggle button.active {
   color: var(--primary-color-dark);
 }
 
-body.dark-mode .uncertainty-budget-table thead th {
-  background-color: #1a202c;
-  color: #cbd5e0;
-  border-color: #4a5568;
+body.dark-mode .uncertainty-budget-table {
+  border: 1px solid var(--border-color);
+  border-top: none;
 }
 
-body.dark-mode .uncertainty-budget-table tbody tr:hover {
-  background-color: var(--background-color);
+body.dark-mode .uncertainty-budget-table thead th {
+  background-color: #2d3748; /* A slightly lighter, distinct header color */
+  color: var(--text-color);  /* Main bright text for readability */
+  border-color: var(--border-color);
+  border-top: 1px solid var(--border-color);
 }
 
 body.dark-mode .uncertainty-budget-table .category-header td {
-  background-color: #1a202c;
-  color: var(--primary-color);
+  background-color: var(--content-background);
+  color: var(--primary-color-dark); /* Use the brighter blue for accents */
+  font-weight: 600;
+}
+
+body.dark-mode .uncertainty-budget-table tbody tr:hover {
+  background-color: var(--primary-color-light); /* Consistent blue hover state */
+}
+
+body.dark-mode .uncertainty-budget-table tfoot tr {
+  background-color: transparent; /* Remove inconsistent background */
+}
+
+body.dark-mode .uncertainty-budget-table tfoot td[colspan="2"] {
+  color: var(--text-color); /* Brighter text for main labels */
 }
 
 body.dark-mode .uncertainty-budget-table tfoot td:not([colspan]) {
-  color: var(--primary-color);
+  color: var(--primary-color-dark); /* Use bright blue for values */
+}
+
+body.dark-mode .final-result-display {
+  background-color: #1a202c; /* A distinct dark blue/gray for the final summary */
+}
+
+body.dark-mode .final-result-label,
+body.dark-mode .final-result-confidence-note {
+  color: var(--text-color-muted); /* Softer color for secondary text */
+}
+
+body.dark-mode .final-result-value,
+body.dark-mode .final-result-unit {
+  color: var(--primary-color-dark); /* Bright blue for the final value */
+}
+
+body.dark-mode .final-result-confidence-note strong {
+    color: #e0e0e0; /* Make the bolded k-value and % stand out */
+}
+
+body.dark-mode .k-factor-label {
+    color: var(--text-color-muted); /* Improve checkbox label contrast */
+}
+
+body.dark-mode .header-with-select select {
+    background-color: var(--input-background);
+    color: var(--text-color);
+    border-color: var(--border-color);
 }
 
 body.dark-mode .spec-dashboard {
@@ -2665,17 +2759,4 @@ body.dark-mode .final-result-display {
   background-color: var(--background-color);
   max-width: 100px;
   border: 1px solid var(--border-color);
-}
-
-@keyframes seal-glow {
-  from {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
-                inset 0 0 15px rgba(0, 0, 0, 0.05),
-                0 0 0px 0px rgba(14, 165, 233, 0); /* Glow starts invisible */
-  }
-  to {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
-                inset 0 0 15px rgba(0, 0, 0, 0.05),
-                0 0 15px 7px rgba(14, 165, 233, 0.5); /* Glow is now visible */
-  }
 }
