@@ -2432,8 +2432,177 @@ body.dark-mode .accordion-header:hover {
   background-color: #2d3748;
 }
 
+/* --- Dark Mode: Modals & Overlays --- */
+body.dark-mode .modal-close-button:hover {
+    color: var(--text-color);
+}
+
+body.dark-mode .modal-icon-button.secondary:hover {
+    background-color: var(--text-color-muted);
+    border-color: var(--text-color-muted);
+    color: var(--content-background);
+}
+
+body.dark-mode .modal-icon-button.primary {
+    color: var(--primary-color-dark);
+    border-color: var(--primary-color-dark);
+}
+
+body.dark-mode .modal-icon-button.primary:hover {
+    background-color: var(--primary-color-dark);
+    color: var(--background-color);
+}
+
+body.dark-mode .modal-tabs {
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .modal-tab {
+    color: var(--text-color-muted);
+}
+
+body.dark-mode .modal-tab:hover {
+    color: var(--primary-color-dark);
+}
+
 body.dark-mode .modal-tab.active {
-  border-bottom-color: var(--primary-color-dark);
+    color: var(--primary-color-dark);
+    border-bottom-color: var(--primary-color-dark);
+}
+
+
+/* --- Dark Mode: Edit Session Modal --- */
+body.dark-mode .tmde-test-point-group {
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .tmde-seal-clickable {
+    background-color: var(--background-color);
+    border-color: var(--seal-tmde-background-color);
+}
+
+body.dark-mode .tmde-seal-clickable:hover {
+    border-color: var(--primary-color-dark);
+}
+
+body.dark-mode .tmde-seal-clickable .seal-title {
+    color: var(--text-color);
+}
+
+body.dark-mode .add-tmde-card-small {
+    border-color: var(--border-color);
+}
+
+body.dark-mode .add-tmde-card-small:hover {
+    border-color: var(--primary-color-dark);
+    background-color: var(--primary-color-light);
+}
+
+body.dark-mode .add-tmde-button-small {
+    color: var(--text-color-muted);
+}
+
+body.dark-mode .add-tmde-card-small:hover .add-tmde-button-small {
+    color: var(--primary-color-dark);
+}
+
+
+/* --- Dark Mode: Add TMDE & Tolerance Modals --- */
+body.dark-mode .tmde-header {
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .reference-point-control {
+    background-color: var(--background-color);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .toggle-option-label,
+body.dark-mode .toggle-option-label .uut-point-display {
+    color: var(--text-color);
+}
+
+body.dark-mode .toggle-switch-checkbox:checked + .toggle-switch-label {
+    background-color: var(--primary-color-dark);
+}
+
+/* Styles for the shared ToleranceForm component */
+body.dark-mode .component-card {
+    background-color: var(--background-color);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .component-header {
+    background-color: var(--content-background);
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .component-header h5 {
+    color: var(--primary-color-dark);
+}
+
+body.dark-mode .remove-component-btn {
+    color: var(--status-bad);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .remove-component-btn:hover {
+    background-color: var(--status-bad);
+    color: white;
+    border-color: var(--status-bad);
+}
+
+body.dark-mode .add-component-button {
+    border-color: var(--border-color);
+    color: var(--text-color-muted);
+}
+
+body.dark-mode .add-component-button:hover {
+    border-color: var(--primary-color-dark);
+    background-color: var(--primary-color-light);
+    color: var(--primary-color-dark);
+}
+
+body.dark-mode .add-component-dropdown {
+    background-color: var(--content-background);
+    border-color: var(--border-color);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+body.dark-mode .add-component-dropdown li:hover {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color-dark);
+}
+
+/* --- Dark Mode: Scrollbars --- */
+/* For Webkit browsers (Chrome, Safari, Edge) */
+body.dark-mode ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+body.dark-mode ::-webkit-scrollbar-track {
+  background: var(--background-color);
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 10px;
+  border: 2px solid var(--background-color);
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-color-muted);
+}
+
+/* For Firefox */
+body.dark-mode * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) var(--background-color);
+}
+
+body.dark-mode .placeholder-content p {
+    color: var(--text-color-muted);
 }
 
 body.dark-mode .measurement-point-item.active .info-icon,
