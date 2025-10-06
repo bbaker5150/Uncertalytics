@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import AddTmdeModal from './AddTmdeModal';
 import ToleranceForm from './ToleranceForm';
 import ContextMenu from './ContextMenu';
@@ -83,27 +83,30 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
     };
 
     const handleSaveTmde = (savedTmde) => {
-        setFormData(prev => {
-            const updatedTestPoints = prev.testPoints.map(tp => {
-                if (tp.id === editingTmde.testPoint.id) {
-                    const tolerances = tp.tmdeTolerances || [];
-                    const existingIndex = tolerances.findIndex(t => t.id === savedTmde.id);
-                    
-                    let newTolerances;
-                    if (existingIndex > -1) {
-                        newTolerances = [...tolerances];
-                        newTolerances[existingIndex] = savedTmde;
-                    } else {
-                        newTolerances = [...tolerances, savedTmde];
-                    }
-                    return { ...tp, tmdeTolerances: newTolerances };
-                }
-                return tp;
-            });
-            return { ...prev, testPoints: updatedTestPoints };
-        });
+    const updatedTestPoints = formData.testPoints.map(tp => {
+        if (tp.id === editingTmde.testPoint.id) {
+            const tolerances = tp.tmdeTolerances || [];
+            const existingIndex = tolerances.findIndex(t => t.id === savedTmde.id);
+            let newTolerances;
+            if (existingIndex > -1) {
+                newTolerances = [...tolerances];
+                newTolerances[existingIndex] = savedTmde;
+            } else {
+                newTolerances = [...tolerances, savedTmde];
+            }
+            return { ...tp, tmdeTolerances: newTolerances };
+        }
+        return tp;
+    });
+    const newFormData = { ...formData, testPoints: updatedTestPoints };
+
+    if (initialTmdeToEdit) {
+        onSave(newFormData);
+    } else {
+        setFormData(newFormData);
         setEditingTmde(null);
-    };
+    }
+};
 
     const handleDeleteTmde = (testPointId, tmdeId) => {
         setFormData(prev => {
