@@ -303,6 +303,35 @@ select:focus {
   background-color: var(--background-color);
 }
 
+.measurement-point-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.measurement-point-list-item:hover {
+  background-color: var(--background-color);
+}
+
+.budget-select-checkbox {
+  width: 16px;
+  height: 16px;
+  margin-left: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.measurement-point-item {
+  flex-grow: 1; /* This was changed from width: 100% */
+}
+
+/* This overrides the button's own hover to make the container hover feel more natural */
+.measurement-point-item:hover {
+  background-color: transparent;
+}
+
 .session-list-item.active,
 .measurement-point-item.active {
   background-color: var(--primary-color-light);
@@ -445,6 +474,14 @@ select:focus {
 
 .dark-mode-toggle input:checked+.slider:before {
   transform: translateX(22px);
+}
+
+body.dark-mode .measurement-point-list-item:hover {
+  background-color: #2a2a2a;
+}
+
+body.dark-mode .budget-select-checkbox {
+  accent-color: var(--primary-color);
 }
 
 /* =================================================================== */
@@ -1847,7 +1884,7 @@ select:focus {
   border-top: 2px solid var(--primary-color);
 }
 
-.uncertainty-budget-table tfoot td[colspan="2"] {
+.uncertainty-budget-table tfoot td[colspan="3"] {
   text-align: right;
   font-weight: bold;
 }
@@ -2320,8 +2357,8 @@ body.dark-mode .uncertainty-budget-table tfoot tr {
   background-color: transparent; /* Remove inconsistent background */
 }
 
-body.dark-mode .uncertainty-budget-table tfoot td[colspan="2"] {
-  color: var(--text-color); /* Brighter text for main labels */
+body.dark-mode .uncertainty-budget-table tfoot td[colspan="3"] {
+  color: var(--text-color);
 }
 
 body.dark-mode .uncertainty-budget-table tfoot td:not([colspan]) {

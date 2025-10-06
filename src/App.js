@@ -753,7 +753,7 @@ const UncertaintyBudgetTable = ({
     return (
       <React.Fragment key={title}>
         <tr className="category-header">
-          <td colSpan="6">{title}</td>
+          <td colSpan="7">{title}</td>
         </tr>
         {filteredComponents.map((c) => {
           const displayedValue = convertPpmToUnit(
@@ -769,6 +769,7 @@ const UncertaintyBudgetTable = ({
           return (
             <tr key={c.id}>
               <td>{c.name}</td>
+              <td>{c.sourcePointLabel || "N/A"}</td>
               <td>{c.type}</td>
               <td>{formattedValue}</td>
               <td>{c.distribution}</td>
@@ -806,6 +807,7 @@ const UncertaintyBudgetTable = ({
       <thead>
         <tr>
           <th>Uncertainty Component</th>
+          <th>Measurement Point</th>
           <th>Type</th>
           <th>
             <div className="header-with-select">
@@ -833,7 +835,7 @@ const UncertaintyBudgetTable = ({
       </tbody>
       <tfoot>
         <tr>
-          <td colSpan="2">{"Combined Standard Uncertainty (uₑ)"}</td>
+          <td colSpan="3">{"Combined Standard Uncertainty (uₑ)"}</td>
           <td>
             {typeof displayedCombinedUncertainty === "number"
               ? displayedCombinedUncertainty.toPrecision(4)
@@ -844,27 +846,17 @@ const UncertaintyBudgetTable = ({
         {calcResults && (
           <>
             <tr>
-              <td colSpan="2">{"Effective Degrees of Freedom (vₑₒₒ)"}</td>
+              <td colSpan="3">{"Effective Degrees of Freedom (vₑₒₒ)"}</td>
               <td>{formattedDof}</td>
               <td colSpan="3"></td>
             </tr>
             <tr>
-              <td colSpan="2">{"Coverage Factor (k)"}</td>
+              <td colSpan="3">{"Coverage Factor (k)"}</td>
               <td>{calcResults.k_value.toFixed(3)}</td>
-              {/* <td colSpan="3" className="k-factor-cell">
-                <label htmlFor="use-t-dist" className="k-factor-label">
-                  <input
-                    type="checkbox"
-                    id="use-t-dist"
-                    checked={useTDistribution}
-                    onChange={(e) => setUseTDistribution(e.target.checked)}
-                  />
-                  Use t-dist
-                </label>
-              </td> */}
+              <td colSpan="3"></td>
             </tr>
             <tr className="final-uncertainty-row">
-              <td colSpan="6">
+              <td colSpan="7">
                 <div className="final-result-display">
                   <span className="final-result-label">
                     Expanded Uncertainty (U)
@@ -1632,6 +1624,7 @@ function Analysis({
   setContextMenu,
   setBreakdownPoint,
   handleOpenSessionEditor,
+  budgetTestPoints, // New prop
 }) {
   const { specifications: initialSpecs, components: initialManualComponents } =
     testPointData;
@@ -1725,36 +1718,41 @@ function Analysis({
   }, [testPointData, uutToleranceData]);
 
   const allComponents = useMemo(() => {
-    const uutNominal = testPointData?.testPointInfo?.parameter;
+    // Manual components are global to the active test point's manual entry section
+    const manual = manualComponents.map((c) => ({
+      ...c,
+      sourcePointLabel: "Manual",
+    }));
 
-    const tmdeBudgetComponents = tmdeTolerancesData.flatMap((tmde) => {
-      if (tmde.measurementPoint && tmde.measurementPoint.value) {
-        return getBudgetComponentsFromTolerance(tmde, tmde.measurementPoint);
-      }
-      return [];
+    const componentsFromBudgetPoints = budgetTestPoints.flatMap((point) => {
+      const pointNominal = point?.testPointInfo?.parameter;
+      if (!pointNominal) return [];
+
+      const sourcePointLabel = `${pointNominal.value} ${pointNominal.unit}`;
+
+      // TMDE components for this point
+      const tmdeComps = (point.tmdeTolerances || [])
+        .flatMap((tmde) => {
+          if (tmde.measurementPoint && tmde.measurementPoint.value) {
+            return getBudgetComponentsFromTolerance(tmde, tmde.measurementPoint);
+          }
+          return [];
+        })
+        .map((c) => ({ ...c, sourcePointLabel }));
+
+      // UUT resolution for this point
+      const uutComps = getBudgetComponentsFromTolerance(
+        uutToleranceData,
+        pointNominal
+      )
+        .filter((comp) => comp.name.endsWith(" - Resolution"))
+        .map((c) => ({ ...c, sourcePointLabel }));
+
+      return [...tmdeComps, ...uutComps];
     });
 
-    const allUutComponents = getBudgetComponentsFromTolerance(
-      uutToleranceData,
-      uutNominal
-    );
-
-    // Only include the UUT's resolution in the uncertainty budget, not its own tolerance spec.
-    const uutBudgetComponents = allUutComponents.filter((comp) =>
-      comp.name.endsWith(" - Resolution")
-    );
-
-    return [
-      ...manualComponents,
-      ...tmdeBudgetComponents,
-      ...uutBudgetComponents,
-    ];
-  }, [
-    manualComponents,
-    tmdeTolerancesData,
-    uutToleranceData,
-    testPointData.testPointInfo,
-  ]);
+    return [...manual, ...componentsFromBudgetPoints];
+  }, [manualComponents, budgetTestPoints, uutToleranceData]);
 
   useEffect(() => {
     if (allComponents.length === 0) {
@@ -2836,6 +2834,7 @@ function App() {
   const [infoModalPoint, setInfoModalPoint] = useState(null);
   const [initialSessionTab, setInitialSessionTab] = useState("details");
   const [initialTmdeToEdit, setInitialTmdeToEdit] = useState(null);
+  const [budgetTestPointIds, setBudgetTestPointIds] = useState(new Set());
 
   const handleOpenSessionEditor = (
     initialTab = "details",
@@ -2888,6 +2887,31 @@ function App() {
       document.body.classList.remove("dark-mode");
     }
   }, [isDarkMode]);
+
+  useEffect(() => {
+    // When the primary selected point changes, it becomes the default (and only)
+    // point in the budget. The user can then add or remove others.
+    if (selectedTestPointId) {
+      setBudgetTestPointIds(new Set([selectedTestPointId]));
+    } else {
+      setBudgetTestPointIds(new Set());
+    }
+  }, [selectedTestPointId]);
+
+  const handleBudgetSelectionChange = (testPointId, isSelected) => {
+    setBudgetTestPointIds((prevSet) => {
+      const newSet = new Set(prevSet);
+      if (isSelected) {
+        newSet.add(testPointId);
+      } else {
+        // Prevent removing the last item from the budget
+        if (newSet.size > 1) {
+          newSet.delete(testPointId);
+        }
+      }
+      return newSet;
+    });
+  };
 
   const handleCloseContextMenu = useCallback(() => setContextMenu(null), []);
 
@@ -3082,7 +3106,7 @@ function App() {
         onClose={() => {
           setEditingSession(null);
           setInitialTmdeToEdit(null);
-          setInitialSessionTab('details');
+          setInitialSessionTab("details");
         }}
         sessionData={editingSession}
         onSave={handleSessionChange}
@@ -3205,27 +3229,32 @@ function App() {
               </button>
             </div>
             <p className="sidebar-hint">
-              Right-click an item for more options.
+              Check items to include them in the budget.
             </p>
             <div className="measurement-point-list">
               {currentTestPoints.length > 0 ? (
-                currentTestPoints.map((tp) => {
-                  const uutSummary = getToleranceSummary(
-                    currentSessionData.uutTolerance
-                  );
-                  const tmdeSummary = (tp.tmdeTolerances || [])
-                    .map((t) => getToleranceSummary(t))
-                    .join("; ");
-
-                  const tooltipText = `UUT: ${uutSummary}\nTMDEs: ${
-                    tmdeSummary || "Not Set"
-                  }`;
-
-                  return (
+                currentTestPoints.map((tp) => (
+                  <div
+                    key={tp.id}
+                    className="measurement-point-list-item"
+                    title={
+                      budgetTestPointIds.has(tp.id)
+                        ? "Included in budget"
+                        : "Not in budget"
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      className="budget-select-checkbox"
+                      checked={budgetTestPointIds.has(tp.id)}
+                      onChange={(e) =>
+                        handleBudgetSelectionChange(tp.id, e.target.checked)
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                      title="Include in uncertainty budget"
+                    />
                     <button
-                      key={tp.id}
                       onClick={() => setSelectedTestPointId(tp.id)}
-                      title={tooltipText}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         const completeTestPointForMenu = {
@@ -3287,8 +3316,8 @@ function App() {
                           )}
                       </span>
                     </button>
-                  );
-                })
+                  </div>
+                ))
               ) : (
                 <div
                   className="placeholder-content"
@@ -3320,6 +3349,9 @@ function App() {
                   setContextMenu={setContextMenu}
                   setBreakdownPoint={setBreakdownPoint}
                   handleOpenSessionEditor={handleOpenSessionEditor}
+                  budgetTestPoints={currentTestPoints.filter((tp) =>
+                    budgetTestPointIds.has(tp.id)
+                  )}
                 />
               </TestPointDetailView>
             ) : currentSessionData && currentTestPoints.length > 0 ? (
