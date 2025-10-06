@@ -4,6 +4,7 @@ import Latex from "react-latex-next";
 import "katex/dist/katex.min.css";
 import "./App.css";
 import AddTestPointModal from "./components/AddTestPointModal";
+import BatchAddTestPointModal from "./components/BatchAddTestPointModal";
 import TestPointDetailView from "./components/TestPointDetailView";
 import ToleranceToolModal from "./components/ToleranceToolModal";
 import EditSessionModal from "./components/EditSessionModal";
@@ -20,6 +21,7 @@ import {
   faTrashAlt,
   faPencilAlt,
   faSlidersH,
+  faLayerGroup,
 } from "@fortawesome/free-solid-svg-icons";
 
 export const unitSystem = {
@@ -2825,6 +2827,7 @@ function App() {
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [selectedTestPointId, setSelectedTestPointId] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isBatchAddModalOpen, setIsBatchAddModalOpen] = useState(false);
   const [editingTestPoint, setEditingTestPoint] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [contextMenu, setContextMenu] = useState(null);
@@ -2973,6 +2976,8 @@ function App() {
     URL.revokeObjectURL(href);
   };
 
+  // App.js
+
   const handleSaveTestPoint = (formData) => {
     setSessions((prev) =>
       prev.map((session) => {
@@ -2994,14 +2999,32 @@ function App() {
           return { ...session, testPoints: updatedTestPoints };
         }
 
-        // Logic for ADDING a new test point
+        // Logic for ADDING a new single test point
         else {
+          const lastTestPoint = session.testPoints.find(tp => tp.id === selectedTestPointId);
+          let copiedTmdes = [];
+          const newTestPointParameter = formData.testPointInfo.parameter;
+
+          if (formData.copyTmdes && lastTestPoint) {
+              copiedTmdes = JSON.parse(JSON.stringify(lastTestPoint.tmdeTolerances || []));
+              const originalTestPointParameter = lastTestPoint.testPointInfo.parameter;
+
+              // Update the measurement point for TMDEs that were using the UUT reference
+              copiedTmdes.forEach(tmde => {
+                const wasUsingUutRef = tmde.measurementPoint?.value === originalTestPointParameter.value &&
+                                     tmde.measurementPoint?.unit === originalTestPointParameter.unit;
+                if(wasUsingUutRef) {
+                  tmde.measurementPoint = { ...newTestPointParameter };
+                }
+              });
+          }
+          
           const newTestPoint = {
             id: Date.now(),
-            ...defaultTestPoint, // Start with defaults
-            // Overwrite with new form data
+            ...defaultTestPoint,
             section: formData.section,
             testPointInfo: formData.testPointInfo,
+            tmdeTolerances: copiedTmdes,
           };
           setSelectedTestPointId(newTestPoint.id);
           return {
@@ -3014,6 +3037,72 @@ function App() {
 
     setIsAddModalOpen(false);
     setEditingTestPoint(null);
+  };
+  
+  const handleBatchSaveTestPoints = (batchData) => {
+    const values = batchData.values.split('\n').map(v => v.trim()).filter(Boolean);
+    if (values.length === 0) {
+      return;
+    }
+
+    setSessions(prev =>
+      prev.map(session => {
+        if (session.id !== selectedSessionId) return session;
+
+        const lastTestPoint = session.testPoints.find(tp => tp.id === selectedTestPointId);
+        
+        const newPoints = values.map((value, index) => {
+          let section = batchData.section;
+          const match = section.match(/^(.*?)(\d+|[a-zA-Z])$/);
+          if (match) {
+            const base = match[1];
+            const lastChar = match[2];
+            if (!isNaN(parseInt(lastChar))) {
+              section = `${base}${parseInt(lastChar) + index}`;
+            } else if (lastChar.length === 1) {
+              section = `${base}${String.fromCharCode(lastChar.charCodeAt(0) + index)}`;
+            }
+          }
+
+          const newTestPointParameter = {
+            name: batchData.paramName,
+            value: value,
+            unit: batchData.paramUnit,
+          };
+
+          let copiedTmdes = [];
+          if (batchData.copyTmdes && lastTestPoint) {
+            copiedTmdes = JSON.parse(JSON.stringify(lastTestPoint.tmdeTolerances || []));
+            const originalTestPointParameter = lastTestPoint.testPointInfo.parameter;
+
+            // Update the measurement point for TMDEs that were using the UUT reference
+            copiedTmdes.forEach(tmde => {
+              const wasUsingUutRef = tmde.measurementPoint?.value === originalTestPointParameter.value &&
+                                   tmde.measurementPoint?.unit === originalTestPointParameter.unit;
+              if (wasUsingUutRef) {
+                tmde.measurementPoint = { ...newTestPointParameter };
+              }
+            });
+          }
+          
+          return {
+            id: Date.now() + index,
+            ...defaultTestPoint,
+            section: section,
+            testPointInfo: {
+              parameter: newTestPointParameter,
+              qualifier: batchData.qualifier,
+            },
+            tmdeTolerances: copiedTmdes,
+          };
+        });
+        
+        setSelectedTestPointId(newPoints[newPoints.length - 1].id);
+
+        return { ...session, testPoints: [...session.testPoints, ...newPoints] };
+      })
+    );
+    setIsBatchAddModalOpen(false);
   };
 
   const handleDeleteTestPoint = (idToDelete) => {
@@ -3099,6 +3188,14 @@ function App() {
         }}
         onSave={handleSaveTestPoint}
         initialData={editingTestPoint}
+        hasExistingPoints={currentTestPoints.length > 0}
+      />
+
+      <BatchAddTestPointModal
+        isOpen={isBatchAddModalOpen}
+        onClose={() => setIsBatchAddModalOpen(false)}
+        onSave={handleBatchSaveTestPoints}
+        hasExistingPoints={currentTestPoints.length > 0}
       />
 
       <EditSessionModal
@@ -3220,13 +3317,22 @@ function App() {
 
             <div className="sidebar-header">
               <h4 style={{ margin: "0" }}>Measurement Points</h4>
-              <button
-                className="add-point-button"
-                onClick={() => setIsAddModalOpen(true)}
-                title="Add New Measurement Point"
-              >
-                <FontAwesomeIcon icon={faPlus} />
-              </button>
+              <div className="add-point-controls">
+                <button
+                  className="add-point-button"
+                  onClick={() => setIsBatchAddModalOpen(true)}
+                  title="Add Multiple Measurement Points"
+                >
+                  <FontAwesomeIcon icon={faLayerGroup} />
+                </button>
+                <button
+                  className="add-point-button"
+                  onClick={() => setIsAddModalOpen(true)}
+                  title="Add New Measurement Point"
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </button>
+              </div>
             </div>
             <p className="sidebar-hint">
               Check items to include them in the budget.

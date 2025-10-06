@@ -4,7 +4,7 @@ import { faCheck, faTimes, faPlus, faTrashAlt } from '@fortawesome/free-solid-sv
 import { unitSystem } from '../App';
 import { NotificationModal } from '../App';
 
-// A reusable component for searchable unit dropdowns (No changes here)
+// A reusable component for searchable unit dropdowns
 const SearchableDropdown = ({ name, value, onChange, options }) => {
     const [searchTerm, setSearchTerm] = useState(value);
     const [isOpen, setIsOpen] = useState(false);
@@ -64,12 +64,12 @@ const SearchableDropdown = ({ name, value, onChange, options }) => {
 };
 
 
-const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
-    // Simplified initial state: No UUT description or tolerance
+const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPoints }) => {
     const getInitialFormData = () => ({
         section: '', 
         paramName: '', paramValue: '', paramUnit: '',
         qualName: 'Frequency', qualValue: '', qualUnit: 'kHz',
+        copyTmdes: true,
     });
 
     const [formData, setFormData] = useState(getInitialFormData());
@@ -91,6 +91,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                     qualName: initialData.testPointInfo.qualifier?.name || 'Frequency',
                     qualValue: initialData.testPointInfo.qualifier?.value || '',
                     qualUnit: initialData.testPointInfo.qualifier?.unit || 'kHz',
+                    copyTmdes: false, // Don't show the copy option when editing
                 });
             } else {
                 setHasQualifier(false);
@@ -102,12 +103,14 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
     if (!isOpen) return null;
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ 
+            ...prev, 
+            [name]: type === 'checkbox' ? checked : value 
+        }));
     };
     
     const handleSave = () => {
-        // Simplified validation
         if (!formData.section || !formData.paramValue || !formData.paramUnit) {
              setNotification({ title: 'Missing Information', message: 'Please fill out the Section, Parameter Value, and Parameter Unit fields.' });
             return;
@@ -121,6 +124,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                 parameter: { name: formData.paramName, value: formData.paramValue, unit: formData.paramUnit },
                 qualifier: qualifierData,
             },
+            copyTmdes: formData.copyTmdes,
         };
 
         if (initialData) {
@@ -139,7 +143,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                 <button onClick={onClose} className="modal-close-button">&times;</button>
                 <h3>{isEditing ? 'Edit Measurement Point' : 'Add New Measurement Point'}</h3>
                 
-                {/* The form is now a single grid */}
                 <div className="modal-form-grid">
                     <div className="modal-form-section">
                         <h4>Identification</h4>
@@ -187,6 +190,19 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData }) => {
                         )}
                     </div>
                 </div>
+                
+                {!isEditing && hasExistingPoints && (
+                    <div className="copy-tmde-section">
+                        <input 
+                            type="checkbox"
+                            id="copyTmdes"
+                            name="copyTmdes"
+                            checked={formData.copyTmdes}
+                            onChange={handleChange}
+                        />
+                        <label htmlFor="copyTmdes">Use TMDEs from previous measurement point</label>
+                    </div>
+                )}
                  <div className="modal-actions">
                     <button className="modal-icon-button secondary" onClick={onClose} title="Cancel"><FontAwesomeIcon icon={faTimes} /></button>
                     <button className="modal-icon-button primary" onClick={handleSave} title="Save Changes"><FontAwesomeIcon icon={faCheck} /></button>

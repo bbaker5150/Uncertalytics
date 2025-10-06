@@ -962,6 +962,27 @@ body.dark-mode .budget-select-checkbox {
   position: relative;
 }
 
+.copy-tmde-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  justify-content: center;
+}
+
+.copy-tmde-section input[type="checkbox"] {
+  width: auto;
+  height: auto;
+}
+
+.copy-tmde-section label {
+  margin: 0;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
 .remove-component-btn.on-seal {
   position: absolute;
   top: -8px;
@@ -1449,6 +1470,35 @@ body.dark-mode .budget-select-checkbox {
 
 .dropdown-item:hover {
   background-color: var(--primary-color-light);
+}
+
+.copy-tmde-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  justify-content: center;
+}
+
+.copy-tmde-section input[type="checkbox"] {
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+
+.copy-tmde-section label {
+  margin: 0;
+  font-weight: 500;
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.batch-values-textarea {
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
 }
 
 /* =================================================================== */
@@ -2966,4 +3016,9 @@ body.dark-mode .final-result-display {
   background-color: var(--background-color);
   max-width: 100px;
   border: 1px solid var(--border-color);
+}
+
+.add-point-controls {
+  display: flex;
+  gap: 0.5rem;
 }
