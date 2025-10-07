@@ -3063,7 +3063,7 @@ function App() {
               section = `${base}${String.fromCharCode(lastChar.charCodeAt(0) + index)}`;
             }
           }
-
+          
           const newTestPointParameter = {
             name: batchData.paramName,
             value: value,
@@ -3073,16 +3073,18 @@ function App() {
           let copiedTmdes = [];
           if (batchData.copyTmdes && lastTestPoint) {
             copiedTmdes = JSON.parse(JSON.stringify(lastTestPoint.tmdeTolerances || []));
-            const originalTestPointParameter = lastTestPoint.testPointInfo.parameter;
-
-            // Update the measurement point for TMDEs that were using the UUT reference
-            copiedTmdes.forEach(tmde => {
-              const wasUsingUutRef = tmde.measurementPoint?.value === originalTestPointParameter.value &&
-                                   tmde.measurementPoint?.unit === originalTestPointParameter.unit;
-              if (wasUsingUutRef) {
-                tmde.measurementPoint = { ...newTestPointParameter };
-              }
-            });
+            
+            // Only update references if the user explicitly opts in
+            if (batchData.updateTmdeRefs) {
+                const originalTestPointParameter = lastTestPoint.testPointInfo.parameter;
+                copiedTmdes.forEach(tmde => {
+                    const wasUsingUutRef = tmde.measurementPoint?.value === originalTestPointParameter.value &&
+                                         tmde.measurementPoint?.unit === originalTestPointParameter.unit;
+                    if (wasUsingUutRef) {
+                        tmde.measurementPoint = { ...newTestPointParameter };
+                    }
+                });
+            }
           }
           
           return {
