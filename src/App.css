@@ -46,6 +46,8 @@
   --risk-pfa-good-color: #198754;
   --risk-pfa-warning-color: #ffc107;
   --risk-pfa-bad-color: #dc3545;
+  --seal-background-color: #007bff;
+  --seal-tmde-background-color: #6c757d;
 }
 
 body.dark-mode {
@@ -70,6 +72,8 @@ body.dark-mode {
   --risk-pfa-good-color: #28a745;
   --risk-pfa-warning-color: #ffc107;
   --risk-pfa-bad-color: #dc3545;
+  --seal-background-color: #007bff;
+  --seal-tmde-background-color: #a0aec0;
 }
 
 
@@ -160,7 +164,7 @@ select:focus {
 /* =================================================================== */
 .App {
   text-align: center;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 2rem;
 }
@@ -211,10 +215,10 @@ select:focus {
 }
 
 .add-point-button {
-  background: none;
+  background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-color-muted);
-  font-size: 1rem;
+  font-size: 0.9rem;
   cursor: pointer;
   width: 32px;
   height: 32px;
@@ -222,8 +226,6 @@ select:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  line-height: 1;
   transition: all 0.2s ease;
 }
 
@@ -296,8 +298,38 @@ select:focus {
 }
 
 .session-list-item:hover,
+
 .measurement-point-item:hover {
   background-color: var(--background-color);
+}
+
+.measurement-point-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.measurement-point-list-item:hover {
+  background-color: var(--background-color);
+}
+
+.budget-select-checkbox {
+  width: 16px;
+  height: 16px;
+  margin-left: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.measurement-point-item {
+  flex-grow: 1; /* This was changed from width: 100% */
+}
+
+/* This overrides the button's own hover to make the container hover feel more natural */
+.measurement-point-item:hover {
+  background-color: transparent;
 }
 
 .session-list-item.active,
@@ -344,6 +376,7 @@ select:focus {
   color: #856404;
   border-radius: 4px;
   margin-bottom: 20px;
+  margin-top: 20px;
 }
 
 .form-section-warning p {
@@ -355,7 +388,7 @@ select:focus {
   display: flex;
   gap: 2rem;
   border-bottom: 2px solid var(--border-color);
-  margin-bottom: 30px;
+  margin-bottom: 10px;
 }
 
 .analysis-tabs button {
@@ -443,6 +476,14 @@ select:focus {
   transform: translateX(22px);
 }
 
+body.dark-mode .measurement-point-list-item:hover {
+  background-color: #2a2a2a;
+}
+
+body.dark-mode .budget-select-checkbox {
+  accent-color: var(--primary-color);
+}
+
 /* =================================================================== */
 /* 4. MODALS & OVERLAYS                                                */
 /* =================================================================== */
@@ -471,6 +512,10 @@ select:focus {
   position: relative;
 }
 
+.modal-content-hidden {
+    display: none !important;
+}
+
 .modal-content h3 {
   margin-top: 0;
   color: #2c3e50;
@@ -488,7 +533,7 @@ select:focus {
 .modal-close-button {
   position: absolute;
   top: 15px;
-  right: 15px;
+  right: 25px;
   background: transparent;
   border: none;
   font-size: 1.7rem;
@@ -544,6 +589,561 @@ select:focus {
 .modal-icon-button.primary:hover {
   background-color: var(--primary-color);
   color: white;
+}
+
+/* --- Styles for Multi-TMDE Tabs in Tolerance Modal --- */
+
+.modal-tab-add {
+  background: none;
+  border: none;
+  color: var(--text-color-muted);
+  cursor: pointer;
+  padding: 10px 15px;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+  border-bottom: 3px solid transparent;
+  position: relative;
+  bottom: -2px;
+}
+
+.modal-tab-add:hover {
+  color: var(--primary-color);
+}
+
+.modal-content.edit-session-modal {
+    display: flex;
+    flex-direction: column; /* Changed from row */
+    width: 90vw;
+    max-width: 1000px;
+    height: 80vh;
+    padding: 0;
+    text-align: left;
+}
+
+.tmde-management-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Adds space between each measurement point card */
+}
+
+.tmde-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Adds space between TMDE items within a card */
+}
+
+.tmde-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background-color: var(--background-color);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.tmde-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px; /* Adds a small space between the TMDE name and its spec summary */
+}
+
+.tmde-info span {
+  font-size: 0.85rem;
+  color: var(--text-color-muted);
+}
+
+.reference-point-control {
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.toggle-switch-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle-option-label {
+  font-weight: 500;
+  color: var(--text-color);
+  cursor: pointer;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.uut-point-display {
+  font-weight: normal;
+  color: var(--text-color-muted);
+  margin-left: 8px;
+  font-size: 0.9rem;
+}
+
+.toggle-switch-checkbox {
+  display: none;
+}
+
+.toggle-switch-label {
+  display: block;
+  position: relative;
+  width: 50px;
+  height: 28px;
+  background-color: var(--border-color);
+  border-radius: 28px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  flex-shrink: 0;
+}
+
+.toggle-switch-switch {
+  display: block;
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: #fff;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s ease-in-out;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.toggle-switch-checkbox:checked + .toggle-switch-label {
+  background-color: var(--primary-color);
+}
+
+.toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-switch {
+  transform: translateX(22px);
+}
+
+.manual-input-container {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.manual-input-container.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  filter: grayscale(50%);
+}
+
+.modal-main-content {
+    flex-grow: 1;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.modal-main-content h4 {
+    margin: 0 0 25px 0;
+    font-size: 1.5rem;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px 30px;
+}
+
+.details-grid .form-section {
+    padding: 0;
+    margin: 0;
+}
+
+.details-grid .full-span {
+    grid-column: 1 / -1;
+}
+
+.tmde-header,
+.uut-header {
+  display: flex;          /* Add this */
+  flex-direction: column; /* Add this */
+  gap: 1.25rem;           /* Add this to control spacing (adjust value as needed) */
+  padding-bottom: 1.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tmde-header .form-section,
+.uut-header .form-section {
+  flex-grow: 1;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* UUT Seal/Stamp Card Styling */
+
+.uut-seal-container {
+    display: flex;
+    justify-content: center;
+    padding: 20px 0;
+    margin-bottom: 20px;
+}
+
+.uut-seal {
+    min-width: 360px;
+    max-width: 400px;
+    aspect-ratio: 1 / 1;
+    height: auto;
+
+    border-radius: 50%;
+    background-color: var(--background-color-light);
+    border: 4px solid var(--seal-background-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
+                inset 0 0 15px rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 30px;
+    box-sizing: border-box;
+    transition: background-color 0.3s, border-color 0.3s;
+    animation: seal-glow 3s infinite alternate;
+    cursor: pointer;
+}
+
+@keyframes seal-glow {
+  from {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
+                inset 0 0 15px rgba(0, 0, 0, 0.05),
+                0 0 0px 0px rgba(14, 165, 233, 0); /* Glow starts invisible */
+  }
+  to {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
+                inset 0 0 15px rgba(0, 0, 0, 0.05),
+                0 0 15px 7px rgba(14, 165, 233, 0.5); /* Glow is now visible */
+  }
+}
+
+.uut-seal, .tmde-seal {
+  cursor: pointer;
+}
+
+.uut-seal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+    width: 100%;
+    /* max-width: 85%; */
+}
+
+.uut-seal:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), inset 0 0 10px rgba(0, 0, 0, 0.04);
+}
+
+.seal-label {
+    font-size: 0.8rem;
+    color: var(--text-color-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.seal-title {
+    margin: 0;
+    font-size: 1.3rem;
+    color: var(--seal-background-color);
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.seal-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.seal-info-item span {
+    font-size: 0.8rem;
+    color: var(--text-color-muted);
+}
+
+.seal-info-item strong {
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.seal-limits-split {
+    display: flex;
+    flex-wrap: wrap;         /* This allows the items to stack vertically if they don't fit side-by-side */
+    justify-content: center; /* This will center them whether they are in one row or two */
+    gap: 20px;               /* This provides spacing between them */
+    width: 100%;
+    margin-top: 0.05px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 3px;
+}
+
+.calculated-limit {
+    font-size: 0.85rem;     /* Smaller font for the long numbers */
+    font-weight: 600;
+    word-break: break-all;  /* Force wrapping for any overflow */
+    line-height: 1.1;
+    color: var(--seal-background-color);
+}
+
+.seal-limits-split .calculated-limit {
+    color: var(--accent-color-secondary);
+    font-weight: 600;
+}
+
+.tmde-seal {
+    min-width: 325px;
+    max-width: 350px;
+    height: auto;
+    min-height: 325px;
+
+    border-radius: 30px;
+    background-color: var(--background-color-light);
+    border: 4px solid var(--seal-tmde-background-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.04);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 25px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    animation: tmdeFuturisticGlow 3s infinite alternate;
+}
+
+@keyframes tmdeFuturisticGlow {
+    from {
+        box-shadow: 0 0 8px 3px rgba(108, 117, 125, 0.4), inset 0 0 10px rgba(0, 0, 0, 0.04);
+    }
+    to {
+        box-shadow: 0 0 10px 5px rgba(226, 225, 225, 0.6), inset 0 0 10px rgba(0, 0, 0, 0.04);
+    }
+}
+
+.tmde-seal:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), inset 0 0 10px rgba(0, 0, 0, 0.04);
+}
+
+.tmde-seal .seal-title {
+    color: var(--text-color);
+}
+
+.tmde-test-point-group {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.tmde-test-point-group:last-child {
+  border-bottom: none;
+}
+
+.tmde-group-header {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 1rem;
+}
+
+.tmde-seals-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.tmde-seal-clickable-container {
+  position: relative;
+}
+
+.copy-tmde-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  justify-content: center;
+}
+
+.copy-tmde-section input[type="checkbox"] {
+  width: auto;
+  height: auto;
+}
+
+.copy-tmde-section label {
+  margin: 0;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.remove-component-btn.on-seal {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 2;
+  background-color: var(--content-background);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tmde-seal-clickable {
+  width: 200px;
+  height: 200px;
+  border-radius: 20px;
+  border: 3px solid var(--seal-tmde-background-color);
+  background-color: var(--background-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-align: center;
+}
+
+.tmde-seal-clickable:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  border-color: var(--primary-color);
+}
+
+.tmde-seal-clickable .seal-title {
+  color: var(--text-color);
+  font-size: 1.1rem; /* Smaller font for smaller seal */
+  word-break: break-word;
+}
+
+/* Small Add TMDE Card */
+.add-tmde-card-small {
+  width: 200px;
+  height: 200px;
+  border-radius: 20px;
+  border: 2px dashed var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.add-tmde-card-small:hover {
+  border-color: var(--primary-color);
+  background-color: var(--primary-color-light);
+}
+
+.add-tmde-button-small {
+  background: none;
+  border: none;
+  color: var(--text-color-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.2s ease-in-out;
+}
+
+.add-tmde-card-small:hover .add-tmde-button-small {
+  color: var(--primary-color);
+}
+
+.add-tmde-button-small .fa-plus {
+  font-size: 1.2rem;
+}
+
+.info-icon-modal {
+    position: absolute;
+    top: 17px;
+    left: 15px;
+    color: var(--text-color-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.info-icon-modal:hover {
+    color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.add-component-section {
+  padding: 10px;
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.add-component-section select {
+    width: 100%;
+}
+
+.add-component-wrapper {
+  position: relative;
+  margin-top: 15px;
+}
+
+.add-component-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  color: var(--text-color-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-component-button:hover {
+  border-color: var(--primary-color);
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+}
+
+.add-component-dropdown {
+  position: absolute;
+  bottom: 100%; 
+  left: 0;
+  margin-bottom: 8px; 
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  z-index: 1050; 
+  min-width: 200px;
+  animation: context-menu-fade-in 0.1s ease-out;
+}
+
+.add-component-dropdown ul {
+  list-style: none;
+  padding: 6px;
+  margin: 0;
+}
+
+.add-component-dropdown li {
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.add-component-dropdown li:hover {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
 }
 
 .breakdown-modal-content {
@@ -618,6 +1218,22 @@ select:focus {
 .modal-tab.active {
   color: var(--primary-color);
   border-bottom-color: var(--primary-color);
+}
+
+.modal-body-scrollable {
+  max-height: 55vh; /* Limit height to 55% of the viewport */
+  overflow-y: auto;  /* Add scrollbar only when content overflows */
+  padding-right: 10px; /* Add space to prevent content from touching the scrollbar */
+}
+
+.tab-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.tab-content .form-section.full-width {
+    width: 100%;
 }
 
 /* --- Dynamic Tolerance Modal Styles --- */
@@ -732,6 +1348,158 @@ select:focus {
   opacity: 0.65;
 }
 
+.modal-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 40px;
+  text-align: left;
+  padding-top: 15px;
+}
+
+.modal-form-section h4 {
+  font-size: 1.1rem;
+  color: var(--primary-color);
+  margin-bottom: 15px;
+  margin-top: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-form-section hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 25px 0;
+}
+
+.modal-form-section label {
+  display: block;
+  margin-bottom: 10px;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-color-muted);
+  letter-spacing: 0.05em;
+}
+
+.input-group {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 10px;
+  align-items: end;
+}
+
+.add-qualifier-btn {
+  background-color: var(--background-color);
+  color: var(--primary-color);
+  border: 1px dashed var(--border-color);
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.add-qualifier-btn:hover {
+  background-color: var(--primary-color-light);
+  border-color: var(--primary-color);
+}
+
+.qualifier-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qualifier-header button {
+  background: none;
+  border: none;
+  color: var(--status-bad);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.symmetric-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+.symmetric-toggle input[type="checkbox"] {
+    width: auto;
+    height: auto;
+    margin: 0;
+}
+.symmetric-toggle label {
+    margin: 0;
+    font-weight: normal;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.input-group-asymmetric {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.searchable-dropdown {
+  position: relative;
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  z-index: 1010;
+  max-height: 150px;
+  overflow-y: auto;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.dropdown-item {
+  padding: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: var(--primary-color-light);
+}
+
+.copy-tmde-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  justify-content: center;
+}
+
+.copy-tmde-section input[type="checkbox"] {
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+
+.copy-tmde-section label {
+  margin: 0;
+  font-weight: 500;
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.batch-values-textarea {
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
 
 /* =================================================================== */
 /* 5. ACCORDION & INPUTS                                               */
@@ -894,10 +1662,185 @@ select:focus {
   font-weight: 500;
 }
 
+.static-display-field {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    margin: 0;
+    font-size: 1rem;
+    min-height: 44px; /* Match height of other inputs */
+}
 
 /* =================================================================== */
 /* 6. UNCERTAINTY ANALYSIS                                             */
 /* =================================================================== */
+.analysis-session-header {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 1.5rem;
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.session-info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex-basis: 0;
+  flex-grow: 1;
+}
+
+.session-info-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.session-info-value {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.analyzed-components-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-top: 1rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.uut-components-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+}
+
+.analyzed-components-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.component-summary-card {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.component-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--content-background);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.component-card-type {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    color: #fff;
+}
+
+.component-card-type.uut {
+    background-color: var(--primary-color);
+}
+
+.component-card-type.tmde {
+    background-color: var(--text-color-muted);
+}
+
+.component-card-name {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.component-card-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.component-info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.component-info-label {
+    font-size: 0.8rem;
+    color: var(--text-color-muted);
+    margin-bottom: 2px;
+}
+
+.component-info-value {
+    font-weight: 500;
+    color: var(--text-color);
+    background-color: var(--content-background);
+    padding: 6px 10px;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+.component-card-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* Increased gap for better separation */
+}
+
+.component-info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.component-info-item-split {
+    display: flex;
+    gap: 1rem;
+}
+
+.split-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.tolerance-values {
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* Space between multiple tolerance parts */
+}
+
 .analysis-dashboard {
   display: grid;
   grid-template-columns: 1fr;
@@ -991,7 +1934,7 @@ select:focus {
   border-top: 2px solid var(--primary-color);
 }
 
-.uncertainty-budget-table tfoot td[colspan="2"] {
+.uncertainty-budget-table tfoot td[colspan="3"] {
   text-align: right;
   font-weight: bold;
 }
@@ -1017,23 +1960,83 @@ select:focus {
   font-weight: normal;
 }
 
+.header-with-select {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-with-select select {
+  padding: 2px 4px;
+  border-radius: 4px;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  max-width: 80px;
+
+}
+
+.add-tmde-card {
+    width: 325px;
+    height: 365px;
+    border-radius: 30px;
+    background-color: transparent;
+    border: 2px dashed var(--border-color);
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease-in-out;
+}
+
+.add-tmde-card:hover {
+    border-color: var(--primary-color);
+    background-color: var(--primary-color-light);
+}
+
+.add-tmde-button {
+    background: none;
+    border: none;
+    color: var(--text-color-muted);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 100%;
+    transition: color 0.2s ease-in-out;
+}
+
+.add-tmde-card:hover .add-tmde-button {
+    color: var(--primary-color);
+}
+
+.add-tmde-button .fa-plus {
+    font-size: 1.5rem;
+}
+
 /* =================================================================== */
 /* 7. RISK ANALYSIS & DASHBOARD                                        */
 /* =================================================================== */
 .risk-analysis-container {
   background-color: var(--background-color);
   padding: 25px;
-  margin: 20px -25px -25px -25px;
-  border-radius: 0 0 8px 8px;
+  margin-top: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
 }
 
 .risk-inputs-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Adjusted for more inputs */
   align-items: end;
-  gap: 20px 40px;
+  gap: 20px 30px;
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
   margin-bottom: 20px;
 }
 
@@ -1063,21 +2066,21 @@ select:focus {
 
 .risk-analysis-dashboard {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 25px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Adjusted for smaller cards */
+  gap: 20px;
 }
 
 .risk-card {
   background-color: var(--content-background);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 25px;
+  padding: 20px;
   text-align: center;
   display: flex;
   flex-direction: column;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  min-height: 280px;
+  min-height: 180px; /* Adjusted card height */
 }
 
 .risk-card:hover {
@@ -1097,17 +2100,18 @@ select:focus {
 }
 
 .risk-value {
-  font-size: 2.5rem;
+  font-size: 2.2rem; /* Adjusted font size */
   font-weight: 700;
   margin-bottom: 5px;
   line-height: 1.1;
 }
 
 .risk-label {
-  font-size: 1rem;
+  font-size: 0.9rem; /* Adjusted font size */
   font-weight: 600;
   color: var(--text-color-muted);
   margin-bottom: 15px;
+  flex-grow: 1; /* Pushes button down */
 }
 
 .risk-explanation {
@@ -1116,6 +2120,53 @@ select:focus {
   line-height: 1.6;
   margin-bottom: 20px;
   flex-grow: 1;
+}
+
+/* === Styles for Final Uncertainty in Budget Table Footer === */
+
+.final-uncertainty-row td {
+  padding: 0 !important;
+  border-bottom: none !important;
+}
+
+.final-result-display {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  background-color: var(--background-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.final-result-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color-muted);
+}
+
+.final-result-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1.2;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.final-result-unit {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--text-color-muted);
+}
+
+.final-result-confidence-note {
+  font-size: 0.85rem;
+  color: var(--text-color-muted);
+  max-width: 600px;
+  line-height: 1.5;
+  margin-top: 0.5rem;
 }
 
 .tur-card .risk-value {
@@ -1273,6 +2324,24 @@ body.dark-mode .modal-content p {
   color: var(--text-color);
 }
 
+body.dark-mode .modal-nav {
+    background-color: #1A202C;
+    border-right-color: #4A5568;
+}
+
+body.dark-mode .modal-nav-button:hover {
+    background-color: #2D3748;
+}
+
+body.dark-mode .analysis-session-header {
+  background-color: #1A202C;
+  border-color: #4A5568;
+}
+
+body.dark-mode .modal-content h3 {
+  color: var(--text-color);
+}
+
 body.dark-mode .form-section label {
   color: #cbd5e0;
 }
@@ -1312,23 +2381,66 @@ body.dark-mode .view-toggle button.active {
   color: var(--primary-color-dark);
 }
 
-body.dark-mode .uncertainty-budget-table thead th {
-  background-color: #1a202c;
-  color: #cbd5e0;
-  border-color: #4a5568;
+body.dark-mode .uncertainty-budget-table {
+  border: 1px solid var(--border-color);
+  border-top: none;
 }
 
-body.dark-mode .uncertainty-budget-table tbody tr:hover {
-  background-color: var(--background-color);
+body.dark-mode .uncertainty-budget-table thead th {
+  background-color: #2d3748; /* A slightly lighter, distinct header color */
+  color: var(--text-color);  /* Main bright text for readability */
+  border-color: var(--border-color);
+  border-top: 1px solid var(--border-color);
 }
 
 body.dark-mode .uncertainty-budget-table .category-header td {
-  background-color: #1a202c;
-  color: var(--primary-color);
+  background-color: var(--content-background);
+  color: var(--primary-color-dark); /* Use the brighter blue for accents */
+  font-weight: 600;
+}
+
+body.dark-mode .uncertainty-budget-table tbody tr:hover {
+  background-color: var(--primary-color-light); /* Consistent blue hover state */
+}
+
+body.dark-mode .uncertainty-budget-table tfoot tr {
+  background-color: transparent; /* Remove inconsistent background */
+}
+
+body.dark-mode .uncertainty-budget-table tfoot td[colspan="3"] {
+  color: var(--text-color);
 }
 
 body.dark-mode .uncertainty-budget-table tfoot td:not([colspan]) {
-  color: var(--primary-color);
+  color: var(--primary-color-dark); /* Use bright blue for values */
+}
+
+body.dark-mode .final-result-display {
+  background-color: #1a202c; /* A distinct dark blue/gray for the final summary */
+}
+
+body.dark-mode .final-result-label,
+body.dark-mode .final-result-confidence-note {
+  color: var(--text-color-muted); /* Softer color for secondary text */
+}
+
+body.dark-mode .final-result-value,
+body.dark-mode .final-result-unit {
+  color: var(--primary-color-dark); /* Bright blue for the final value */
+}
+
+body.dark-mode .final-result-confidence-note strong {
+    color: #e0e0e0; /* Make the bolded k-value and % stand out */
+}
+
+body.dark-mode .k-factor-label {
+    color: var(--text-color-muted); /* Improve checkbox label contrast */
+}
+
+body.dark-mode .header-with-select select {
+    background-color: var(--input-background);
+    color: var(--text-color);
+    border-color: var(--border-color);
 }
 
 body.dark-mode .spec-dashboard {
@@ -1407,8 +2519,177 @@ body.dark-mode .accordion-header:hover {
   background-color: #2d3748;
 }
 
+/* --- Dark Mode: Modals & Overlays --- */
+body.dark-mode .modal-close-button:hover {
+    color: var(--text-color);
+}
+
+body.dark-mode .modal-icon-button.secondary:hover {
+    background-color: var(--text-color-muted);
+    border-color: var(--text-color-muted);
+    color: var(--content-background);
+}
+
+body.dark-mode .modal-icon-button.primary {
+    color: var(--primary-color-dark);
+    border-color: var(--primary-color-dark);
+}
+
+body.dark-mode .modal-icon-button.primary:hover {
+    background-color: var(--primary-color-dark);
+    color: var(--background-color);
+}
+
+body.dark-mode .modal-tabs {
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .modal-tab {
+    color: var(--text-color-muted);
+}
+
+body.dark-mode .modal-tab:hover {
+    color: var(--primary-color-dark);
+}
+
 body.dark-mode .modal-tab.active {
-  border-bottom-color: var(--primary-color-dark);
+    color: var(--primary-color-dark);
+    border-bottom-color: var(--primary-color-dark);
+}
+
+
+/* --- Dark Mode: Edit Session Modal --- */
+body.dark-mode .tmde-test-point-group {
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .tmde-seal-clickable {
+    background-color: var(--background-color);
+    border-color: var(--seal-tmde-background-color);
+}
+
+body.dark-mode .tmde-seal-clickable:hover {
+    border-color: var(--primary-color-dark);
+}
+
+body.dark-mode .tmde-seal-clickable .seal-title {
+    color: var(--text-color);
+}
+
+body.dark-mode .add-tmde-card-small {
+    border-color: var(--border-color);
+}
+
+body.dark-mode .add-tmde-card-small:hover {
+    border-color: var(--primary-color-dark);
+    background-color: var(--primary-color-light);
+}
+
+body.dark-mode .add-tmde-button-small {
+    color: var(--text-color-muted);
+}
+
+body.dark-mode .add-tmde-card-small:hover .add-tmde-button-small {
+    color: var(--primary-color-dark);
+}
+
+
+/* --- Dark Mode: Add TMDE & Tolerance Modals --- */
+body.dark-mode .tmde-header {
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .reference-point-control {
+    background-color: var(--background-color);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .toggle-option-label,
+body.dark-mode .toggle-option-label .uut-point-display {
+    color: var(--text-color);
+}
+
+body.dark-mode .toggle-switch-checkbox:checked + .toggle-switch-label {
+    background-color: var(--primary-color-dark);
+}
+
+/* Styles for the shared ToleranceForm component */
+body.dark-mode .component-card {
+    background-color: var(--background-color);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .component-header {
+    background-color: var(--content-background);
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .component-header h5 {
+    color: var(--primary-color-dark);
+}
+
+body.dark-mode .remove-component-btn {
+    color: var(--status-bad);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .remove-component-btn:hover {
+    background-color: var(--status-bad);
+    color: white;
+    border-color: var(--status-bad);
+}
+
+body.dark-mode .add-component-button {
+    border-color: var(--border-color);
+    color: var(--text-color-muted);
+}
+
+body.dark-mode .add-component-button:hover {
+    border-color: var(--primary-color-dark);
+    background-color: var(--primary-color-light);
+    color: var(--primary-color-dark);
+}
+
+body.dark-mode .add-component-dropdown {
+    background-color: var(--content-background);
+    border-color: var(--border-color);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+body.dark-mode .add-component-dropdown li:hover {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color-dark);
+}
+
+/* --- Dark Mode: Scrollbars --- */
+/* For Webkit browsers (Chrome, Safari, Edge) */
+body.dark-mode ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+body.dark-mode ::-webkit-scrollbar-track {
+  background: var(--background-color);
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 10px;
+  border: 2px solid var(--background-color);
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-color-muted);
+}
+
+/* For Firefox */
+body.dark-mode * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) var(--background-color);
+}
+
+body.dark-mode .placeholder-content p {
+    color: var(--text-color-muted);
 }
 
 body.dark-mode .measurement-point-item.active .info-icon,
@@ -1429,6 +2710,32 @@ body.dark-mode .sidebar-action-button.delete:hover {
   color: white;
 }
 
+body.dark-mode .analyzed-components-title {
+    border-bottom-color: #4A5568;
+}
+
+body.dark-mode .component-summary-card {
+    background-color: #1A202C;
+    border-color: #4A5568;
+}
+
+body.dark-mode .component-card-header {
+    background-color: #2D3748;
+    border-bottom-color: #4A5568;
+}
+
+body.dark-mode .component-card-type.uut {
+    background-color: var(--primary-color-dark);
+    color: #1A202C;
+}
+
+body.dark-mode .component-info-value {
+    background-color: #2D3748;
+}
+
+body.dark-mode .final-result-display {
+  background-color: #1A202C; /* A dark background */
+}
 
 /* =================================================================== */
 /* 10. MEDIA QUERIES                                                   */
@@ -1609,9 +2916,13 @@ body.dark-mode .sidebar-action-button.delete:hover {
 /* FullBreakdownModal */
 .full-breakdown-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr; /* Changed from 1fr 1fr */
   gap: 2rem;
   margin-top: 1rem;
+}
+
+.full-breakdown-container-single {
+  display: block; /* A simple container for the single view */
 }
 
 .full-breakdown-column h4 {
@@ -1686,4 +2997,28 @@ body.dark-mode .sidebar-action-button.delete:hover {
   text-align: center;
   margin: -0.5rem 0 0.5rem 0;
   font-style: italic;
+}
+
+.limit-value-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.limit-value-display strong {
+  font-size: 1.1em;
+}
+
+.limit-value-display select {
+  font-size: 0.8rem;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background-color: var(--background-color);
+  max-width: 100px;
+  border: 1px solid var(--border-color);
+}
+
+.add-point-controls {
+  display: flex;
+  gap: 0.5rem;
 }
