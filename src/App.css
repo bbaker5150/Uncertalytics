@@ -315,14 +315,6 @@ select:focus {
   background-color: var(--background-color);
 }
 
-.budget-select-checkbox {
-  width: 16px;
-  height: 16px;
-  margin-left: 15px;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
 .measurement-point-item {
   flex-grow: 1; /* This was changed from width: 100% */
 }
@@ -478,10 +470,6 @@ select:focus {
 
 body.dark-mode .measurement-point-list-item:hover {
   background-color: #2a2a2a;
-}
-
-body.dark-mode .budget-select-checkbox {
-  accent-color: var(--primary-color);
 }
 
 /* =================================================================== */
@@ -1499,6 +1487,130 @@ body.dark-mode .budget-select-checkbox {
   font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 0.9rem;
   line-height: 1.6;
+}
+
+/* ============================================= */
+/* --- Pristine Batch Add Test Point Modal Styles --- */
+/* ============================================= */
+
+/* --- Main 2-Column Layout --- */
+/* Gives more horizontal space to the points list on the right */
+.modal-form-grid {
+  grid-template-columns: 1fr 1.5fr;
+}
+
+/* --- Right-Side Points Container --- */
+/* This container holds the header, list, and add form */
+.measurement-points-container {
+  background-color: var(--background-color);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  /* Prevents the container from growing too tall on large screens */
+  max-height: 480px;
+}
+
+/* --- Shared Grid Properties --- */
+/* Establishes a consistent gap and alignment for all grid rows */
+.points-table-header,
+.points-table-row,
+.add-point-form {
+  display: grid;
+  gap: 12px;
+  align-items: center;
+}
+
+/* --- Points List Header --- */
+.points-table-header {
+  padding: 0 8px 12px 8px;
+  margin-bottom: 8px;
+  /* A stronger border to visually separate the header */
+  border-bottom: 2px solid var(--border-color);
+}
+
+.points-table-header span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* --- Scrollable List of Points --- */
+.measurement-points-list {
+  /* Allows the list to grow and fill available vertical space */
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-right: 10px; /* Extra space for the scrollbar */
+  margin-bottom: 15px;
+}
+
+/* --- Individual Row in the List --- */
+.points-table-row {
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+/* Adds a subtle hover effect for better user feedback */
+.points-table-row:hover {
+  background-color: var(--primary-color-light);
+}
+
+.points-table-row input,
+.points-table-row select {
+  margin: 0;
+  font-size: 0.9rem; /* Slightly smaller font for a denser list */
+}
+
+/* --- "Add New Point" Form at the Bottom --- */
+.add-point-form {
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color);
+  /* Prevents this form from shrinking if space is limited */
+  flex-shrink: 0;
+}
+
+
+/*
+ * ==========================================================
+ * ### CORE FIX: DYNAMIC GRID COLUMN LAYOUTS ###
+ * These rules ensure that the header, rows, AND the add form
+ * all switch between 3 and 5 columns correctly.
+ * ==========================================================
+ */
+
+/* 1. Base Layout (3 Columns) */
+.points-table-header,
+.points-table-row,
+.add-point-form {
+  /* Columns: Section | UUT Value     | Action Button */
+  grid-template-columns: 1.5fr 2fr min-content;
+}
+
+/* 2. Expanded Layout (5 Columns) */
+.points-table-header.expanded,
+.points-table-row.expanded,
+.add-point-form.expanded {
+  /* Columns: Section | UUT Value | TMDE Value | TMDE Unit | Action Button */
+  grid-template-columns: 1.5fr 2fr 2fr 1.5fr min-content; /* <-- UPDATED */
+}
+
+
+/* --- Action Button Alignment --- */
+/* Ensures the small add/remove buttons are styled and aligned */
+.points-table-row .remove-component-btn,
+.add-point-form .button-small {
+  justify-self: center; /* Horizontally centers the button in its column */
+}
+
+.add-point-form .button-small {
+  padding: 0;
+  width: 40px;
+  height: 40px; /* Makes it a square that aligns with inputs */
+  font-size: 1rem;
 }
 
 /* =================================================================== */

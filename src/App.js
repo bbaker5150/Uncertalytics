@@ -889,88 +889,88 @@ const UncertaintyBudgetTable = ({
   );
 };
 
-const FinalUncertaintyCard = ({ calcResults, testPointInfo }) => {
-  const hasInfo =
-    testPointInfo && testPointInfo.parameter && testPointInfo.qualifier;
+// const FinalUncertaintyCard = ({ calcResults, testPointInfo }) => {
+//   const hasInfo =
+//     testPointInfo && testPointInfo.parameter && testPointInfo.qualifier;
 
-  return (
-    <>
-      <p
-        style={{
-          fontSize: "0.9rem",
-          color: "#6c757d",
-          marginTop: "10px",
-          textAlign: "center",
-        }}
-      >
-        {hasInfo ? (
-          <>
-            {testPointInfo.parameter.name}: {testPointInfo.parameter.value}{" "}
-            {testPointInfo.parameter.unit}
-            {testPointInfo.qualifier && testPointInfo.qualifier.value && (
-              <>
-                <br />
-                {testPointInfo.qualifier.name}: {testPointInfo.qualifier.value}{" "}
-                {testPointInfo.qualifier.unit}
-              </>
-            )}
-          </>
-        ) : (
-          "Legacy Measurement Point Selected"
-        )}
-      </p>
+//   return (
+//     <>
+//       <p
+//         style={{
+//           fontSize: "0.9rem",
+//           color: "#6c757d",
+//           marginTop: "10px",
+//           textAlign: "center",
+//         }}
+//       >
+//         {hasInfo ? (
+//           <>
+//             {testPointInfo.parameter.name}: {testPointInfo.parameter.value}{" "}
+//             {testPointInfo.parameter.unit}
+//             {testPointInfo.qualifier && testPointInfo.qualifier.value && (
+//               <>
+//                 <br />
+//                 {testPointInfo.qualifier.name}: {testPointInfo.qualifier.value}{" "}
+//                 {testPointInfo.qualifier.unit}
+//               </>
+//             )}
+//           </>
+//         ) : (
+//           "Legacy Measurement Point Selected"
+//         )}
+//       </p>
 
-      {!calcResults ? (
-        <div style={{ textAlign: "center", padding: "20px" }}>
-          <p className="placeholder-text">
-            The uncertainty budget has not been calculated.
-            <br />
-            Please define the UUT/TMDE and any other components to display the
-            results.
-          </p>
-        </div>
-      ) : (
-        <div style={{ textAlign: "center" }}>
-          <div className="final-result-value">
-            U = ± <span>{calcResults.expanded_uncertainty.toFixed(3)}</span> ppm
-          </div>
-          <ul className="result-breakdown">
-            <li>
-              <span className="label">Combined Uncertainty (uₑ)</span>
-              <span className="value">
-                {calcResults.combined_uncertainty.toFixed(4)} ppm
-              </span>
-            </li>
-            <li>
-              <span className="label">Effective DoF (vₑₒₒ)</span>
-              <span className="value">
-                {calcResults.effective_dof === Infinity ||
-                calcResults.effective_dof === null
-                  ? "∞"
-                  : calcResults.effective_dof.toFixed(2)}
-              </span>
-            </li>
-            <li>
-              <span className="label">Coverage Factor (k)</span>
-              <span className="value">{calcResults.k_value.toFixed(3)}</span>
-            </li>
-          </ul>
-          <p className="result-confidence-note">
-            The reported expanded uncertainty of measurement is stated as the
-            standard uncertainty of measurement multiplied by the coverage
-            factor k={calcResults.k_value.toFixed(3)}, which for a
-            t-distribution with vₑₒₒ ={" "}
-            {calcResults.effective_dof === Infinity ||
-            calcResults.effective_dof === null
-              ? "∞"
-              : calcResults.effective_dof.toFixed(2)}{" "}
-            corresponds to a coverage probability of approximately 95%.
-          </p>
-        </div>
-      )}
-    </>
-  );
-};
+//       {!calcResults ? (
+//         <div style={{ textAlign: "center", padding: "20px" }}>
+//           <p className="placeholder-text">
+//             The uncertainty budget has not been calculated.
+//             <br />
+//             Please define the UUT/TMDE and any other components to display the
+//             results.
+//           </p>
+//         </div>
+//       ) : (
+//         <div style={{ textAlign: "center" }}>
+//           <div className="final-result-value">
+//             U = ± <span>{calcResults.expanded_uncertainty.toFixed(3)}</span> ppm
+//           </div>
+//           <ul className="result-breakdown">
+//             <li>
+//               <span className="label">Combined Uncertainty (uₑ)</span>
+//               <span className="value">
+//                 {calcResults.combined_uncertainty.toFixed(4)} ppm
+//               </span>
+//             </li>
+//             <li>
+//               <span className="label">Effective DoF (vₑₒₒ)</span>
+//               <span className="value">
+//                 {calcResults.effective_dof === Infinity ||
+//                 calcResults.effective_dof === null
+//                   ? "∞"
+//                   : calcResults.effective_dof.toFixed(2)}
+//               </span>
+//             </li>
+//             <li>
+//               <span className="label">Coverage Factor (k)</span>
+//               <span className="value">{calcResults.k_value.toFixed(3)}</span>
+//             </li>
+//           </ul>
+//           <p className="result-confidence-note">
+//             The reported expanded uncertainty of measurement is stated as the
+//             standard uncertainty of measurement multiplied by the coverage
+//             factor k={calcResults.k_value.toFixed(3)}, which for a
+//             t-distribution with vₑₒₒ ={" "}
+//             {calcResults.effective_dof === Infinity ||
+//             calcResults.effective_dof === null
+//               ? "∞"
+//               : calcResults.effective_dof.toFixed(2)}{" "}
+//             corresponds to a coverage probability of approximately 95%.
+//           </p>
+//         </div>
+//       )}
+//     </>
+//   );
+// };
 
 const InputsBreakdownModal = ({ results, inputs, onClose }) => {
   const mid = (inputs.LUp + inputs.LLow) / 2;
@@ -1759,6 +1759,18 @@ function Analysis({
   useEffect(() => {
     if (allComponents.length === 0) {
       setCalcResults(null);
+      // If there are no components, we may also need to clear the saved results.
+      // This ensures that deleting the last component persists the change.
+      if (testPointData.is_detailed_uncertainty_calculated) {
+         onDataSave({
+            combined_uncertainty: 0,
+            effective_dof: Infinity,
+            k_value: 0,
+            expanded_uncertainty: 0,
+            is_detailed_uncertainty_calculated: false,
+            components: [], // Clear manual components as well
+         });
+      }
       return;
     }
     const combinedVariance = allComponents.reduce(
@@ -1790,14 +1802,23 @@ function Analysis({
       expanded_uncertainty: expandedUncertainty,
       is_detailed_uncertainty_calculated: true,
     };
+
     setCalcResults(newResults);
-    onDataSave({ ...newResults, components: manualComponents });
+    const resultsHaveChanged =
+      !testPointData.is_detailed_uncertainty_calculated ||
+      Math.abs(testPointData.expanded_uncertainty - newResults.expanded_uncertainty) > 1e-9 ||
+      JSON.stringify(testPointData.components) !== JSON.stringify(manualComponents);
+
+    if (resultsHaveChanged) {
+      onDataSave({ ...newResults, components: manualComponents });
+    }
   }, [
     allComponents,
     useTDistribution,
     onDataSave,
     manualComponents,
     sessionData.uncertaintyConfidence,
+    testPointData,
   ]);
 
   const handleSaveTmde = (newTmde) => {
@@ -1945,7 +1966,7 @@ function Analysis({
       return;
     }
 
-    const uutNominal = testPointData?.testPointInfo?.parameter;
+    // const uutNominal = testPointData?.testPointInfo?.parameter;
     const calibrationComponents = allComponents.filter(
       (c) => !c.name.startsWith("UUT")
     );
@@ -2837,7 +2858,6 @@ function App() {
   const [infoModalPoint, setInfoModalPoint] = useState(null);
   const [initialSessionTab, setInitialSessionTab] = useState("details");
   const [initialTmdeToEdit, setInitialTmdeToEdit] = useState(null);
-  const [budgetTestPointIds, setBudgetTestPointIds] = useState(new Set());
 
   const handleOpenSessionEditor = (
     initialTab = "details",
@@ -2890,31 +2910,6 @@ function App() {
       document.body.classList.remove("dark-mode");
     }
   }, [isDarkMode]);
-
-  useEffect(() => {
-    // When the primary selected point changes, it becomes the default (and only)
-    // point in the budget. The user can then add or remove others.
-    if (selectedTestPointId) {
-      setBudgetTestPointIds(new Set([selectedTestPointId]));
-    } else {
-      setBudgetTestPointIds(new Set());
-    }
-  }, [selectedTestPointId]);
-
-  const handleBudgetSelectionChange = (testPointId, isSelected) => {
-    setBudgetTestPointIds((prevSet) => {
-      const newSet = new Set(prevSet);
-      if (isSelected) {
-        newSet.add(testPointId);
-      } else {
-        // Prevent removing the last item from the budget
-        if (newSet.size > 1) {
-          newSet.delete(testPointId);
-        }
-      }
-      return newSet;
-    });
-  };
 
   const handleCloseContextMenu = useCallback(() => setContextMenu(null), []);
 
@@ -3040,60 +3035,58 @@ function App() {
   };
   
   const handleBatchSaveTestPoints = (batchData) => {
-    const values = batchData.values.split('\n').map(v => v.trim()).filter(Boolean);
-    if (values.length === 0) {
-      return;
-    }
+    const { formData, measurementPoints, qualifier } = batchData;
+
+    if (measurementPoints.length === 0) return;
 
     setSessions(prev =>
       prev.map(session => {
         if (session.id !== selectedSessionId) return session;
 
         const lastTestPoint = session.testPoints.find(tp => tp.id === selectedTestPointId);
-        
-        const newPoints = values.map((value, index) => {
-          let section = batchData.section;
-          const match = section.match(/^(.*?)(\d+|[a-zA-Z])$/);
-          if (match) {
-            const base = match[1];
-            const lastChar = match[2];
-            if (!isNaN(parseInt(lastChar))) {
-              section = `${base}${parseInt(lastChar) + index}`;
-            } else if (lastChar.length === 1) {
-              section = `${base}${String.fromCharCode(lastChar.charCodeAt(0) + index)}`;
-            }
-          }
-          
+
+        const newPoints = measurementPoints.map((point, index) => {
           const newTestPointParameter = {
-            name: batchData.paramName,
-            value: value,
-            unit: batchData.paramUnit,
+            name: formData.paramName,
+            value: point.uutValue,
+            unit: formData.paramUnit,
           };
 
           let copiedTmdes = [];
-          if (batchData.copyTmdes && lastTestPoint) {
+          if (formData.usePreviousTmdes && lastTestPoint) {
             copiedTmdes = JSON.parse(JSON.stringify(lastTestPoint.tmdeTolerances || []));
             
-            // Only update references if the user explicitly opts in
-            if (batchData.updateTmdeRefs) {
-                const originalTestPointParameter = lastTestPoint.testPointInfo.parameter;
-                copiedTmdes.forEach(tmde => {
+            copiedTmdes.forEach(tmde => {
+                // Scenario 1: TMDE measurement point should match the UUT's
+                if (formData.tmdeRefMatchesUut) {
+                    const originalTestPointParameter = lastTestPoint.testPointInfo.parameter;
+                    // Only update TMDEs that were originally set to track the UUT
                     const wasUsingUutRef = tmde.measurementPoint?.value === originalTestPointParameter.value &&
-                                         tmde.measurementPoint?.unit === originalTestPointParameter.unit;
+                                           tmde.measurementPoint?.unit === originalTestPointParameter.unit;
                     if (wasUsingUutRef) {
                         tmde.measurementPoint = { ...newTestPointParameter };
                     }
-                });
-            }
+                } 
+                // Scenario 2: User has provided a specific measurement point for this row
+                else {
+                    if (point.tmdeValue && point.tmdeUnit) {
+                        tmde.measurementPoint = {
+                            value: point.tmdeValue,
+                            unit: point.tmdeUnit,
+                        };
+                    }
+                    // If no manual value is entered, the TMDE's original measurement point is preserved (static reference)
+                }
+            });
           }
           
           return {
             id: Date.now() + index,
             ...defaultTestPoint,
-            section: section,
+            section: point.section, // Use the section provided for each point
             testPointInfo: {
               parameter: newTestPointParameter,
-              qualifier: batchData.qualifier,
+              qualifier: qualifier,
             },
             tmdeTolerances: copiedTmdes,
           };
@@ -3197,7 +3190,7 @@ function App() {
         isOpen={isBatchAddModalOpen}
         onClose={() => setIsBatchAddModalOpen(false)}
         onSave={handleBatchSaveTestPoints}
-        hasExistingPoints={currentTestPoints.length > 0}
+        lastTestPoint={testPointData}
       />
 
       <EditSessionModal
@@ -3342,25 +3335,6 @@ function App() {
             <div className="measurement-point-list">
               {currentTestPoints.length > 0 ? (
                 currentTestPoints.map((tp) => (
-                  <div
-                    key={tp.id}
-                    className="measurement-point-list-item"
-                    title={
-                      budgetTestPointIds.has(tp.id)
-                        ? "Included in budget"
-                        : "Not in budget"
-                    }
-                  >
-                    <input
-                      type="checkbox"
-                      className="budget-select-checkbox"
-                      checked={budgetTestPointIds.has(tp.id)}
-                      onChange={(e) =>
-                        handleBudgetSelectionChange(tp.id, e.target.checked)
-                      }
-                      onClick={(e) => e.stopPropagation()}
-                      title="Include in uncertainty budget"
-                    />
                     <button
                       onClick={() => setSelectedTestPointId(tp.id)}
                       onContextMenu={(e) => {
@@ -3424,7 +3398,6 @@ function App() {
                           )}
                       </span>
                     </button>
-                  </div>
                 ))
               ) : (
                 <div
@@ -3457,9 +3430,7 @@ function App() {
                   setContextMenu={setContextMenu}
                   setBreakdownPoint={setBreakdownPoint}
                   handleOpenSessionEditor={handleOpenSessionEditor}
-                  budgetTestPoints={currentTestPoints.filter((tp) =>
-                    budgetTestPointIds.has(tp.id)
-                  )}
+                  budgetTestPoints={testPointData ? [testPointData] : []}
                 />
               </TestPointDetailView>
             ) : currentSessionData && currentTestPoints.length > 0 ? (
