@@ -255,9 +255,9 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 <input 
                                     type="number" 
                                     name="uncertaintyConfidence" 
-                                    value={formData.uncertaintyConfidence || '95'} 
+                                    value={formData.uncertaintyConfidence || '2'} 
                                     onChange={handleChange} 
-                                    placeholder="e.g., 95"
+                                    placeholder="e.g., 2"
                                     min="1"
                                     max="99.999"
                                     step="0.01"
@@ -266,7 +266,7 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 <input 
                                     type="number" 
                                     name="uncertaintyConfidence" 
-                                    value={formData.uncertaintyConfidence || '95'} 
+                                    value={formData.uncertaintyConfidence || '85'} 
                                     onChange={handleChange} 
                                     placeholder="e.g., 95"
                                     min="1"
@@ -277,12 +277,12 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 <input 
                                     type="number" 
                                     name="uncertaintyConfidence" 
-                                    value={formData.uncertaintyConfidence || '95'} 
+                                    value={formData.uncertaintyConfidence || '12'} 
                                     onChange={handleChange} 
-                                    placeholder="e.g., 95"
+                                    placeholder="e.g., 12"
                                     min="1"
-                                    max="99.999"
-                                    step="0.01"
+                                    max="1000"
+                                    step="1"
                                 />
                             </div>
                             <div className="form-section">
@@ -290,9 +290,9 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 <input 
                                     type="number" 
                                     name="uncertaintyConfidence" 
-                                    value={formData.uncertaintyConfidence || '95'} 
+                                    value={formData.uncertaintyConfidence || '85'} 
                                     onChange={handleChange} 
-                                    placeholder="e.g., 95"
+                                    placeholder="e.g., 85"
                                     min="1"
                                     max="99.999"
                                     step="0.01"
@@ -301,12 +301,12 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 <input 
                                     type="number" 
                                     name="uncertaintyConfidence" 
-                                    value={formData.uncertaintyConfidence || '95'} 
+                                    value={formData.uncertaintyConfidence || '4'} 
                                     onChange={handleChange} 
-                                    placeholder="e.g., 95"
+                                    placeholder="e.g., 4"
                                     min="1"
-                                    max="99.999"
-                                    step="0.01"
+                                    max="100"
+                                    step="1"
                                 />
                             </div>
                         </div>
