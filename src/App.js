@@ -2271,6 +2271,21 @@ function Analysis({
     });
   };
 
+  const getTolInfo = (rngNominal, rngAvg, rngTolLow, rngTolUp) => {
+    if (isNaN(rngTolLow) && isNaN(rngTolUp)){
+      return "Fail"
+    }
+    
+  }
+
+  const getRiskInfo = (rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel) => {
+
+  }
+
+  const calculateGuardBandLimits = (PFAReq, measurePoint, measEQ, UUTLow, UUTHigh, StandardUncComb, MeasRelTarget) => {
+    
+  }
+
   const unitOptions = useMemo(() => { // Still needed for Add Component Modal
     const nominalUnit = uutNominal?.unit;
     if (!nominalUnit) return ["ppm"];
