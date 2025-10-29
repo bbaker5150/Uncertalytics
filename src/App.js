@@ -1,3 +1,4 @@
+/* global math */
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { probit, erf } from "simple-statistics";
 import Latex from "react-latex-next";
@@ -10,6 +11,7 @@ import ToleranceToolModal from "./components/ToleranceToolModal";
 import EditSessionModal from "./components/EditSessionModal";
 import ContextMenu from "./components/ContextMenu";
 import FullBreakdownModal from "./components/FullBreakdownModal";
+import DerivedBreakdownModal from "./components/DerivedBreakdownModal";
 import TestPointInfoModal from "./components/TestPointInfoModal";
 import AddTmdeModal from "./components/AddTmdeModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -717,63 +719,105 @@ const UncertaintyBudgetTable = ({
   components,
   onRemove,
   calcResults,
-  useTDistribution,
-  setUseTDistribution,
-  displayUnit,
-  setDisplayUnit,
-  unitOptions,
-  referencePoint,
+  referencePoint, // Derived quantity's nominal point
   uncertaintyConfidence,
+  onRowContextMenu,
 }) => {
-  const totalUncertaintyPPM = useMemo(() => {
-    if (!components || components.length === 0) return 0;
-    const combinedVariance = components.reduce((sum, comp) => {
-      const value = typeof comp.value === "number" ? comp.value : 0;
-      return sum + Math.pow(value, 2);
-    }, 0);
-    return Math.sqrt(combinedVariance);
-  }, [components]);
 
   const confidencePercent = parseFloat(uncertaintyConfidence) || 95;
+  const derivedUnit = referencePoint?.unit || 'Units'; // Default if missing
 
-  // Convert both combined and expanded uncertainty to the selected display unit
-  const displayedCombinedUncertainty = convertPpmToUnit(
-    totalUncertaintyPPM,
-    displayUnit,
-    referencePoint
-  );
-  const displayedExpandedUncertainty = calcResults
-    ? convertPpmToUnit(
-        calcResults.expanded_uncertainty,
-        displayUnit,
-        referencePoint
-      )
-    : 0;
+  let combinedUncertaintyInDerivedUnit = NaN;
+  let expandedUncertaintyInDerivedUnit = NaN;
+  const targetUnitInfo = unitSystem.units[derivedUnit];
+
+  if (calcResults && targetUnitInfo?.to_si) {
+       if (!isNaN(calcResults.combined_uncertainty_absolute_base)){
+            combinedUncertaintyInDerivedUnit = calcResults.combined_uncertainty_absolute_base / targetUnitInfo.to_si;
+       }
+       if(!isNaN(calcResults.expanded_uncertainty_absolute_base)){
+            expandedUncertaintyInDerivedUnit = calcResults.expanded_uncertainty_absolute_base / targetUnitInfo.to_si;
+       }
+  } else if (calcResults && derivedUnit === 'ppm') {
+      combinedUncertaintyInDerivedUnit = calcResults.combined_uncertainty;
+      expandedUncertaintyInDerivedUnit = calcResults.expanded_uncertainty;
+  }
 
   const renderTBody = (title, filteredComponents) => {
     if (filteredComponents.length === 0) return null;
     return (
       <React.Fragment key={title}>
         <tr className="category-header">
-          <td colSpan="7">{title}</td>
+          {/* --- MODIFIED: Increased colspan --- */}
+          <td colSpan="9">{title}</td>
+          {/* --- END MODIFIED --- */}
         </tr>
         {filteredComponents.map((c) => {
-          const displayedValue = convertPpmToUnit(
-            c.value,
-            displayUnit,
-            referencePoint
-          );
-          const formattedValue =
-            typeof displayedValue === "number"
-              ? displayedValue.toPrecision(4)
-              : displayedValue;
+          let formattedValueUi = "N/A"; // For ui column
+          let displayValueUnitUi = ""; // Unit for ui column
+          let formattedContribution = "N/A"; // For contribution column
+          let displayContributionUnit = derivedUnit; // Contribution is always in derived units
+
+          // Format Ui column
+          if (c.isBaseUnitValue && !isNaN(c.value) && c.unit) {
+            // Derived component ui or Resolution ui
+            const inputUnitInfo = unitSystem.units[c.unit]; // Use component's original unit
+            if (inputUnitInfo?.to_si) {
+              const valueInOriginalUnit = c.value / inputUnitInfo.to_si;
+              formattedValueUi = valueInOriginalUnit.toPrecision(4);
+              displayValueUnitUi = c.unit;
+            } else {
+              formattedValueUi = "Conv Err";
+            }
+          } else if (!c.isBaseUnitValue && !isNaN(c.value)) {
+            // Direct component ui (PPM)
+            formattedValueUi = c.value.toPrecision(4);
+            displayValueUnitUi = "ppm";
+          }
+
+          const formattedCi =
+            typeof c.sensitivityCoefficient === "number"
+              ? c.sensitivityCoefficient.toPrecision(4)
+              : c.sensitivityCoefficient
+              ? String(c.sensitivityCoefficient)
+              : "N/A"; // Ci might be missing for direct
+
+          // --- START FIX: Format Contribution column ---
+          // The 'c.contribution' field is now populated with the correct NATIVE contribution
+          // by the main useEffect hook.
+          if (typeof c.contribution === 'number' && !isNaN(c.contribution)) {
+              formattedContribution = c.contribution.toPrecision(4);
+              
+              if (!c.isBaseUnitValue) { // Handle direct PPM components
+                displayContributionUnit = "ppm";
+              }
+          }
+          // --- END FIX ---
 
           return (
-            <tr key={c.id}>
+            <tr
+              key={c.id}
+              onContextMenu={(e) => {
+                // Pass event and component data up if handler exists
+                if (onRowContextMenu) {
+                  onRowContextMenu(e, c);
+                }
+              }}
+            >
               <td>{c.name}</td>
               <td>{c.sourcePointLabel || "N/A"}</td>
               <td>{c.type}</td>
-              <td>{formattedValue}</td>
+              {/* Ui Column */}
+              <td>
+                {formattedValueUi} {displayValueUnitUi}
+              </td>
+              {/* Sensitivity Coefficient Column */}
+              <td>{formattedCi}</td>
+              {/* --- NEW: Contribution Column --- */}
+              <td>
+                {formattedContribution} {displayContributionUnit}
+              </td>
+              {/* --- END NEW --- */}
               <td>{c.distribution}</td>
               <td>{c.dof === Infinity ? "∞" : (c.dof ?? 0).toFixed(0)}</td>
               <td className="action-cell">
@@ -797,38 +841,22 @@ const UncertaintyBudgetTable = ({
   const typeAComponents = components.filter((c) => c.type === "A");
   const typeBComponents = components.filter((c) => c.type === "B");
 
-  const formattedDof = calcResults
-    ? calcResults.effective_dof === Infinity ||
-      calcResults.effective_dof === null
-      ? "∞"
-      : calcResults.effective_dof.toFixed(2)
-    : "N/A";
+  const formattedDof = calcResults ? (calcResults.effective_dof === Infinity || calcResults.effective_dof === null || isNaN(calcResults.effective_dof) ? "∞" : calcResults.effective_dof.toFixed(2)) : "N/A";
 
   return (
     <table className="uncertainty-budget-table">
       <thead>
         <tr>
           <th>Uncertainty Component</th>
-          <th>Measurement Point</th>
+          <th>Source / Nominal</th>
           <th>Type</th>
-          <th>
-            <div className="header-with-select">
-              <span>uᵢ</span>
-              <select
-                value={displayUnit}
-                onChange={(e) => setDisplayUnit(e.target.value)}
-              >
-                {unitOptions.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </th>
+          {/* Ui Column */}
+          <th>uᵢ</th>
+          <th>Sens. Coeff (cᵢ)</th>
+          <th><Latex>{'Contribution ($|c_i \\times u_i|$)'}</Latex></th>
           <th>Distribution</th>
           <th>vᵢ (dof)</th>
-          <th style={{ width: "50px" }}></th>
+          <th style={{ width: "60px" }}></th>
         </tr>
       </thead>
       <tbody>
@@ -837,47 +865,35 @@ const UncertaintyBudgetTable = ({
       </tbody>
       <tfoot>
         <tr>
-          <td colSpan="3">{"Combined Standard Uncertainty (uₑ)"}</td>
+           {/* --- MODIFIED: Colspan updated --- */}
+          <td colSpan="5">{"Combined Standard Uncertainty (uₑ)"}</td>
+           {/* --- END MODIFIED --- */}
           <td>
-            {typeof displayedCombinedUncertainty === "number"
-              ? displayedCombinedUncertainty.toPrecision(4)
-              : displayedCombinedUncertainty}
+            {!isNaN(combinedUncertaintyInDerivedUnit)
+              ? `${combinedUncertaintyInDerivedUnit.toPrecision(4)} ${derivedUnit}`
+              : "N/A"}
           </td>
+           {/* --- MODIFIED: Colspan updated --- */}
           <td colSpan="3"></td>
+           {/* --- END MODIFIED --- */}
         </tr>
         {calcResults && (
           <>
-            <tr>
-              <td colSpan="3">{"Effective Degrees of Freedom (vₑₒₒ)"}</td>
-              <td>{formattedDof}</td>
-              <td colSpan="3"></td>
-            </tr>
-            <tr>
-              <td colSpan="3">{"Coverage Factor (k)"}</td>
-              <td>{calcResults.k_value.toFixed(3)}</td>
-              <td colSpan="3"></td>
-            </tr>
+            <tr><td colSpan="5">{"Effective Degrees of Freedom (vₑₒₒ)"}</td><td>{formattedDof}</td><td colSpan="3"></td></tr>
+            <tr><td colSpan="5">{"Coverage Factor (k)"}</td><td>{calcResults.k_value.toFixed(3)}</td><td colSpan="3"></td></tr>
             <tr className="final-uncertainty-row">
-              <td colSpan="7">
+               {/* --- MODIFIED: Colspan updated --- */}
+              <td colSpan="9">
+               {/* --- END MODIFIED --- */}
                 <div className="final-result-display">
-                  <span className="final-result-label">
-                    Expanded Uncertainty (U)
-                  </span>
+                  <span className="final-result-label">Expanded Uncertainty (U)</span>
                   <div className="final-result-value">
                     ±{" "}
-                    {typeof displayedExpandedUncertainty === "number"
-                      ? displayedExpandedUncertainty.toPrecision(5)
-                      : "N/A"}
-                    <span className="final-result-unit">{displayUnit}</span>
+                    {!isNaN(expandedUncertaintyInDerivedUnit) ? expandedUncertaintyInDerivedUnit.toPrecision(5) : "N/A"}
+                    <span className="final-result-unit">{derivedUnit}</span>
                   </div>
                   <span className="final-result-confidence-note">
-                    The reported expanded uncertainty of measurement is stated
-                    as the standard uncertainty of measurement multiplied by the
-                    coverage factor{" "}
-                    <strong>k≈{calcResults.k_value.toFixed(3)}</strong>, which
-                    for a t-distribution with vₑₒₒ = {formattedDof} corresponds
-                    to a coverage probability of approximately{" "}
-                    <strong>{confidencePercent}%</strong>.
+                     The reported expanded uncertainty... k≈{calcResults.k_value.toFixed(3)}... {confidencePercent}%.
                   </span>
                 </div>
               </td>
@@ -1618,15 +1634,173 @@ const getBudgetComponentsFromTolerance = (
   return budgetComponents;
 };
 
+// REPLACE: The existing 'calculateDerivedUncertainty' function (approx lines 1378-1473)
+// with this entire new version.
+export const calculateDerivedUncertainty = (equationString, variableMappings, tmdeTolerances, derivedNominalPoint) => {
+  if (!equationString || !variableMappings || !tmdeTolerances) {
+    console.error("calculateDerivedUncertainty missing essential inputs", { equationString, variableMappings, tmdeTolerances });
+    return { combinedUncertaintyNative: NaN, breakdown: [], nominalResult: NaN, error: "Missing calculation inputs." };
+  }
+  if (Object.keys(variableMappings).length === 0 && equationString.match(/[a-zA-Z]/)) {
+      return { combinedUncertaintyNative: NaN, breakdown: [], nominalResult: NaN, error: "Variable mappings are missing for the equation." };
+  }
+
+  try {
+    let expressionToParse = equationString.trim();
+    const equalsIndex = expressionToParse.indexOf('=');
+
+    if (equalsIndex !== -1) {
+        if (equalsIndex < expressionToParse.length - 1) {
+            expressionToParse = expressionToParse.substring(equalsIndex + 1).trim();
+        } else {
+            throw new Error("Invalid equation format: Assignment without expression.");
+        }
+    }
+    if (!expressionToParse) {
+         throw new Error("Equation expression is empty.");
+    }
+
+    const node = math.parse(expressionToParse);
+
+    const variables = Object.keys(variableMappings);
+    if (variables.length === 0) {
+        try {
+            const constantResult = node.compile().evaluate({});
+             return { combinedUncertaintyNative: 0, breakdown: [], nominalResult: constantResult, error: null };
+        } catch(constEvalError){
+             throw new Error("Equation has no mapped variables and is not a constant expression.");
+        }
+    }
+
+
+    let sumOfSquaresNative = 0; // <-- FIX: Changed name for clarity
+    const calculationBreakdown = [];
+    const nominalScope = {};
+    const uncertaintyInputs = {};
+
+    tmdeTolerances.forEach(tmde => {
+        if (!tmde.variableType || !tmde.measurementPoint || tmde.measurementPoint.value === '' || tmde.measurementPoint.unit === '') {
+            console.warn("Skipping TMDE due to missing type or measurement point:", tmde); return;
+        }
+        const nominalValue = parseFloat(tmde.measurementPoint.value);
+        if (isNaN(nominalValue)) {
+            console.warn("Skipping TMDE due to invalid nominal value:", tmde); return;
+        }
+        const { standardUncertainty: ui_ppm } = calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint);
+        const nominalInBase = unitSystem.toBaseUnit(nominalValue, tmde.measurementPoint.unit);
+        
+        // --- START FIX ---
+        const ui_absolute_base = (ui_ppm / 1e6) * Math.abs(nominalInBase);
+        const ui_absolute_native = (ui_ppm / 1e6) * Math.abs(nominalValue); // <-- Get native uncertainty
+         if (isNaN(ui_absolute_base) || ui_absolute_base < 0 || isNaN(ui_absolute_native)) { 
+             console.warn("Could not calculate valid absolute uncertainty for TMDE:", tmde); return; 
+         }
+         // --- END FIX ---
+
+         const variableSymbol = Object.keys(variableMappings).find(key => variableMappings[key] === tmde.variableType);
+         if (variableSymbol && !nominalScope.hasOwnProperty(variableSymbol)) {
+              nominalScope[variableSymbol] = nominalValue;
+         } else if (!variableSymbol) {
+             console.warn(`TMDE variable type '${tmde.variableType}' not found in mappings.`); return;
+         }
+
+        if (uncertaintyInputs[tmde.variableType]) {
+            // --- START FIX ---
+            uncertaintyInputs[tmde.variableType].ui_squared_sum_base += ui_absolute_base ** 2;
+            uncertaintyInputs[tmde.variableType].ui_squared_sum_native += ui_absolute_native ** 2; // <-- Sum native
+            // --- END FIX ---
+        } else {
+            // --- START FIX ---
+            uncertaintyInputs[tmde.variableType] = { 
+                ui_squared_sum_base: ui_absolute_base ** 2, 
+                ui_squared_sum_native: ui_absolute_native ** 2, // <-- Store native
+                nominal: nominalValue, 
+                unit: tmde.measurementPoint.unit, 
+                symbol: variableSymbol, 
+            };
+            // --- END FIX ---
+        }
+    });
+
+     const typesFound = new Set(Object.keys(uncertaintyInputs));
+     const requiredTypes = new Set(Object.values(variableMappings));
+     if (typesFound.size < requiredTypes.size) {
+         const missingTypes = [...requiredTypes].filter(t => !typesFound.has(t));
+         throw new Error(`Missing TMDE assignments for required input types: ${missingTypes.join(', ')}. Check inputs and TMDE assignments.`);
+     }
+
+     Object.keys(uncertaintyInputs).forEach(type => {
+         // --- START FIX ---
+         uncertaintyInputs[type].ui_base = Math.sqrt(uncertaintyInputs[type].ui_squared_sum_base);
+         uncertaintyInputs[type].ui_native = Math.sqrt(uncertaintyInputs[type].ui_squared_sum_native); // <-- Get native
+         // --- END FIX ---
+     });
+
+    variables.forEach(variableSymbol => {
+        const variableType = variableMappings[variableSymbol];
+        const inputData = uncertaintyInputs[variableType];
+
+        if (!inputData || inputData.ui_native === undefined) { throw new Error(`Internal error: Input data missing for type '${variableType}'.`); }
+        if (nominalScope[variableSymbol] === undefined) { throw new Error(`Nominal value for variable '${variableSymbol}' missing.`); }
+
+        // --- START FIX ---
+        const ui_native = inputData.ui_native; // <-- Use NATIVE uncertainty
+        const ui_base = inputData.ui_base;     // <-- Use BASE for display
+        // --- END FIX ---
+        
+        const derivativeNode = math.derivative(node, variableSymbol);
+        const derivativeStr = derivativeNode.toString(); // Get string representation
+        const derivativeFunc = derivativeNode.compile();
+        const sensitivityCoeff = derivativeFunc.evaluate(nominalScope); // This is native derivative
+
+        if (isNaN(sensitivityCoeff)) { throw new Error(`Could not evaluate derivative for '${variableSymbol}'.`); }
+
+        // --- START FIX ---
+        const contribution_native = sensitivityCoeff * ui_native; // <-- Calculate NATIVE contribution
+        const termSquared_native = contribution_native ** 2;
+
+        sumOfSquaresNative += termSquared_native; // <-- Sum NATIVE variances
+        // --- END FIX ---
+
+        calculationBreakdown.push({
+            variable: variableSymbol,
+            type: variableType,
+            nominal: inputData.nominal,
+            unit: inputData.unit,
+            ui_absolute_base: ui_base, // <-- Pass BASE for display logic
+            ci: sensitivityCoeff,
+            derivativeString: derivativeStr, // Store the string
+            contribution_native: Math.abs(contribution_native), // <-- Pass NATIVE contribution
+            termSquared_native: termSquared_native // <-- Pass NATIVE variance
+        });
+    });
+
+    const combinedUncertaintyNative = math.sqrt(sumOfSquaresNative); // <-- Final native unc
+
+    let nominalResult = NaN;
+    try {
+        nominalResult = node.compile().evaluate(nominalScope);
+    } catch (evalError) {
+        console.error("Error evaluating nominal equation result:", evalError);
+    }
+
+    // --- FIX: Return native uncertainty ---
+    return { combinedUncertaintyNative: combinedUncertaintyNative, breakdown: calculationBreakdown, nominalResult, error: null };
+
+  } catch (error) {
+    console.error("Error calculating derived uncertainty:", error);
+    return { combinedUncertaintyNative: NaN, breakdown: [], nominalResult: NaN, error: error.message };
+  }
+};
+
 function Analysis({
   sessionData,
   testPointData,
   onDataSave,
   defaultTestPoint,
-  setContextMenu,
-  setBreakdownPoint,
+  setContextMenu, // Keep this for other context menus
+  setBreakdownPoint, // Keep this for single tolerance breakdown
   handleOpenSessionEditor,
-  budgetTestPoints, // New prop
 }) {
   const { specifications: initialSpecs, components: initialManualComponents } =
     testPointData;
@@ -1639,8 +1813,9 @@ function Analysis({
 
   const [isAddTmdeModalOpen, setAddTmdeModalOpen] = useState(false);
   const [analysisMode, setAnalysisMode] = useState("uncertaintyTool");
+  // Manual components only relevant for 'direct' type
   const [manualComponents, setManualComponents] = useState(
-    initialManualComponents || []
+     testPointData.measurementType === 'direct' ? (initialManualComponents || []) : []
   );
   const [specInput, setSpecInput] = useState(
     initialSpecs || defaultTestPoint.specifications
@@ -1654,7 +1829,6 @@ function Analysis({
     standardUncertainty: "",
     dof: "Infinity",
   });
-  const [useTDistribution, setUseTDistribution] = useState(false);
   const [calcResults, setCalcResults] = useState(null);
   const [riskInputs, setRiskInputs] = useState({
     LLow: "",
@@ -1666,9 +1840,11 @@ function Analysis({
   const [breakdownModal, setLocalBreakdownModal] = useState(null);
   const [notification, setNotification] = useState(null);
   const [isAddComponentModalOpen, setAddComponentModalOpen] = useState(false);
-  const [displayUnit, setDisplayUnit] = useState(
-    testPointData?.testPointInfo?.parameter?.unit || "ppm"
-  );
+
+  // State for Derived Breakdown Modal
+  const [isDerivedBreakdownOpen, setIsDerivedBreakdownOpen] = useState(false);
+  const [derivedBreakdownData, setDerivedBreakdownData] = useState(null);
+
 
   const uutToleranceData = useMemo(
     () => sessionData.uutTolerance || {},
@@ -1678,7 +1854,12 @@ function Analysis({
     () => testPointData.tmdeTolerances || [],
     [testPointData.tmdeTolerances]
   );
+  const uutNominal = useMemo(
+      () => testPointData?.testPointInfo?.parameter,
+      [testPointData?.testPointInfo?.parameter]
+  );
 
+  // Effect to sync incoming data changes to local state
   useEffect(() => {
     const {
       specifications: newSpecs,
@@ -1686,7 +1867,7 @@ function Analysis({
       ...newResults
     } = testPointData;
 
-    setManualComponents(newManualComponents || []);
+    setManualComponents(testPointData.measurementType === 'direct' ? (newManualComponents || []) : []);
     setSpecInput(newSpecs || defaultTestPoint.specifications);
     setCalcResults(
       newResults.is_detailed_uncertainty_calculated ? { ...newResults } : null
@@ -1694,6 +1875,7 @@ function Analysis({
     setRiskResults(null);
   }, [testPointData, defaultTestPoint]);
 
+  // Effect to autosave specInput changes
   useEffect(() => {
     const handler = setTimeout(() => {
       onDataSave({ specifications: specInput });
@@ -1701,11 +1883,11 @@ function Analysis({
     return () => clearTimeout(handler);
   }, [specInput, onDataSave]);
 
+  // Effect to update risk input tolerances when UUT tolerance changes
   useEffect(() => {
-    const nominal = testPointData?.testPointInfo?.parameter;
     const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(
-      uutToleranceData, // Use session-level UUT tolerance
-      nominal
+      uutToleranceData,
+      uutNominal
     );
 
     if (totalToleranceForTar > 0) {
@@ -1717,309 +1899,348 @@ function Analysis({
     } else {
       setRiskInputs((prev) => ({ ...prev, LLow: "", LUp: "" }));
     }
-  }, [testPointData, uutToleranceData]);
-
-  const allComponents = useMemo(() => {
-    // Manual components are global to the active test point's manual entry section
-    const manual = manualComponents.map((c) => ({
-      ...c,
-      sourcePointLabel: "Manual",
-    }));
-
-    const componentsFromBudgetPoints = budgetTestPoints.flatMap((point) => {
-      const pointNominal = point?.testPointInfo?.parameter;
-      if (!pointNominal) return [];
-
-      const sourcePointLabel = `${pointNominal.value} ${pointNominal.unit}`;
-
-      // TMDE components for this point
-      const tmdeComps = (point.tmdeTolerances || [])
-        .flatMap((tmde) => {
-          if (tmde.measurementPoint && tmde.measurementPoint.value) {
-            return getBudgetComponentsFromTolerance(tmde, tmde.measurementPoint);
-          }
-          return [];
-        })
-        .map((c) => ({ ...c, sourcePointLabel }));
-
-      // UUT resolution for this point
-      const uutComps = getBudgetComponentsFromTolerance(
-        uutToleranceData,
-        pointNominal
-      )
-        .filter((comp) => comp.name.endsWith(" - Resolution"))
-        .map((c) => ({ ...c, sourcePointLabel }));
-
-      return [...tmdeComps, ...uutComps];
-    });
-
-    return [...manual, ...componentsFromBudgetPoints];
-  }, [manualComponents, budgetTestPoints, uutToleranceData]);
+  }, [uutToleranceData, uutNominal]);
 
   useEffect(() => {
-    if (allComponents.length === 0) {
-      setCalcResults(null);
-      // If there are no components, we may also need to clear the saved results.
-      // This ensures that deleting the last component persists the change.
-      if (testPointData.is_detailed_uncertainty_calculated) {
-         onDataSave({
-            combined_uncertainty: 0,
-            effective_dof: Infinity,
-            k_value: 0,
-            expanded_uncertainty: 0,
-            is_detailed_uncertainty_calculated: false,
-            components: [], // Clear manual components as well
-         });
-      }
-      return;
-    }
-    const combinedVariance = allComponents.reduce(
-      (sum, comp) => sum + Math.pow(comp.value, 2),
-      0
-    );
-    const combinedUncertainty = Math.sqrt(combinedVariance);
-    const numerator = Math.pow(combinedUncertainty, 4);
-    const denominator = allComponents.reduce(
-      (sum, comp) =>
-        comp.dof === Infinity ? sum : sum + Math.pow(comp.value, 4) / comp.dof,
-      0
-    );
-    const effectiveDof = denominator > 0 ? numerator / denominator : Infinity;
-    const confidencePercent =
-      parseFloat(sessionData.uncertaintyConfidence) || 95;
-    const probability = 1 - (1 - confidencePercent / 100) / 2;
+      let combinedUncertaintyPPM = NaN;
+      let combinedUncertaintyAbsoluteBase = NaN;
+      let effectiveDof = Infinity;
+      const componentsForBudgetTable = [];
+      let calculatedNominalResult = NaN;
 
-    const kValue = useTDistribution
-      ? getKValueFromTDistribution(effectiveDof)
-      : probit(probability);
+      try {
+          if (!uutNominal || !uutNominal.value || !uutNominal.unit) {
+               throw new Error("Missing UUT nominal value or unit for calculation reference.");
+          }
+          const derivedNominalValue = parseFloat(uutNominal.value);
+          const derivedNominalUnit = uutNominal.unit;
+          const targetUnitInfo = unitSystem.units[derivedNominalUnit]; // For conversions
+          
+          if (!targetUnitInfo || isNaN(targetUnitInfo.to_si)) {
+              throw new Error(`Derived unit '${derivedNominalUnit}' is not valid or has no SI conversion.`);
+          }
 
-    const expandedUncertainty = kValue * combinedUncertainty;
+          if (testPointData.measurementType === 'derived') {
+              const {
+                  // --- START FIX ---
+                  combinedUncertaintyNative: derivedUcInputs_Native, // <-- Renamed
+                  breakdown: derivedBreakdown,
+                  // --- END FIX ---
+                  nominalResult,
+                  error: calcError
+              } = calculateDerivedUncertainty(
+                  testPointData.equationString,
+                  testPointData.variableMappings,
+                  tmdeTolerancesData,
+                  uutNominal
+              );
 
-    const newResults = {
-      combined_uncertainty: combinedUncertainty,
-      effective_dof: effectiveDof,
-      k_value: kValue,
-      expanded_uncertainty: expandedUncertainty,
-      is_detailed_uncertainty_calculated: true,
-    };
+              if (calcError) { throw new Error(calcError); }
+              if (isNaN(derivedUcInputs_Native)) { throw new Error("Derived uncertainty calculation (inputs) resulted in NaN."); }
 
-    setCalcResults(newResults);
-    const resultsHaveChanged =
-      !testPointData.is_detailed_uncertainty_calculated ||
-      Math.abs(testPointData.expanded_uncertainty - newResults.expanded_uncertainty) > 1e-9 ||
-      JSON.stringify(testPointData.components) !== JSON.stringify(manualComponents);
+              calculatedNominalResult = nominalResult;
+              // --- START FIX ---
+              let totalVariance_Native = derivedUcInputs_Native ** 2; // <-- Summing native variances
+              // --- END FIX ---
 
-    if (resultsHaveChanged) {
-      onDataSave({ ...newResults, components: manualComponents });
-    }
+              derivedBreakdown.forEach((item, index) => {
+                   const contributingTmde = tmdeTolerancesData.find(tmde => tmde.variableType === item.type);
+                   let distributionLabel = contributingTmde ? (calculateUncertaintyFromToleranceObject(contributingTmde, contributingTmde.measurementPoint).breakdown[0]?.distributionLabel || 'N/A') : 'N/A';
+
+                  componentsForBudgetTable.push({
+                      id: `derived_${item.variable}_${index}`,
+                      name: `Input: ${item.type} (${item.variable})`,
+                      type: 'B',
+                      value: item.ui_absolute_base, // <-- Pass BASE unc for display
+                      unit: item.unit,
+                      isBaseUnitValue: true,
+                      sensitivityCoefficient: item.ci,
+                      derivativeString: item.derivativeString,
+                      // --- START FIX ---
+                      contribution: item.contribution_native, // <-- Pass NATIVE contribution
+                      // --- END FIX ---
+                      dof: Infinity,
+                      isCore: true,
+                      distribution: distributionLabel,
+                      sourcePointLabel: `${item.nominal} ${item.unit || ''}`
+                  });
+              });
+
+              // --- START FIX: Calculate Resolution in NATIVE units ---
+              let uutResolutionUncertaintyBase = 0;
+              let uutResolutionUncertaintyNative = 0;
+              const resComp = getBudgetComponentsFromTolerance(uutToleranceData, uutNominal)
+                                .find(comp => comp.name.endsWith(" - Resolution"));
+                                
+              if (resComp && !isNaN(resComp.value) && derivedNominalValue !== 0) {
+                  const derivedNominalInBase = unitSystem.toBaseUnit(derivedNominalValue, derivedNominalUnit);
+                   if (!isNaN(derivedNominalInBase) && derivedNominalInBase !== 0) {
+                       const deviationInBase = (resComp.value / 1e6) * Math.abs(derivedNominalInBase);
+                       
+                       uutResolutionUncertaintyBase = deviationInBase; // Store base version
+                       uutResolutionUncertaintyNative = deviationInBase / targetUnitInfo.to_si; // Convert to native
+                       
+                       totalVariance_Native += uutResolutionUncertaintyNative ** 2; // <-- Add NATIVE variance
+
+                       componentsForBudgetTable.push({
+                           id: `derived_resolution_${Date.now()}`,
+                           name: 'UUT - Resolution',
+                           type: 'B',
+                           value: uutResolutionUncertaintyBase, // <-- Pass BASE value
+                           unit: derivedNominalUnit,
+                           isBaseUnitValue: true,
+                           sensitivityCoefficient: 1,
+                           derivativeString: null,
+                           contribution: uutResolutionUncertaintyNative, // <-- Pass NATIVE contribution
+                           dof: Infinity,
+                           isCore: true,
+                           distribution: 'Rectangular',
+                           sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`
+                       });
+                   } else { console.warn("Cannot calculate resolution contribution: Invalid base nominal."); }
+              }
+              // --- END FIX ---
+
+              // --- START FIX: Convert final native uncertainty to Base and PPM ---
+              const combinedUncertainty_Native = Math.sqrt(totalVariance_Native);
+              
+              combinedUncertaintyAbsoluteBase = combinedUncertainty_Native * targetUnitInfo.to_si;
+
+              if (!isNaN(derivedNominalValue) && derivedNominalUnit && derivedNominalValue !== 0) {
+                  const derivedNominalInBase = unitSystem.toBaseUnit(derivedNominalValue, derivedNominalUnit);
+                  if (!isNaN(derivedNominalInBase) && derivedNominalInBase !== 0) {
+                      combinedUncertaintyPPM = (combinedUncertaintyAbsoluteBase / Math.abs(derivedNominalInBase)) * 1e6;
+                  } else { console.warn("Cannot convert final derived uncertainty to PPM."); }
+              } else { console.warn("Cannot convert final derived uncertainty to PPM."); }
+              // --- END FIX ---
+
+              effectiveDof = Infinity;
+
+          } else { // Handle 'direct' measurementType
+               let totalVariancePPM = 0;
+               const uutResolutionComponents = getBudgetComponentsFromTolerance(uutToleranceData, uutNominal).filter(comp => comp.name.endsWith(" - Resolution")).map(c => ({...c, sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`}));
+               uutResolutionComponents.forEach(comp => { totalVariancePPM += comp.value ** 2; componentsForBudgetTable.push(comp); });
+               const tmdeComponents = tmdeTolerancesData.flatMap(tmde => { if (tmde.measurementPoint && tmde.measurementPoint.value) { return getBudgetComponentsFromTolerance(tmde, tmde.measurementPoint); } return []; }).map(c => ({...c, sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`}));
+               tmdeComponents.forEach(comp => { totalVariancePPM += comp.value ** 2; componentsForBudgetTable.push(comp); });
+               const manual = manualComponents.map(c => ({ ...c, sourcePointLabel: "Manual" }));
+               manual.forEach(comp => { totalVariancePPM += comp.value ** 2; componentsForBudgetTable.push(comp); });
+               
+               combinedUncertaintyPPM = Math.sqrt(totalVariancePPM);
+               
+               const numerator = Math.pow(combinedUncertaintyPPM, 4);
+               const denominator = componentsForBudgetTable.reduce((sum, comp) => { const dof = (comp.dof === Infinity || comp.dof == null || isNaN(parseFloat(comp.dof))) ? Infinity : parseFloat(comp.dof); return (dof === Infinity || dof <= 0 || isNaN(comp.value) || comp.value === 0) ? sum : sum + Math.pow(comp.value, 4) / dof; }, 0);
+               effectiveDof = denominator > 0 ? numerator / denominator : Infinity;
+
+               if (!isNaN(combinedUncertaintyPPM) && !isNaN(derivedNominalValue) && derivedNominalUnit && derivedNominalValue !== 0){
+                    const derivedNominalInBase = unitSystem.toBaseUnit(derivedNominalValue, derivedNominalUnit);
+                    if (!isNaN(derivedNominalInBase) && derivedNominalInBase !== 0) {
+                        combinedUncertaintyAbsoluteBase = (combinedUncertaintyPPM / 1e6) * Math.abs(derivedNominalInBase);
+                        // Add native contributions for direct components
+                        componentsForBudgetTable.forEach(comp => {
+                            const compBase = (comp.value / 1e6) * Math.abs(derivedNominalInBase);
+                            comp.contribution = compBase / targetUnitInfo.to_si; // Convert to native
+                        });
+                    }
+               }
+          }
+
+          if ((isNaN(combinedUncertaintyPPM) && isNaN(combinedUncertaintyAbsoluteBase)) || componentsForBudgetTable.length === 0) {
+              setCalcResults(null);
+              if (testPointData.is_detailed_uncertainty_calculated) {
+                   onDataSave({
+                       combined_uncertainty: null, effective_dof: null, k_value: null, expanded_uncertainty: null,
+                       is_detailed_uncertainty_calculated: false, calculatedBudgetComponents: [],
+                   });
+              }
+              return;
+          }
+
+          const confidencePercent = parseFloat(sessionData.uncertaintyConfidence) || 95;
+          const probability = 1 - (1 - confidencePercent / 100) / 2;
+          const kValue = (effectiveDof === Infinity || isNaN(effectiveDof)) ? probit(probability) : getKValueFromTDistribution(effectiveDof);
+
+          const expandedUncertaintyPPM = !isNaN(combinedUncertaintyPPM) ? kValue * combinedUncertaintyPPM : NaN;
+          const expandedUncertaintyAbsoluteBase = !isNaN(combinedUncertaintyAbsoluteBase) ? kValue * combinedUncertaintyAbsoluteBase : NaN;
+
+          const newResults = {
+              combined_uncertainty: combinedUncertaintyPPM,
+              combined_uncertainty_absolute_base: combinedUncertaintyAbsoluteBase,
+              effective_dof: effectiveDof,
+              k_value: kValue,
+              expanded_uncertainty: expandedUncertaintyPPM,
+              expanded_uncertainty_absolute_base: expandedUncertaintyAbsoluteBase,
+              is_detailed_uncertainty_calculated: true,
+              calculatedBudgetComponents: componentsForBudgetTable,
+              calculatedNominalValue: calculatedNominalResult,
+          };
+
+          setCalcResults(newResults);
+
+          const resultsHaveChanged =
+              !testPointData.is_detailed_uncertainty_calculated ||
+              Math.abs((testPointData.expanded_uncertainty || 0) - (newResults.expanded_uncertainty || 0)) > 1e-9 ||
+              Math.abs((testPointData.expanded_uncertainty_absolute_base || 0) - (newResults.expanded_uncertainty_absolute_base || 0)) > 1e-9 ||
+              JSON.stringify(testPointData.calculatedBudgetComponents) !== JSON.stringify(newResults.calculatedBudgetComponents) ||
+               (testPointData.measurementType === 'direct' && JSON.stringify(testPointData.components) !== JSON.stringify(manualComponents));
+
+           if (resultsHaveChanged) {
+               onDataSave({
+                  combined_uncertainty: newResults.combined_uncertainty,
+                  combined_uncertainty_absolute_base: newResults.combined_uncertainty_absolute_base,
+                  effective_dof: newResults.effective_dof,
+                  k_value: newResults.k_value,
+                  expanded_uncertainty: newResults.expanded_uncertainty,
+                  expanded_uncertainty_absolute_base: newResults.expanded_uncertainty_absolute_base,
+                  is_detailed_uncertainty_calculated: newResults.is_detailed_uncertainty_calculated,
+                  calculatedBudgetComponents: newResults.calculatedBudgetComponents,
+                  calculatedNominalValue: newResults.calculatedNominalValue,
+                  components: testPointData.measurementType === 'direct' ? manualComponents : undefined,
+               });
+           }
+
+       } catch (error) {
+            console.error("Error during uncertainty calculation useEffect:", error);
+            setNotification({ title: "Calculation Error", message: `Could not calculate uncertainty: ${error.message}. Check inputs and TMDE assignments.` });
+            setCalcResults(null);
+            if (testPointData.is_detailed_uncertainty_calculated) {
+                onDataSave({
+                    combined_uncertainty: null, effective_dof: null, k_value: null, expanded_uncertainty: null, is_detailed_uncertainty_calculated: false, calculatedBudgetComponents: [], calculatedNominalValue: null,
+                });
+            }
+       }
+
   }, [
-    allComponents,
-    useTDistribution,
-    onDataSave,
-    manualComponents,
-    sessionData.uncertaintyConfidence,
-    testPointData,
+      testPointData.measurementType, testPointData.equationString, testPointData.variableMappings, tmdeTolerancesData, uutToleranceData, uutNominal, manualComponents, sessionData.uncertaintyConfidence, onDataSave, testPointData.is_detailed_uncertainty_calculated, testPointData.expanded_uncertainty, testPointData.components, testPointData.calculatedBudgetComponents, testPointData.expanded_uncertainty_absolute_base
   ]);
 
-  const handleSaveTmde = (newTmde) => {
-    const updatedTolerances = [...tmdeTolerancesData, newTmde];
-    onDataSave({ tmdeTolerances: updatedTolerances });
-    setAddTmdeModalOpen(false);
-  };
+   // Context Menu Handler for Budget Table Rows
+    const handleBudgetRowContextMenu = (event, componentData) => {
+        event.preventDefault();
+
+        if (testPointData.measurementType !== 'derived' || !calcResults) {
+            return;
+        }
+
+        const breakdownPayload = {
+            equationString: testPointData.equationString,
+            components: calcResults.calculatedBudgetComponents || [],
+            results: calcResults,
+            derivedNominalPoint: uutNominal
+        };
+
+        setDerivedBreakdownData(breakdownPayload);
+        setIsDerivedBreakdownOpen(true);
+    };
+
+
+  const handleSaveTmde = (tmdeToSave) => {
+     const existingIndex = tmdeTolerancesData.findIndex(t => t.id === tmdeToSave.id);
+     let updatedTolerances;
+
+     if (existingIndex > -1) {
+         updatedTolerances = tmdeTolerancesData.map((t, index) =>
+             index === existingIndex ? tmdeToSave : t
+         );
+     } else {
+         updatedTolerances = [...tmdeTolerancesData, tmdeToSave];
+     }
+     onDataSave({ tmdeTolerances: updatedTolerances });
+     setAddTmdeModalOpen(false);
+ };
+
 
   const handleAddComponent = () => {
+     if (testPointData.measurementType === 'derived') {
+          setNotification({title: "Not Applicable", message: "Manual components cannot be added to derived measurement points."});
+          return;
+      }
     let valueInPPM = NaN;
-    let dof =
-      newComponent.dof === "Infinity" ? Infinity : parseFloat(newComponent.dof);
-    const nominal = testPointData?.testPointInfo?.parameter;
+    let dof = newComponent.dof === "Infinity" ? Infinity : parseFloat(newComponent.dof);
 
     if (newComponent.type === "A") {
       const stdUnc = parseFloat(newComponent.standardUncertainty);
       if (isNaN(stdUnc) || stdUnc <= 0 || isNaN(dof) || dof < 1) {
-        setNotification({
-          title: "Invalid Input",
-          message:
-            "For Type A, please provide a valid positive Standard Uncertainty and Degrees of Freedom (>=1).",
-        });
-        return;
+        setNotification({ title: "Invalid Input", message: "For Type A, provide valid positive Std Unc and DoF (>=1)." }); return;
       }
-      const { value: ppm, warning } = convertToPPM(
-        stdUnc,
-        newComponent.unit,
-        nominal?.value,
-        nominal?.unit,
-        true
-      );
-      if (warning) {
-        setNotification({ title: "Conversion Error", message: warning });
-        return;
-      }
+      const { value: ppm, warning } = convertToPPM( stdUnc, newComponent.unit, uutNominal?.value, uutNominal?.unit, true );
+      if (warning) { setNotification({ title: "Conversion Error", message: warning }); return; }
       valueInPPM = ppm;
-    } else {
-      // Type B
+    } else { // Type B
       const rawValue = parseFloat(newComponent.toleranceLimit);
       const divisor = parseFloat(newComponent.errorDistributionDivisor);
       if (isNaN(rawValue) || rawValue <= 0 || isNaN(divisor)) {
-        setNotification({
-          title: "Invalid Input",
-          message:
-            "Please provide a valid, positive tolerance limit and select a distribution.",
-        });
-        return;
+        setNotification({ title: "Invalid Input", message: "Provide valid positive tolerance limit and select distribution." }); return;
       }
-      const { value: ppm, warning } = convertToPPM(
-        rawValue,
-        newComponent.unit,
-        nominal?.value,
-        nominal?.unit,
-        true
-      );
-      if (warning) {
-        setNotification({ title: "Conversion Error", message: warning });
-        return;
-      }
+      const { value: ppm, warning } = convertToPPM( rawValue, newComponent.unit, uutNominal?.value, uutNominal?.unit, true );
+      if (warning) { setNotification({ title: "Conversion Error", message: warning }); return; }
       valueInPPM = ppm / divisor;
     }
 
     if (!newComponent.name || isNaN(valueInPPM)) {
-      setNotification({
-        title: "Invalid Input",
-        message:
-          "Component name and a valid, convertible uncertainty value are required.",
-      });
-      return;
+      setNotification({ title: "Invalid Input", message: "Component name and valid uncertainty value required." }); return;
     }
 
-    const distributionLabel = oldErrorDistributions.find(
-      (d) => d.value === newComponent.errorDistributionDivisor
-    )?.label;
-    const componentToAdd = {
-      ...newComponent,
-      id: Date.now(),
-      value: valueInPPM,
-      dof,
-      distribution: distributionLabel,
-    };
+    const distributionLabel = oldErrorDistributions.find( d => d.value === newComponent.errorDistributionDivisor )?.label;
+    const componentToAdd = { ...newComponent, id: Date.now(), value: valueInPPM, dof, distribution: distributionLabel };
     const updatedComponents = [...manualComponents, componentToAdd];
     setManualComponents(updatedComponents);
-    setNewComponent({
-      name: "",
-      type: "B",
-      errorDistributionDivisor: "1.732",
-      toleranceLimit: "",
-      unit: "ppm",
-      standardUncertainty: "",
-      dof: "Infinity",
-    });
+    setNewComponent({ name: "", type: "B", errorDistributionDivisor: "1.732", toleranceLimit: "", unit: "ppm", standardUncertainty: "", dof: "Infinity" });
     setAddComponentModalOpen(false);
   };
 
   const handleRemoveComponent = (id) => {
-    const updatedComponents = manualComponents.filter((c) => c.id !== id);
-    setManualComponents(updatedComponents);
+      const updatedComponents = manualComponents.filter((c) => c.id !== id);
+      if(updatedComponents.length < manualComponents.length){
+          setManualComponents(updatedComponents);
+      } else {
+          setNotification({title: "Action Not Allowed", message: "Core budget components cannot be removed here."});
+      }
   };
 
   const handleNewComponentInputChange = (e) =>
     setNewComponent((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
   const handleRiskInputChange = (e) => {
     const { name, value } = e.target;
     setRiskInputs((prev) => ({ ...prev, [name]: value }));
   };
 
   const calculateRiskMetrics = () => {
-    // This function's logic is preserved from your original file
     const LLow = parseFloat(riskInputs.LLow);
     const LUp = parseFloat(riskInputs.LUp);
     const reliability = parseFloat(riskInputs.reliability);
     const guardBandMultiplier = parseFloat(riskInputs.guardBandMultiplier);
 
-    if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) {
-      setNotification({
-        title: "Invalid Input",
-        message: "Please enter valid UUT tolerance limits.",
-      });
-      return;
-    }
-    if (isNaN(reliability) || reliability <= 0 || reliability >= 1) {
-      setNotification({
-        title: "Invalid Input",
-        message: "Please enter a valid reliability (e.g., 0.95).",
-      });
-      return;
-    }
-    if (
-      isNaN(guardBandMultiplier) ||
-      guardBandMultiplier < 0 ||
-      guardBandMultiplier > 1
-    ) {
-      setNotification({
-        title: "Invalid Input",
-        message: "Guard Band Multiplier must be between 0 and 1.",
-      });
-      return;
-    }
-    if (!calcResults) {
-      setNotification({
-        title: "Calculation Required",
-        message: "An uncertainty budget must be calculated first.",
-      });
-      return;
-    }
+    if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) { setNotification({title: "Invalid Input", message: "Enter valid UUT tolerance limits."}); return; }
+    if (isNaN(reliability) || reliability <= 0 || reliability >= 1) { setNotification({title: "Invalid Input", message: "Enter valid reliability (e.g., 0.95)."}); return; }
+    if (isNaN(guardBandMultiplier) || guardBandMultiplier < 0 || guardBandMultiplier > 1) { setNotification({title: "Invalid Input", message: "Guard Band Multiplier must be 0 to 1."}); return; }
+    if (!calcResults) { setNotification({title: "Calculation Required", message: "Uncertainty budget must be calculated first."}); return; }
 
-    // const uutNominal = testPointData?.testPointInfo?.parameter;
-    const calibrationComponents = allComponents.filter(
-      (c) => !c.name.startsWith("UUT")
-    );
-    const calVariance = calibrationComponents.reduce(
-      (sum, comp) => sum + Math.pow(comp.value, 2),
-      0
-    );
-    const uCal = Math.sqrt(calVariance);
+    const uCal = calcResults.combined_uncertainty; // Use PPM value
 
     let tmdeToleranceSpan = 0;
     let missingTmdeRef = false;
 
     if (tmdeTolerancesData.length > 0) {
       tmdeToleranceSpan = tmdeTolerancesData.reduce((totalSpan, tmde) => {
-        if (!tmde.measurementPoint || !tmde.measurementPoint.value) {
-          missingTmdeRef = true;
-          return totalSpan;
-        }
-        const { totalToleranceForTar } =
-          calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint);
+        if (!tmde.measurementPoint || !tmde.measurementPoint.value) { missingTmdeRef = true; return totalSpan; }
+        const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint);
         return totalSpan + totalToleranceForTar;
       }, 0);
     }
 
-    if (missingTmdeRef) {
-      setNotification({
-        title: "Missing Information",
-        message:
-          "One or more TMDE components are missing a Reference Measurement Point, which is required for TAR calculation. They will be ignored.",
-      });
-    } else if (tmdeToleranceSpan === 0 && LUp - LLow > 0) {
-      setNotification({
-        title: "Missing Component",
-        message:
-          "Could not find any TMDE tolerances required for the TAR calculation. Please define them using the Tolerance Editor.",
-      });
+    if (missingTmdeRef) { setNotification({title: "Missing Info", message: "TMDE missing Reference Point for TAR calculation."}); }
+    else if (tmdeToleranceSpan === 0 && LUp - LLow > 0) {
+      if(riskInputs.LUp && riskInputs.LLow){ setNotification({title: "Missing Component", message: "Could not find TMDE tolerances for TAR."}); }
     }
 
     const mid = (LUp + LLow) / 2;
     const LUp_symmetric = Math.abs(LUp - mid);
     const uDev = LUp_symmetric / probit((1 + reliability) / 2);
-
     const uUUT2 = uDev ** 2 - uCal ** 2;
     let uUUT = 0;
     if (uUUT2 <= 0) {
-      setNotification({
-        title: "Calculation Warning",
-        message: `The calibration uncertainty (uCal=${uCal.toFixed(
-          3
-        )}) is greater than the required deviation uncertainty (uDev=${uDev.toFixed(
-          3
-        )}) for the specified reliability. UUT uncertainty will be treated as zero.`,
-      });
+      setNotification({title: "Calc Warning", message: `uCal (${uCal.toFixed(3)}) exceeds uDev (${uDev.toFixed(3)}) for reliability ${reliability}. UUT unc treated as zero.`});
       uUUT = 0;
     } else {
       uUUT = Math.sqrt(uUUT2);
@@ -2027,701 +2248,129 @@ function Analysis({
 
     const ALow = LLow * guardBandMultiplier;
     const AUp = LUp * guardBandMultiplier;
-    const uDev_risk = Math.sqrt(uUUT ** 2 + uCal ** 2);
-    const correlation = uUUT === 0 || uDev_risk === 0 ? 0 : uUUT / uDev_risk;
-    const LLow_norm = LLow - mid;
-    const LUp_norm = LUp - mid;
-    const ALow_norm = ALow - mid;
-    const AUp_norm = AUp - mid;
+    // const uDev_risk = Math.sqrt(uUUT ** 2 + uCal ** 2);
+    const correlation = uUUT === 0 || uDev === 0 ? 0 : uUUT / uDev;
+    const LLow_norm = LLow - mid; const LUp_norm = LUp - mid;
+    const ALow_norm = ALow - mid; const AUp_norm = AUp - mid;
 
-    const pfa_term1 =
-      bivariateNormalCDF(LLow_norm / uUUT, AUp_norm / uDev_risk, correlation) -
-      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev_risk, correlation);
-    const pfa_term2 =
-      bivariateNormalCDF(
-        -LUp_norm / uUUT,
-        -ALow_norm / uDev_risk,
-        correlation
-      ) -
-      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev_risk, correlation);
-    const pfaResult =
-      isNaN(pfa_term1) || isNaN(pfa_term2) ? 0 : pfa_term1 + pfa_term2;
+    const pfa_term1 = bivariateNormalCDF(LLow_norm / uUUT, AUp_norm / uDev, correlation) - bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
+    const pfa_term2 = bivariateNormalCDF(-LUp_norm / uUUT, -ALow_norm / uDev, correlation) - bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
+    const pfaResult = isNaN(pfa_term1) || isNaN(pfa_term2) ? 0 : pfa_term1 + pfa_term2;
 
-    const pfr_term1 =
-      bivariateNormalCDF(LUp_norm / uUUT, ALow_norm / uDev_risk, correlation) -
-      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev_risk, correlation);
-    const pfr_term2 =
-      bivariateNormalCDF(
-        -LLow_norm / uUUT,
-        -AUp_norm / uDev_risk,
-        correlation
-      ) -
-      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev_risk, correlation);
-    const pfrResult =
-      isNaN(pfr_term1) || isNaN(pfr_term2) ? 0 : pfr_term1 + pfr_term2;
+    const pfr_term1 = bivariateNormalCDF(LUp_norm / uUUT, ALow_norm / uDev, correlation) - bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
+    const pfr_term2 = bivariateNormalCDF(-LLow_norm / uUUT, -AUp_norm / uDev, correlation) - bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
+    const pfrResult = isNaN(pfr_term1) || isNaN(pfr_term2) ? 0 : pfr_term1 + pfr_term2;
 
-    const turResult = (LUp - LLow) / calcResults.expanded_uncertainty;
-    const tarResult =
-      tmdeToleranceSpan !== 0 ? (LUp - LLow) / tmdeToleranceSpan : 0;
+
+    const turResult = (LUp - LLow) / calcResults.expanded_uncertainty; // Uses PPM expanded unc
+    const tarResult = tmdeToleranceSpan !== 0 ? (LUp - LLow) / tmdeToleranceSpan : 0;
 
     setRiskResults({
-      tur: turResult,
-      tar: tarResult,
-      pfa: pfaResult * 100,
-      pfr: pfrResult * 100,
-      pfa_term1: (isNaN(pfa_term1) ? 0 : pfa_term1) * 100,
-      pfa_term2: (isNaN(pfa_term2) ? 0 : pfa_term2) * 100,
-      pfr_term1: (isNaN(pfr_term1) ? 0 : pfr_term1) * 100,
-      pfr_term2: (isNaN(pfr_term2) ? 0 : pfr_term2) * 100,
-      uCal,
-      uUUT,
-      uDev: uDev_risk,
-      correlation,
-      ALow,
-      AUp,
-      expandedUncertainty: calcResults.expanded_uncertainty,
-      tmdeToleranceSpan: tmdeToleranceSpan,
+      tur: turResult, tar: tarResult, pfa: pfaResult * 100, pfr: pfrResult * 100, pfa_term1: (isNaN(pfa_term1) ? 0 : pfa_term1) * 100, pfa_term2: (isNaN(pfa_term2) ? 0 : pfa_term2) * 100, pfr_term1: (isNaN(pfr_term1) ? 0 : pfr_term1) * 100, pfr_term2: (isNaN(pfr_term2) ? 0 : pfr_term2) * 100, uCal, uUUT, uDev: uDev,
+      correlation, ALow, AUp, expandedUncertainty: calcResults.expanded_uncertainty, tmdeToleranceSpan: tmdeToleranceSpan,
     });
   };
 
-  const unitOptions = useMemo(() => {
-    const nominalUnit = testPointData?.testPointInfo?.parameter?.unit;
+  const unitOptions = useMemo(() => { // Still needed for Add Component Modal
+    const nominalUnit = uutNominal?.unit;
     if (!nominalUnit) return ["ppm"];
     const relevant = unitSystem.getRelevantUnits(nominalUnit);
     return ["ppm", ...relevant.filter((u) => u !== "ppm" && u !== "dB")];
-  }, [testPointData]);
+  }, [uutNominal]);
 
-  useEffect(() => {
-    const newUnit = testPointData?.testPointInfo?.parameter?.unit || "ppm";
-    setDisplayUnit(newUnit);
-  }, [testPointData.id, testPointData?.testPointInfo?.parameter?.unit]);
 
   const renderSpecComparison = () => {
-    // This function is preserved from your original file
-    if (!calcResults) {
-      return (
-        <div className="form-section-warning">
-          <p>An uncertainty budget must be calculated first.</p>
-        </div>
-      );
-    }
-
-    const handleSpecInputChange = (e) =>
-      setSpecInput((prev) => ({
-        ...prev,
-        [e.target.name]: {
-          ...prev[e.target.name],
-          [e.target.dataset.field]: e.target.value,
-        },
-      }));
-
+     if (!calcResults) { return (<div className="form-section-warning"><p>An uncertainty budget must be calculated first.</p></div>); }
+    const handleSpecInputChange = (e) => setSpecInput((prev) => ({...prev, [e.target.name]: {...prev[e.target.name], [e.target.dataset.field]: e.target.value,},}));
     const ComparisonCard = ({ title, specData, userUncertainty, kUser }) => {
-      const U_user = userUncertainty;
-      const U_spec = parseFloat(specData.uncertainty);
-      const k_spec = parseFloat(specData.k);
-
-      let status = "Not Defined";
-      let statusClass = "";
-      let percentageOfSpec = null;
-
+      const U_user = userUncertainty; const U_spec = parseFloat(specData.uncertainty); const k_spec = parseFloat(specData.k);
+      let status = "Not Defined"; let statusClass = ""; let percentageOfSpec = null;
       if (!isNaN(U_spec) && U_spec > 0) {
-        percentageOfSpec = (U_user / U_spec) * 100;
-        statusClass = "status-good";
-        status = "Within Specification";
-        if (percentageOfSpec > 100) {
-          status = "Exceeds Specification";
-          statusClass = "status-bad";
-        } else if (percentageOfSpec > 90) {
-          status = "Approaching Limit";
-          statusClass = "status-warning";
-        }
+        percentageOfSpec = (U_user / U_spec) * 100; statusClass = "status-good"; status = "Within Specification";
+        if (percentageOfSpec > 100) { status = "Exceeds Specification"; statusClass = "status-bad"; }
+        else if (percentageOfSpec > 90) { status = "Approaching Limit"; statusClass = "status-warning"; }
       }
-
-      return (
-        <div className={`spec-dashboard ${statusClass}`}>
-          <h4>{title}</h4>
-          <div className="spec-details-container full-width">
-            <div className="spec-detail-card user-spec">
-              <span className="detail-label">
-                Your Expanded Uncertainty (U)
-              </span>
-              <span className="detail-value">{U_user.toFixed(3)} ppm</span>
-              <span className="detail-sub-value">k ≈ {kUser.toFixed(2)}</span>
-            </div>
-            <div className="spec-detail-card mfg-spec">
-              <span className="detail-label">{title} (U)</span>
-              <span className="detail-value">
-                {!isNaN(U_spec) ? `${U_spec.toFixed(3)} ppm` : "N/A"}
-              </span>
-              <span className="detail-sub-value">
-                {!isNaN(k_spec) ? `k = ${k_spec.toFixed(2)}` : ""}
-              </span>
-            </div>
-          </div>
-          {percentageOfSpec !== null && (
-            <div className="spec-status-footer">
-              <strong>Status:</strong> {status} ({percentageOfSpec.toFixed(1)}%)
-            </div>
-          )}
-        </div>
-      );
+      return ( <div className={`spec-dashboard ${statusClass}`}><h4>{title}</h4><div className="spec-details-container full-width"><div className="spec-detail-card user-spec"><span className="detail-label">Expanded Unc (U)</span><span className="detail-value">{U_user.toFixed(3)} ppm</span><span className="detail-sub-value">k ≈ {kUser.toFixed(2)}</span></div><div className="spec-detail-card mfg-spec"><span className="detail-label">{title} (U)</span><span className="detail-value">{!isNaN(U_spec) ? `${U_spec.toFixed(3)} ppm` : "N/A"}</span><span className="detail-sub-value">{!isNaN(k_spec) ? `k = ${k_spec.toFixed(2)}` : ""}</span></div></div>{percentageOfSpec !== null && (<div className="spec-status-footer"><strong>Status:</strong> {status} ({percentageOfSpec.toFixed(1)}%)</div>)}</div> );
     };
-
-    return (
-      <div>
-        <div className="spec-input-container">
-          <div className="spec-input-column">
-            <h5>Manufacturer Specs</h5>
-            <label>Spec (± ppm)</label>
-            <input
-              type="number"
-              name="mfg"
-              data-field="uncertainty"
-              value={specInput.mfg.uncertainty || ""}
-              onChange={handleSpecInputChange}
-            />
-            <label>k-factor</label>
-            <input
-              type="number"
-              name="mfg"
-              data-field="k"
-              value={specInput.mfg.k || ""}
-              onChange={handleSpecInputChange}
-            />
-          </div>
-          <div className="spec-input-column">
-            <h5>Navy Requirements</h5>
-            <label>Requirement (± ppm)</label>
-            <input
-              type="number"
-              name="navy"
-              data-field="uncertainty"
-              value={specInput.navy.uncertainty || ""}
-              onChange={handleSpecInputChange}
-            />
-            <label>k-factor</label>
-            <input
-              type="number"
-              name="navy"
-              data-field="k"
-              value={specInput.navy.k || ""}
-              onChange={handleSpecInputChange}
-            />
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: "20px", marginTop: "20px" }}>
-          <ComparisonCard
-            title="Manufacturer Specification"
-            specData={specInput.mfg}
-            userUncertainty={calcResults.expanded_uncertainty}
-            kUser={calcResults.k_value}
-          />
-          <ComparisonCard
-            title="Navy Requirement"
-            specData={specInput.navy}
-            userUncertainty={calcResults.expanded_uncertainty}
-            kUser={calcResults.k_value}
-          />
-        </div>
-      </div>
-    );
+    return ( <div><div className="spec-input-container"><div className="spec-input-column"><h5>Manufacturer Specs</h5><label>Spec (± ppm)</label><input type="number" name="mfg" data-field="uncertainty" value={specInput.mfg.uncertainty || ""} onChange={handleSpecInputChange} /><label>k-factor</label><input type="number" name="mfg" data-field="k" value={specInput.mfg.k || ""} onChange={handleSpecInputChange} /></div><div className="spec-input-column"><h5>Navy Requirements</h5><label>Requirement (± ppm)</label><input type="number" name="navy" data-field="uncertainty" value={specInput.navy.uncertainty || ""} onChange={handleSpecInputChange} /><label>k-factor</label><input type="number" name="navy" data-field="k" value={specInput.navy.k || ""} onChange={handleSpecInputChange} /></div></div><div style={{ display: "flex", gap: "20px", marginTop: "20px" }}><ComparisonCard title="Manufacturer Specification" specData={specInput.mfg} userUncertainty={calcResults.expanded_uncertainty} kUser={calcResults.k_value} /><ComparisonCard title="Navy Requirement" specData={specInput.navy} userUncertainty={calcResults.expanded_uncertainty} kUser={calcResults.k_value} /></div></div> );
   };
 
   const renderAddComponentModal = () => {
-    // This function is preserved from your original file
-    if (!isAddComponentModalOpen) return null;
-    return (
-      <div className="modal-overlay">
-        <div className="modal-content" style={{ maxWidth: "800px" }}>
-          <button
-            onClick={() => setAddComponentModalOpen(false)}
-            className="modal-close-button"
-          >
-            &times;
-          </button>
-          <h3>Add Manual Uncertainty Component</h3>
-          <div
-            className="config-stack"
-            style={{ paddingTop: "20px", textAlign: "left" }}
-          >
-            <div className="config-column">
-              <label>Component Name</label>
-              <input
-                type="text"
-                name="name"
-                value={newComponent.name}
-                onChange={handleNewComponentInputChange}
-                placeholder="e.g., UUT Stability Spec"
-              />
-            </div>
-            <div className="config-column">
-              <label>Type</label>
-              <select
-                name="type"
-                value={newComponent.type}
-                onChange={handleNewComponentInputChange}
-              >
-                <option value="A">Type A</option>
-                <option value="B">Type B</option>
-              </select>
-            </div>
-            {newComponent.type === "A" && (
-              <>
-                <div className="config-column">
-                  <label>Standard Uncertainty (uᵢ)</label>
-                  <div className="input-with-unit">
-                    <input
-                      type="number"
-                      step="any"
-                      name="standardUncertainty"
-                      value={newComponent.standardUncertainty}
-                      onChange={handleNewComponentInputChange}
-                      placeholder="e.g., 15.3"
-                    />
-                    <select
-                      name="unit"
-                      value={newComponent.unit}
-                      onChange={handleNewComponentInputChange}
-                    >
-                      {unitOptions.map((u) => (
-                        <option key={u} value={u}>
-                          {u}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <ConversionInfo
-                    value={newComponent.standardUncertainty}
-                    unit={newComponent.unit}
-                    nominal={testPointData?.testPointInfo?.parameter}
-                  />
-                </div>
-                <div className="config-column">
-                  <label>Degrees of Freedom (vᵢ)</label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="1"
-                    name="dof"
-                    value={newComponent.dof}
-                    onChange={handleNewComponentInputChange}
-                    placeholder="e.g., 9"
-                  />
-                </div>
-              </>
-            )}
-            {newComponent.type === "B" && (
-              <>
-                <div className="config-column">
-                  <label>Error Limit Distribution Type</label>
-                  <select
-                    name="errorDistributionDivisor"
-                    value={newComponent.errorDistributionDivisor}
-                    onChange={handleNewComponentInputChange}
-                  >
-                    {oldErrorDistributions.map((dist) => (
-                      <option key={dist.value} value={dist.value}>
-                        {dist.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="config-column">
-                  <label>Tolerance Limits (±)</label>
-                  <div className="input-with-unit">
-                    <input
-                      type="number"
-                      step="any"
-                      name="toleranceLimit"
-                      value={newComponent.toleranceLimit}
-                      onChange={handleNewComponentInputChange}
-                      placeholder="e.g., 100"
-                    />
-                    <select
-                      name="unit"
-                      value={newComponent.unit}
-                      onChange={handleNewComponentInputChange}
-                    >
-                      {unitOptions.map((u) => (
-                        <option key={u} value={u}>
-                          {u}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <ConversionInfo
-                    value={newComponent.toleranceLimit}
-                    unit={newComponent.unit}
-                    nominal={testPointData?.testPointInfo?.parameter}
-                  />
-                </div>
-                <div className="config-column">
-                  <label>Degrees of Freedom</label>
-                  <input
-                    type="text"
-                    name="dof"
-                    value={newComponent.dof}
-                    onChange={handleNewComponentInputChange}
-                    placeholder="Infinity"
-                  />
-                </div>
-              </>
-            )}
-          </div>
-          <div className="modal-actions">
-            <button
-              className="button button-secondary"
-              onClick={() => setAddComponentModalOpen(false)}
-            >
-              Cancel
-            </button>
-            <button onClick={handleAddComponent} className="button">
-              Add Component
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+     if (!isAddComponentModalOpen) return null;
+     return ( <div className="modal-overlay"><div className="modal-content" style={{ maxWidth: "800px" }}><button onClick={() => setAddComponentModalOpen(false)} className="modal-close-button">&times;</button><h3>Add Manual Uncertainty Component</h3><div className="config-stack" style={{ paddingTop: "20px", textAlign: "left" }}><div className="config-column"><label>Component Name</label><input type="text" name="name" value={newComponent.name} onChange={handleNewComponentInputChange} placeholder="e.g., UUT Stability Spec"/></div><div className="config-column"><label>Type</label><select name="type" value={newComponent.type} onChange={handleNewComponentInputChange}><option value="A">Type A</option><option value="B">Type B</option></select></div>{newComponent.type === "A" && (<><div className="config-column"><label>Std Unc (uᵢ)</label><div className="input-with-unit"><input type="number" step="any" name="standardUncertainty" value={newComponent.standardUncertainty} onChange={handleNewComponentInputChange} placeholder="e.g., 15.3"/><select name="unit" value={newComponent.unit} onChange={handleNewComponentInputChange}>{unitOptions.map((u) => (<option key={u} value={u}>{u}</option>))}</select></div><ConversionInfo value={newComponent.standardUncertainty} unit={newComponent.unit} nominal={uutNominal}/></div><div className="config-column"><label>DoF (vᵢ)</label><input type="number" step="1" min="1" name="dof" value={newComponent.dof} onChange={handleNewComponentInputChange} placeholder="e.g., 9"/></div></>)}{newComponent.type === "B" && (<><div className="config-column"><label>Distribution</label><select name="errorDistributionDivisor" value={newComponent.errorDistributionDivisor} onChange={handleNewComponentInputChange}>{oldErrorDistributions.map((dist) => (<option key={dist.value} value={dist.value}>{dist.label}</option>))}</select></div><div className="config-column"><label>Tolerance Limits (±)</label><div className="input-with-unit"><input type="number" step="any" name="toleranceLimit" value={newComponent.toleranceLimit} onChange={handleNewComponentInputChange} placeholder="e.g., 100"/><select name="unit" value={newComponent.unit} onChange={handleNewComponentInputChange}>{unitOptions.map((u) => (<option key={u} value={u}>{u}</option>))}</select></div><ConversionInfo value={newComponent.toleranceLimit} unit={newComponent.unit} nominal={uutNominal}/></div><div className="config-column"><label>DoF</label><input type="text" name="dof" value={newComponent.dof} onChange={handleNewComponentInputChange} placeholder="Infinity"/></div></>)}</div><div className="modal-actions"><button className="button button-secondary" onClick={() => setAddComponentModalOpen(false)}>Cancel</button><button onClick={handleAddComponent} className="button">Add Component</button></div></div></div> );
   };
 
   return (
     <div>
       <div className="analysis-session-header">
-        <div className="session-info-item">
-          <span className="session-info-label">UUT</span>
-          <span className="session-info-value">
-            {sessionData.uutDescription || "N/A"}
-          </span>
-        </div>
-        <div className="session-info-item">
-          <span className="session-info-label">Analyst</span>
-          <span className="session-info-value">
-            {sessionData.analyst || "N/A"}
-          </span>
-        </div>
-        <div className="session-info-item">
-          <span className="session-info-label">Document</span>
-          <span className="session-info-value">
-            {sessionData.document || "N/A"}
-          </span>
-        </div>
-        <div className="session-info-item">
-          <span className="session-info-label">Date</span>
-          <span className="session-info-value">
-            {formatDate(sessionData.documentDate)}
-          </span>
-        </div>
+        <div className="session-info-item"><span className="session-info-label">UUT</span><span className="session-info-value">{sessionData.uutDescription || "N/A"}</span></div>
+        <div className="session-info-item"><span className="session-info-label">Analyst</span><span className="session-info-value">{sessionData.analyst || "N/A"}</span></div>
+        <div className="session-info-item"><span className="session-info-label">Document</span><span className="session-info-value">{sessionData.document || "N/A"}</span></div>
+        <div className="session-info-item"><span className="session-info-label">Date</span><span className="session-info-value">{formatDate(sessionData.documentDate)}</span></div>
       </div>
-      <NotificationModal
-        isOpen={!!notification}
-        onClose={() => setNotification(null)}
-        title={notification?.title}
-        message={notification?.message}
-      />
+      <NotificationModal isOpen={!!notification} onClose={() => setNotification(null)} title={notification?.title} message={notification?.message} />
 
       {renderAddComponentModal()}
+      <DerivedBreakdownModal isOpen={isDerivedBreakdownOpen} onClose={() => setIsDerivedBreakdownOpen(false)} breakdownData={derivedBreakdownData} />
 
       {breakdownModal && <div className="modal-placeholder" />}
-      {breakdownModal === "inputs" && (
-        <InputsBreakdownModal
-          results={riskResults}
-          inputs={{
-            ...riskInputs,
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-          }}
-          onClose={() => setLocalBreakdownModal(null)}
-        />
-      )}
-      {breakdownModal === "tur" && (
-        <TurBreakdownModal
-          results={riskResults}
-          inputs={{
-            ...riskInputs,
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-          }}
-          onClose={() => setLocalBreakdownModal(null)}
-        />
-      )}
-      {breakdownModal === "tar" && (
-        <TarBreakdownModal
-          results={riskResults}
-          inputs={{
-            ...riskInputs,
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-          }}
-          onClose={() => setLocalBreakdownModal(null)}
-        />
-      )}
-      {breakdownModal === "pfa" && (
-        <PfaBreakdownModal
-          results={riskResults}
-          inputs={{
-            ...riskInputs,
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-          }}
-          onClose={() => setLocalBreakdownModal(null)}
-        />
-      )}
-      {breakdownModal === "pfr" && (
-        <PfrBreakdownModal
-          results={riskResults}
-          inputs={{
-            ...riskInputs,
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-          }}
-          onClose={() => setLocalBreakdownModal(null)}
-        />
-      )}
+      {breakdownModal === "inputs" && (<InputsBreakdownModal results={riskResults} inputs={{...riskInputs, LLow: parseFloat(riskInputs.LLow), LUp: parseFloat(riskInputs.LUp),}} onClose={() => setLocalBreakdownModal(null)}/>)}
+      {breakdownModal === "tur" && (<TurBreakdownModal results={riskResults} inputs={{...riskInputs, LLow: parseFloat(riskInputs.LLow), LUp: parseFloat(riskInputs.LUp),}} onClose={() => setLocalBreakdownModal(null)}/>)}
+      {breakdownModal === "tar" && (<TarBreakdownModal results={riskResults} inputs={{...riskInputs, LLow: parseFloat(riskInputs.LLow), LUp: parseFloat(riskInputs.LUp),}} onClose={() => setLocalBreakdownModal(null)}/>)}
+      {breakdownModal === "pfa" && (<PfaBreakdownModal results={riskResults} inputs={{...riskInputs, LLow: parseFloat(riskInputs.LLow), LUp: parseFloat(riskInputs.LUp),}} onClose={() => setLocalBreakdownModal(null)}/>)}
+      {breakdownModal === "pfr" && (<PfrBreakdownModal results={riskResults} inputs={{...riskInputs, LLow: parseFloat(riskInputs.LLow), LUp: parseFloat(riskInputs.LUp),}} onClose={() => setLocalBreakdownModal(null)}/>)}
+
 
       <div className="analysis-tabs">
-        <button
-          className={analysisMode === "uncertaintyTool" ? "active" : ""}
-          onClick={() => setAnalysisMode("uncertaintyTool")}
-        >
-          Uncertainty Tool
-        </button>
-        <button
-          className={analysisMode === "risk" ? "active" : ""}
-          onClick={() => setAnalysisMode("risk")}
-        >
-          Risk Analysis
-        </button>
-        <button
-          className={analysisMode === "spec" ? "active" : ""}
-          onClick={() => setAnalysisMode("spec")}
-        >
-          Specification Comparison
-        </button>
+        <button className={analysisMode === "uncertaintyTool" ? "active" : ""} onClick={() => setAnalysisMode("uncertaintyTool")}>Uncertainty Tool</button>
+        <button className={analysisMode === "risk" ? "active" : ""} onClick={() => setAnalysisMode("risk")}>Risk Analysis</button>
+        <button className={analysisMode === "spec" ? "active" : ""} onClick={() => setAnalysisMode("spec")}>Specification Comparison</button>
       </div>
 
       {analysisMode === "uncertaintyTool" && (
         <div className="analysis-dashboard">
-          <AddTmdeModal
-            isOpen={isAddTmdeModalOpen}
-            onClose={() => setAddTmdeModalOpen(false)}
-            onSave={handleSaveTmde}
-            testPointData={testPointData}
-          />
+          <AddTmdeModal isOpen={isAddTmdeModalOpen} onClose={() => setAddTmdeModalOpen(false)} onSave={handleSaveTmde} testPointData={testPointData} />
           <div className="configuration-panel">
             <h4 className="uut-components-title">Unit Under Test</h4>
             <div className="uut-seal-container">
-              <div
-                className="uut-seal"
-                onClick={() => handleOpenSessionEditor("uut")}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextMenu({
-                    x: e.pageX,
-                    y: e.pageY,
-                    items: [
-                      {
-                        label: "View UUT Calculation",
-                        action: () =>
-                          setBreakdownPoint({
-                            title: "UUT Breakdown",
-                            toleranceObject: uutToleranceData,
-                            referencePoint:
-                              testPointData.testPointInfo.parameter,
-                          }),
-                        icon: faCalculator,
-                      },
-                    ],
-                  });
-                }}
-              >
+              <div className="uut-seal" onClick={() => handleOpenSessionEditor("uut")} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.pageX, y: e.pageY, items: [{ label: "View UUT Calculation", action: () => setBreakdownPoint({ title: "UUT Breakdown", toleranceObject: uutToleranceData, referencePoint: uutNominal }), icon: faCalculator, },], }); }}>
                 <div className="uut-seal-content">
-                  <span className="seal-label">Unit Under Test</span>
-                  <h4 className="seal-title">
-                    {sessionData.uutDescription || "N/A"}
-                  </h4>
-                  <div className="seal-info-item">
-                    <span>Current Point</span>
-                    <strong>
-                      {testPointData.testPointInfo.parameter.value}{" "}
-                      {testPointData.testPointInfo.parameter.unit}
-                    </strong>
-                  </div>
-                  <div className="seal-info-item">
-                    <span>Tolerance Spec</span>
-                    <strong>{getToleranceSummary(uutToleranceData)}</strong>
-                  </div>
-                  <div className="seal-info-item">
-                    <span>Calculated Error</span>
-                    <strong>
-                      {getToleranceErrorSummary(
-                        uutToleranceData,
-                        testPointData.testPointInfo.parameter
-                      )}
-                    </strong>
-                  </div>
-                  <div className="seal-limits-split">
-                    <div className="seal-info-item">
-                      <span>Low Limit</span>
-                      <strong className="calculated-limit">
-                        {
-                          getAbsoluteLimits(
-                            uutToleranceData,
-                            testPointData.testPointInfo.parameter
-                          ).low
-                        }
-                      </strong>
-                    </div>
-                    <div className="seal-info-item">
-                      <span>High Limit</span>
-                      <strong className="calculated-limit">
-                        {
-                          getAbsoluteLimits(
-                            uutToleranceData,
-                            testPointData.testPointInfo.parameter
-                          ).high
-                        }
-                      </strong>
-                    </div>
-                  </div>
+                  <span className="seal-label">Unit Under Test</span><h4 className="seal-title">{sessionData.uutDescription || "N/A"}</h4>
+                  <div className="seal-info-item"><span>Current Point {testPointData.measurementType === 'derived' && '(Derived)'}</span><strong>{testPointData.measurementType === 'derived' ? calcResults?.calculatedNominalValue?.toPrecision(5) ?? (testPointData.testPointInfo.parameter.name || 'Derived Value') : `${uutNominal?.value ?? ''} ${uutNominal?.unit ?? ''}`} {testPointData.measurementType === 'derived' && ` (${uutNominal?.unit ?? ''})`}</strong></div>
+                   {testPointData.measurementType === 'derived' && testPointData.equationString && (<div className="seal-info-item" style={{ fontStyle: 'italic', marginTop: '5px' }}><span>Equation</span><strong style={{ fontFamily: 'monospace' }}>{testPointData.equationString}</strong></div>)}
+                  <div className="seal-info-item"><span>Tolerance Spec</span><strong>{getToleranceSummary(uutToleranceData)}</strong></div>
+                  <div className="seal-info-item"><span>Calculated Error</span><strong>{getToleranceErrorSummary(uutToleranceData, uutNominal)}</strong></div>
+                  <div className="seal-limits-split"><div className="seal-info-item"><span>Low Limit</span><strong className="calculated-limit">{getAbsoluteLimits(uutToleranceData, uutNominal).low}</strong></div><div className="seal-info-item"><span>High Limit</span><strong className="calculated-limit">{getAbsoluteLimits(uutToleranceData, uutNominal).high}</strong></div></div>
                 </div>
               </div>
             </div>
-            <h4 className="analyzed-components-title">
-              Test Measurement Device Equipment
-            </h4>
+            <h4 className="analyzed-components-title">Test Measurement Device Equipment</h4>
             <div className="analyzed-components-container">
               {tmdeTolerancesData.map((tmde, index) => {
                 const referencePoint = tmde.measurementPoint;
-                if (!referencePoint?.value) return null;
-                return (
-                  <div
-                    key={tmde.id || index}
-                    className="tmde-seal"
-                    onClick={() =>
-                      handleOpenSessionEditor("tmdes", {
-                        tmde,
-                        testPoint: testPointData,
-                      })
-                    }
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setContextMenu({
-                        x: e.pageX,
-                        y: e.pageY,
-                        items: [
-                          {
-                            label: `View ${tmde.name || "TMDE"} Calculation`,
-                            action: () =>
-                              setBreakdownPoint({
-                                title: `${tmde.name || "TMDE"} Breakdown`,
-                                toleranceObject: tmde,
-                                referencePoint: tmde.measurementPoint,
-                              }),
-                            icon: faCalculator,
-                          },
-                        ],
-                      });
-                    }}
-                  >
+                if (!referencePoint?.value || !referencePoint?.unit) { console.warn("TMDE missing ref:", tmde); return (<div key={tmde.id || index} className="tmde-seal tmde-seal-error"><div className="uut-seal-content"><span className="seal-label">TMDE (Error)</span><h4>{tmde.name || "TMDE"}</h4><p style={{color: 'var(--status-bad)', fontSize: '0.8rem', marginTop: '10px'}}>Missing Reference</p><button onClick={() => handleOpenSessionEditor("tmdes", { tmde, testPoint: testPointData })} className="button button-small" style={{marginTop: 'auto'}}>Edit</button></div></div>); }
+                return ( <div key={tmde.id || index} className="tmde-seal" onClick={() => handleOpenSessionEditor("tmdes", { tmde, testPoint: testPointData, })} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.pageX, y: e.pageY, items: [{ label: `View ${tmde.name || "TMDE"} Calculation`, action: () => setBreakdownPoint({ title: `${tmde.name || "TMDE"} Breakdown`, toleranceObject: tmde, referencePoint: tmde.measurementPoint, }), icon: faCalculator, },], }); }}>
                     <div className="uut-seal-content">
-                      <span className="seal-label">TMDE</span>
-                      <h4 className="seal-title">{tmde.name || "TMDE"}</h4>
-                      <div className="seal-info-item">
-                        <span>Measurement Point</span>
-                        <strong>
-                          {referencePoint.value} {referencePoint.unit}
-                        </strong>
-                      </div>
-                      <div className="seal-info-item">
-                        <span>Tolerance Spec</span>
-                        <strong>{getToleranceSummary(tmde)}</strong>
-                      </div>
-                      <div className="seal-info-item">
-                        <span>Calculated Error</span>
-                        <strong>
-                          {getToleranceErrorSummary(tmde, referencePoint)}
-                        </strong>
-                      </div>
-                      <div className="seal-info-item">
-                        <span>Std. Uncertainty (u)</span>
-                        <strong>
-                          {(() => {
-                            const uncertaintyPpm =
-                              calculateUncertaintyFromToleranceObject(
-                                tmde,
-                                referencePoint
-                              ).standardUncertainty;
-
-                            const uncertaintyInBase = convertPpmToUnit(
-                              uncertaintyPpm,
-                              referencePoint.unit,
-                              referencePoint
-                            );
-
-                            return typeof uncertaintyInBase === "number"
-                              ? `${uncertaintyInBase.toPrecision(3)} ${
-                                  referencePoint.unit
-                                }`
-                              : uncertaintyInBase;
-                          })()}
-                        </strong>
-                      </div>
-                      <div className="seal-limits-split">
-                        <div className="seal-info-item">
-                          <span>Low Limit</span>
-                          <strong className="calculated-limit">
-                            {getAbsoluteLimits(tmde, referencePoint).low}
-                          </strong>
-                        </div>
-                        <div className="seal-info-item">
-                          <span>High Limit</span>
-                          <strong className="calculated-limit">
-                            {getAbsoluteLimits(tmde, referencePoint).high}
-                          </strong>
-                        </div>
-                      </div>
+                      <span className="seal-label">TMDE</span><h4 className="seal-title">{tmde.name || "TMDE"}</h4>
+                       {testPointData.measurementType === 'derived' && tmde.variableType && (<div className="seal-info-item"><span>Equation Input Type</span><strong style={{color: 'var(--primary-color-dark)', fontSize: '0.9rem'}}>{tmde.variableType}</strong></div>)}
+                      <div className="seal-info-item"><span>Measurement Point</span><strong>{referencePoint.value} {referencePoint.unit}</strong></div>
+                      <div className="seal-info-item"><span>Tolerance Spec</span><strong>{getToleranceSummary(tmde)}</strong></div>
+                      <div className="seal-info-item"><span>Calculated Error</span><strong>{getToleranceErrorSummary(tmde, referencePoint)}</strong></div>
+                      <div className="seal-info-item"><span>Std. Unc (u)</span><strong>{(() => { const { standardUncertainty: uPpm } = calculateUncertaintyFromToleranceObject(tmde, referencePoint); const uAbs = convertPpmToUnit(uPpm, referencePoint.unit, referencePoint); return typeof uAbs === "number" ? `${uAbs.toPrecision(3)} ${referencePoint.unit}` : uAbs; })()}</strong></div>
+                      <div className="seal-limits-split"><div className="seal-info-item"><span>Low Limit</span><strong className="calculated-limit">{getAbsoluteLimits(tmde, referencePoint).low}</strong></div><div className="seal-info-item"><span>High Limit</span><strong className="calculated-limit">{getAbsoluteLimits(tmde, referencePoint).high}</strong></div></div>
                     </div>
-                  </div>
-                );
+                  </div> );
               })}
-              <div className="add-tmde-card">
-                <button
-                  className="add-tmde-button"
-                  onClick={() => setAddTmdeModalOpen(true)}
-                >
-                  <FontAwesomeIcon icon={faPlus} />
-                  <span>Add TMDE</span>
-                </button>
-              </div>
+              <div className="add-tmde-card"><button className="add-tmde-button" onClick={() => setAddTmdeModalOpen(true)}><FontAwesomeIcon icon={faPlus} /><span>Add TMDE</span></button></div>
             </div>
-            <Accordion
-              title="Uncertainty Budget"
-              startOpen={true}
-              // actions={
-              //   <button
-              //     className="button button-small"
-              //     onClick={() => setAddComponentModalOpen(true)}
-              //     title="Add a manual uncertainty component"
-              //   >
-              //     <FontAwesomeIcon
-              //       icon={faPlus}
-              //       style={{ marginRight: "5px" }}
-              //     />
-              //     Add Manual
-              //   </button>
-              // }
-            >
+            <Accordion title="Uncertainty Budget" startOpen={true} actions={ testPointData.measurementType === 'direct' && <button className="button button-small" onClick={() => setAddComponentModalOpen(true)} title="Add manual uncertainty component"><FontAwesomeIcon icon={faPlus} style={{ marginRight: "5px" }}/>Add Manual</button> } >
               <UncertaintyBudgetTable
-                components={allComponents}
+                components={calcResults?.calculatedBudgetComponents || []}
                 onRemove={handleRemoveComponent}
                 calcResults={calcResults}
-                useTDistribution={useTDistribution}
-                setUseTDistribution={setUseTDistribution}
-                displayUnit={displayUnit}
-                setDisplayUnit={setDisplayUnit}
-                unitOptions={unitOptions}
-                referencePoint={testPointData?.testPointInfo?.parameter}
+                referencePoint={uutNominal}
                 uncertaintyConfidence={sessionData.uncertaintyConfidence}
+                onRowContextMenu={handleBudgetRowContextMenu}
               />
             </Accordion>
           </div>
@@ -2729,78 +2378,13 @@ function Analysis({
       )}
       {analysisMode === "risk" && (
         <Accordion title="Risk & Conformance Analysis" startOpen={true}>
-          {!calcResults ? (
-            <div className="form-section-warning">
-              <p>
-                An uncertainty budget must be calculated first on the
-                'Uncertainty Tool' tab.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="risk-inputs-container">
-                <div className="config-column uut-tolerance-display">
-                  <label>UUT Tolerance Limits (in ppm)</label>
-                  <span>
-                    LLow:{" "}
-                    <strong>
-                      {riskInputs.LLow
-                        ? parseFloat(riskInputs.LLow).toFixed(3)
-                        : "N/A"}
-                    </strong>
-                  </span>
-                  <span>
-                    LUp:{" "}
-                    <strong>
-                      {riskInputs.LUp
-                        ? parseFloat(riskInputs.LUp).toFixed(3)
-                        : "N/A"}
-                    </strong>
-                  </span>
-                  <small>Derived from UUT tolerance specifications.</small>
-                </div>
-                <div className="config-column">
-                  <label>Target Reliability (R)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    max="0.9999"
-                    min="0.5"
-                    name="reliability"
-                    value={riskInputs.reliability}
-                    onChange={handleRiskInputChange}
-                  />
-                </div>
-                <div className="config-column">
-                  <label>Guard Band Multiplier</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    max="1"
-                    min="0"
-                    name="guardBandMultiplier"
-                    value={riskInputs.guardBandMultiplier}
-                    onChange={handleRiskInputChange}
-                  />
-                </div>
-              </div>
-              <button
-                onClick={calculateRiskMetrics}
-                className="button"
-                style={{ marginTop: "10px" }}
-              >
-                Calculate Risk Metrics
-              </button>
-              {riskResults && (
-                <RiskAnalysisDashboard
-                  results={riskResults}
-                  onShowBreakdown={(modalType) =>
-                    setLocalBreakdownModal(modalType)
-                  }
-                />
-              )}
-            </>
-          )}
+          {!calcResults ? (<div className="form-section-warning"><p>Uncertainty budget must be calculated first.</p></div>)
+            : (<>
+                <div className="risk-inputs-container"><div className="config-column uut-tolerance-display"><label>UUT Tolerance Limits (ppm)</label><span>LLow: <strong>{riskInputs.LLow ? parseFloat(riskInputs.LLow).toFixed(3) : "N/A"}</strong></span><span>LUp: <strong>{riskInputs.LUp ? parseFloat(riskInputs.LUp).toFixed(3) : "N/A"}</strong></span><small>From UUT specs.</small></div><div className="config-column"><label>Target Reliability (R)</label><input type="number" step="0.01" max="0.9999" min="0.5" name="reliability" value={riskInputs.reliability} onChange={handleRiskInputChange}/></div><div className="config-column"><label>Guard Band Multiplier</label><input type="number" step="0.01" max="1" min="0" name="guardBandMultiplier" value={riskInputs.guardBandMultiplier} onChange={handleRiskInputChange}/></div></div>
+                <button onClick={calculateRiskMetrics} className="button" style={{ marginTop: "10px" }}>Calculate Risk Metrics</button>
+                {riskResults && (<RiskAnalysisDashboard results={riskResults} onShowBreakdown={(modalType) => setLocalBreakdownModal(modalType)}/>)}
+              </>)
+          }
         </Accordion>
       )}
       {analysisMode === "spec" && (
@@ -2824,6 +2408,13 @@ function App() {
       },
       components: [],
       is_detailed_uncertainty_calculated: false,
+      measurementType: 'direct', // 'direct' or 'derived'
+      equationString: '',       // e.g., "V / I"
+      variableMappings: {},
+      testPointInfo: {
+        parameter: { name: '', value: '', unit: '' },
+        qualifier: null,
+      },
     }),
     []
   );
@@ -2987,6 +2578,9 @@ function App() {
                 // Overwrite with new form data
                 section: formData.section,
                 testPointInfo: { ...formData.testPointInfo },
+                measurementType: formData.measurementType,
+                equationString: formData.equationString,
+                variableMappings: formData.variableMappings,
               };
             }
             return tp;
@@ -3020,6 +2614,9 @@ function App() {
             section: formData.section,
             testPointInfo: formData.testPointInfo,
             tmdeTolerances: copiedTmdes,
+            measurementType: formData.measurementType,
+            equationString: formData.equationString,
+            variableMappings: formData.variableMappings,
           };
           setSelectedTestPointId(newTestPoint.id);
           return {
