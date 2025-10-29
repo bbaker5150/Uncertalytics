@@ -2274,7 +2274,7 @@ function Analysis({
   const getTolInfo = (rngNominal, rngAvg, rngTolLow, rngTolUp) => {
     if (isNaN(rngTolLow) && isNaN(rngTolUp)){
       return "Fail"
-    }
+    } 
     
   }
 
