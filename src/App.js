@@ -22,7 +22,6 @@ import {
   faTrashAlt,
   faPencilAlt,
   faSlidersH,
-  faLayerGroup,
 } from "@fortawesome/free-solid-svg-icons";
 
 export const unitSystem = {
@@ -1999,6 +1998,35 @@ function Analysis({
     let derivedUcInputs_Base = 0;
 
     try {
+      const hasVariables =
+        testPointData.variableMappings &&
+        Object.keys(testPointData.variableMappings).length > 0;
+      const noTmdes =
+        !tmdeTolerancesData || tmdeTolerancesData.length === 0;
+
+      if (
+        testPointData.measurementType === "derived" &&
+        hasVariables &&
+        noTmdes
+      ) {
+        // This is a new derived point with no TMDEs added yet.
+        // Don't run the calculation, just clear any old results.
+        setCalcResults(null);
+        if (testPointData.is_detailed_uncertainty_calculated) {
+          // If it was somehow calculated before, clear it
+          onDataSave({
+            combined_uncertainty: null,
+            effective_dof: null,
+            k_value: null,
+            expanded_uncertainty: null,
+            is_detailed_uncertainty_calculated: false,
+            calculatedBudgetComponents: [],
+            calculatedNominalValue: null,
+          });
+        }
+        return;
+      }
+        
       if (!uutNominal || !uutNominal.value || !uutNominal.unit) {
         throw new Error(
           "Missing UUT nominal value or unit for calculation reference."
