@@ -4,9 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faTimes, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import { unitSystem } from '../App';
 import { NotificationModal } from '../App';
-// No need to import mathjs as it's loaded via CDN in index.html
 
-// A reusable component for searchable unit dropdowns
 const SearchableDropdown = ({ name, value, onChange, options }) => {
     const [searchTerm, setSearchTerm] = useState(value);
     const [isOpen, setIsOpen] = useState(false);
@@ -93,7 +91,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
 
         let expressionToParse = equation.trim(); // Trim whitespace
 
-        // --- NEW: Handle assignment (e.g., "T = W * L") ---
         const equalsIndex = expressionToParse.indexOf('=');
         if (equalsIndex !== -1) {
              // Check if there's content *after* the '='
@@ -107,7 +104,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                  expressionToParse = ''; // Treat as empty if only 'T =' was entered
              }
         }
-        // --- END NEW ---
 
         // Proceed with parsing only the expression part
         if (!expressionToParse) { // Handle empty expression after stripping assignment

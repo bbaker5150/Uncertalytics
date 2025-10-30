@@ -160,9 +160,11 @@ const DerivedBreakdownModal = ({ isOpen, onClose, breakdownData }) => {
                                     <li><strong>Source/Nominal:</strong> {comp.sourcePointLabel}</li>
                                     <li><strong>Std. Uncertainty (<Latex>{`$u_{${symbol}}$`}</Latex>):</strong> {formattedValueUi} {displayValueUnitUi}</li>
                                     <li><strong>Distribution:</strong> {comp.distribution}</li>
+                                    <li><strong>Sensitivity Coeffcient (Partial Derivative):</strong>
                                     {expressionTex && comp.name.includes('Input:') && ( <li><Latex>{`$$ \\text{Calculate } c_{${symbol}} = \\frac{\\partial}{\\partial ${symbol}} \\left( ${expressionTex} \\right) $$`}</Latex></li> )}
                                     {derivativeTex && ( <li><Latex>{`$$ \\rightarrow c_{${symbol}} = ${derivativeTex} $$`}</Latex></li> )}
                                     {(derivativeDisplay || comp.name.includes('Resolution')) && evaluationStepTex && ( <li><Latex>{`$$ \\text{Evaluate: } c_{${symbol}} = ${evaluationStepTex} $$`}</Latex></li> )}
+                                    </li>
                                     <li><strong>Contribution (<Latex>{`$|c_{${symbol}} \\times u_{${symbol}}|$`}</Latex>):</strong> {formattedContribution} {derivedUnit}</li>
                                 </ul>
                             </div>
