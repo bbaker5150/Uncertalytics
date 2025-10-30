@@ -251,13 +251,13 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                     {activeSection === 'requirements' && (
                         <div className="details-grid">
                             <div className="form-section">
-                                <label>PFA Required (%)</label>
+                                <label>Uncertainty Confidence (%)</label>
                                 <input 
                                     type="number" 
                                     name="uncertaintyConfidence" 
-                                    value={formData.uncertaintyConfidence || '2'} 
+                                    value={formData.uncertaintyConfidence || '95'} 
                                     onChange={handleChange} 
-                                    placeholder="e.g., 2"
+                                    placeholder="e.g., 95"
                                     min="1"
                                     max="99.999"
                                     step="0.01"
@@ -265,8 +265,8 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 <label>Meas Rel Target (%)</label>
                                 <input 
                                     type="number" 
-                                    name="uncertaintyConfidence" 
-                                    value={formData.uncertaintyConfidence || '85'} 
+                                    name="measRelTarget" 
+                                    value={formData.measRelTarget || '85'} 
                                     onChange={handleChange} 
                                     placeholder="e.g., 95"
                                     min="1"
@@ -276,8 +276,8 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 <label>Calibration Interval</label>
                                 <input 
                                     type="number" 
-                                    name="uncertaintyConfidence" 
-                                    value={formData.uncertaintyConfidence || '12'} 
+                                    name="calInt" 
+                                    value={formData.calInt || '12'} 
                                     onChange={handleChange} 
                                     placeholder="e.g., 12"
                                     min="1"
@@ -289,8 +289,8 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 <label>Meas Rel Calc/Assumed (%)</label>
                                 <input 
                                     type="number" 
-                                    name="uncertaintyConfidence" 
-                                    value={formData.uncertaintyConfidence || '85'} 
+                                    name="measRelCalcAssumed" 
+                                    value={formData.measRelCalcAssumed || '85'} 
                                     onChange={handleChange} 
                                     placeholder="e.g., 85"
                                     min="1"
@@ -300,13 +300,24 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 <label>TUR Needed For Assumed Meas Rel</label>
                                 <input 
                                     type="number" 
-                                    name="uncertaintyConfidence" 
-                                    value={formData.uncertaintyConfidence || '4'} 
+                                    name="neededTUR" 
+                                    value={formData.neededTUR || '4'} 
                                     onChange={handleChange} 
                                     placeholder="e.g., 4"
                                     min="1"
                                     max="100"
                                     step="1"
+                                />
+                                <label>PFA Required (%)</label>
+                                <input 
+                                    type="number" 
+                                    name="reqPFA" 
+                                    value={formData.reqPFA || '2'} 
+                                    onChange={handleChange} 
+                                    placeholder="e.g., 2"
+                                    min="1"
+                                    max="99.999"
+                                    step="0.01"
                                 />
                             </div>
                         </div>

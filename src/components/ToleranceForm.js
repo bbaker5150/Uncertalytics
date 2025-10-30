@@ -151,12 +151,12 @@ const ToleranceForm = ({
       <>
         <div className="input-group-asymmetric">
           <div>
-            <label>Upper Limit</label>
-            <input type="number" step="any" data-component-key={key} data-field="high" value={componentData.high || ""} onChange={handleChange} placeholder="+ value" />
-          </div>
-          <div>
             <label>Lower Limit</label>
             <input type="number" step="any" data-component-key={key} data-field="low" value={componentData.low || ""} onChange={handleChange} disabled={componentData.symmetric} placeholder="- value" />
+          </div>
+          <div>
+            <label>Upper Limit</label>
+            <input type="number" step="any" data-component-key={key} data-field="high" value={componentData.high || ""} onChange={handleChange} placeholder="+ value" />
           </div>
         </div>
         <div className="toggle-switch-container" style={{ margin: '15px 0' }}>
