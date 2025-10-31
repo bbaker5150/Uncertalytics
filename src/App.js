@@ -973,7 +973,6 @@ const UncertaintyBudgetTable = ({
           </tr>
         ) : (
           <tr className="category-header">
-            <td colSpan={headerColSpan}>Uncertainty Components</td>
           </tr>
         )}
 
@@ -1439,7 +1438,7 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
   return (
     <div className="risk-analysis-container">
       <div className="risk-analysis-dashboard">
-        <div className="risk-card">
+        <div className="risk-card clickable" onClick={() => onShowBreakdown("inputs")}>
           <div
             className="risk-label"
             style={{
@@ -1476,41 +1475,24 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
               <span className="value">{results.AUp.toFixed(3)} {nativeUnit}</span>
             </li>
           </ul>
-          <button
-            className="button button-small breakdown-button"
-            onClick={() => onShowBreakdown("inputs")}
-          >
-            Show Breakdown
-          </button>
         </div>
-        <div className="risk-card tur-card">
+        <div className="risk-card tur-card clickable" onClick={() => onShowBreakdown("tur")}>
           <div className="risk-value">{results.tur.toFixed(2)} : 1</div>
           <div className="risk-label">Test Uncertainty Ratio (TUR)</div>
           <div className="risk-explanation">
             A ratio of the UUT's tolerance to the measurement uncertainty.
           </div>
-          <button
-            className="button button-small breakdown-button"
-            onClick={() => onShowBreakdown("tur")}
-          >
-            Show Breakdown
-          </button>
         </div>
-        <div className="risk-card tur-card">
+        <div className="risk-card tur-card clickable" onClick={() => onShowBreakdown("tar")}>
           <div className="risk-value">{results.tar.toFixed(2)} : 1</div>
           <div className="risk-label">Test Acceptance Ratio (TAR)</div>
           <div className="risk-explanation">
             A ratio of the UUT's tolerance span to the TMDE's (Standard's)
             tolerance span.
           </div>
-          <button
-            className="button button-small breakdown-button"
-            onClick={() => onShowBreakdown("tar")}
-          >
-            Show Breakdown
-          </button>
+          {/* Button Removed */}
         </div>
-        <div className={`risk-card pfa-card ${getPfaClass(results.pfa)}`}>
+        <div className={`risk-card pfa-card ${getPfaClass(results.pfa)} clickable`} onClick={() => onShowBreakdown("pfa")}>
           <div className="risk-value">{results.pfa.toFixed(4)} %</div>
           <div className="risk-label">Probability of False Accept (PFA)</div>
           <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
@@ -1523,14 +1505,9 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
               <span className="value">{results.pfa_term2.toFixed(4)} %</span>
             </li>
           </ul>
-          <button
-            className="button button-small breakdown-button"
-            onClick={() => onShowBreakdown("pfa")}
-          >
-            Show Breakdown
-          </button>
+          {/* Button Removed */}
         </div>
-        <div className="risk-card pfr-card">
+        <div className="risk-card pfr-card clickable" onClick={() => onShowBreakdown("pfr")}>
           <div className="risk-value">{results.pfr.toFixed(4)} %</div>
           <div className="risk-label">Probability of False Reject (PFR)</div>
           <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
@@ -1543,12 +1520,7 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
               <span className="value">{results.pfr_term2.toFixed(4)} %</span>
             </li>
           </ul>
-          <button
-            className="button button-small breakdown-button"
-            onClick={() => onShowBreakdown("pfr")}
-          >
-            Show Breakdown
-          </button>
+          {/* Button Removed */}
         </div>
       </div>
     </div>
@@ -2013,6 +1985,7 @@ function Analysis({
   const [breakdownModal, setLocalBreakdownModal] = useState(null);
   const [notification, setNotification] = useState(null);
   const [isAddComponentModalOpen, setAddComponentModalOpen] = useState(false);
+  const [calculationError, setCalculationError] = useState(null);
 
   // State for Derived Breakdown Modal
   const [isDerivedBreakdownOpen, setIsDerivedBreakdownOpen] = useState(false);
@@ -2300,6 +2273,7 @@ function Analysis({
     let derivedUcInputs_Base = 0;
 
     try {
+      setCalculationError(null);
       const hasVariables =
         testPointData.variableMappings &&
         Object.keys(testPointData.variableMappings).length > 0;
@@ -2310,8 +2284,6 @@ function Analysis({
         hasVariables &&
         noTmdes
       ) {
-        // This is a new derived point with no TMDEs added yet.
-        // Don't run the calculation, just clear any old results.
         setCalcResults(null);
         if (testPointData.is_detailed_uncertainty_calculated) {
           // If it was somehow calculated before, clear it
@@ -2366,11 +2338,9 @@ function Analysis({
             "Derived uncertainty calculation (inputs) resulted in NaN."
           );
         }
-
-        // --- NEW: Store the intermediate value ---
         derivedUcInputs_Native = combinedUncertaintyNative;
         derivedUcInputs_Base = derivedUcInputs_Native * targetUnitInfo.to_si;
-        // --- End NEW ---
+
 
         calculatedNominalResult = nominalResult;
         let totalVariance_Native = derivedUcInputs_Native ** 2; // Start with variance from inputs
@@ -2649,10 +2619,7 @@ function Analysis({
       }
     } catch (error) {
       console.error("Error during uncertainty calculation useEffect:", error);
-      setNotification({
-        title: "Calculation Error",
-        message: `Could not calculate uncertainty: ${error.message}. Check inputs and TMDE assignments.`,
-      });
+      setCalculationError(error.message);
       setCalcResults(null);
       if (testPointData.is_detailed_uncertainty_calculated) {
         onDataSave({
@@ -3154,10 +3121,8 @@ function Analysis({
         breakdownData={derivedBreakdownData}
       />
 
-      {breakdownModal && <div className="modal-placeholder" />}
-      {breakdownModal && (
+      {breakdownModal === "inputs" && (
         <InputsBreakdownModal
-          isOpen={breakdownModal === "inputs"}
           results={riskResults}
           inputs={{
             LLow: parseFloat(riskInputs.LLow),
@@ -3212,50 +3177,6 @@ function Analysis({
             LUp: parseFloat(riskInputs.LUp),
             reliability: parseFloat(sessionData.reliability),
             guardBandMultiplier: parseFloat(sessionData.guardBandMultiplier),
-          }}
-          onClose={() => setLocalBreakdownModal(null)}
-        />
-      )}
-      {breakdownModal === "tur" && (
-        <TurBreakdownModal
-          results={riskResults}
-          inputs={{
-            ...riskInputs,
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-          }}
-          onClose={() => setLocalBreakdownModal(null)}
-        />
-      )}
-      {breakdownModal === "tar" && (
-        <TarBreakdownModal
-          results={riskResults}
-          inputs={{
-            ...riskInputs,
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-          }}
-          onClose={() => setLocalBreakdownModal(null)}
-        />
-      )}
-      {breakdownModal === "pfa" && (
-        <PfaBreakdownModal
-          results={riskResults}
-          inputs={{
-            ...riskInputs,
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-          }}
-          onClose={() => setLocalBreakdownModal(null)}
-        />
-      )}
-      {breakdownModal === "pfr" && (
-        <PfrBreakdownModal
-          results={riskResults}
-          inputs={{
-            ...riskInputs,
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -3535,6 +3456,14 @@ function Analysis({
               </div>
             </div>
             <Accordion title="Uncertainty Budget" startOpen={true}>
+              {calculationError ? (
+              <div className="form-section-warning">
+                <p><strong>Calculation Error:</strong> {calculationError}</p>
+                <p style={{ marginTop: '5px', fontSize: '0.9rem', color: 'var(--text-color-muted)'}}>
+                  Please ensure all required fields are set (e.g., UUT nominal, equation, and all mapped TMDEs).
+                </p>
+              </div>
+            ) : (
               <UncertaintyBudgetTable
                 components={calcResults?.calculatedBudgetComponents || []}
                 onRemove={handleRemoveComponent}
@@ -3545,6 +3474,7 @@ function Analysis({
                 equationString={testPointData.equationString}
                 measurementType={testPointData.measurementType}
               />
+            )}
             </Accordion>
           </div>
         </div>
