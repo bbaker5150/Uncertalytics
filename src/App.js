@@ -1,6 +1,6 @@
 /* global math */
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { probit, erf } from "simple-statistics";
+import { probit } from "simple-statistics";
 import Latex from "react-latex-next";
 import "katex/dist/katex.min.css";
 import "./App.css";
@@ -479,47 +479,119 @@ export const calculateUncertaintyFromToleranceObject = (
   };
 };
 
-function bivariateNormalCDF(x, y, rho) {
-  if (rho === null || isNaN(rho) || rho > 1 || rho < -1) {
-    return NaN;
-  }
-  if (rho === 0)
-    return (
-      (((1 + erf(x / Math.sqrt(2))) / 2) * (1 + erf(y / Math.sqrt(2)))) / 2
-    );
-  if (rho === 1) return (1 + erf(Math.min(x, y) / Math.sqrt(2))) / 2;
-  if (rho === -1)
-    return Math.max(
-      0,
-      (1 + erf(x / Math.sqrt(2))) / 2 + (1 + erf(y / Math.sqrt(2))) / 2 - 1
-    );
-  const rho2 = rho * rho;
-  let result = 0;
-  if (rho2 < 1) {
-    const t = (y - rho * x) / Math.sqrt(1 - rho2);
-    const biv_g =
-      (1 / (2 * Math.PI * Math.sqrt(1 - rho2))) *
-      Math.exp(-(x * x - 2 * rho * x * y + y * y) / (2 * (1 - rho2)));
-    if (x * y * rho > 0) {
-      const L =
-        (((1 + erf(x / Math.sqrt(2))) / 2) * (1 + erf(t / Math.sqrt(2)))) / 2;
-      let sum = 0;
-      for (let i = 0; i < 5; i++) {
-        sum +=
-          Math.pow(rho, i + 1) /
-          ((i + 1) *
-            Math.pow(2, i / 2 + 1) *
-            Math.exp(Math.log(i + 1) * 2) *
-            Math.PI);
-      }
-      result = L - biv_g * sum;
+/**
+ * Helper function for the standard normal CDF (phi)
+ */
+function CumNorm(x) {
+  const XAbs = Math.abs(x);
+  let Build;
+  let Exponential;
+
+  if (XAbs > 37) { // [cite: 5883]
+    if (x > 0) {
+      return 1.0;
     } else {
-      const L =
-        (((1 + erf(x / Math.sqrt(2))) / 2) * (1 + erf(t / Math.sqrt(2)))) / 2;
-      result = L - bivariateNormalCDF(x, t, 0);
+      return 0.0;
+    }
+  } else {
+    Exponential = Math.exp(-XAbs * XAbs / 2); // [cite: 5883]
+    if (XAbs < 7.07106781186547) { // [cite: 5883]
+      Build = 3.52624965998911E-02 * XAbs + 0.700383064443688;
+      Build = Build * XAbs + 6.37396220353165;
+      Build = Build * XAbs + 33.912866078383;
+      Build = Build * XAbs + 112.079291497871;
+      Build = Build * XAbs + 221.213596169931;
+      Build = Build * XAbs + 220.206867912376;
+      let CumNormVal = Exponential * Build; // [cite: 5883]
+      
+      Build = 8.83883476483184E-02 * XAbs + 1.75566716318264;
+      Build = Build * XAbs + 16.064177579207;
+      Build = Build * XAbs + 86.7807322029461;
+      Build = Build * XAbs + 296.564248779674;
+      Build = Build * XAbs + 637.333633378831;
+      Build = Build * XAbs + 793.826512519948;
+      Build = Build * XAbs + 440.413735824752;
+      CumNormVal = CumNormVal / Build; // [cite: 5884]
+      
+      if (x > 0) {
+        return 1 - CumNormVal; // [cite: 5884]
+      } else {
+        return CumNormVal;
+      }
+    } else { // [cite: 5884]
+      Build = XAbs + 0.65;
+      Build = XAbs + 4 / Build;
+      Build = XAbs + 3 / Build;
+      Build = XAbs + 2 / Build;
+      Build = XAbs + 1 / Build;
+      let CumNormVal = Exponential / Build / 2.506628274631; // [cite: 5885]
+      
+      if (x > 0) {
+        return 1 - CumNormVal; // [cite: 5884]
+      } else {
+        return CumNormVal;
+      }
     }
   }
-  return result < 0 ? 0 : result > 1 ? 1 : result;
+}
+
+/**
+ * JS  implementation of the Bivariate Normal CDF.
+ * This is a JavaScript port of the 'BiVar' (Genz DW2 algorithm)
+ */
+function bivariateNormalCDF(A, B, r) {
+  // Weights and abscissas for 5-point Gauss-Legendre quadrature [cite: 5888, 5894]
+  // (VBA arrays are 1-indexed, so we use 0-indexed JS arrays)
+  const x_quad = [ 0.04691008, 0.23076534, 0.5, 0.76923466, 0.95308992 ];
+  const w_quad = [ 0.018854042, 0.038088059, 0.0452707394, 0.038088059, 0.018854042 ];
+
+  let h1 = A;
+  let h2 = B;
+  let h12 = (h1 * h1 + h2 * h2) / 2.0;
+  let LH = 0.0; // 
+
+  if (Math.abs(r) < 0.7) { // [cite: 5897]
+    let h3 = h1 * h2;
+    if (r !== 0) {
+      for (let i = 0; i < 5; i++) {
+        let r1 = r * x_quad[i];
+        let r2 = 1 - r1 * r1;
+        LH = LH + w_quad[i] * Math.exp((r1 * h3 - h12) / r2) / Math.sqrt(r2); // [cite: 5892]
+      }
+    }
+    return CumNorm(h1) * CumNorm(h2) + r * LH; // [cite: 5897]
+    
+  } else { // 
+    let r2 = 1 - r * r;
+    let r3 = Math.sqrt(r2);
+    if (r < 0) {
+      h2 = -h2; // 
+    }
+    let h3 = h1 * h2;
+    let h7 = Math.exp(-h3 / 2.0); // 
+    
+    if (Math.abs(r) < 1) { // 
+      let h6 = Math.abs(h1 - h2);
+      let h5 = h6 * h6 / 2.0; // [cite: 5895]
+      h6 = h6 / r3;
+      let AA = 0.5 - h3 / 8.0;
+      let ab = 3 - 2 * AA * h5;
+      LH = 0.13298076 * h6 * ab * (1 - CumNorm(h6)) - Math.exp(-h5 / r2) * (ab + AA * r2) * 0.053051647; // [cite: 5895-5896]
+      
+      for (let i = 0; i < 5; i++) {
+        let r1 = r3 * x_quad[i];
+        let rr = r1 * r1;
+        let r2_inner = Math.sqrt(1 - rr);
+        LH = LH - w_quad[i] * Math.exp(-h5 / rr) * (Math.exp(-h3 / (1 + r2_inner)) / r2_inner / h7 - 1 - AA * rr); // [cite: 5896]
+      }
+    }
+    
+    let BiVar = LH * r3 * h7 + CumNorm(Math.min(h1, h2)); // [cite: 5896, 5898]
+    if (r < 0) {
+      BiVar = CumNorm(h1) - BiVar; // [cite: 5896]
+    }
+    return BiVar;
+  }
 }
 
 const T_DISTRIBUTION_95 = {
@@ -977,6 +1049,8 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
   const mid = (inputs.LUp + inputs.LLow) / 2;
   const LUp_symmetric = Math.abs(inputs.LUp - mid);
 
+  const safeNativeUnit = results.nativeUnit === "%" ? "\\%" : (results.nativeUnit || "units");
+
   return (
     <div className="modal-overlay">
       <div className="modal-content breakdown-modal-content">
@@ -991,9 +1065,9 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
             using the root sum of squares (RSS) of all individual components
             (uᵢ) from the detailed budget.
           </p>
-          <Latex>{`$$ u_{cal} = \\sqrt{\\sum_{i=1}^{N} u_i^2} = \\mathbf{${results.uCal.toFixed(
+          <Latex>{`$$ u_{cal} = \\sqrt{\\sum_{i=1}^{N} u_i^2} = \\mathbf{${results.uCal.toPrecision(
             4
-          )}} \\text{ ppm} $$`}</Latex>
+          )}} \\text{ ${safeNativeUnit}} $$`}</Latex>
         </div>
         <div className="breakdown-step">
           <h5>UUT Uncertainty (uᵤᵤₜ)</h5>
@@ -1004,16 +1078,16 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
           </p>
           1. Deviation Uncertainty (uₔₑᵥ):{" "}
           <Latex>{`$$ u_{dev} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} = \\frac{${LUp_symmetric.toFixed(
-            2
-          )}}{\\Phi^{-1}((1+${inputs.reliability})/2)} = ${results.uDev.toFixed(
+            6
+          )}}{\\Phi^{-1}((1+${inputs.reliability})/2)} = ${results.uDev.toPrecision(
             4
-          )} \\text{ ppm} $$`}</Latex>
+          )} \\text{ ${safeNativeUnit}} $$`}</Latex>
           2. UUT Uncertainty:{" "}
-          <Latex>{`$$ u_{UUT} = \\sqrt{u_{dev}^2 - u_{cal}^2} = \\sqrt{${results.uDev.toFixed(
+          <Latex>{`$$ u_{UUT} = \\sqrt{u_{dev}^2 - u_{cal}^2} = \\sqrt{${results.uDev.toPrecision(
             4
-          )}^2 - ${results.uCal.toFixed(
+          )}^2 - ${results.uCal.toPrecision(
             4
-          )}^2} = \\mathbf{${results.uUUT.toFixed(4)}} \\text{ ppm} $$`}</Latex>
+          )}^2} = \\mathbf{${results.uUUT.toPrecision(4)}} \\text{ ${safeNativeUnit}} $$`}</Latex>
         </div>
         <div className="breakdown-step">
           <h5>Acceptance Limits (A)</h5>
@@ -1021,16 +1095,16 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
             Calculated by applying the **Guard Band Multiplier** to the
             tolerance limits.
           </p>
-          <Latex>{`$$ A_{Low} = L_{Low} \\times G = ${inputs.LLow.toFixed(
-            2
+          <Latex>{`$$ A_{Low} = L_{Low} \\times G = ${parseFloat(inputs.LLow).toFixed(
+            6
           )} \\times ${
             inputs.guardBandMultiplier
-          } = \\mathbf{${results.ALow.toFixed(4)}} \\text{ ppm} $$`}</Latex>
-          <Latex>{`$$ A_{Up} = L_{Up} \\times G = ${inputs.LUp.toFixed(
-            2
+          } = \\mathbf{${results.ALow.toFixed(6)}} \\text{ ${safeNativeUnit}} $$`}</Latex>
+          <Latex>{`$$ A_{Up} = L_{Up} \\times G = ${parseFloat(inputs.LUp).toFixed(
+            6
           )} \\times ${
             inputs.guardBandMultiplier
-          } = \\mathbf{${results.AUp.toFixed(4)}} \\text{ ppm} $$`}</Latex>
+          } = \\mathbf{${results.AUp.toFixed(6)}} \\text{ ${safeNativeUnit}} $$`}</Latex>
         </div>
         <div className="breakdown-step">
           <h5>Correlation (ρ)</h5>
@@ -1038,9 +1112,9 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
             The statistical correlation between the UUT's true value and the
             measured value.
           </p>
-          <Latex>{`$$ \\rho = \\frac{u_{UUT}}{u_{dev}} = \\frac{${results.uUUT.toFixed(
+          <Latex>{`$$ \\rho = \\frac{u_{UUT}}{u_{dev}} = \\frac{${results.uUUT.toPrecision(
             4
-          )}}{${results.uDev.toFixed(
+          )}}{${results.uDev.toPrecision(
             4
           )}} = \\mathbf{${results.correlation.toFixed(4)}} $$`}</Latex>
         </div>
@@ -1051,6 +1125,11 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
 
 const TurBreakdownModal = ({ results, inputs, onClose }) => {
   if (!results || !inputs) return null;
+
+  const safeNativeUnit = results.nativeUnit === "%" ? "\\%" : (results.nativeUnit || "units");
+  const uutToleranceSpan = inputs.LUp - inputs.LLow;
+  const expandedUncertaintySpan = results.expandedUncertainty * 2;
+
   return (
     <div className="modal-overlay">
       <div className="modal-content breakdown-modal-content">
@@ -1062,34 +1141,38 @@ const TurBreakdownModal = ({ results, inputs, onClose }) => {
           <h5>Step 1: Formula</h5>
           <p>
             The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span
-            to the expanded measurement uncertainty.
+            to the expanded measurement uncertainty span.
           </p>
-          <Latex>{"$$ TUR = \\frac{L_{Upper} - L_{Lower}}{U_{95}} $$"}</Latex>
+          <Latex>{"$$ TUR = \\frac{L_{Upper} - L_{Lower}}{2 \\times U_{95}} $$"}</Latex>
         </div>
         <div className="breakdown-step">
           <h5>Step 2: Inputs</h5>
           <ul>
             <li>
               Tolerance Span:{" "}
-              <Latex>{`$$ L_{Upper} - L_{Lower} = ${inputs.LUp.toFixed(
-                2
-              )} - (${inputs.LLow.toFixed(2)}) = ${(
-                inputs.LUp - inputs.LLow
-              ).toFixed(2)} \\text{ ppm} $$`}</Latex>
+              <Latex>{`$$ L_{Upper} - L_{Lower} = ${inputs.LUp.toPrecision(
+                6
+              )} - (${inputs.LLow.toPrecision(
+                6
+              )}) = ${uutToleranceSpan.toPrecision(
+                4
+              )} \\text{ ${safeNativeUnit}} $$`}</Latex>
             </li>
             <li>
-              Expanded Uncertainty:{" "}
-              <Latex>{`$$ U_{95} = ${results.expandedUncertainty.toFixed(
+              Expanded Uncertainty Span:{" "}
+              <Latex>{`$$ 2 \\times U_{95} = 2 \\times ${results.expandedUncertainty.toPrecision(
                 4
-              )} \\text{ ppm} $$`}</Latex>
+              )} = \\mathbf{${expandedUncertaintySpan.toPrecision(
+                4
+              )}} \\text{ ${safeNativeUnit}} $$`}</Latex>
             </li>
           </ul>
         </div>
         <div className="breakdown-step">
           <h5>Step 3: Final Calculation</h5>
-          <Latex>{`$$ TUR = \\frac{${(inputs.LUp - inputs.LLow).toFixed(
-            2
-          )}}{${results.expandedUncertainty.toFixed(
+          <Latex>{`$$ TUR = \\frac{${uutToleranceSpan.toPrecision(
+            4
+          )}}{${expandedUncertaintySpan.toPrecision(
             4
           )}} = \\mathbf{${results.tur.toFixed(4)}:1} $$`}</Latex>
         </div>
@@ -1102,6 +1185,8 @@ const TarBreakdownModal = ({ results, inputs, onClose }) => {
   if (!results || !inputs) return null;
   const uutToleranceSpan = inputs.LUp - inputs.LLow;
   const tmdeToleranceSpan = results.tmdeToleranceSpan;
+  
+  const safeNativeUnit = results.nativeUnit === "%" ? "\\%" : (results.nativeUnit || "units");
 
   return (
     <div className="modal-overlay">
@@ -1131,15 +1216,15 @@ const TarBreakdownModal = ({ results, inputs, onClose }) => {
                 2
               )}) = \\mathbf{${uutToleranceSpan.toFixed(
                 2
-              )}} \\text{ ppm} $$`}</Latex>
+              )}} \\text{ ${safeNativeUnit}} $$`}</Latex>
             </li>
             <li>
               TMDE Tolerance Span:{" "}
               <Latex>{`$$ \\mathbf{${tmdeToleranceSpan.toFixed(
                 2
-              )}} \\text{ ppm} $$`}</Latex>{" "}
+              )}} \\text{ ${safeNativeUnit}} $$`}</Latex>{" "}
               <em>
-                (Derived from the 'Standard Instrument' component in the budget)
+                (Derived from all TMDE tolerance spans, converted and summed)
               </em>
             </li>
           </ul>
@@ -1349,6 +1434,8 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
     return "status-good";
   };
 
+  const nativeUnit = results.nativeUnit || "units";
+
   return (
     <div className="risk-analysis-container">
       <div className="risk-analysis-dashboard">
@@ -1365,20 +1452,28 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
           </div>
           <ul className="result-breakdown" style={{ marginTop: 0 }}>
             <li>
+              <span className="label">UUT Limit (LLow)</span>
+              <span className="value">{results.LLow.toFixed(3)} {nativeUnit}</span>
+            </li>
+            <li>
+              <span className="label">UUT Limit (LUp)</span>
+              <span className="value">{results.LUp.toFixed(3)} {nativeUnit}</span>
+            </li>
+            <li>
               <span className="label">Std. Unc. of Cal (uₑₐₗ)</span>
-              <span className="value">{results.uCal.toFixed(3)} ppm</span>
+              <span className="value">{results.uCal.toFixed(3)} {nativeUnit}</span>
             </li>
             <li>
               <span className="label">Std. Unc. of UUT (uᵤᵤₜ)</span>
-              <span className="value">{results.uUUT.toFixed(3)} ppm</span>
+              <span className="value">{results.uUUT.toFixed(3)} {nativeUnit}</span>
             </li>
             <li>
               <span className="label">Acceptance Limit (Aₗₒw)</span>
-              <span className="value">{results.ALow.toFixed(3)} ppm</span>
+              <span className="value">{results.ALow.toFixed(3)} {nativeUnit}</span>
             </li>
             <li>
               <span className="label">Acceptance Limit (Aᵤₚ)</span>
-              <span className="value">{results.AUp.toFixed(3)} ppm</span>
+              <span className="value">{results.AUp.toFixed(3)} {nativeUnit}</span>
             </li>
           </ul>
           <button
@@ -1913,8 +2008,6 @@ function Analysis({
   const [riskInputs, setRiskInputs] = useState({
     LLow: "",
     LUp: "",
-    reliability: 0.95,
-    guardBandMultiplier: 1,
   });
   const [riskResults, setRiskResults] = useState(null);
   const [breakdownModal, setLocalBreakdownModal] = useState(null);
@@ -1933,27 +2026,268 @@ function Analysis({
     () => testPointData.tmdeTolerances || [],
     [testPointData.tmdeTolerances]
   );
+  
   const uutNominal = useMemo(
     () => testPointData?.testPointInfo?.parameter,
     [testPointData?.testPointInfo?.parameter]
   );
 
+  const calculateRiskMetrics = useCallback(() => {
+    const LLow = parseFloat(riskInputs.LLow);
+    const LUp = parseFloat(riskInputs.LUp);
+    const reliability = parseFloat(sessionData.reliability);
+    const guardBandMultiplier = parseFloat(sessionData.guardBandMultiplier);
+    const nominalUnit = uutNominal?.unit;
+    const targetUnitInfo = unitSystem.units[nominalUnit];
+
+    if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) {
+      setNotification({
+        title: "Invalid Input",
+        message: "Enter valid UUT tolerance limits.",
+      });
+      return;
+    }
+    if (isNaN(reliability) || reliability <= 0 || reliability >= 1) {
+      setNotification({
+        title: "Invalid Input",
+        message: "Enter valid reliability (e.g., 0.95).",
+      });
+      return;
+    }
+    if (
+      isNaN(guardBandMultiplier) ||
+      guardBandMultiplier < 0 ||
+      guardBandMultiplier > 1
+    ) {
+      setNotification({
+        title: "Invalid Input",
+        message: "Guard Band Multiplier must be 0 to 1.",
+      });
+      return;
+    }
+    if (!calcResults) {
+      setNotification({
+        title: "Calculation Required",
+        message: "Uncertainty budget must be calculated first.",
+      });
+      return;
+    }
+    if (!targetUnitInfo || isNaN(targetUnitInfo.to_si)) {
+      setNotification({
+        title: "Calculation Error",
+        message: `Invalid UUT unit (${nominalUnit}) for risk analysis.`,
+      });
+      return;
+    }
+
+    const uCal_Base = calcResults.combined_uncertainty_absolute_base;
+    const uCal_Native = uCal_Base / targetUnitInfo.to_si;
+
+    let tmdeToleranceSpan_Native = 0;
+    let missingTmdeRef = false;
+
+    if (tmdeTolerancesData.length > 0) {
+      tmdeToleranceSpan_Native = tmdeTolerancesData.reduce((totalSpan, tmde) => {
+        if (!tmde.measurementPoint || !tmde.measurementPoint.value) {
+          missingTmdeRef = true;
+          return totalSpan;
+        }
+
+        const { breakdown: tmdeBreakdown } =
+          calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint);
+        const tmdeNominal = parseFloat(tmde.measurementPoint.value);
+
+        const tmdeSpecComponents = tmdeBreakdown.filter(
+          (comp) => comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
+        );
+        if (tmdeSpecComponents.length === 0) return totalSpan;
+
+        const tmdeHighDev = tmdeSpecComponents.reduce(
+          (sum, comp) => sum + (comp.absoluteHigh - tmdeNominal),
+          0
+        );
+        const tmdeLowDev = tmdeSpecComponents.reduce(
+          (sum, comp) => sum + (comp.absoluteLow - tmdeNominal),
+          0
+        );
+
+        const tmdeSpan = tmdeHighDev - tmdeLowDev;
+
+        const tmdeUnitInfo = unitSystem.units[tmde.measurementPoint.unit];
+        if (!tmdeUnitInfo || isNaN(tmdeUnitInfo.to_si)) {
+          missingTmdeRef = true;
+          return totalSpan;
+        }
+        const tmdeSpanInBase = tmdeSpan * tmdeUnitInfo.to_si;
+        const tmdeSpanInUutNative = tmdeSpanInBase / targetUnitInfo.to_si;
+
+        return totalSpan + tmdeSpanInUutNative;
+      }, 0);
+    }
+
+    if (missingTmdeRef) {
+      setNotification({
+        title: "Missing Info",
+        message: "TMDE missing Reference Point for TAR calculation.",
+      });
+    } else if (tmdeToleranceSpan_Native === 0 && LUp - LLow > 0) {
+      if (riskInputs.LUp && riskInputs.LLow) {
+        setNotification({
+          title: "Missing Component",
+          message: "Could not find TMDE tolerances for TAR.",
+        });
+      }
+    }
+
+    const mid = (LUp + LLow) / 2;
+    const LUp_symmetric = Math.abs(LUp - mid);
+    const uDev = LUp_symmetric / probit((1 + reliability) / 2);
+    const uUUT2 = uDev ** 2 - uCal_Native ** 2;
+    let uUUT = 0;
+    if (uUUT2 <= 0) {
+      setNotification({
+        title: "Calc Warning",
+        message: `uCal (${uCal_Native.toFixed(
+          3
+        )}) exceeds uDev (${uDev.toFixed(
+          3
+        )}) for reliability ${reliability}. UUT unc treated as zero.`,
+      });
+      uUUT = 0;
+    } else {
+      uUUT = Math.sqrt(uUUT2);
+    }
+
+    const ALow = LLow * guardBandMultiplier;
+    const AUp = LUp * guardBandMultiplier;
+    const correlation = uUUT === 0 || uDev === 0 ? 0 : uUUT / uDev;
+    const LLow_norm = LLow - mid;
+    const LUp_norm = LUp - mid;
+    const ALow_norm = ALow - mid;
+    const AUp_norm = AUp - mid;
+
+    const pfa_term1 =
+      bivariateNormalCDF(LLow_norm / uUUT, AUp_norm / uDev, correlation) -
+      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
+    const pfa_term2 =
+      bivariateNormalCDF(-LUp_norm / uUUT, -ALow_norm / uDev, correlation) -
+      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
+    const pfaResult =
+      isNaN(pfa_term1) || isNaN(pfa_term2) ? 0 : pfa_term1 + pfa_term2;
+
+    const pfr_term1 =
+      bivariateNormalCDF(LUp_norm / uUUT, ALow_norm / uDev, correlation) -
+      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
+    const pfr_term2 =
+      bivariateNormalCDF(-LLow_norm / uUUT, -AUp_norm / uDev, correlation) -
+      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
+    const pfrResult =
+      isNaN(pfr_term1) || isNaN(pfr_term2) ? 0 : pfr_term1 + pfr_term2;
+
+    const U_Base = calcResults.expanded_uncertainty_absolute_base;
+    const U_Native = U_Base / targetUnitInfo.to_si;
+
+    const turResult = (LUp - LLow) / (2 * U_Native);
+    const tarResult =
+      tmdeToleranceSpan_Native !== 0
+        ? (LUp - LLow) / tmdeToleranceSpan_Native
+        : 0;
+
+    setRiskResults({
+      LLow: LLow,
+      LUp: LUp,
+      tur: turResult,
+      tar: tarResult,
+      pfa: pfaResult * 100,
+      pfr: pfrResult * 100,
+      pfa_term1: (isNaN(pfa_term1) ? 0 : pfa_term1) * 100,
+      pfa_term2: (isNaN(pfa_term2) ? 0 : pfa_term2) * 100,
+      pfr_term1: (isNaN(pfr_term1) ? 0 : pfr_term1) * 100,
+      pfr_term2: (isNaN(pfr_term2) ? 0 : pfr_term2) * 100,
+      uCal: uCal_Native,
+      uUUT: uUUT,
+      uDev: uDev,
+      correlation,
+      ALow: ALow,
+      AUp: AUp,
+      expandedUncertainty: U_Native,
+      tmdeToleranceSpan: tmdeToleranceSpan_Native,
+      nativeUnit: nominalUnit,
+    });
+  }, [
+    riskInputs.LLow,
+    riskInputs.LUp,
+    sessionData.reliability,
+    sessionData.guardBandMultiplier,
+    uutNominal,
+    calcResults,
+    tmdeTolerancesData,
+    setNotification,
+    setRiskResults
+  ]);
+
+  useEffect(() => {
+    if (analysisMode === "risk" && calcResults) {
+      calculateRiskMetrics();
+    }
+
+    if (analysisMode !== "risk") {
+      setRiskResults(prevResults => {
+        if (prevResults !== null) {
+          return null;
+        }
+        return prevResults;
+      });
+    }
+  }, [
+    analysisMode, 
+    calcResults, 
+    sessionData.reliability, 
+    sessionData.guardBandMultiplier,
+    calculateRiskMetrics,
+    setRiskResults
+  ]);
+
   // Effect to update risk input tolerances when UUT tolerance changes
   useEffect(() => {
-    const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(
+    if (!uutToleranceData || !uutNominal || !uutNominal.value) {
+      setRiskInputs((prev) => ({ ...prev, LLow: "", LUp: "" }));
+      return;
+    }
+
+    const { breakdown } = calculateUncertaintyFromToleranceObject(
       uutToleranceData,
       uutNominal
     );
+    
+    const nominalValue = parseFloat(uutNominal.value);
+    
+    const specComponents = breakdown.filter(
+      (comp) => comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
+    );
 
-    if (totalToleranceForTar > 0) {
-      setRiskInputs((prev) => ({
-        ...prev,
-        LLow: -totalToleranceForTar,
-        LUp: totalToleranceForTar,
-      }));
-    } else {
+    if (specComponents.length === 0) {
       setRiskInputs((prev) => ({ ...prev, LLow: "", LUp: "" }));
+      return;
     }
+
+    const totalHighDeviation = specComponents.reduce((sum, comp) => {
+      return sum + (comp.absoluteHigh - nominalValue);
+    }, 0);
+  
+    const totalLowDeviation = specComponents.reduce((sum, comp) => {
+      return sum + (comp.absoluteLow - nominalValue);
+    }, 0);
+  
+    const finalHighLimit = nominalValue + totalHighDeviation;
+    const finalLowLimit = nominalValue + totalLowDeviation;
+
+    setRiskInputs((prev) => ({
+      ...prev,
+      LLow: finalLowLimit,
+      LUp: finalHighLimit,
+    }));
+
   }, [uutToleranceData, uutNominal]);
 
   useEffect(() => {
@@ -2491,151 +2825,7 @@ function Analysis({
   const handleNewComponentInputChange = (e) =>
     setNewComponent((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleRiskInputChange = (e) => {
-    const { name, value } = e.target;
-    setRiskInputs((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const calculateRiskMetrics = () => {
-    const LLow = parseFloat(riskInputs.LLow);
-    const LUp = parseFloat(riskInputs.LUp);
-    const reliability = parseFloat(riskInputs.reliability);
-    const guardBandMultiplier = parseFloat(riskInputs.guardBandMultiplier);
-
-    if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) {
-      setNotification({
-        title: "Invalid Input",
-        message: "Enter valid UUT tolerance limits.",
-      });
-      return;
-    }
-    if (isNaN(reliability) || reliability <= 0 || reliability >= 1) {
-      setNotification({
-        title: "Invalid Input",
-        message: "Enter valid reliability (e.g., 0.95).",
-      });
-      return;
-    }
-    if (
-      isNaN(guardBandMultiplier) ||
-      guardBandMultiplier < 0 ||
-      guardBandMultiplier > 1
-    ) {
-      setNotification({
-        title: "Invalid Input",
-        message: "Guard Band Multiplier must be 0 to 1.",
-      });
-      return;
-    }
-    if (!calcResults) {
-      setNotification({
-        title: "Calculation Required",
-        message: "Uncertainty budget must be calculated first.",
-      });
-      return;
-    }
-
-    const uCal = calcResults.combined_uncertainty; // Use PPM value
-
-    let tmdeToleranceSpan = 0;
-    let missingTmdeRef = false;
-
-    if (tmdeTolerancesData.length > 0) {
-      tmdeToleranceSpan = tmdeTolerancesData.reduce((totalSpan, tmde) => {
-        if (!tmde.measurementPoint || !tmde.measurementPoint.value) {
-          missingTmdeRef = true;
-          return totalSpan;
-        }
-        const { totalToleranceForTar } =
-          calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint);
-        return totalSpan + totalToleranceForTar;
-      }, 0);
-    }
-
-    if (missingTmdeRef) {
-      setNotification({
-        title: "Missing Info",
-        message: "TMDE missing Reference Point for TAR calculation.",
-      });
-    } else if (tmdeToleranceSpan === 0 && LUp - LLow > 0) {
-      if (riskInputs.LUp && riskInputs.LLow) {
-        setNotification({
-          title: "Missing Component",
-          message: "Could not find TMDE tolerances for TAR.",
-        });
-      }
-    }
-
-    const mid = (LUp + LLow) / 2;
-    const LUp_symmetric = Math.abs(LUp - mid);
-    const uDev = LUp_symmetric / probit((1 + reliability) / 2);
-    const uUUT2 = uDev ** 2 - uCal ** 2;
-    let uUUT = 0;
-    if (uUUT2 <= 0) {
-      setNotification({
-        title: "Calc Warning",
-        message: `uCal (${uCal.toFixed(3)}) exceeds uDev (${uDev.toFixed(
-          3
-        )}) for reliability ${reliability}. UUT unc treated as zero.`,
-      });
-      uUUT = 0;
-    } else {
-      uUUT = Math.sqrt(uUUT2);
-    }
-
-    const ALow = LLow * guardBandMultiplier;
-    const AUp = LUp * guardBandMultiplier;
-    // const uDev_risk = Math.sqrt(uUUT ** 2 + uCal ** 2);
-    const correlation = uUUT === 0 || uDev === 0 ? 0 : uUUT / uDev;
-    const LLow_norm = LLow - mid;
-    const LUp_norm = LUp - mid;
-    const ALow_norm = ALow - mid;
-    const AUp_norm = AUp - mid;
-
-    const pfa_term1 =
-      bivariateNormalCDF(LLow_norm / uUUT, AUp_norm / uDev, correlation) -
-      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
-    const pfa_term2 =
-      bivariateNormalCDF(-LUp_norm / uUUT, -ALow_norm / uDev, correlation) -
-      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
-    const pfaResult =
-      isNaN(pfa_term1) || isNaN(pfa_term2) ? 0 : pfa_term1 + pfa_term2;
-
-    const pfr_term1 =
-      bivariateNormalCDF(LUp_norm / uUUT, ALow_norm / uDev, correlation) -
-      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
-    const pfr_term2 =
-      bivariateNormalCDF(-LLow_norm / uUUT, -AUp_norm / uDev, correlation) -
-      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
-    const pfrResult =
-      isNaN(pfr_term1) || isNaN(pfr_term2) ? 0 : pfr_term1 + pfr_term2;
-
-    const turResult = (LUp - LLow) / calcResults.expanded_uncertainty; // Uses PPM expanded unc
-    const tarResult =
-      tmdeToleranceSpan !== 0 ? (LUp - LLow) / tmdeToleranceSpan : 0;
-
-    setRiskResults({
-      tur: turResult,
-      tar: tarResult,
-      pfa: pfaResult * 100,
-      pfr: pfrResult * 100,
-      pfa_term1: (isNaN(pfa_term1) ? 0 : pfa_term1) * 100,
-      pfa_term2: (isNaN(pfa_term2) ? 0 : pfa_term2) * 100,
-      pfr_term1: (isNaN(pfr_term1) ? 0 : pfr_term1) * 100,
-      pfr_term2: (isNaN(pfr_term2) ? 0 : pfr_term2) * 100,
-      uCal,
-      uUUT,
-      uDev: uDev,
-      correlation,
-      ALow,
-      AUp,
-      expandedUncertainty: calcResults.expanded_uncertainty,
-      tmdeToleranceSpan: tmdeToleranceSpan,
-    });
-  };
-
   const unitOptions = useMemo(() => {
-    // Still needed for Add Component Modal
     const nominalUnit = uutNominal?.unit;
     if (!nominalUnit) return ["ppm"];
     const relevant = unitSystem.getRelevantUnits(nominalUnit);
@@ -2965,13 +3155,63 @@ function Analysis({
       />
 
       {breakdownModal && <div className="modal-placeholder" />}
-      {breakdownModal === "inputs" && (
+      {breakdownModal && (
         <InputsBreakdownModal
+          isOpen={breakdownModal === "inputs"}
           results={riskResults}
           inputs={{
-            ...riskInputs,
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
+            reliability: parseFloat(sessionData.reliability),
+            guardBandMultiplier: parseFloat(sessionData.guardBandMultiplier),
+          }}
+          onClose={() => setLocalBreakdownModal(null)}
+        />
+      )}
+      {breakdownModal === "tur" && (
+        <TurBreakdownModal
+          results={riskResults}
+          inputs={{
+            LLow: parseFloat(riskInputs.LLow),
+            LUp: parseFloat(riskInputs.LUp),
+            reliability: parseFloat(sessionData.reliability),
+            guardBandMultiplier: parseFloat(sessionData.guardBandMultiplier),
+          }}
+          onClose={() => setLocalBreakdownModal(null)}
+        />
+      )}
+      {breakdownModal === "tar" && (
+        <TarBreakdownModal
+          results={riskResults}
+          inputs={{
+            LLow: parseFloat(riskInputs.LLow),
+            LUp: parseFloat(riskInputs.LUp),
+            reliability: parseFloat(sessionData.reliability),
+            guardBandMultiplier: parseFloat(sessionData.guardBandMultiplier),
+          }}
+          onClose={() => setLocalBreakdownModal(null)}
+        />
+      )}
+      {breakdownModal === "pfa" && (
+        <PfaBreakdownModal
+          results={riskResults}
+          inputs={{
+            LLow: parseFloat(riskInputs.LLow),
+            LUp: parseFloat(riskInputs.LUp),
+            reliability: parseFloat(sessionData.reliability),
+            guardBandMultiplier: parseFloat(sessionData.guardBandMultiplier),
+          }}
+          onClose={() => setLocalBreakdownModal(null)}
+        />
+      )}
+      {breakdownModal === "pfr" && (
+        <PfrBreakdownModal
+          results={riskResults}
+          inputs={{
+            LLow: parseFloat(riskInputs.LLow),
+            LUp: parseFloat(riskInputs.LUp),
+            reliability: parseFloat(sessionData.reliability),
+            guardBandMultiplier: parseFloat(sessionData.guardBandMultiplier),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -3316,67 +3556,18 @@ function Analysis({
               <p>Uncertainty budget must be calculated first.</p>
             </div>
           ) : (
-            <>
-              <div className="risk-inputs-container">
-                <div className="config-column uut-tolerance-display">
-                  <label>UUT Tolerance Limits (ppm)</label>
-                  <span>
-                    LLow:{" "}
-                    <strong>
-                      {riskInputs.LLow
-                        ? parseFloat(riskInputs.LLow).toFixed(3)
-                        : "N/A"}
-                    </strong>
-                  </span>
-                  <span>
-                    LUp:{" "}
-                    <strong>
-                      {riskInputs.LUp
-                        ? parseFloat(riskInputs.LUp).toFixed(3)
-                        : "N/A"}
-                    </strong>
-                  </span>
-                  <small>From UUT specs.</small>
-                </div>
-                <div className="config-column">
-                  <label>Target Reliability (R)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    max="0.9999"
-                    min="0.5"
-                    name="reliability"
-                    value={riskInputs.reliability}
-                    onChange={handleRiskInputChange}
-                  />
-                </div>
-                <div className="config-column">
-                  <label>Guard Band Multiplier</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    max="1"
-                    min="0"
-                    name="guardBandMultiplier"
-                    value={riskInputs.guardBandMultiplier}
-                    onChange={handleRiskInputChange}
-                  />
-                </div>
-              </div>
-              <button
-                onClick={calculateRiskMetrics}
-                className="button"
-                style={{ marginTop: "10px" }}
-              >
-                Calculate Risk Metrics
-              </button>
-              {riskResults && (
+            <>         
+              {riskResults ? (
                 <RiskAnalysisDashboard
                   results={riskResults}
                   onShowBreakdown={(modalType) =>
                     setLocalBreakdownModal(modalType)
                   }
                 />
+              ) : (
+                <div className="placeholder-content" style={{ minHeight: "200px" }}>
+                  <p>Calculating risk...</p>
+                </div>
               )}
             </>
           )}
@@ -3424,6 +3615,9 @@ function App() {
       document: "",
       documentDate: "",
       notes: "",
+      uncertaintyConfidence: "95",
+      reliability: "0.85",
+      guardBandMultiplier: "1",
       uutTolerance: {},
       testPoints: [],
     }),
@@ -3455,14 +3649,23 @@ function App() {
 
   useEffect(() => {
     let loadedData = false;
+    const defaultSession = createNewSession();
+
     try {
       const savedSessions = localStorage.getItem("uncertaintySessions");
       if (savedSessions) {
         const parsed = JSON.parse(savedSessions);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setSessions(parsed);
-          setSelectedSessionId(parsed[0].id);
-          setSelectedTestPointId(parsed[0].testPoints?.[0]?.id || null);
+          const migratedSessions = parsed.map(session => ({
+            ...defaultSession,
+            ...session,
+            id: session.id,
+            name: session.name || defaultSession.name,
+          }));
+
+          setSessions(migratedSessions);
+          setSelectedSessionId(migratedSessions[0].id);
+          setSelectedTestPointId(migratedSessions[0].testPoints?.[0]?.id || null);
           loadedData = true;
         }
       }
@@ -3471,7 +3674,7 @@ function App() {
     }
 
     if (!loadedData) {
-      const firstSession = createNewSession();
+      const firstSession = defaultSession; // Use the default we already created
       setSessions([firstSession]);
       setSelectedSessionId(firstSession.id);
       setEditingSession(firstSession);
