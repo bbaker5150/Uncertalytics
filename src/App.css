@@ -778,13 +778,9 @@ body.dark-mode .measurement-point-list-item:hover {
 .uut-seal {
     min-width: 360px;
     max-width: 400px;
-    /* aspect-ratio: 1 / 1;  <-- REMOVE this */
-    height: 380px;          /* <-- ADD this (or adjust as you like) */
-    
-    /* border-radius: 50%; <-- REPLACE this */
-    border-radius: 30px;    /* <-- WITH this (to match .tmde-seal) */
-
-    background-color: var(--background-color-light);
+    height: 380px;
+    border-radius: 30px;
+    background-color: var(--background-color);
     border: 4px solid var(--seal-background-color);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
                 inset 0 0 15px rgba(0, 0, 0, 0.05);
@@ -910,9 +906,8 @@ body.dark-mode .measurement-point-list-item:hover {
     max-width: 350px;
     height: auto;
     min-height: 325px;
-
     border-radius: 30px;
-    background-color: var(--background-color-light);
+    background-color: var(--background-color);
     border: 4px solid var(--seal-tmde-background-color);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.04);
     display: flex;
@@ -2707,6 +2702,10 @@ body.dark-mode .modal-tab.active {
     border-bottom-color: var(--primary-color-dark);
 }
 
+body.dark-mode .uut-seal,
+body.dark-mode .tmde-seal {
+  background-color: #1A202C;
+}
 
 /* --- Dark Mode: Edit Session Modal --- */
 body.dark-mode .tmde-test-point-group {
