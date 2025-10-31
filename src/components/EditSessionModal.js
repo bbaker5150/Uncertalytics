@@ -320,6 +320,30 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                     step="0.01"
                                 />
                             </div>
+                            <div className="form-section">
+                                <label>Target Reliability (R)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  max="0.9999"
+                                  min="0.5"
+                                  name="reliability"
+                                  value={formData.reliability || '0.85'}
+                                  onChange={handleChange}
+                                />
+                            </div>
+                             <div className="form-section">
+                                <label>Default Guard Band Multiplier</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  max="1"
+                                  min="0"
+                                  name="guardBandMultiplier"
+                                  value={formData.guardBandMultiplier || '1'}
+                                  onChange={handleChange}
+                                />
+                            </div>
                         </div>
                     )}
                     

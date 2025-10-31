@@ -47,6 +47,7 @@
   --risk-pfa-warning-color: #ffc107;
   --risk-pfa-bad-color: #dc3545;
   --seal-background-color: #007bff;
+  --seal-background-color-derived: #8a4caf;
   --seal-tmde-background-color: #6c757d;
 }
 
@@ -73,6 +74,7 @@ body.dark-mode {
   --risk-pfa-warning-color: #ffc107;
   --risk-pfa-bad-color: #dc3545;
   --seal-background-color: #007bff;
+  --seal-background-color-derived: #b794d1;
   --seal-tmde-background-color: #a0aec0;
 }
 
@@ -369,11 +371,6 @@ select:focus {
   border-radius: 4px;
   margin-bottom: 20px;
   margin-top: 20px;
-}
-
-.form-section-warning p {
-  margin: 0;
-  font-weight: 500;
 }
 
 .analysis-tabs {
@@ -776,13 +773,17 @@ body.dark-mode .measurement-point-list-item:hover {
     margin-bottom: 20px;
 }
 
+/* In App.css */
+
 .uut-seal {
     min-width: 360px;
     max-width: 400px;
-    aspect-ratio: 1 / 1;
-    height: auto;
+    /* aspect-ratio: 1 / 1;  <-- REMOVE this */
+    height: 380px;          /* <-- ADD this (or adjust as you like) */
+    
+    /* border-radius: 50%; <-- REPLACE this */
+    border-radius: 30px;    /* <-- WITH this (to match .tmde-seal) */
 
-    border-radius: 50%;
     background-color: var(--background-color-light);
     border: 4px solid var(--seal-background-color);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
@@ -797,6 +798,11 @@ body.dark-mode .measurement-point-list-item:hover {
     cursor: pointer;
 }
 
+.uut-seal.derived-point {
+  --seal-background-color: var(--seal-background-color-derived);
+  animation-name: seal-glow-derived;
+}
+
 @keyframes seal-glow {
   from {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
@@ -807,6 +813,19 @@ body.dark-mode .measurement-point-list-item:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
                 inset 0 0 15px rgba(0, 0, 0, 0.05),
                 0 0 15px 7px rgba(14, 165, 233, 0.5); /* Glow is now visible */
+  }
+}
+
+@keyframes seal-glow-derived {
+  from {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
+                inset 0 0 15px rgba(0, 0, 0, 0.05),
+                0 0 0px 0px rgba(14, 165, 233, 0); 
+  }
+  to {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
+                inset 0 0 15px rgba(0, 0, 0, 0.05),
+                0 0 15px 7px var(--seal-background-color-derived);
   }
 }
 
@@ -908,10 +927,14 @@ body.dark-mode .measurement-point-list-item:hover {
 
 @keyframes tmdeFuturisticGlow {
     from {
-        box-shadow: 0 0 8px 3px rgba(108, 117, 125, 0.4), inset 0 0 10px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 
+                    inset 0 0 10px rgba(0, 0, 0, 0.04),
+                    0 0 0px 0px rgba(108, 117, 125, 0); /* <-- Matches UUT 'from' glow */
     }
     to {
-        box-shadow: 0 0 10px 5px rgba(226, 225, 225, 0.6), inset 0 0 10px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 
+                    inset 0 0 10px rgba(0, 0, 0, 0.04),
+                    0 0 15px 7px rgba(108, 117, 125, 0.5); /* <-- Matches UUT 'to' glow */
     }
 }
 
@@ -2006,6 +2029,9 @@ body.dark-mode .measurement-point-list-item:hover {
   border-collapse: separate;
   border-spacing: 0;
   margin-top: 15px;
+  border: 1px solid var(--border-color); /* Added this line */
+  border-radius: 8px; /* Added this line */
+  overflow: hidden; /* Added this line */
 }
 
 .uncertainty-budget-table th,
@@ -2017,24 +2043,24 @@ body.dark-mode .measurement-point-list-item:hover {
 }
 
 .uncertainty-budget-table thead th {
-  background-color: #f8f9fa;
+  background-color: #f8f9fa; /* Keeps this light grey for the main header */
   font-weight: 600;
   color: #495057;
   border-top: 1px solid var(--border-color);
   font-size: 0.9rem;
 }
 
-.uncertainty-budget-table tbody tr:hover {
-  background-color: var(--background-color);
-}
-
 .uncertainty-budget-table .category-header td {
   font-weight: bold;
-  background-color: #f8f9fa;
+  background-color: var(--background-color); /* Changed to match footer bg */
   color: var(--primary-color);
   font-size: 0.95rem;
   padding-top: 15px;
   padding-bottom: 8px;
+}
+
+.uncertainty-budget-table tbody tr:hover {
+  background-color: var(--background-color);
 }
 
 .uncertainty-budget-table tfoot tr {
@@ -2042,13 +2068,16 @@ body.dark-mode .measurement-point-list-item:hover {
   border-top: 1px solid var(--border-color);
 }
 
-.uncertainty-budget-table tfoot tr:first-child {
+/* This targets the "Combined Standard Uncertainty" row */
+.uncertainty-budget-table tfoot tr:first-child:not(.final-uncertainty-row) {
   border-top: 2px solid var(--primary-color);
 }
 
-.uncertainty-budget-table tfoot td[colspan="3"] {
+/* Make the footer labels muted */
+.uncertainty-budget-table tfoot td[colspan] {
+  color: var(--text-color-muted); /* Changed this */
+  font-weight: 600; /* Changed this */
   text-align: right;
-  font-weight: bold;
 }
 
 .uncertainty-budget-table tfoot td:not([colspan]) {
@@ -2198,17 +2227,11 @@ body.dark-mode .measurement-point-list-item:hover {
 .risk-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary-color);
 }
 
-.risk-card .breakdown-button {
-  margin-top: auto;
-  padding: 6px 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  background-color: var(--background-color);
-  color: var(--primary-color);
-  border: 1px solid var(--border-color);
-  box-shadow: none;
+.risk-card.clickable {
+  cursor: pointer;
 }
 
 .risk-value {
@@ -2249,6 +2272,7 @@ body.dark-mode .measurement-point-list-item:hover {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+  border-top: 1px solid var(--border-color); /* Added this line */
 }
 
 .final-result-label {
@@ -2495,40 +2519,54 @@ body.dark-mode .view-toggle button.active {
 
 body.dark-mode .uncertainty-budget-table {
   border: 1px solid var(--border-color);
-  border-top: none;
+  border-radius: 8px; /* Adds rounded corners */
+  overflow: hidden; /* Clips the child elements (headers/footers) to the rounded corners */
+  margin-top: 15px; /* Ensures it's not touching the accordion top */
+  border-collapse: separate; /* Keep this as it's needed for border-spacing */
+  border-spacing: 0;
 }
 
 body.dark-mode .uncertainty-budget-table thead th {
-  background-color: #2d3748; /* A slightly lighter, distinct header color */
-  color: var(--text-color);  /* Main bright text for readability */
+  background-color: #2d3748; /* Keeps the distinct header */
+  color: var(--text-color);
   border-color: var(--border-color);
-  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  /* No top border needed, table has it */
 }
 
 body.dark-mode .uncertainty-budget-table .category-header td {
-  background-color: var(--content-background);
-  color: var(--primary-color-dark); /* Use the brighter blue for accents */
+  background-color: #1A202C; /* Darker, consistent background */
+  color: var(--primary-color-dark);
   font-weight: 600;
 }
 
 body.dark-mode .uncertainty-budget-table tbody tr:hover {
-  background-color: var(--primary-color-light); /* Consistent blue hover state */
+  background-color: var(--primary-color-light);
 }
 
 body.dark-mode .uncertainty-budget-table tfoot tr {
-  background-color: transparent; /* Remove inconsistent background */
+  background-color: transparent;
 }
 
-body.dark-mode .uncertainty-budget-table tfoot td[colspan="3"] {
-  color: var(--text-color);
+/* Make footer border use dark mode primary color, and ignore the final row */
+body.dark-mode .uncertainty-budget-table tfoot tr:first-child:not(.final-uncertainty-row) {
+  border-top: 2px solid var(--primary-color-dark);
 }
 
+/* Mute the footer labels */
+body.dark-mode .uncertainty-budget-table tfoot td[colspan] {
+  color: var(--text-color-muted);
+  font-weight: 600;
+}
+
+/* Make the footer values pop */
 body.dark-mode .uncertainty-budget-table tfoot td:not([colspan]) {
-  color: var(--primary-color-dark); /* Use bright blue for values */
+  color: var(--primary-color-dark);
 }
 
 body.dark-mode .final-result-display {
-  background-color: #1a202c; /* A distinct dark blue/gray for the final summary */
+  background-color: #1A202C; /* Keep this distinct background */
+  border-top: 1px solid var(--border-color); /* Add a separator line */
 }
 
 body.dark-mode .final-result-label,
@@ -3050,7 +3088,7 @@ body.dark-mode .final-result-display {
 .session-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: .5rem;
   flex-grow: 1;
 }
 
