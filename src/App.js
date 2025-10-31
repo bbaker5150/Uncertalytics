@@ -1550,9 +1550,7 @@ const getBudgetComponentsFromTolerance = (
     if (!isNaN(halfSpanPPM)) {
       const u_i = Math.abs(halfSpanPPM / distributionDivisor);
       budgetComponents.push({
-        id: `${prefix}_${name
-          .toLowerCase()
-          .replace(/\s/g, "")}_${Math.random()}`,
+        id: `${prefix}_${name.toLowerCase().replace(/\s/g, "")}`,
         name: `${prefix} - ${name}`,
         type: "B",
         value: u_i, // This is u_i in PPM
@@ -1880,12 +1878,9 @@ function Analysis({
   onDataSave,
   defaultTestPoint,
   setContextMenu, // Keep this for other context menus
-  setBreakdownPoint, // Keep this for single tolerance breakdown
+  setBreakdownPoint,
   handleOpenSessionEditor,
 }) {
-  const { specifications: initialSpecs, components: initialManualComponents } =
-    testPointData;
-
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const [year, month, day] = dateString.split("-");
@@ -1894,15 +1889,17 @@ function Analysis({
 
   const [isAddTmdeModalOpen, setAddTmdeModalOpen] = useState(false);
   const [analysisMode, setAnalysisMode] = useState("uncertaintyTool");
-  // Manual components only relevant for 'direct' type
-  const [manualComponents, setManualComponents] = useState(
-    testPointData.measurementType === "direct"
-      ? initialManualComponents || []
-      : []
-  );
-  const [specInput, setSpecInput] = useState(
-    initialSpecs || defaultTestPoint.specifications
-  );
+
+  const manualComponents = useMemo(() => {
+    return testPointData.measurementType === "direct"
+      ? testPointData.components || []
+      : [];
+  }, [testPointData.measurementType, testPointData.components]);
+
+  const specInput = useMemo(() => {
+    return testPointData.specifications || defaultTestPoint.specifications;
+  }, [testPointData.specifications, defaultTestPoint.specifications]);
+
   const [newComponent, setNewComponent] = useState({
     name: "",
     type: "B",
@@ -1941,34 +1938,6 @@ function Analysis({
     [testPointData?.testPointInfo?.parameter]
   );
 
-  // Effect to sync incoming data changes to local state
-  useEffect(() => {
-    const {
-      specifications: newSpecs,
-      components: newManualComponents,
-      ...newResults
-    } = testPointData;
-
-    setManualComponents(
-      testPointData.measurementType === "direct"
-        ? newManualComponents || []
-        : []
-    );
-    setSpecInput(newSpecs || defaultTestPoint.specifications);
-    setCalcResults(
-      newResults.is_detailed_uncertainty_calculated ? { ...newResults } : null
-    );
-    setRiskResults(null);
-  }, [testPointData, defaultTestPoint]);
-
-  // Effect to autosave specInput changes
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      onDataSave({ specifications: specInput });
-    }, 500);
-    return () => clearTimeout(handler);
-  }, [specInput, onDataSave]);
-
   // Effect to update risk input tolerances when UUT tolerance changes
   useEffect(() => {
     const { totalToleranceForTar } = calculateUncertaintyFromToleranceObject(
@@ -1987,7 +1956,6 @@ function Analysis({
     }
   }, [uutToleranceData, uutNominal]);
 
-  // with this entire new version.
   useEffect(() => {
     let combinedUncertaintyPPM = NaN;
     let combinedUncertaintyAbsoluteBase = NaN;
@@ -2001,8 +1969,7 @@ function Analysis({
       const hasVariables =
         testPointData.variableMappings &&
         Object.keys(testPointData.variableMappings).length > 0;
-      const noTmdes =
-        !tmdeTolerancesData || tmdeTolerancesData.length === 0;
+      const noTmdes = !tmdeTolerancesData || tmdeTolerancesData.length === 0;
 
       if (
         testPointData.measurementType === "derived" &&
@@ -2026,7 +1993,7 @@ function Analysis({
         }
         return;
       }
-        
+
       if (!uutNominal || !uutNominal.value || !uutNominal.unit) {
         throw new Error(
           "Missing UUT nominal value or unit for calculation reference."
@@ -2123,11 +2090,11 @@ function Analysis({
             uutResolutionUncertaintyNative =
               deviationInBase / targetUnitInfo.to_si;
 
-            totalVariance_Native += uutResolutionUncertaintyNative ** 2; // Add its variance
+            totalVariance_Native += uutResolutionUncertaintyNative ** 2;
 
             componentsForBudgetTable.push({
-              id: `derived_resolution_${Date.now()}`,
-              name: `${derivedQuantityName} - Resolution`, // This name is NOT "Input:"
+              id: `derived_resolution`,
+              name: `${derivedQuantityName} - Resolution`,
               type: "B",
               value: uutResolutionUncertaintyBase,
               unit: derivedNominalUnit,
@@ -2300,10 +2267,8 @@ function Analysis({
       const newResults = {
         combined_uncertainty: combinedUncertaintyPPM,
         combined_uncertainty_absolute_base: combinedUncertaintyAbsoluteBase,
-        // --- NEW: Pass intermediate values ---
         combined_uncertainty_inputs_native: derivedUcInputs_Native,
         combined_uncertainty_inputs_base: derivedUcInputs_Base,
-        // --- End NEW ---
         effective_dof: effectiveDof,
         k_value: kValue,
         expanded_uncertainty: expandedUncertaintyPPM,
@@ -2326,10 +2291,7 @@ function Analysis({
             (newResults.expanded_uncertainty_absolute_base || 0)
         ) > 1e-9 ||
         JSON.stringify(testPointData.calculatedBudgetComponents) !==
-          JSON.stringify(newResults.calculatedBudgetComponents) ||
-        (testPointData.measurementType === "direct" &&
-          JSON.stringify(testPointData.components) !==
-            JSON.stringify(manualComponents));
+          JSON.stringify(newResults.calculatedBudgetComponents);
 
       if (resultsHaveChanged) {
         onDataSave({
@@ -2349,10 +2311,6 @@ function Analysis({
             newResults.is_detailed_uncertainty_calculated,
           calculatedBudgetComponents: newResults.calculatedBudgetComponents,
           calculatedNominalValue: newResults.calculatedNominalValue,
-          components:
-            testPointData.measurementType === "direct"
-              ? manualComponents
-              : undefined,
         });
       }
     } catch (error) {
@@ -2386,7 +2344,6 @@ function Analysis({
     onDataSave,
     testPointData.is_detailed_uncertainty_calculated,
     testPointData.expanded_uncertainty,
-    testPointData.components,
     testPointData.calculatedBudgetComponents,
     testPointData.expanded_uncertainty_absolute_base,
   ]);
@@ -2506,7 +2463,7 @@ function Analysis({
       distribution: distributionLabel,
     };
     const updatedComponents = [...manualComponents, componentToAdd];
-    setManualComponents(updatedComponents);
+    onDataSave({ components: updatedComponents });
     setNewComponent({
       name: "",
       type: "B",
@@ -2522,7 +2479,7 @@ function Analysis({
   const handleRemoveComponent = (id) => {
     const updatedComponents = manualComponents.filter((c) => c.id !== id);
     if (updatedComponents.length < manualComponents.length) {
-      setManualComponents(updatedComponents);
+      onDataSave({ components: updatedComponents });
     } else {
       setNotification({
         title: "Action Not Allowed",
@@ -2693,14 +2650,16 @@ function Analysis({
         </div>
       );
     }
-    const handleSpecInputChange = (e) =>
-      setSpecInput((prev) => ({
-        ...prev,
+    const handleSpecInputChange = (e) => {
+      const newSpecInput = {
+        ...specInput,
         [e.target.name]: {
-          ...prev[e.target.name],
+          ...specInput[e.target.name],
           [e.target.dataset.field]: e.target.value,
         },
-      }));
+      };
+      onDataSave({ specifications: newSpecInput });
+    };
     const ComparisonCard = ({ title, specData, userUncertainty, kUser }) => {
       const U_user = userUncertainty;
       const U_spec = parseFloat(specData.uncertainty);
@@ -3895,6 +3854,7 @@ function App() {
               {currentTestPoints.length > 0 ? (
                 currentTestPoints.map((tp) => (
                   <button
+                    key={tp.id}
                     onClick={() => setSelectedTestPointId(tp.id)}
                     onContextMenu={(e) => {
                       e.preventDefault();
