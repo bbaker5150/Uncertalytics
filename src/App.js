@@ -794,6 +794,7 @@ const UncertaintyBudgetTable = ({
   onRowContextMenu,
   equationString,
   measurementType,
+  riskResults,
 }) => {
   const confidencePercent = parseFloat(uncertaintyConfidence) || 95;
   const derivedUnit = referencePoint?.unit || "Units";
@@ -802,6 +803,12 @@ const UncertaintyBudgetTable = ({
   const isDirect = measurementType === "direct";
   const headerColSpan = isDirect ? 6 : 8;
   const finalColSpan = isDirect ? 3 : 5;
+
+  const getPfaClass = (pfa) => {
+    if (pfa > 5) return "status-bad";
+    if (pfa > 2) return "status-warning";
+    return "status-good";
+  };
 
   const derivedSymbol = useMemo(() => {
     if (measurementType !== "derived" || !equationString) {
@@ -1034,6 +1041,34 @@ const UncertaintyBudgetTable = ({
                     The reported expanded uncertainty... k≈
                     {calcResults.k_value.toFixed(3)}... {confidencePercent}%.
                   </span>
+                  {riskResults && (
+                    <div className="budget-risk-metrics">
+                      <div className={`metric-pod ${getPfaClass(riskResults.pfa)}`}>
+                        <span className="metric-pod-label">PFA</span>
+                        <span className="metric-pod-value">
+                          {riskResults.pfa.toFixed(4)} %
+                        </span>
+                      </div>
+                      <div className="metric-pod pfr">
+                        <span className="metric-pod-label">PFR</span>
+                        <span className="metric-pod-value">
+                          {riskResults.pfr.toFixed(4)} %
+                        </span>
+                      </div>
+                      <div className="metric-pod tur">
+                        <span className="metric-pod-label">TUR</span>
+                        <span className="metric-pod-value">
+                          {riskResults.tur.toFixed(2)} : 1
+                        </span>
+                      </div>
+                      <div className="metric-pod tar">
+                        <span className="metric-pod-label">TAR</span>
+                        <span className="metric-pod-value">
+                          {riskResults.tar.toFixed(2)} : 1
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </td>
             </tr>
@@ -1944,9 +1979,11 @@ function Analysis({
   testPointData,
   onDataSave,
   defaultTestPoint,
-  setContextMenu, // Keep this for other context menus
+  setContextMenu,
   setBreakdownPoint,
   handleOpenSessionEditor,
+  riskResults,
+  setRiskResults,
 }) {
 
   const formatDate = (dateString) => {
@@ -1982,7 +2019,6 @@ function Analysis({
     LLow: "",
     LUp: "",
   });
-  const [riskResults, setRiskResults] = useState(null);
   const [breakdownModal, setLocalBreakdownModal] = useState(null);
   const [notification, setNotification] = useState(null);
   const [isAddComponentModalOpen, setAddComponentModalOpen] = useState(false);
@@ -2207,14 +2243,17 @@ function Analysis({
   ]);
 
   useEffect(() => {
-    if (analysisMode === "risk" && calcResults) {
+    const shouldCalculate = (analysisMode === "risk" || analysisMode === "uncertaintyTool");
+
+    if (shouldCalculate && calcResults) {
       calculateRiskMetrics();
     }
-
-    if (analysisMode !== "risk") {
+    
+    // If we are NOT on a tab that shows risk, clear the results
+    if (!shouldCalculate) {
       setRiskResults(prevResults => {
         if (prevResults !== null) {
-          return null;
+          return null; // Only set to null if it's not already null
         }
         return prevResults;
       });
@@ -3480,6 +3519,7 @@ function Analysis({
                 onRowContextMenu={handleBudgetRowContextMenu}
                 equationString={testPointData.equationString}
                 measurementType={testPointData.measurementType}
+                riskResults={riskResults}
               />
             )}
             </Accordion>
@@ -3580,6 +3620,7 @@ function App() {
   const [infoModalPoint, setInfoModalPoint] = useState(null);
   const [initialSessionTab, setInitialSessionTab] = useState("details");
   const [initialTmdeToEdit, setInitialTmdeToEdit] = useState(null);
+  const [riskResults, setRiskResults] = useState(null);
 
   const handleOpenSessionEditor = (
     initialTab = "details",
@@ -4096,6 +4137,8 @@ function App() {
                   setBreakdownPoint={setBreakdownPoint}
                   handleOpenSessionEditor={handleOpenSessionEditor}
                   budgetTestPoints={testPointData ? [testPointData] : []}
+                  riskResults={riskResults}
+                  setRiskResults={setRiskResults}
                 />
               </TestPointDetailView>
             ) : currentSessionData && currentTestPoints.length > 0 ? (
