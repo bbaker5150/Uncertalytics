@@ -2049,8 +2049,6 @@ function Analysis({
     const nominalUnit = uutNominal?.unit;
     const targetUnitInfo = unitSystem.units[nominalUnit];
     const pfaRequired = parseFloat(sessionData.uncReq.reqPFA)/100;
-    console.log("LOGGING HGERE");
-    console.log(sessionData);
 
     if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) {
       setNotification({
