@@ -64,6 +64,19 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
         setFormData(updatedFormData);
     };
     
+    const handleReqChange = (e) => {
+        const { name, value } = e.target;
+
+        setFormData((formData) => ({
+        ...formData,
+        uncReq: {
+            ...formData.uncReq,
+            [name]: value
+        }
+        }));
+
+    };
+
     const handleToleranceChange = (updater) => {
         setFormData(prev => {
             const currentTolerance = prev.uutTolerance || {};
@@ -255,30 +268,34 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 <input 
                                     type="number" 
                                     name="uncertaintyConfidence" 
-                                    value={formData.uncertaintyConfidence || '95'} 
-                                    onChange={handleChange} 
+                                    value={formData.uncReq.uncertaintyConfidence} 
+                                    onChange={handleReqChange} 
                                     placeholder="e.g., 95"
-                                    min="1"
+                                    min="0"
                                     max="99.999"
                                     step="0.01"
                                 />
+                            </div>
+                            <div className="form-section">
                                 <label>Meas Rel Target (%)</label>
-                                <input 
-                                    type="number" 
-                                    name="measRelTarget" 
-                                    value={formData.measRelTarget || '85'} 
-                                    onChange={handleChange} 
-                                    placeholder="e.g., 95"
-                                    min="1"
-                                    max="99.999"
-                                    step="0.01"
+                                <input
+                                  type="number"
+                                  step="1"
+                                  max="100"
+                                  min="0"
+                                  name="reliability"
+                                  placeholder="e.g., 85"
+                                  value={formData.uncReq.reliability}
+                                  onChange={handleReqChange}
                                 />
+                            </div>
+                            <div className="form-section">
                                 <label>Calibration Interval</label>
                                 <input 
                                     type="number" 
                                     name="calInt" 
-                                    value={formData.calInt || '12'} 
-                                    onChange={handleChange} 
+                                    value={formData.uncReq.calInt} 
+                                    onChange={handleReqChange} 
                                     placeholder="e.g., 12"
                                     min="1"
                                     max="1000"
@@ -290,46 +307,38 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 <input 
                                     type="number" 
                                     name="measRelCalcAssumed" 
-                                    value={formData.measRelCalcAssumed || '85'} 
-                                    onChange={handleChange} 
+                                    value={formData.uncReq.measRelCalcAssumed} 
+                                    onChange={handleReqChange} 
                                     placeholder="e.g., 85"
-                                    min="1"
-                                    max="99.999"
-                                    step="0.01"
-                                />
-                                <label>TUR Needed For Assumed Meas Rel</label>
-                                <input 
-                                    type="number" 
-                                    name="neededTUR" 
-                                    value={formData.neededTUR || '4'} 
-                                    onChange={handleChange} 
-                                    placeholder="e.g., 4"
-                                    min="1"
-                                    max="100"
-                                    step="1"
-                                />
-                                <label>PFA Required (%)</label>
-                                <input 
-                                    type="number" 
-                                    name="reqPFA" 
-                                    value={formData.reqPFA || '2'} 
-                                    onChange={handleChange} 
-                                    placeholder="e.g., 2"
                                     min="1"
                                     max="99.999"
                                     step="0.01"
                                 />
                             </div>
                             <div className="form-section">
-                                <label>Target Reliability (R)</label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  max="0.9999"
-                                  min="0.5"
-                                  name="reliability"
-                                  value={formData.reliability || '0.85'}
-                                  onChange={handleChange}
+                                <label>TUR Needed For Assumed Meas Rel</label>
+                                <input 
+                                    type="number" 
+                                    name="neededTUR" 
+                                    value={formData.uncReq.neededTUR} 
+                                    onChange={handleReqChange} 
+                                    placeholder="e.g., 4"
+                                    min="1"
+                                    max="100"
+                                    step="1"
+                                />
+                            </div>
+                            <div className="form-section">
+                                <label>PFA Required (%)</label>
+                                <input 
+                                    type="number" 
+                                    name="reqPFA" 
+                                    value={formData.uncReq.reqPFA} 
+                                    onChange={handleReqChange} 
+                                    placeholder="e.g., 2"
+                                    min="1"
+                                    max="99.999"
+                                    step="0.01"
                                 />
                             </div>
                              <div className="form-section">
@@ -340,8 +349,8 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                   max="1"
                                   min="0"
                                   name="guardBandMultiplier"
-                                  value={formData.guardBandMultiplier || '1'}
-                                  onChange={handleChange}
+                                  value={formData.uncReq.guardBandMultiplier}
+                                  onChange={handleReqChange}
                                 />
                             </div>
                         </div>

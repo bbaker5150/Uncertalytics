@@ -1948,6 +1948,7 @@ function Analysis({
   setBreakdownPoint,
   handleOpenSessionEditor,
 }) {
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const [year, month, day] = dateString.split("-");
@@ -2008,10 +2009,12 @@ function Analysis({
   const calculateRiskMetrics = useCallback(() => {
     const LLow = parseFloat(riskInputs.LLow);
     const LUp = parseFloat(riskInputs.LUp);
-    const reliability = parseFloat(sessionData.reliability);
-    const guardBandMultiplier = parseFloat(sessionData.guardBandMultiplier);
+    const reliability = parseFloat(sessionData.uncReq.reliability)/100;
     const nominalUnit = uutNominal?.unit;
     const targetUnitInfo = unitSystem.units[nominalUnit];
+    const pfaRequired = parseFloat(sessionData.uncReq.reqPFA)/100;
+
+    console.log(sessionData);
 
     if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) {
       setNotification({
@@ -2024,17 +2027,6 @@ function Analysis({
       setNotification({
         title: "Invalid Input",
         message: "Enter valid reliability (e.g., 0.95).",
-      });
-      return;
-    }
-    if (
-      isNaN(guardBandMultiplier) ||
-      guardBandMultiplier < 0 ||
-      guardBandMultiplier > 1
-    ) {
-      setNotification({
-        title: "Invalid Input",
-        message: "Guard Band Multiplier must be 0 to 1.",
       });
       return;
     }
@@ -2052,6 +2044,22 @@ function Analysis({
       });
       return;
     }
+
+    const guardBandMultiplier = parseFloat(sessionData.uncReq.guardBandMultiplier);
+
+    if (
+      isNaN(guardBandMultiplier) ||
+      guardBandMultiplier < 0 ||
+      guardBandMultiplier > 1
+    ) {
+      setNotification({
+        title: "Invalid Input",
+        message: "Guard Band Multiplier must be 0 to 1.",
+      });
+      return;
+    }
+
+    
 
     const uCal_Base = calcResults.combined_uncertainty_absolute_base;
     const uCal_Native = uCal_Base / targetUnitInfo.to_si;
@@ -2190,8 +2198,7 @@ function Analysis({
   }, [
     riskInputs.LLow,
     riskInputs.LUp,
-    sessionData.reliability,
-    sessionData.guardBandMultiplier,
+    sessionData,
     uutNominal,
     calcResults,
     tmdeTolerancesData,
@@ -2215,8 +2222,8 @@ function Analysis({
   }, [
     analysisMode, 
     calcResults, 
-    sessionData.reliability, 
-    sessionData.guardBandMultiplier,
+    sessionData.uncReq.reliability, 
+    sessionData.uncReq.guardBandMultiplier,
     calculateRiskMetrics,
     setRiskResults
   ]);
@@ -2552,7 +2559,7 @@ function Analysis({
       }
 
       const confidencePercent =
-        parseFloat(sessionData.uncertaintyConfidence) || 95;
+        parseFloat(sessionData.uncReq.uncertaintyConfidence) || 95;
       const probability = 1 - (1 - confidencePercent / 100) / 2;
       const kValue =
         effectiveDof === Infinity || isNaN(effectiveDof)
@@ -2641,7 +2648,7 @@ function Analysis({
     uutToleranceData,
     uutNominal,
     manualComponents,
-    sessionData.uncertaintyConfidence,
+    sessionData.uncReq.uncertaintyConfidence,
     onDataSave,
     testPointData.is_detailed_uncertainty_calculated,
     testPointData.expanded_uncertainty,
@@ -3127,8 +3134,8 @@ function Analysis({
           inputs={{
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.reliability),
-            guardBandMultiplier: parseFloat(sessionData.guardBandMultiplier),
+            reliability: parseFloat(sessionData.uncReq.reliability),
+            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -3139,8 +3146,8 @@ function Analysis({
           inputs={{
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.reliability),
-            guardBandMultiplier: parseFloat(sessionData.guardBandMultiplier),
+            reliability: parseFloat(sessionData.uncReq.reliability),
+            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -3151,8 +3158,8 @@ function Analysis({
           inputs={{
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.reliability),
-            guardBandMultiplier: parseFloat(sessionData.guardBandMultiplier),
+            reliability: parseFloat(sessionData.uncReq.reliability),
+            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -3163,8 +3170,8 @@ function Analysis({
           inputs={{
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.reliability),
-            guardBandMultiplier: parseFloat(sessionData.guardBandMultiplier),
+            reliability: parseFloat(sessionData.uncReq.reliability),
+            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -3175,8 +3182,8 @@ function Analysis({
           inputs={{
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.reliability),
-            guardBandMultiplier: parseFloat(sessionData.guardBandMultiplier),
+            reliability: parseFloat(sessionData.uncReq.reliability),
+            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -3469,7 +3476,7 @@ function Analysis({
                 onRemove={handleRemoveComponent}
                 calcResults={calcResults}
                 referencePoint={uutNominal}
-                uncertaintyConfidence={sessionData.uncertaintyConfidence}
+                uncertaintyConfidence={sessionData.uncReq.uncertaintyConfidence}
                 onRowContextMenu={handleBudgetRowContextMenu}
                 equationString={testPointData.equationString}
                 measurementType={testPointData.measurementType}
@@ -3545,11 +3552,17 @@ function App() {
       document: "",
       documentDate: "",
       notes: "",
-      uncertaintyConfidence: "95",
-      reliability: "0.85",
-      guardBandMultiplier: "1",
       uutTolerance: {},
       testPoints: [],
+      uncReq: {
+        uncertaintyConfidence: 95,
+        reliability:  85,
+        calInt: 12,
+        measRelCalcAssumed: 85,
+        neededTUR: 4,
+        reqPFA: 2,
+        guardBandMultiplier: 1
+      }
     }),
     []
   );
@@ -3667,7 +3680,7 @@ function App() {
   };
 
   const handleSessionChange = (updatedSession) => {
-    setSessions((prevSessions) =>
+    setSessions((prevSessions) => 
       prevSessions.map((s) => (s.id === updatedSession.id ? updatedSession : s))
     );
     setEditingSession(null);
