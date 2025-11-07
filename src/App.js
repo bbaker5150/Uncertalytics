@@ -3740,7 +3740,7 @@ function App() {
 
     const currentSession = sessions.find((s) => s.id === selectedSessionId);
     if (!currentSession) return;
-    const fileName = `MUA_${currentSession.uutDescription || "Session_"} ${formattedDate + "_" + formattedTime}.pdf`;
+    const fileName = `MUA_${currentSession.uutDescription || "Session_"}${formattedDate + "_" + formattedTime}.pdf`;
 
     const jsonData = JSON.stringify(currentSession, null, 2);
     
