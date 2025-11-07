@@ -3763,8 +3763,8 @@ function App() {
     pdfDoc.setTitle(fileName);
     pdfDoc.setSubject('MUA Session Data');
     pdfDoc.setKeywords(['MUA', 'Session', 'JSON']);
-    pdfDoc.setProducer('Your App Name');
-    pdfDoc.setCreator('Your App Name');
+    pdfDoc.setProducer('MUA Tool');
+    pdfDoc.setCreator('MUA Tool');
     pdfDoc.setCreationDate(now);
     pdfDoc.setModificationDate(now);
 
