@@ -4,6 +4,7 @@ import ToleranceForm from './ToleranceForm';
 import ContextMenu from './ContextMenu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faTimes, faSave, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
+import { NotificationModal } from '../App';
 
 const TmdeSealDisplay = ({ tmde, onEditClick, onContextMenu }) => (
     <div className="tmde-seal-clickable-container" onContextMenu={onContextMenu}>
@@ -31,6 +32,7 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
     const [activeSection, setActiveSection] = useState('details');
     const [editingTmde, setEditingTmde] = useState(null);
     const [contextMenu, setContextMenu] = useState(null);
+    const [notification, setNotification] = useState(null);
 
     const handleEditTmdeClick = (tmde, testPoint) => {
         setEditingTmde({ tmde, testPoint });
@@ -88,7 +90,27 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
     };
 
     const handleSave = () => {
-        onSave(formData);
+        const uncReqLabel = {
+            uncertaintyConfidence: "Uncertainty Confidence (%)",
+            reliability: "Meas Rel Target (%)",
+            calInt: "Calibration Interval",
+            measRelCalcAssumed: "Meas Rel Calc/Assumed (%)",
+            neededTUR: "TUR Needed For Assumed Meas Rel",
+            reqPFA: "PFA Required (%)",
+            guardBandMultiplier: "Default Guard Band Multiplier"
+        };
+
+        for (const key in formData.uncReq) {
+            if (formData.uncReq[key] === ""){
+                setNotification({
+                title: uncReqLabel[key],
+                message: "Enter valid " + uncReqLabel[key] + ".",
+            });
+            break;
+            } else {
+                onSave(formData);
+            }
+        }
     };
     
     const handleAddTmdeClick = (testPoint) => {
@@ -136,6 +158,7 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
 
     return (
         <div className="modal-overlay">
+            {notification && <NotificationModal isOpen={!!notification} onClose={() => setNotification(null)} title={notification.title} message={notification.message} />}
             <ContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />
             {editingTmde && (
                 <AddTmdeModal 
@@ -357,7 +380,7 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                     )}
                     
                     <div className="modal-actions" style={{justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '20px'}}>
-                        <button className="modal-icon-button secondary" onClick={onSaveToFile} title="Save Session to File (.json)">
+                        <button className="modal-icon-button secondary" onClick={onSaveToFile} title="Save Session to File (.pdf)">
                            <FontAwesomeIcon icon={faSave} />
                         </button>
                         

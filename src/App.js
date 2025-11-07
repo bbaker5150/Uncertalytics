@@ -23,6 +23,7 @@ import {
   faPencilAlt,
   faSlidersH,
 } from "@fortawesome/free-solid-svg-icons";
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 
 export const unitSystem = {
   units: {
@@ -3725,12 +3726,60 @@ function App() {
     setEditingSession(null);
   };
 
-  const handleSaveToFile = () => {
+  const handleSaveToFile = async () => {
+    let now = new Date();
+
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    const formattedDate = `${month}/${day}/${year}`;
+    const formattedTime = `${hours}:${minutes}:${seconds}`;
+
     const currentSession = sessions.find((s) => s.id === selectedSessionId);
     if (!currentSession) return;
-    const fileName = `MUA ${currentSession.uutDescription || "Session"}.json`;
-    const dataToSave = JSON.stringify(currentSession, null, 2);
-    const blob = new Blob([dataToSave], { type: "application/json" });
+    const fileName = `MUA ${currentSession.uutDescription || "Session "} ${formattedDate + formattedTime} .pdf`;
+
+    const jsonData = JSON.stringify(currentSession, null, 2);
+    
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage();
+    const { width, height } = page.getSize();
+
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontSize = 12;
+
+    const summaryText = `Session Summary\n\nDescription: ${currentSession.uutDescription}\nDate: ${formattedDate} ${formattedTime}`;
+    page.drawText(summaryText, {
+      x: 50,
+      y: height - 50,
+      size: fontSize,
+      font,
+      lineHeight: 16,
+    });
+
+    pdfDoc.setTitle(fileName);
+    pdfDoc.setSubject('MUA Session Data');
+    pdfDoc.setKeywords(['MUA', 'Session', 'JSON']);
+    pdfDoc.setProducer('Your App Name');
+    pdfDoc.setCreator('Your App Name');
+    pdfDoc.setCreationDate(now);
+    pdfDoc.setModificationDate(now);
+
+    const metadataPage = pdfDoc.addPage();
+    metadataPage.drawText(jsonData.slice(0, 1000), {
+      x: 50,
+      y: height - 50,
+      size: 8,
+      font,
+      lineHeight: 10,
+    });
+
+    const pdfBytes = await pdfDoc.save();
+
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const href = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = href;
