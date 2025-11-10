@@ -3740,6 +3740,7 @@ function App() {
 
     const currentSession = sessions.find((s) => s.id === selectedSessionId);
     if (!currentSession) return;
+
     const fileName = `MUA_${currentSession.uutDescription || "Session_"}${formattedDate + "_" + formattedTime}.pdf`;
 
     const jsonData = JSON.stringify(currentSession, null, 2);
@@ -3767,15 +3768,30 @@ function App() {
     pdfDoc.setCreator('MUA Tool');
     pdfDoc.setCreationDate(now);
     pdfDoc.setModificationDate(now);
+    
+    const lineHeight = 10;
+    const margin = 50;
+    const maxWidth = width - margin * 2;
 
-    const metadataPage = pdfDoc.addPage();
-    metadataPage.drawText(jsonData.slice(0, 1000), {
-      x: 50,
-      y: height - 50,
-      size: 8,
-      font,
-      lineHeight: 10,
-    });
+    const jsonLines = jsonData.split('\n');
+    let y = height - margin;
+    let metadataPage = pdfDoc.addPage();
+
+    for (const line of jsonLines) {
+      if (y < margin) {
+        metadataPage = pdfDoc.addPage();
+        y = height - margin;
+      }
+
+      metadataPage.drawText(line, {
+        x: margin,
+        y,
+        size: fontSize,
+        font,
+      });
+
+      y -= lineHeight;
+    }
 
     const pdfBytes = await pdfDoc.save();
 
