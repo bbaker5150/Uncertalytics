@@ -2331,7 +2331,7 @@ body.dark-mode .measurement-point-list-item:hover {
 
 .budget-risk-metrics {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 10px;
   width: 100%;
   max-width: 500px;
@@ -2344,7 +2344,15 @@ body.dark-mode .measurement-point-list-item:hover {
   border-radius: 12px;
   padding: 10px 12px;
   text-align: center;
-  transition: border-color 0.3s ease;
+  transition: border-color 0.3s ease, transform 0.2s ease-in-out;
+}
+
+.metric-pod.clickable {
+  cursor: pointer;
+}
+
+.metric-pod.clickable:hover {
+  transform: translateY(-3px);
 }
 
 .metric-pod-label {
