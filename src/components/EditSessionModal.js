@@ -364,18 +364,6 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                     step="0.01"
                                 />
                             </div>
-                             <div className="form-section">
-                                <label>Default Guard Band Multiplier</label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  max="1"
-                                  min="0"
-                                  name="guardBandMultiplier"
-                                  value={formData.uncReq.guardBandMultiplier}
-                                  onChange={handleReqChange}
-                                />
-                            </div>
                         </div>
                     )}
                     

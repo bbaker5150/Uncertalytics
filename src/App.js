@@ -23,7 +23,9 @@ import {
   faPencilAlt,
   faSlidersH,
 } from "@fortawesome/free-solid-svg-icons";
-// import { PDFDocument, StandardFonts } from 'pdf-lib';
+
+import * as PDFLib from 'pdf-lib';
+const { PDFDocument, StandardFonts } = PDFLib;
 
 export const unitSystem = {
   units: {
@@ -2046,55 +2048,1053 @@ function Analysis({
   const calculateRiskMetrics = useCallback(() => {
     const LLow = parseFloat(riskInputs.LLow);
     const LUp = parseFloat(riskInputs.LUp);
-    const reliability = parseFloat(sessionData.uncReq.reliability)/100;
     const nominalUnit = uutNominal?.unit;
     const targetUnitInfo = unitSystem.units[nominalUnit];
+
     const pfaRequired = parseFloat(sessionData.uncReq.reqPFA)/100;
+    const reliability = parseFloat(sessionData.uncReq.reliability)/100;
+    const calInt = parseFloat(sessionData.uncReq.calInt);
+    const measRelCalc = parseFloat(sessionData.uncReq.measRelCalcAssumed)/100;
+    const turNeeded = parseFloat(sessionData.uncReq.neededTUR);
 
-    if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) {
-      setNotification({
-        title: "Invalid Input",
-        message: "Enter valid UUT tolerance limits.",
-      });
-      return;
-    }
-    if (isNaN(reliability) || reliability <= 0 || reliability >= 1) {
-      setNotification({
-        title: "Invalid Input",
-        message: "Enter valid reliability (e.g., 0.95).",
-      });
-      return;
-    }
-    if (!calcResults) {
-      setNotification({
-        title: "Calculation Required",
-        message: "Uncertainty budget must be calculated first.",
-      });
-      return;
-    }
-    if (!targetUnitInfo || isNaN(targetUnitInfo.to_si)) {
-      setNotification({
-        title: "Calculation Error",
-        message: `Invalid UUT unit (${nominalUnit}) for risk analysis.`,
-      });
-      return;
+         if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) {
+        setNotification({
+          title: "Invalid Input",
+          message: "Enter valid UUT tolerance limits.",
+        });
+        return;
+      }
+      if (isNaN(reliability) || reliability <= 0 || reliability >= 1) {
+        setNotification({
+          title: "Invalid Input",
+          message: "Enter valid reliability (e.g., 0.95).",
+        });
+        return;
+      }
+      if (!calcResults) {
+        setNotification({
+          title: "Calculation Required",
+          message: "Uncertainty budget must be calculated first.",
+        });
+        return;
+      }
+      if (!targetUnitInfo || isNaN(targetUnitInfo.to_si)) {
+        setNotification({
+          title: "Calculation Error",
+          message: `Invalid UUT unit (${nominalUnit}) for risk analysis.`,
+        });
+        return;
+      }
+      
+    function GetGBInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp) {
+      const isNotNumeric = val => isNaN(parseFloat(val));
+      const vbaNbrValidate = val => isNotNumeric(val) ? 0 : parseFloat(val);
+
+      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel, bIsThreshold] = getRiskInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel);
+
+      let dGBLow = vbaNbrValidate(rngGBLow);
+      let dGBUp = vbaNbrValidate(rngGBUp);
+
+      if (dGBLow === 0 && dGBUp === 0) {
+        return sRiskType;
+      }
+
+      if (!bIsThreshold) {
+        dGBLow = dGBLow - dNominal;
+        dGBUp = dGBUp - dNominal;
+      }
+
+      return [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp];
     }
 
-    const guardBandMultiplier = parseFloat(sessionData.uncReq.guardBandMultiplier);
 
-    if (
-      isNaN(guardBandMultiplier) ||
-      guardBandMultiplier < 0 ||
-      guardBandMultiplier > 1
-    ) {
-      setNotification({
-        title: "Invalid Input",
-        message: "Guard Band Multiplier must be 0 to 1.",
-      });
-      return;
+    function getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp) {
+      const isNotNumeric = val => isNaN(parseFloat(val));
+      const vbaNbrValidate = val => isNotNumeric(val) ? 0 : parseFloat(val);
+      const bNoNominal = isNotNumeric(rngNominal);
+      const bNoAvg = isNotNumeric(rngAvg);
+      const bNoTolLow = isNotNumeric(rngTolLow);
+      const bNoTolUp = isNotNumeric(rngTolUp);
+      if (bNoTolLow && bNoTolUp) return ["Fail"];
+      let dNominal = vbaNbrValidate(rngNominal);
+      let dAvg = vbaNbrValidate(rngAvg);
+      let dTolLow = vbaNbrValidate(rngTolLow);
+      let dTolUp = vbaNbrValidate(rngTolUp);
+      const bIsThreshold = (bNoTolLow && !bNoTolUp) || (bNoTolUp && !bNoTolLow);
+      if (bIsThreshold) {
+        if (bNoTolLow) {
+          if (bNoNominal) dNominal = dTolUp;
+          if (bNoAvg) {
+            dAvg = dNominal;
+            return ["AltUpThreshold", dNominal, dAvg, dTolLow, dTolUp, bIsThreshold];
+          } else {
+            return ["UpThreshold", dNominal, dAvg, dTolLow, dTolUp, bIsThreshold];
+          }
+        } else if (bNoTolUp) {
+          if (bNoNominal) dNominal = dTolLow;
+
+          if (bNoAvg) {
+            dAvg = dNominal;
+            return ["AltLowThreshold", dNominal, dAvg, dTolLow, dTolUp, bIsThreshold];
+          } else {
+            return ["LowThreshold", dNominal, dAvg, dTolLow, dTolUp, bIsThreshold];
+          }
+        }
+      } else {
+        if (dTolLow >= dTolUp) return ["Fail"];
+        dNominal = (dTolLow + dTolUp) / 2;
+        if (!bNoAvg && dNominal !== dAvg) {
+          if (dAvg > dTolLow && dAvg < dTolUp) {
+            dNominal = dAvg;
+          }
+        }
+        dTolLow = dTolLow - dNominal;
+        dTolUp = dTolUp - dNominal;
+        return ["NotThreshold", dNominal, dAvg, dTolLow, dTolUp, bIsThreshold];
+      }
     }
 
+
+    function getRiskInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel) {
+      const isNotNumeric = val => isNaN(parseFloat(val));
+      const vbaNbrValidate = val => isNotNumeric(val) ? 0 : parseFloat(val);
+
+      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp, bIsThreshold] = getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp);
+      
+      const bNoMeasUnc = isNotNumeric(rngMeasUnc);
+      const bNoMeasRel = isNotNumeric(rngMeasRel);
+
+      if (bNoMeasUnc || bNoMeasRel) {
+          return ["Fail"];
+      }
+
+      const dMeasUnc = vbaNbrValidate(rngMeasUnc);
+      const dMeasRel = vbaNbrValidate(rngMeasRel);
+
+      return [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel, bIsThreshold];
+    } 
+
+    function pfaGBMult(req, uUUT, uCal, LLow, LUp) {
+
+      const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+      const REOP = vbNormSDist(LUp / uDev) - vbNormSDist(LLow / uDev);
+
+      return RInAccGBMult(req, REOP, uCal, LLow, LUp);
+    }
+
+    function pfaLLGBMult(req, uUUT, uCal, avg, LLow) {
+
+      const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+      const REOP = vbNormSDist((avg - LLow) / uDev);
+
+      return RInAccLLGBMult(req, REOP, uCal, avg, LLow);
+    }
+
+    function PFAULGBMult(req, uUUT, uCal, avg, LUp) {
+      const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+      const REOP = vbNormSDist((LUp - avg) / uDev);
+
+      return RInAccULGBMult(req, REOP, uCal, avg, LUp);
+    }
+
+
+    function uutUnc(r, uCal, LLow, LUp) {
+      const Mid = (LUp + LLow) / 2;
+      LUp = Math.abs(LUp - Mid);
+      LLow = -Math.abs(LLow - Mid);
+
+      const uDev = LUp / vbNormSInv((1 + r) / 2);
+
+      const uUUT2 = Math.pow(uDev, 2) - Math.pow(uCal, 2);
+      const uUUT = uUUT2 <= 0 ? 0 : Math.sqrt(uUUT2);
+
+      return uUUT;
+    }
+
+    function uutUncLL(r, uCal, Avg, LLow) {
+      let uDev, uUUT, uUUT2;
+
+      if (LLow > Avg) {
+        const temp = Avg;
+        Avg = LLow;
+        LLow = temp;
+      }
+
+      uDev = (LLow - Avg) / vbNormSInv(1 - r);
+
+      uUUT2 = Math.pow(uDev, 2) - Math.pow(uCal, 2);
+      uUUT = uUUT2 <= 0 ? 0 : Math.sqrt(uUUT2);
+
+      return uUUT;
+    }
+
+    function UUTuncUL(r, uCal, avg, LUp) {
+      if (LUp < avg) {
+        const temp = avg;
+        avg = LUp;
+        LUp = temp;
+      }
+
+      const uDev = (LUp - avg) / vbNormSInv(r);
+
+      const uUUT2 = Math.pow(uDev, 2) - Math.pow(uCal, 2);
+      const uUUT = uUUT2 <= 0 ? 0 : Math.sqrt(uUUT2);
+
+      return uUUT;
+    }
+
+    function PHID(z) {
+      const P = [
+        220.206867912376,
+        221.213596169931,
+        112.079291497871,
+        33.912866078383,
+        6.37396220353165,
+        0.700383064443688,
+        0.0352624965998911
+      ];
+
+      const Q = [
+        440.413735824752,
+        793.826512519948,
+        637.333633378831,
+        296.564248779674,
+        86.7807322029461,
+        16.064177579207,
+        1.75566716318264,
+        0.0883883476483184
+      ];
+
+      const CUTOFF = 8;
+      const ZABS = Math.abs(z);
+      let p;
+
+      if (ZABS > CUTOFF) {
+        p = 0;
+      } else {
+        const EXPNTL = Math.exp(-Math.pow(ZABS, 2) / 2);
+
+        const numerator =
+          ((((((P[6] * ZABS + P[5]) * ZABS + P[4]) * ZABS + P[3]) * ZABS + P[2]) * ZABS + P[1]) * ZABS + P[0]);
+
+        const denominator =
+          (((((((Q[7] * ZABS + Q[6]) * ZABS + Q[5]) * ZABS + Q[4]) * ZABS + Q[3]) * ZABS + Q[2]) * ZABS + Q[1]) * ZABS + Q[0]);
+
+        p = EXPNTL * numerator / denominator;
+      }
+
+      return z > 0 ? 1 - p : p;
+    }
+
+
+    function PHIDInv(p) {
+      const a = [-39.6968302866538, 220.946098424521, -275.928510446969,
+                138.357751867269, -30.6647980661472, 2.50662827745924];
+      const b = [-54.4760987982241, 161.585836858041, -155.698979859887,
+                66.8013118877197, -13.2806815528857];
+      const c = [-0.00778489400243029, -0.322396458041136, -2.40075827716184,
+                -2.54973253934373, 4.37466414146497, 2.93816398269878];
+      const d = [0.00778469570904146, 0.32246712907004, 2.445134137143,
+                3.75440866190742];
+
+      const pLow = 0.02425;
+      const pHigh = 1 - pLow;
+
+      if (p <= 0 || p >= 1) {
+        throw new Error("Argument out of bounds");
+      }
+
+      let q, r;
+
+      if (p < pLow) {
+        q = Math.sqrt(-2 * Math.log(p));
+        return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+              ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+      } else if (p <= pHigh) {
+        q = p - 0.5;
+        r = q * q;
+        return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q /
+              (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+      } else {
+        q = Math.sqrt(-2 * Math.log(1 - p));
+        return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+                ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+      }
+    }
+
+    function CumNorm(x) {
+      const XAbs = Math.abs(x);
+      let Build, Exponential;
+
+      if (XAbs > 37) {
+        return 0;
+      }
+
+      Exponential = Math.exp(-Math.pow(XAbs, 2) / 2);
+
+      if (XAbs < 7.07106781186547) {
+        Build = 3.52624965998911e-2 * XAbs + 0.700383064443688;
+        Build = Build * XAbs + 6.37396220353165;
+        Build = Build * XAbs + 33.912866078383;
+        Build = Build * XAbs + 112.079291497871;
+        Build = Build * XAbs + 221.213596169931;
+        Build = Build * XAbs + 220.206867912376;
+        let numerator = Exponential * Build;
+
+        Build = 8.83883476483184e-2 * XAbs + 1.75566716318264;
+        Build = Build * XAbs + 16.064177579207;
+        Build = Build * XAbs + 86.7807322029461;
+        Build = Build * XAbs + 296.564248779674;
+        Build = Build * XAbs + 637.333633378831;
+        Build = Build * XAbs + 793.826512519948;
+        Build = Build * XAbs + 440.413735824752;
+
+        return x > 0 ? 1 - numerator / Build : numerator / Build;
+      } else {
+        Build = XAbs + 0.65;
+        Build = XAbs + 4 / Build;
+        Build = XAbs + 3 / Build;
+        Build = XAbs + 2 / Build;
+        Build = XAbs + 1 / Build;
+
+        const result = Exponential / Build / 2.506628274631;
+        return x > 0 ? 1 - result : result;
+      }
+    }
+
+    function vbNormSDist(ZVal) {
+      return CumNorm(ZVal);
+    }
+
+    function InvNormalDistribution(y0) {
+      const Expm2 = 0.135335283236613;
+      const S2Pi = 2.506628274631;
+      const MaxRealNumber = Number.MAX_VALUE;
+
+      if (y0 <= 0) return -MaxRealNumber;
+      if (y0 >= 1) return MaxRealNumber;
+
+      let y = y0;
+      let code = 1;
+
+      if (y > 1 - Expm2) {
+        y = 1 - y;
+        code = 0;
+      }
+
+      if (y > Expm2) {
+        y -= 0.5;
+        const y2 = y * y;
+
+        let P0 = -59.9633501014108;
+        P0 = 98.0010754186 + y2 * P0;
+        P0 = -56.676285746907 + y2 * P0;
+        P0 = 13.931260938728 + y2 * P0;
+        P0 = -1.23916583867381 + y2 * P0;
+
+        let Q0 = 1;
+        Q0 = 1.95448858338142 + y2 * Q0;
+        Q0 = 4.67627912898882 + y2 * Q0;
+        Q0 = 86.3602421390891 + y2 * Q0;
+        Q0 = -225.462687854119 + y2 * Q0;
+        Q0 = 200.260212380061 + y2 * Q0;
+        Q0 = -82.0372256168333 + y2 * Q0;
+        Q0 = 15.9056225126212 + y2 * Q0;
+        Q0 = -1.1833162112133 + y2 * Q0;
+
+        let x = y + y * y2 * P0 / Q0;
+        return x * S2Pi;
+      }
+
+      let x = Math.sqrt(-2 * Math.log(y));
+      const x0 = x - Math.log(x) / x;
+      const z = 1 / x;
+      let x1;
+
+      if (x < 8) {
+        let P1 = 4.05544892305962;
+        P1 = 31.5251094599894 + z * P1;
+        P1 = 57.1628192246421 + z * P1;
+        P1 = 44.0805073893201 + z * P1;
+        P1 = 14.6849561928858 + z * P1;
+        P1 = 2.1866330685079 + z * P1;
+        P1 = -(1.40256079171354 * 0.1) + z * P1;
+        P1 = -(3.50424626827848 * 0.01) + z * P1;
+        P1 = -(8.57456785154685 * 0.0001) + z * P1;
+
+        let Q1 = 1;
+        Q1 = 15.7799883256467 + z * Q1;
+        Q1 = 45.3907635128879 + z * Q1;
+        Q1 = 41.3172038254672 + z * Q1;
+        Q1 = 15.0425385692908 + z * Q1;
+        Q1 = 2.50464946208309 + z * Q1;
+        Q1 = -(1.42182922854788 * 0.1) + z * Q1;
+        Q1 = -(3.80806407691578 * 0.01) + z * Q1;
+        Q1 = -(9.33259480895457 * 0.0001) + z * Q1;
+
+        x1 = z * P1 / Q1;
+      } else {
+        let P2 = 3.23774891776946;
+        P2 = 6.91522889068984 + z * P2;
+        P2 = 3.93881025292474 + z * P2;
+        P2 = 1.33303460815808 + z * P2;
+        P2 = 0.201485389549179 + z * P2;
+        P2 = 0.012371663481782 + z * P2;
+        P2 = 0.000301581553508235 + z * P2;
+        P2 = 0.00000265806974686738 + z * P2;
+        P2 = 0.00000000623974539184983 + z * P2;
+
+        let Q2 = 1;
+        Q2 = 6.02427039364742 + z * Q2;
+        Q2 = 3.67983563856161 + z * Q2;
+        Q2 = 1.37702099489081 + z * Q2;
+        Q2 = 0.216236993594497 + z * Q2;
+        Q2 = 0.0134204006088543 + z * Q2;
+        Q2 = 0.000328014464682128 + z * Q2;
+        Q2 = 0.00000289247864745381 + z * Q2;
+        Q2 = 0.00000000679019408009981 + z * Q2;
+
+        x1 = z * P2 / Q2;
+      }
+
+      x = x0 - x1;
+      return code !== 0 ? -x : x;
+    }
+
+    function vbNormSInv(p) {
+      return InvNormalDistribution(p);
+    }
+
+    function RInAccGBMult(req, REOP, uCal, LLow, LUp) {
+      const precision = 0.00001;
+      let GBMult = 1;
+      let AUp = LUp;
+      let ALow = LLow;
+
+      let uUUT = uutUnc(REOP, uCal, ALow, AUp);
+      let EstPFA = PFA(uUUT, uCal, LLow, LUp, ALow, AUp);
+
+      if (EstPFA > req) {
+        let change = 0.05;
+
+        do {
+          GBMult -= change;
+          AUp = LUp * GBMult;
+          ALow = LLow * GBMult;
+          uUUT = uutUnc(REOP, uCal, ALow, AUp);
+          EstPFA = PFA(uUUT, uCal, LLow, LUp, ALow, AUp);
+        } while (EstPFA > req);
+
+        do {
+          change /= 2;
+          GBMult += EstPFA < req ? change : -change;
+          AUp = LUp * GBMult;
+          ALow = LLow * GBMult;
+          uUUT = uutUnc(REOP, uCal, ALow, AUp);
+          EstPFA = PFA(uUUT, uCal, LLow, LUp, ALow, AUp);
+        } while (!(EstPFA >= req - precision && EstPFA <= req));
+      }
+
+      return GBMult;
+    }
+
+    function RInAccULGBMult(req, REOP, uCal, avg, LUp) {
+      const precision = 0.00001;
+      let GBMult = 1;
+      let AUp = LUp;
+
+      let uUUT = UUTuncUL(REOP, uCal, avg, AUp);
+      let EstPFA = PFAUL(uUUT, uCal, avg, LUp, AUp);
+
+      if (EstPFA > req) {
+        let change = 0.05;
+
+        do {
+          GBMult -= change;
+          AUp = (LUp - avg) * GBMult + avg;
+          uUUT = UUTuncUL(REOP, uCal, avg, AUp);
+          EstPFA = PFAUL(uUUT, uCal, avg, LUp, AUp);
+        } while (EstPFA > req);
+
+        do {
+          change /= 2;
+          GBMult += EstPFA < req ? change : -change;
+          AUp = (LUp - avg) * GBMult + avg;
+          uUUT = UUTuncUL(REOP, uCal, avg, AUp);
+          EstPFA = PFAUL(uUUT, uCal, avg, LUp, AUp);
+        } while (!(EstPFA >= req - precision && EstPFA <= req));
+      }
+
+      return GBMult;
+    }
+
+    function PFAIter(sRiskType, dMeasRel,dAvg,dTolLow,dTolUp,dMeasUnc) {
+      let dUUTUnc;
+
+      if (sRiskType === "NotThreshold") {
+        dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
+        if (dUUTUnc <= 0) return -1;
+        return PFA(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dTolLow, dTolUp);
+      }
+
+      if (sRiskType === "UpThreshold") {
+        dUUTUnc = UUTuncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
+        if (dUUTUnc <= 0) return -1;
+        return PFAUL(dUUTUnc, dMeasUnc, dAvg, dTolUp, dTolUp);
+      }
+
+      if (sRiskType === "LowThreshold") {
+        dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
+        if (dUUTUnc <= 0) return -1;
+        return PFALL(dUUTUnc, dMeasUnc, dAvg, dTolLow, dTolLow);
+      }
+
+      return -1;
+    }
+
+
+    function PFA(uUUT, uCal, LLow, LUp, ALow, AUp) {
+      const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+      const cor = uUUT / uDev;
+
+      const term1 = bivariateNormalCDF(LLow / uUUT, AUp / uDev, cor) -
+                    bivariateNormalCDF(LLow / uUUT, ALow / uDev, cor);
+
+      const term2 = bivariateNormalCDF(-LUp / uUUT, -ALow / uDev, cor) -
+                    bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
+
+      return term1 + term2;
+    }
+
+    function PFALL(uUUT, uCal, avg, LLow, ALow) {
+      const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+      const cor = uUUT / uDev;
+
+      const term1 = vbNormSDist((LLow - avg) / uUUT);
+      const term2 = bivariateNormalCDF((LLow - avg) / uUUT, (ALow - avg) / uDev, cor);
+
+      return term1 - term2;
+    }
+
+    function PFAUL(uUUT, uCal, avg, LUp, AUp) {
+      const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+      const cor = uUUT / uDev;
+
+      const term1 = vbNormSDist((LUp - avg) / uUUT);
+      const term2 = bivariateNormalCDF(-(LUp - avg) / uUUT, -(AUp - avg) / uDev, cor);
+
+      return 1 - term1 - term2;
+    }
+
+    function PFR(uUUT, uCal, LLow, LUp, ALow, AUp) {
+      const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+      const cor = uUUT / uDev;
+
+      const term1 = bivariateNormalCDF(LUp / uUUT, ALow / uDev, cor) -
+                    bivariateNormalCDF(LLow / uUUT, ALow / uDev, cor);
+
+      const term2 = bivariateNormalCDF(-LLow / uUUT, -AUp / uDev, cor) -
+                    bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
+
+      return term1 + term2;
+    }
+
+    function PFRLL(uUUT, uCal, avg, LLow, ALow) {
+      const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+      const cor = uUUT / uDev;
+
+      const term1 = vbNormSDist((LLow - avg) / uUUT);
+      const term2 = bivariateNormalCDF(-(LLow - avg) / uUUT, -(ALow - avg) / uDev, cor);
+
+      return 1 - term1 - term2;
+    }
+
+    function PFRUL(uUUT, uCal, avg, LUp, AUp) {
+      const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+      const cor = uUUT / uDev;
+
+      const term1 = vbNormSDist((LUp - avg) / uUUT);
+      const term2 = bivariateNormalCDF((LUp - avg) / uUUT, (AUp - avg) / uDev, cor);
+
+      return term1 - term2;
+    }
+
+    function RInAccLLGBMult(req, REOP, uCal, avg, LLow) {
+      const precision = 0.00001;
+      let GBMult = 1;
+      let ALow = LLow;
+
+      let uUUT = uutUncLL(REOP, uCal, avg, ALow);
+      let EstPFA = PFALL(uUUT, uCal, avg, LLow, ALow);
+
+      if (EstPFA > req) {
+        let change = 0.05;
+
+        do {
+          GBMult -= change;
+          ALow = avg - (avg - LLow) * GBMult;
+          uUUT = uutUncLL(REOP, uCal, avg, ALow);
+          EstPFA = PFALL(uUUT, uCal, avg, LLow, ALow);
+        } while (EstPFA > req);
+
+        do {
+          change /= 2;
+          GBMult += EstPFA < req ? change : -change;
+          ALow = avg - (avg - LLow) * GBMult;
+          uUUT = uutUncLL(REOP, uCal, avg, ALow);
+          EstPFA = PFALL(uUUT, uCal, avg, LLow, ALow);
+        } while (!(EstPFA >= req - precision && EstPFA <= req));
+      }
+
+      return GBMult;
+    }
+
+    function gbLowMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel) {
+      const isNotNumeric = val => isNaN(parseFloat(val));
+      const vbaNbrValidate = val => isNotNumeric(val) ? 0 : parseFloat(val);
+
+      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel] = getRiskInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel);
+
+      const dReq = vbaNbrValidate(rngReq);
+
+      let dUUTUnc, GBMult;
+
+      if (sRiskType === "NotThreshold") {
+          dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
+          if (dUUTUnc <= 0) {
+              return "";
+          } else {
+              GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
+              return dNominal + dTolLow * GBMult;
+          }
+      } else if (sRiskType === "LowThreshold") {
+          dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
+          if (dUUTUnc <= 0) {
+              return "";
+          } else {
+              GBMult = pfaLLGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolLow);
+              return dAvg - (dAvg - dTolLow) * GBMult;
+          }
+      } else if (sRiskType === "AltLowThreshold") {
+          return dTolLow - PHIDInv(dReq) * dMeasUnc;
+      } else {
+          return "";
+      }
+    }
     
+    function gbUpMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel) {
+      const isNotNumeric = val => isNaN(parseFloat(val));
+      const vbaNbrValidate = val => isNotNumeric(val) ? 0 : parseFloat(val);
+
+      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel] = getRiskInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel);
+
+      const dReq = vbaNbrValidate(rngReq);
+
+      let dUUTUnc, GBMult;
+
+      if (sRiskType === "NotThreshold") {
+        dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
+        if (dUUTUnc <= 0) {
+          return "";
+        } else {
+          GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
+          return dTolUp * GBMult + dNominal;
+        }
+      } else if (sRiskType === "UpThreshold") {
+        dUUTUnc = UUTuncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
+        if (dUUTUnc <= 0) {
+          return "";
+        } else {
+          GBMult = PFAULGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolUp);
+          return (dTolUp - dAvg) * GBMult + dAvg;
+        }
+      } else if (sRiskType === "AltUpThreshold") {
+        return dTolUp + PHIDInv(dReq) * dMeasUnc;
+      } else {
+        return "";
+      }
+    }
+
+    function GBMultMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngGBLow, rngGBUp) {
+      const isNotNumeric = val => isNaN(parseFloat(val));
+      const vbaNbrValidate = val => isNotNumeric(val) ? 0 : parseFloat(val);
+
+      const [sRiskType, dNominal, dAvg, dTolLow, dTolUp] = getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp);
+
+      const dReq = vbaNbrValidate(rngReq);
+      const dGBLow = vbaNbrValidate(rngGBLow);
+      const dGBUp = vbaNbrValidate(rngGBUp);
+
+      if (dGBLow === 0 && dGBUp === 0) {
+        return "";
+      }
+
+      let GBMult;
+
+      if (sRiskType === "NotThreshold") {
+        GBMult = Math.abs(dTolUp) > 0
+          ? Math.abs(dGBUp - dNominal) / Math.abs(dTolUp)
+          : "";
+      } else if (sRiskType === "UpThreshold") {
+        GBMult = Math.abs(dTolUp - dAvg) > 0
+          ? Math.abs(dGBUp - dAvg) / Math.abs(dTolUp - dAvg)
+          : "";
+      } else if (sRiskType === "LowThreshold") {
+        GBMult = Math.abs(dAvg - dTolLow) > 0
+          ? Math.abs(dAvg - dGBLow) / Math.abs(dAvg - dTolLow)
+          : "";
+      } else {
+        GBMult = "";
+      }
+
+      return GBMult;
+    }
+
+    function PFAwGBMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp) {
+      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp] = GetGBInfo(
+        rngNominal,
+        rngAvg,
+        rngTolLow,
+        rngTolUp,
+        rngMeasUnc,
+        rngMeasRel,
+        rngGBLow,
+        rngGBUp
+      );
+
+      if (dGBLow === 0 && dGBUp === 0) {
+        return "";
+      }
+
+      let dUUTUnc;
+
+      if (sRiskType === "NotThreshold") {
+        dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dGBLow, dGBUp);
+        if (dUUTUnc <= 0) return "";
+        return PFA(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dGBLow, dGBUp);
+      }
+
+      if (sRiskType === "UpThreshold") {
+        dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dGBUp);
+        if (dUUTUnc <= 0) return "";
+        return PFAUL(dUUTUnc, dMeasUnc, dAvg, dTolUp, dGBUp);
+      }
+
+      if (sRiskType === "LowThreshold") {
+        dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dGBLow);
+        if (dUUTUnc <= 0) return "";
+        return PFALL(dUUTUnc, dMeasUnc, dAvg, dTolLow, dGBLow);
+      }
+
+      if (sRiskType === "AltUpThreshold") {
+        return PHID((dGBUp - dTolUp) / dMeasUnc);
+      }
+
+      if (sRiskType === "AltLowThreshold") {
+        return PHID((dTolLow - dGBLow) / dMeasUnc);
+      }
+
+      return "";
+    }
+
+    function PFRwGBMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp) {
+      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp] = GetGBInfo(
+        rngNominal,
+        rngAvg,
+        rngTolLow,
+        rngTolUp,
+        rngMeasUnc,
+        rngMeasRel,
+        rngGBLow,
+        rngGBUp
+      );
+
+      if (dGBLow === 0 && dGBUp === 0) {
+        return "";
+      }
+
+      let dUUTUnc;
+
+      if (sRiskType === "NotThreshold") {
+        dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dGBLow, dGBUp);
+        if (dUUTUnc <= 0) return "";
+        return PFR(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dGBLow, dGBUp);
+      }
+
+      if (sRiskType === "UpThreshold") {
+        dUUTUnc = UUTuncUL(dMeasRel, dMeasUnc, dAvg, dGBUp);
+        if (dUUTUnc <= 0) return "";
+        return PFRUL(dUUTUnc, dMeasUnc, dAvg, dTolUp, dGBUp);
+      }
+
+      if (sRiskType === "LowThreshold") {
+        dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dGBLow);
+        if (dUUTUnc <= 0) return "";
+        return PFRLL(dUUTUnc, dMeasUnc, dAvg, dTolLow, dGBLow);
+      }
+
+      return "";
+    }
+
+    function CalIntwGBMgr(
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngMeasUnc,
+      rngReqRel,
+      rngMeasRel,
+      rngGBLow,
+      rngGBUp,
+      rngTUR,
+      rngReqTUR,
+      rngInt
+    ) {
+      const isNotNumeric = val => isNaN(parseFloat(val));
+      const vbaNbrValidate = val => isNotNumeric(val) ? 0 : parseFloat(val);
+
+      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp] = GetGBInfo(
+        rngNominal,
+        rngAvg,
+        rngTolLow,
+        rngTolUp,
+        rngMeasUnc,
+        rngMeasRel,
+        rngGBLow,
+        rngGBUp
+      );
+
+      const dReqRel = vbaNbrValidate(rngReqRel);
+      const dTUR = vbaNbrValidate(rngTUR);
+      const dReqTur = vbaNbrValidate(rngReqTUR);
+      const dInt = vbaNbrValidate(rngInt);
+
+      if (dGBLow === 0 && dGBUp === 0) {
+        return "";
+      }
+
+      if (
+        sRiskType !== "NotThreshold" &&
+        sRiskType !== "UpThreshold" &&
+        sRiskType !== "LowThreshold"
+      ) {
+        return "";
+      }
+
+      let dObsRel;
+      if (dReqTur > 0) {
+        const dTstRUnc = dMeasUnc * dTUR / dReqTur;
+        dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+      } else {
+        dObsRel = dMeasRel;
+      }
+
+      const dPredRel = PredRel(sRiskType, dMeasUnc, dReqRel,dAvg,dTolLow,dTolUp,dMeasUnc,dGBLow,dGBUp);
+      const dPredInt = Math.log(dPredRel) / Math.log(dObsRel) * dInt;
+
+      return dPredInt > 0 ? dPredInt : "";
+    }
+
+    function ObsRel(sRiskType, dCalUnc, dMeasRel, dAvg,dTolLow,dTolUp,dMeasUnc) {
+      let dBiasUnc, dDevUnc;
+
+      if (sRiskType === "NotThreshold") {
+        dBiasUnc = uutUnc(dMeasRel, dCalUnc, dTolLow, dTolUp);
+        dDevUnc = Math.sqrt(Math.pow(dMeasUnc, 2) + Math.pow(dBiasUnc, 2));
+        return vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc);
+      }
+
+      if (sRiskType === "UpThreshold") {
+        dBiasUnc = UUTuncUL(dMeasRel, dCalUnc, dAvg, dTolUp);
+        dDevUnc = Math.sqrt(Math.pow(dMeasUnc, 2) + Math.pow(dBiasUnc, 2));
+        return vbNormSDist((dTolUp - dAvg) / dDevUnc);
+      }
+
+      if (sRiskType === "LowThreshold") {
+        dBiasUnc = uutUncLL(dMeasRel, dCalUnc, dAvg, dTolLow);
+        dDevUnc = Math.sqrt(Math.pow(dMeasUnc, 2) + Math.pow(dBiasUnc, 2));
+        return 1 - vbNormSDist((dTolLow - dAvg) / dDevUnc);
+      }
+
+      return 0;
+    }
+
+    function PredRel(sRiskType, dCalUnc, dMeasRel,dAvg,dTolLow,dTolUp,dMeasUnc,dGBLow,dGBUp) {
+      let dBiasUnc, dDevUnc;
+
+      if (sRiskType === "NotThreshold") {
+        dBiasUnc = uutUnc(dMeasRel, dCalUnc, dGBLow, dGBUp);
+        dDevUnc = Math.sqrt(Math.pow(dMeasUnc, 2) + Math.pow(dBiasUnc, 2));
+        return vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc);
+      }
+
+      if (sRiskType === "UpThreshold") {
+        dBiasUnc = UUTuncUL(dMeasRel, dCalUnc, dAvg, dGBUp);
+        dDevUnc = Math.sqrt(Math.pow(dMeasUnc, 2) + Math.pow(dBiasUnc, 2));
+        return vbNormSDist((dTolUp - dAvg) / dDevUnc);
+      }
+
+      if (sRiskType === "LowThreshold") {
+        dBiasUnc = uutUncLL(dMeasRel, dCalUnc, dAvg, dGBLow);
+        dDevUnc = Math.sqrt(Math.pow(dMeasUnc, 2) + Math.pow(dBiasUnc, 2));
+        return 1 - vbNormSDist((dTolLow - dAvg) / dDevUnc);
+      }
+
+      return 0;
+    }
+
+    function CalIntMgr(
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngMeasUnc,
+      rngReqRel,
+      rngMeasRel,
+      rngTUR,
+      rngReqTUR,
+      rngInt,
+      rngReqPFA
+    ) {
+
+      const isNotNumeric = val => isNaN(parseFloat(val));
+      const vbaNbrValidate = val => isNotNumeric(val) ? 0 : parseFloat(val);
+
+      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp] = getRiskInfo(
+        rngNominal,
+        rngAvg,
+        rngTolLow,
+        rngTolUp,
+        rngMeasUnc,
+        rngMeasRel
+      );
+
+      const dTUR = vbaNbrValidate(rngTUR);
+      const dReqTur = vbaNbrValidate(rngReqTUR);
+      const dInt = vbaNbrValidate(rngInt);
+      const dReqRel = vbaNbrValidate(rngReqRel);
+      const dReqPFA = vbaNbrValidate(rngReqPFA);
+
+      let dObsRel;
+      if (dReqTur > 0) {
+        const dTstRUnc = dMeasUnc * dTUR / dReqTur;
+        dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel, dAvg,dTolLow,dTolUp,dMeasUnc);
+      } else {
+        dObsRel = dMeasRel;
+      }
+
+      let dPFA = PFAIter(sRiskType, dObsRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+      if (dPFA === -1) return "";
+
+      if (dPFA <= dReqPFA) {
+        return Math.log(dReqRel) / Math.log(dObsRel) * dInt;
+      }
+
+      let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
+      dPFA = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+
+      let dChg = dPFA < dReqPFA
+        ? -Math.abs(dPredRel - dObsRel)
+        : Math.abs(dPredRel - dObsRel);
+
+      let lIter = 1;
+      while (Math.abs(dPFA - dReqPFA) >= 0.00001 && lIter < 20) {
+        dChg = dPFA < dReqPFA ? -Math.abs(dChg) / 2 : Math.abs(dChg) / 2;
+        dPredRel += dChg;
+        dPFA = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+        lIter++;
+      }
+
+      if (dPredRel < dReqRel) {
+        dPredRel = dReqRel;
+        dPFA = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+      }
+
+      return dPFA === -1 ? "" : Math.log(dPredRel) / Math.log(dObsRel) * dInt;
+    }
+
+    function CalRelMgr(
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngMeasUnc,
+      rngReqRel,
+      rngMeasRel,
+      rngTUR,
+      rngReqTUR,
+      rngInt,
+      rngReqPFA
+    ) {
+      const isNotNumeric = val => isNaN(parseFloat(val));
+      const vbaNbrValidate = val => isNotNumeric(val) ? 0 : parseFloat(val);
+
+      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp] = getRiskInfo(
+        rngNominal,
+        rngAvg,
+        rngTolLow,
+        rngTolUp,
+        rngMeasUnc,
+        rngMeasRel
+      );
+
+      const dTUR = vbaNbrValidate(rngTUR);
+      const dReqTur = vbaNbrValidate(rngReqTUR);
+      const dInt = vbaNbrValidate(rngInt);
+      const dReqRel = vbaNbrValidate(rngReqRel);
+      const dReqPFA = vbaNbrValidate(rngReqPFA);
+
+      let dObsRel;
+      if (dReqTur > 0) {
+        const dTstRUnc = dMeasUnc * dTUR / dReqTur;
+        dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel, dAvg,dTolLow,dTolUp,dMeasUnc);
+      } else {
+        dObsRel = dMeasRel;
+      }
+
+      let dPFA = PFAIter(sRiskType, dObsRel);
+      if (dPFA === -1) return "";
+
+      if (dPFA <= dReqPFA) return dReqRel;
+
+      let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
+      dPFA = PFAIter(sRiskType, dPredRel);
+
+      let dChg = dPFA < dReqPFA
+        ? -Math.abs(dPredRel - dObsRel)
+        : Math.abs(dPredRel - dObsRel);
+
+      let lIter = 1;
+      while (Math.abs(dPFA - dReqPFA) >= 0.00001 && lIter < 20) {
+        dChg = dPFA < dReqPFA ? -Math.abs(dChg) / 2 : Math.abs(dChg) / 2;
+        dPredRel += dChg;
+        dPFA = PFAIter(sRiskType, dPredRel);
+        lIter++;
+      }
+
+      if (dPredRel < dReqRel) {
+        dPredRel = dReqRel;
+        dPFA = PFAIter(sRiskType, dPredRel);
+      }
+
+      return dPFA === -1 ? "" : dPredRel;
+    }
+
+    // let combUncVal = 0.347610893576903;
+    let combUncVal = calcResults.combined_uncertainty_absolute_base;
+    let gbLow = gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, combUncVal, reliability);
+    let gbHigh = gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, combUncVal, reliability);
+    let gbMult = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh);
+    let gbPFA = PFAwGBMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, gbLow, gbHigh);
+    let gbPFR = PFRwGBMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, gbLow, gbHigh);
+
+    console.log("GBLOW: ", gbLow);
+    console.log("GBUP: ", gbHigh);
+    console.log("GBMULT: ", gbMult);
+    console.log("GBPFA: ", gbPFA);
+    console.log("GBPFR: ", gbPFR);
+
+    const guardBandMultiplier = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh);
 
     const uCal_Base = calcResults.combined_uncertainty_absolute_base;
     const uCal_Native = uCal_Base / targetUnitInfo.to_si;
@@ -2204,6 +3204,14 @@ function Analysis({
     const U_Native = U_Base / targetUnitInfo.to_si;
 
     const turResult = (LUp - LLow) / (2 * U_Native);
+
+    let gbCalInt = CalIntwGBMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, gbLow, gbHigh, turResult, turNeeded, calInt);
+    let nogbCalInt = CalIntMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
+    let nogbMeasRel = CalRelMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
+    console.log("GBCALINT: ", gbCalInt);
+    console.log("NOGBCALINT: ", nogbCalInt);
+    console.log("NOGBMEASREL: ", nogbMeasRel);
+
     const tarResult =
       tmdeToleranceSpan_Native !== 0
         ? (LUp - LLow) / tmdeToleranceSpan_Native
@@ -3738,72 +4746,72 @@ function App() {
     const formattedDate = `${month}/${day}/${year}`;
     const formattedTime = `${hours}:${minutes}:${seconds}`;
 
-    // const currentSession = sessions.find((s) => s.id === selectedSessionId);
-    // if (!currentSession) return;
+    const currentSession = sessions.find((s) => s.id === selectedSessionId);
+    if (!currentSession) return;
 
-    // const fileName = `MUA_${currentSession.uutDescription || "Session_"}${formattedDate + "_" + formattedTime}.pdf`;
+    const fileName = `MUA_${currentSession.uutDescription || "Session_"}${formattedDate + "_" + formattedTime}.pdf`;
 
-    // const jsonData = JSON.stringify(currentSession, null, 2);
+    const jsonData = JSON.stringify(currentSession, null, 2);
     
-    // const pdfDoc = await PDFDocument.create();
-    // const page = pdfDoc.addPage();
-    // const { width, height } = page.getSize();
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage();
+    const { width, height } = page.getSize();
 
-    // const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    // const fontSize = 12;
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontSize = 12;
 
-    // const summaryText = `Session Summary\n\nDescription: ${currentSession.uutDescription}\nDate: ${formattedDate} ${formattedTime}`;
-    // page.drawText(summaryText, {
-    //   x: 50,
-    //   y: height - 50,
-    //   size: fontSize,
-    //   font,
-    //   lineHeight: 16,
-    // });
+    const summaryText = `Session Summary\n\nDescription: ${currentSession.uutDescription}\nDate: ${formattedDate} ${formattedTime}`;
+    page.drawText(summaryText, {
+      x: 50,
+      y: height - 50,
+      size: fontSize,
+      font,
+      lineHeight: 16,
+    });
 
-    // pdfDoc.setTitle(fileName);
-    // pdfDoc.setSubject('MUA Session Data');
-    // pdfDoc.setKeywords(['MUA', 'Session', 'JSON']);
-    // pdfDoc.setProducer('MUA Tool');
-    // pdfDoc.setCreator('MUA Tool');
-    // pdfDoc.setCreationDate(now);
-    // pdfDoc.setModificationDate(now);
+    pdfDoc.setTitle(fileName);
+    pdfDoc.setSubject('MUA Session Data');
+    pdfDoc.setKeywords(['MUA', 'Session', 'JSON']);
+    pdfDoc.setProducer('MUA Tool');
+    pdfDoc.setCreator('MUA Tool');
+    pdfDoc.setCreationDate(now);
+    pdfDoc.setModificationDate(now);
     
-    // const lineHeight = 10;
-    // const margin = 50;
-    // const maxWidth = width - margin * 2;
+    const lineHeight = 10;
+    const margin = 50;
+    const maxWidth = width - margin * 2;
 
-    // const jsonLines = jsonData.split('\n');
-    // let y = height - margin;
-    // let metadataPage = pdfDoc.addPage();
+    const jsonLines = jsonData.split('\n');
+    let y = height - margin;
+    let metadataPage = pdfDoc.addPage();
 
-    // for (const line of jsonLines) {
-    //   if (y < margin) {
-    //     metadataPage = pdfDoc.addPage();
-    //     y = height - margin;
-    //   }
+    for (const line of jsonLines) {
+      if (y < margin) {
+        metadataPage = pdfDoc.addPage();
+        y = height - margin;
+      }
 
-    //   metadataPage.drawText(line, {
-    //     x: margin,
-    //     y,
-    //     size: fontSize,
-    //     font,
-    //   });
+      metadataPage.drawText(line, {
+        x: margin,
+        y,
+        size: fontSize,
+        font,
+      });
 
-    //   y -= lineHeight;
-    // }
+      y -= lineHeight;
+    }
 
-    // const pdfBytes = await pdfDoc.save();
+    const pdfBytes = await pdfDoc.save();
 
-    // const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    // const href = URL.createObjectURL(blob);
-    // const link = document.createElement("a");
-    // link.href = href;
-    // link.download = fileName;
-    // document.body.appendChild(link);
-    // link.click();
-    // document.body.removeChild(link);
-    // URL.revokeObjectURL(href);
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(href);
   };
 
   // App.js
