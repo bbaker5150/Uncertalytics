@@ -12,6 +12,7 @@ import ContextMenu from "./components/ContextMenu";
 import FullBreakdownModal from "./components/FullBreakdownModal";
 import DerivedBreakdownModal from "./components/DerivedBreakdownModal";
 import TestPointInfoModal from "./components/TestPointInfoModal";
+import RiskScatterplot from "./components/RiskScatterplot";
 import AddTmdeModal from "./components/AddTmdeModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -716,7 +717,8 @@ const convertToPPM = (
 
   return ppmValue;
 };
-
+const ThemeContext = React.createContext(false);
+export const useTheme = () => React.useContext(ThemeContext);
 export const Accordion = ({
   title,
   children,
@@ -1136,17 +1138,18 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
         
         <h3>Key Inputs Breakdown</h3>
 
+        <div className="modal-body-scrollable">
+
         <div className="breakdown-step">
           <h5>
-            Cal Process Error (U<sub>combined</sub>)
+            Cal Process Error (u<sub>combined</sub>)
           </h5>
           <p>
             This value is the Combined Standard Uncertainty, calculated
-            using the root sum of squares (RSS) of all individual components
-            (uᵢ) from the detailed budget.
+            from the detailed budget.
           </p>
           <Latex>
-            {`$$ u_{combined} = \\sqrt{\\sum_{i=1}^{N} u_i^2} = \\mathbf{${results.uCal.toPrecision(4)}} \\text{ ${safeNativeUnit}} $$`}
+            {`$$ u_{combined} = \\mathbf{${results.uCal.toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
           </Latex>
         </div>
 
@@ -1164,10 +1167,10 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
             {`$$ p = (1 + R) / 2 = (1 + ${reliability}) / 2 = \\mathbf{${p_cumulative.toFixed(4)}} $$`}
           </Latex>
           <Latex>
-            {`$$ Z_{\\text{score}} = \\Phi^{-1}(p) = \\Phi^{-1}(${p_cumulative.toFixed(4)}) = \\mathbf{${zScore.toFixed(4)}} $$`}
+            {`$$ Z_{\\text{score}} = \\Phi^{-1}(p) = \\Phi^{-1}(${p_cumulative.toFixed(4)}) = \\mathbf{${zScore.toPrecision(4)}} $$`}
           </Latex>
           <Latex>
-            {`$$ 𝝈_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} = \\frac{${LUp_symmetric.toFixed(6)}}{\\Phi^{-1}((1+${inputs.reliability})/2)} = \\mathbf{${results.uDev.toPrecision(4)}} \\text{ ${safeNativeUnit}} $$`}
+            {`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} = \\frac{${LUp_symmetric.toPrecision(6)}}{\\Phi^{-1}((1+${inputs.reliability})/2)} = \\mathbf{${results.uDev.toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
           </Latex>
         </div>
 
@@ -1175,25 +1178,39 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
           <h5>
             UUT True Error (&sigma;<sub>uut</sub>)
           </h5>
+          <p>
+            The intrinsic error of the UUT, calculated by removing the
+            calibration process uncertainty from the observed error.
+          </p>
           <Latex>
-            {`$$ 𝝈_{observed} = {𝝈_{uut} + 𝝈_{combined}} $$`}
+            {`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} = \\sqrt{${results.uDev.toPrecision(6)}^2 - ${results.uCal.toPrecision(6)}^2} = \\mathbf{${results.uUUT.toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
+          </Latex>
+        </div>
+        
+        <div className="breakdown-step">
+          <h5>UUT Tolerance Limits (L)</h5>
+          <p>
+            The specified tolerance limits for the Unit Under Test (UUT).
+          </p>
+          <Latex>
+            {`$$ L_{Low} = \\mathbf{${parseFloat(inputs.LLow).toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
           </Latex>
           <Latex>
-            {`$$ ∴ 𝝈_{uut} = \\sqrt{𝝈_{observed}^2 - 𝝈_{combined}^2} = \\sqrt{${results.uDev.toPrecision(4)}^2 - ${results.uCal.toPrecision(4)}^2} = \\mathbf{${results.uUUT.toPrecision(4)}} \\text{ ${safeNativeUnit}} $$`}
+            {`$$ L_{Up} = \\mathbf{${parseFloat(inputs.LUp).toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
           </Latex>
         </div>
 
         <div className="breakdown-step">
           <h5>Acceptance Limits (A)</h5>
           <p>
-            Calculated by applying the **Guard Band Multiplier** to the
+            Calculated by applying the Guard Band Multiplier to the
             tolerance limits.
           </p>
           <Latex>
-            {`$$ A_{Low} = L_{Low} \\times G = ${parseFloat(inputs.LLow).toFixed(6)} \\times ${inputs.guardBandMultiplier} = \\mathbf{${results.ALow.toFixed(6)}} \\text{ ${safeNativeUnit}} $$`}
+            {`$$ A_{Low} = L_{Low} \\times G = ${parseFloat(inputs.LLow).toPrecision(6)} \\times ${inputs.guardBandMultiplier} = \\mathbf{${results.ALow.toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
           </Latex>
           <Latex>
-            {`$$ A_{Up} = L_{Up} \\times G = ${parseFloat(inputs.LUp).toFixed(6)} \\times ${inputs.guardBandMultiplier} = \\mathbf{${results.AUp.toFixed(6)}} \\text{ ${safeNativeUnit}} $$`}
+            {`$$ A_{Up} = L_{Up} \\times G = ${parseFloat(inputs.LUp).toPrecision(6)} \\times ${inputs.guardBandMultiplier} = \\mathbf{${results.AUp.toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
           </Latex>
         </div>
 
@@ -1204,8 +1221,10 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
             observed (measured) value.
           </p>
           <Latex>
-            {`$$ \\rho = \\frac{𝝈_{UUT}}{𝝈_{observed}} = \\frac{${results.uUUT.toPrecision(4)}}{${results.uDev.toPrecision(4)}} = \\mathbf{${results.correlation.toFixed(4)}} $$`}
+            {`$$ \\rho = \\frac{\\sigma_{UUT}}{\\sigma_{observed}} = \\frac{${results.uUUT.toPrecision(6)}}{${results.uDev.toPrecision(6)}} = \\mathbf{${results.correlation.toPrecision(6)}} $$`}
           </Latex>
+        </div>
+        
         </div>
         
       </div>
@@ -1416,17 +1435,23 @@ const TarBreakdownModal = ({ results, inputs, onClose }) => {
 
 const PfaBreakdownModal = ({ results, inputs, onClose }) => {
   if (!results || !inputs) return null;
+
+  // --- Re-calculate values for demonstration ---
   const mid = (inputs.LUp + inputs.LLow) / 2;
   const LLow_norm = inputs.LLow - mid;
   const LUp_norm = inputs.LUp - mid;
   const ALow_norm = results.ALow - mid;
   const AUp_norm = results.AUp - mid;
-  const z1 = LLow_norm / results.uUUT;
-  const z2 = AUp_norm / results.uDev;
-  const z3 = ALow_norm / results.uDev;
-  const z4 = -LUp_norm / results.uUUT;
-  const z5 = -ALow_norm / results.uDev;
-  const z6 = -AUp_norm / results.uDev;
+
+  // Z-Scores (Normalized Limits)
+  const z_x_low = LLow_norm / results.uUUT;
+  const z_x_high = LUp_norm / results.uUUT; // The "true" positive Z-score for LUp
+  const z_y_low = ALow_norm / results.uDev;
+  const z_y_high = AUp_norm / results.uDev;
+
+  // Safe unit for LaTeX
+  const safeNativeUnit =
+    results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
 
   return (
     <div className="modal-overlay">
@@ -1435,77 +1460,152 @@ const PfaBreakdownModal = ({ results, inputs, onClose }) => {
           &times;
         </button>
         <h3>PFA Calculation Breakdown</h3>
-        <div className="breakdown-step">
-          <h5>Step 1: Formula</h5>
-          <p>
-            The Probability of False Accept is the risk of accepting an
-            out-of-tolerance UUT.
-          </p>
-          <Latex>
-            {
-              "$$ PFA = \\int G(x) \\left[ \\Phi(\\frac{A-x}{u_{cal}}) - \\Phi(\\frac{-A-x}{u_{cal}}) \\right] dx $$"
-            }
-          </Latex>
-        </div>
-        <div className="breakdown-step">
-          <h5>Step 2: Standardized Limits (Z-Scores)</h5>
-          <p>
-            The limits are normalized by their respective uncertainties to
-            create unitless Z-scores.
-          </p>
-          <Latex>{`$$ z_{L_{Low}} = ${z1.toFixed(4)}, z_{L_{Up}} = ${z4.toFixed(
-            4
-          )}, z_{A_{Low}} = ${z3.toFixed(4)}, z_{A_{Up}} = ${z2.toFixed(
-            4
-          )} $$`}</Latex>
-        </div>
-        <div className="breakdown-step">
-          <h5>Step 3: Bivariate Normal Probabilities (Φ₂)</h5>
-          <p>
-            Using Z-scores and correlation (ρ = {results.correlation.toFixed(4)}
-            ), we solve the Bivariate Normal CDF (Φ₂).
-          </p>
-          Term A:{" "}
-          <Latex>{`$$ \\Phi_2(${z1.toFixed(2)}, ${z2.toFixed(
-            2
-          )}, \\rho) = ${bivariateNormalCDF(
-            z1,
-            z2,
-            results.correlation
-          ).toFixed(6)} $$`}</Latex>
-          Term B:{" "}
-          <Latex>{`$$ \\Phi_2(${z1.toFixed(2)}, ${z3.toFixed(
-            2
-          )}, \\rho) = ${bivariateNormalCDF(
-            z1,
-            z3,
-            results.correlation
-          ).toFixed(6)} $$`}</Latex>
-          Term C:{" "}
-          <Latex>{`$$ \\Phi_2(${z4.toFixed(2)}, ${z5.toFixed(
-            2
-          )}, \\rho) = ${bivariateNormalCDF(
-            z4,
-            z5,
-            results.correlation
-          ).toFixed(6)} $$`}</Latex>
-          Term D:{" "}
-          <Latex>{`$$ \\Phi_2(${z4.toFixed(2)}, ${z6.toFixed(
-            2
-          )}, \\rho) = ${bivariateNormalCDF(
-            z4,
-            z6,
-            results.correlation
-          ).toFixed(6)} $$`}</Latex>
-        </div>
-        <div className="breakdown-step">
-          <h5>Step 4: Final PFA Calculation</h5>
-          Lower Tail Risk (A-B):{" "}
-          <Latex>{`$$ ${(results.pfa_term1 / 100).toFixed(6)} $$`}</Latex>
-          Upper Tail Risk (C-D):{" "}
-          <Latex>{`$$ ${(results.pfa_term2 / 100).toFixed(6)} $$`}</Latex>
-          Total PFA ={" "}
-          <Latex>{`$$ \\mathbf{${results.pfa.toFixed(4)}\\%} $$`}</Latex>
+        <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>Step 1: Formula</h5>
+            <p>
+              The Probability of False Accept (PFA) is the sum of the
+              probabilities in the two "False Accept" regions of the risk
+              scatterplot. This is calculated using the Bivariate
+              Normal Cumulative Distribution Function (Φ₂).
+            </p>
+            <Latex>{"$$ PFA = PFA_{Lower} + PFA_{Upper} $$"}</Latex>
+          </div>
+          <div className="breakdown-step">
+            <h5>Step 2: Key Statistical Inputs</h5>
+            <p>
+              These values are derived from your budget and reliability settings.
+            </p>
+            <ul>
+              <li>
+                True UUT Error (σ
+                <sub>uut</sub>):{" "}
+                <strong>
+                  {results.uUUT.toPrecision(4)} {safeNativeUnit}
+                </strong>
+                <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
+              </li>
+              <li>
+                Observed Error (σ
+                <sub>obs</sub>):{" "}
+                <strong>
+                  {results.uDev.toPrecision(4)} {safeNativeUnit}
+                </strong>
+                <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
+              </li>
+              <li>
+                Correlation (ρ):{" "}
+                <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.uUUT.toPrecision(
+                  4
+                )}}{${results.uDev.toPrecision(
+                  4
+                )}} = \\mathbf{${results.correlation.toFixed(4)}} $$`}</Latex>
+              </li>
+            </ul>
+          </div>
+          <div className="breakdown-step">
+            <h5>Step 3: Normalized Limits (Z-Scores)</h5>
+            <p>
+              The limits are normalized by their respective standard deviations.
+              (L = UUT Tolerance, A = Acceptance Limit)
+            </p>
+            <ul>
+              <li>
+                z<sub>x_low</sub> (True Error):{" "}
+                <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
+                  4
+                )}}{${results.uUUT.toPrecision(4)}} = \\mathbf{${z_x_low.toFixed(
+                  4
+                )}} $$`}</Latex>
+              </li>
+              <li>
+                z<sub>x_high</sub> (True Error):{" "}
+                <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
+                  4
+                )}}{${results.uUUT.toPrecision(4)}} = \\mathbf{${z_x_high.toFixed(
+                  4
+                )}} $$`}</Latex>
+              </li>
+              <li>
+                z<sub>y_low</sub> (Measured Error):{" "}
+                <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
+                  4
+                )}}{${results.uDev.toPrecision(4)}} = \\mathbf{${z_y_low.toFixed(
+                  4
+                )}} $$`}</Latex>
+              </li>
+              <li>
+                z<sub>y_high</sub> (Measured Error):{" "}
+                <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
+                  4
+                )}}{${results.uDev.toPrecision(4)}} = \\mathbf{${z_y_high.toFixed(
+                  4
+                )}} $$`}</Latex>
+              </li>
+            </ul>
+          </div>
+          <div className="breakdown-step">
+            <h5>Step 4: Bivariate Calculation</h5>
+            <p>
+              The probability for each tail (region) is calculated separately.
+            </p>
+            <p>
+              <strong>Lower Tail Risk (PFA_Lower):</strong>
+            </p>
+            <Latex>
+              {
+                "$$ P(z_x < z_{x\\_low} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+              }
+            </Latex>
+            <Latex>{`$$ = \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
+            <Latex>{`$$ = \\Phi_2(${z_x_low.toFixed(
+              2
+            )}, ${z_y_high.toFixed(2)}, ${results.correlation.toFixed(
+              2
+            )}) - \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_low.toFixed(
+              2
+            )}, ${results.correlation.toFixed(2)}) $$`}</Latex>
+            <Latex>{`$$ = \\mathbf{${(results.pfa_term1 / 100).toExponential(
+              4
+            )}} $$`}</Latex>
+            <p>
+              <strong>Upper Tail Risk (PFA_Upper):</strong>
+            </p>
+            <Latex>
+              {
+                "$$ P(z_x > z_{x\\_high} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+              }
+            </Latex>
+            <p>
+              Calculated using symmetry:{" "}
+              <Latex>{`$$ = P(z_x < -z_{x\\_high} \\text{ and } -z_{y\\_high} < z_y < -z_{y\\_low}) $$`}</Latex>
+            </p>
+            <Latex>{`$$ = \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
+            <Latex>{`$$ = \\Phi_2(${-z_x_high.toFixed(
+              2
+            )}, ${-z_y_low.toFixed(2)}, ${results.correlation.toFixed(
+              2
+            )}) - \\Phi_2(${-z_x_high.toFixed(
+              2
+            )}, ${-z_y_high.toFixed(2)}, ${results.correlation.toFixed(
+              2
+            )}) $$`}</Latex>
+            <Latex>{`$$ = \\mathbf{${(results.pfa_term2 / 100).toExponential(
+              4
+            )}} $$`}</Latex>
+          </div>
+          <div className="breakdown-step">
+            <h5>Step 5: Final PFA</h5>
+            <Latex>{`$$ PFA = PFA_{Lower} + PFA_{Upper} $$`}</Latex>
+            <Latex>{`$$ = ${(results.pfa_term1 / 100).toExponential(4)} + ${(
+              results.pfa_term2 / 100
+            ).toExponential(4)} = \\mathbf{${(results.pfa / 100).toExponential(
+              4
+            )}} $$`}</Latex>
+            <Latex>{`$$ \\text{Total PFA} = \\mathbf{${results.pfa.toFixed(
+              4
+            )}\\%} $$`}</Latex>
+          </div>
         </div>
       </div>
     </div>
@@ -1514,17 +1614,23 @@ const PfaBreakdownModal = ({ results, inputs, onClose }) => {
 
 const PfrBreakdownModal = ({ results, inputs, onClose }) => {
   if (!results || !inputs) return null;
+
+  // --- Re-calculate values for demonstration ---
   const mid = (inputs.LUp + inputs.LLow) / 2;
   const LLow_norm = inputs.LLow - mid;
   const LUp_norm = inputs.LUp - mid;
   const ALow_norm = results.ALow - mid;
   const AUp_norm = results.AUp - mid;
-  const z1 = LUp_norm / results.uUUT;
-  const z2 = ALow_norm / results.uDev;
-  const z3 = LLow_norm / results.uUUT;
-  const z4 = -LLow_norm / results.uUUT;
-  const z5 = -AUp_norm / results.uDev;
-  const z6 = -LUp_norm / results.uUUT;
+
+  // Z-Scores (Normalized Limits)
+  const z_x_low = LLow_norm / results.uUUT;
+  const z_x_high = LUp_norm / results.uUUT;
+  const z_y_low = ALow_norm / results.uDev;
+  const z_y_high = AUp_norm / results.uDev;
+
+  // Safe unit for LaTeX
+  const safeNativeUnit =
+    results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
 
   return (
     <div className="modal-overlay">
@@ -1533,65 +1639,162 @@ const PfrBreakdownModal = ({ results, inputs, onClose }) => {
           &times;
         </button>
         <h3>PFR Calculation Breakdown</h3>
-        <div className="breakdown-step">
-          <h5>Step 1: Formula</h5>
-          <p>
-            The Probability of False Reject is the risk of rejecting an
-            in-tolerance UUT.
-          </p>
-          <Latex>
-            {
-              "$$ PFR = \\int_{-L}^{L} G(x) \\left[ 1 - \\Phi(\\frac{A-x}{u_{cal}}) + \\Phi(\\frac{-A-x}{u_{cal}}) \\right] dx $$"
-            }
-          </Latex>
-        </div>
-        <div className="breakdown-step">
-          <h5>Step 2: Bivariate Normal Probabilities (Φ₂)</h5>
-          <p>
-            Using Z-scores and correlation (ρ = {results.correlation.toFixed(4)}
-            ), we solve the Bivariate Normal CDF (Φ₂).
-          </p>
-          Term A:{" "}
-          <Latex>{`$$ \\Phi_2(${z1.toFixed(2)}, ${z2.toFixed(
-            2
-          )}, \\rho) = ${bivariateNormalCDF(
-            z1,
-            z2,
-            results.correlation
-          ).toFixed(6)} $$`}</Latex>
-          Term B:{" "}
-          <Latex>{`$$ \\Phi_2(${z3.toFixed(2)}, ${z2.toFixed(
-            2
-          )}, \\rho) = ${bivariateNormalCDF(
-            z3,
-            z2,
-            results.correlation
-          ).toFixed(6)} $$`}</Latex>
-          Term C:{" "}
-          <Latex>{`$$ \\Phi_2(${z4.toFixed(2)}, ${z5.toFixed(
-            2
-          )}, \\rho) = ${bivariateNormalCDF(
-            z4,
-            z5,
-            results.correlation
-          ).toFixed(6)} $$`}</Latex>
-          Term D:{" "}
-          <Latex>{`$$ \\Phi_2(${z6.toFixed(2)}, ${z5.toFixed(
-            2
-          )}, \\rho) = ${bivariateNormalCDF(
-            z6,
-            z5,
-            results.correlation
-          ).toFixed(6)} $$`}</Latex>
-        </div>
-        <div className="breakdown-step">
-          <h5>Step 3: Final PFR Calculation</h5>
-          Lower Side Risk (A-B):{" "}
-          <Latex>{`$$ ${(results.pfr_term1 / 100).toFixed(6)} $$`}</Latex>
-          Upper Side Risk (C-D):{" "}
-          <Latex>{`$$ ${(results.pfr_term2 / 100).toFixed(6)} $$`}</Latex>
-          Total PFR ={" "}
-          <Latex>{`$$ \\mathbf{${results.pfr.toFixed(4)}\\%} $$`}</Latex>
+        <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>Step 1: Formula</h5>
+            <p>
+              The Probability of False Reject (PFR) is the sum of the
+              probabilities in the two "False Reject" regions of the risk
+              scatterplot. This is calculated using the Bivariate
+              Normal Cumulative Distribution Function (Φ₂).
+            </p>
+            <Latex>{"$$ PFR = PFR_{Lower} + PFR_{Upper} $$"}</Latex>
+            <Latex>
+              {
+                "$$ PFR_{Lower} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} < A_{Low}) $$"
+              }
+            </Latex>
+            <Latex>
+              {
+                "$$ PFR_{Upper} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} > A_{Up}) $$"
+              }
+            </Latex>
+          </div>
+          <div className="breakdown-step">
+            <h5>Step 2: Key Statistical Inputs</h5>
+            <p>
+              These values are derived from your budget and reliability settings.
+            </p>
+            <ul>
+              <li>
+                True UUT Error (σ
+                <sub>uut</sub>):{" "}
+                <strong>
+                  {results.uUUT.toPrecision(4)} {safeNativeUnit}
+                </strong>
+                <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
+              </li>
+              <li>
+                Observed Error (σ
+                <sub>obs</sub>):{" "}
+                <strong>
+                  {results.uDev.toPrecision(4)} {safeNativeUnit}
+                </strong>
+                <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
+              </li>
+              <li>
+                Correlation (ρ):{" "}
+                <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.uUUT.toPrecision(
+                  4
+                )}}{${results.uDev.toPrecision(
+                  4
+                )}} = \\mathbf{${results.correlation.toFixed(4)}} $$`}</Latex>
+              </li>
+            </ul>
+          </div>
+          <div className="breakdown-step">
+            <h5>Step 3: Normalized Limits (Z-Scores)</h5>
+            <p>
+              The limits are normalized by their respective standard deviations.
+              (L = UUT Tolerance, A = Acceptance Limit)
+            </p>
+            <ul>
+              <li>
+                z<sub>x_low</sub> (True Error):{" "}
+                <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
+                  4
+                )}}{${results.uUUT.toPrecision(4)}} = \\mathbf{${z_x_low.toFixed(
+                  4
+                )}} $$`}</Latex>
+              </li>
+              <li>
+                z<sub>x_high</sub> (True Error):{" "}
+                <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
+                  4
+                )}}{${results.uUUT.toPrecision(4)}} = \\mathbf{${z_x_high.toFixed(
+                  4
+                )}} $$`}</Latex>
+              </li>
+              <li>
+                z<sub>y_low</sub> (Measured Error):{" "}
+                <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
+                  4
+                )}}{${results.uDev.toPrecision(4)}} = \\mathbf{${z_y_low.toFixed(
+                  4
+                )}} $$`}</Latex>
+              </li>
+              <li>
+                z<sub>y_high</sub> (Measured Error):{" "}
+                <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
+                  4
+                )}}{${results.uDev.toPrecision(4)}} = \\mathbf{${z_y_high.toFixed(
+                  4
+                )}} $$`}</Latex>
+              </li>
+            </ul>
+          </div>
+          <div className="breakdown-step">
+            <h5>Step 4: Bivariate Calculation</h5>
+            <p>
+              The probability for each side (region) is calculated separately.
+            </p>
+            <p>
+              <strong>Lower Side Risk (PFR_Lower):</strong>
+            </p>
+            <Latex>
+              {
+                "$$ P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y < z_{y\\_low}) $$"
+              }
+            </Latex>
+            <Latex>{`$$ = \\Phi_2(z_{x\\_high}, z_{y\\_low}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
+            <Latex>{`$$ = \\Phi_2(${z_x_high.toFixed(
+              2
+            )}, ${z_y_low.toFixed(2)}, ${results.correlation.toFixed(
+              2
+            )}) - \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_low.toFixed(
+              2
+            )}, ${results.correlation.toFixed(2)}) $$`}</Latex>
+            <Latex>{`$$ = \\mathbf{${(results.pfr_term1 / 100).toExponential(
+              4
+            )}} $$`}</Latex>
+            <p>
+              <strong>Upper Side Risk (PFR_Upper):</strong>
+            </p>
+            <Latex>
+              {
+                "$$ P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y > z_{y\\_high}) $$"
+              }
+            </Latex>
+            <p>
+              Calculated using symmetry:{" "}
+              <Latex>{`$$ = P(-z_{x\\_high} < z_x < -z_{x\\_low} \\text{ and } z_y < -z_{y\\_high}) $$`}</Latex>
+            </p>
+            <Latex>{`$$ = \\Phi_2(-z_{x\\_low}, -z_{y\\_high}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
+            <Latex>{`$$ = \\Phi_2(${-z_x_low.toFixed(
+              2
+            )}, ${-z_y_high.toFixed(2)}, ${results.correlation.toFixed(
+              2
+            )}) - \\Phi_2(${-z_x_high.toFixed(
+              2
+            )}, ${-z_y_high.toFixed(2)}, ${results.correlation.toFixed(
+              2
+            )}) $$`}</Latex>
+            <Latex>{`$$ = \\mathbf{${(results.pfr_term2 / 100).toExponential(
+              4
+            )}} $$`}</Latex>
+          </div>
+          <div className="breakdown-step">
+            <h5>Step 5: Final PFR</h5>
+            <Latex>{`$$ PFR = PFR_{Lower} + PFR_{Upper} $$`}</Latex>
+            <Latex>{`$$ = ${(results.pfr_term1 / 100).toExponential(4)} + ${(
+              results.pfr_term2 / 100
+            ).toExponential(4)} = \\mathbf{${(results.pfr / 100).toExponential(
+              4
+            )}} $$`}</Latex>
+            <Latex>{`$$ \\text{Total PFR} = \\mathbf{${results.pfr.toFixed(
+              4
+            )}\\%} $$`}</Latex>
+          </div>
         </div>
       </div>
     </div>
@@ -1624,28 +1827,36 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
           </div>
           <ul className="result-breakdown" style={{ marginTop: 0 }}>
             <li>
-              <span className="label">UUT Limit (LLow)</span>
-              <span className="value">{results.LLow.toFixed(3)} {nativeUnit}</span>
+              <span className="label">True Error (σ<sub>uut</sub>)</span>
+              <span className="value">{results.uUUT.toPrecision(6)} {nativeUnit}</span>
             </li>
             <li>
-              <span className="label">UUT Limit (LUp)</span>
-              <span className="value">{results.LUp.toFixed(3)} {nativeUnit}</span>
+              <span className="label">Combined Uncertainty (u<sub>cal</sub>)</span>
+              <span className="value">{results.uCal.toPrecision(6)} {nativeUnit}</span>
             </li>
             <li>
-              <span className="label">Std. Unc. of Cal (uₑₐₗ)</span>
-              <span className="value">{results.uCal.toFixed(3)} {nativeUnit}</span>
+              <span className="label">Observed Error (σ<sub>obs</sub>)</span>
+              <span className="value">{results.uDev.toPrecision(6)} {nativeUnit}</span>
             </li>
             <li>
-              <span className="label">Std. Unc. of UUT (uᵤᵤₜ)</span>
-              <span className="value">{results.uUUT.toFixed(3)} {nativeUnit}</span>
+              <span className="label">UUT Lower Tolerance</span>
+              <span className="value">{results.LLow.toPrecision(6)} {nativeUnit}</span>
             </li>
             <li>
-              <span className="label">Acceptance Limit (Aₗₒw)</span>
-              <span className="value">{results.ALow.toFixed(3)} {nativeUnit}</span>
+              <span className="label">UUT Upper Tolerance</span>
+              <span className="value">{results.LUp.toPrecision(6)} {nativeUnit}</span>
             </li>
             <li>
-              <span className="label">Acceptance Limit (Aᵤₚ)</span>
-              <span className="value">{results.AUp.toFixed(3)} {nativeUnit}</span>
+              <span className="label">Lower Acceptance</span>
+              <span className="value">{results.ALow.toPrecision(6)} {nativeUnit}</span>
+            </li>
+            <li>
+              <span className="label">Upper Acceptance</span>
+              <span className="value">{results.AUp.toPrecision(6)} {nativeUnit}</span>
+            </li>
+            <li>
+              <span className="label">Correlation (ρ)</span>
+              <span className="value">{results.correlation.toPrecision(6)}</span>
             </li>
           </ul>
         </div>
@@ -1663,7 +1874,6 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
             A ratio of the UUT's tolerance span to the TMDE's (Standard's)
             tolerance span.
           </div>
-          {/* Button Removed */}
         </div>
         <div className={`risk-card pfa-card ${getPfaClass(results.pfa)} clickable`} onClick={() => onShowBreakdown("pfa")}>
           <div className="risk-value">{results.pfa.toFixed(4)} %</div>
@@ -1678,7 +1888,6 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
               <span className="value">{results.pfa_term2.toFixed(4)} %</span>
             </li>
           </ul>
-          {/* Button Removed */}
         </div>
         <div className="risk-card pfr-card clickable" onClick={() => onShowBreakdown("pfr")}>
           <div className="risk-value">{results.pfr.toFixed(4)} %</div>
@@ -1693,7 +1902,6 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
               <span className="value">{results.pfr_term2.toFixed(4)} %</span>
             </li>
           </ul>
-          {/* Button Removed */}
         </div>
       </div>
     </div>
@@ -1934,7 +2142,7 @@ export const calculateDerivedUncertainty = (
       }
     }
 
-    let sumOfSquaresNative = 0; // <-- FIX: Changed name for clarity
+    let sumOfSquaresNative = 0;
     const calculationBreakdown = [];
     const nominalScope = {};
     const uncertaintyInputs = {};
@@ -1964,13 +2172,17 @@ export const calculateDerivedUncertainty = (
         tmde.measurementPoint.unit
       );
 
-      // --- START FIX ---
       const ui_absolute_base = (ui_ppm / 1e6) * Math.abs(nominalInBase);
-      const ui_absolute_native = (ui_ppm / 1e6) * Math.abs(nominalValue); // <-- Get native uncertainty
+      const ui_absolute_native = (ui_ppm / 1e6) * Math.abs(nominalValue);
+
+      const quantity = parseInt(tmde.quantity, 10) || 1;
+      const variance_base = ui_absolute_base ** 2 * quantity;
+      const variance_native = ui_absolute_native ** 2 * quantity;
+
       if (
-        isNaN(ui_absolute_base) ||
-        ui_absolute_base < 0 ||
-        isNaN(ui_absolute_native)
+        isNaN(variance_base) ||
+        variance_base < 0 ||
+        isNaN(variance_native)
       ) {
         console.warn(
           "Could not calculate valid absolute uncertainty for TMDE:",
@@ -1978,7 +2190,6 @@ export const calculateDerivedUncertainty = (
         );
         return;
       }
-      // --- END FIX ---
 
       const variableSymbol = Object.keys(variableMappings).find(
         (key) => variableMappings[key] === tmde.variableType
@@ -1993,22 +2204,18 @@ export const calculateDerivedUncertainty = (
       }
 
       if (uncertaintyInputs[tmde.variableType]) {
-        // --- START FIX ---
         uncertaintyInputs[tmde.variableType].ui_squared_sum_base +=
-          ui_absolute_base ** 2;
+          variance_base;
         uncertaintyInputs[tmde.variableType].ui_squared_sum_native +=
-          ui_absolute_native ** 2; // <-- Sum native
-        // --- END FIX ---
+          variance_native;
       } else {
-        // --- START FIX ---
         uncertaintyInputs[tmde.variableType] = {
-          ui_squared_sum_base: ui_absolute_base ** 2,
-          ui_squared_sum_native: ui_absolute_native ** 2, // <-- Store native
+          ui_squared_sum_base: variance_base,
+          ui_squared_sum_native: variance_native,
           nominal: nominalValue,
           unit: tmde.measurementPoint.unit,
           symbol: variableSymbol,
         };
-        // --- END FIX ---
       }
     });
 
@@ -2024,14 +2231,12 @@ export const calculateDerivedUncertainty = (
     }
 
     Object.keys(uncertaintyInputs).forEach((type) => {
-      // --- START FIX ---
       uncertaintyInputs[type].ui_base = Math.sqrt(
         uncertaintyInputs[type].ui_squared_sum_base
       );
       uncertaintyInputs[type].ui_native = Math.sqrt(
         uncertaintyInputs[type].ui_squared_sum_native
-      ); // <-- Get native
-      // --- END FIX ---
+      );
     });
 
     variables.forEach((variableSymbol) => {
@@ -2049,15 +2254,13 @@ export const calculateDerivedUncertainty = (
         );
       }
 
-      // --- START FIX ---
-      const ui_native = inputData.ui_native; // <-- Use NATIVE uncertainty
-      const ui_base = inputData.ui_base; // <-- Use BASE for display
-      // --- END FIX ---
+      const ui_native = inputData.ui_native;
+      const ui_base = inputData.ui_base;
 
       const derivativeNode = math.derivative(node, variableSymbol);
-      const derivativeStr = derivativeNode.toString(); // Get string representation
+      const derivativeStr = derivativeNode.toString();
       const derivativeFunc = derivativeNode.compile();
-      const sensitivityCoeff = derivativeFunc.evaluate(nominalScope); // This is native derivative
+      const sensitivityCoeff = derivativeFunc.evaluate(nominalScope);
 
       if (isNaN(sensitivityCoeff)) {
         throw new Error(
@@ -2065,27 +2268,25 @@ export const calculateDerivedUncertainty = (
         );
       }
 
-      // --- START FIX ---
-      const contribution_native = sensitivityCoeff * ui_native; // <-- Calculate NATIVE contribution
+      const contribution_native = sensitivityCoeff * ui_native;
       const termSquared_native = contribution_native ** 2;
 
-      sumOfSquaresNative += termSquared_native; // <-- Sum NATIVE variances
-      // --- END FIX ---
+      sumOfSquaresNative += termSquared_native;
 
       calculationBreakdown.push({
         variable: variableSymbol,
         type: variableType,
         nominal: inputData.nominal,
         unit: inputData.unit,
-        ui_absolute_base: ui_base, // <-- Pass BASE for display logic
+        ui_absolute_base: ui_base,
         ci: sensitivityCoeff,
-        derivativeString: derivativeStr, // Store the string
-        contribution_native: Math.abs(contribution_native), // <-- Pass NATIVE contribution
-        termSquared_native: termSquared_native, // <-- Pass NATIVE variance
+        derivativeString: derivativeStr,
+        contribution_native: Math.abs(contribution_native),
+        termSquared_native: termSquared_native,
       });
     });
 
-    const combinedUncertaintyNative = math.sqrt(sumOfSquaresNative); // <-- Final native unc
+    const combinedUncertaintyNative = math.sqrt(sumOfSquaresNative);
 
     let nominalResult = NaN;
     try {
@@ -2094,7 +2295,6 @@ export const calculateDerivedUncertainty = (
       console.error("Error evaluating nominal equation result:", evalError);
     }
 
-    // --- FIX: Return native uncertainty ---
     return {
       combinedUncertaintyNative: combinedUncertaintyNative,
       breakdown: calculationBreakdown,
@@ -2122,6 +2322,8 @@ function Analysis({
   handleOpenSessionEditor,
   riskResults,
   setRiskResults,
+  onDeleteTmdeDefinition,
+  onDecrementTmdeQuantity,
 }) {
 
   const formatDate = (dateString) => {
@@ -2314,8 +2516,9 @@ function Analysis({
             totalTmdeLowDevInUutNative += lowDevInUutNative;
           });
 
-          acc.totalHigh += totalTmdeHighDevInUutNative;
-          acc.totalLow += totalTmdeLowDevInUutNative;
+          const quantity = parseInt(tmde.quantity, 10) || 1;
+          acc.totalHigh += totalTmdeHighDevInUutNative * quantity;
+          acc.totalLow += totalTmdeLowDevInUutNative * quantity;
 
           return acc;
         },
@@ -2684,7 +2887,6 @@ function Analysis({
 
         effectiveDof = Infinity;
       } else {
-        // Handle 'direct' measurementType
         let totalVariancePPM = 0;
         const uutResolutionComponents = getBudgetComponentsFromTolerance(
           uutToleranceData,
@@ -2697,28 +2899,29 @@ function Analysis({
             sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`,
           }));
 
+        totalVariancePPM = 0; // Reset
         uutResolutionComponents.forEach((comp) => {
           totalVariancePPM += comp.value ** 2;
           componentsForBudgetTable.push(comp);
         });
+        
+        tmdeTolerancesData.forEach(tmde => {
+          if (tmde.measurementPoint && tmde.measurementPoint.value) {
+            const quantity = tmde.quantity || 1;
+            const components = getBudgetComponentsFromTolerance(
+              tmde,
+              tmde.measurementPoint
+            ).map((c) => ({
+              ...c,
+              sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`,
+            }));
 
-        const tmdeComponents = tmdeTolerancesData
-          .flatMap((tmde) => {
-            if (tmde.measurementPoint && tmde.measurementPoint.value) {
-              return getBudgetComponentsFromTolerance(
-                tmde,
-                tmde.measurementPoint
-              );
-            }
-            return [];
-          })
-          .map((c) => ({
-            ...c,
-            sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`,
-          }));
-        tmdeComponents.forEach((comp) => {
-          totalVariancePPM += comp.value ** 2;
-          componentsForBudgetTable.push(comp);
+            componentsForBudgetTable.push(...components);
+            
+            components.forEach(comp => {
+              totalVariancePPM += (comp.value ** 2) * quantity;
+            });
+          }
         });
 
         const manual = manualComponents.map((c) => ({
@@ -2842,9 +3045,9 @@ function Analysis({
           combined_uncertainty_absolute_base:
             newResults.combined_uncertainty_absolute_base,
           combined_uncertainty_inputs_native:
-            newResults.combined_uncertainty_inputs_native, // Save intermediate
+            newResults.combined_uncertainty_inputs_native,
           combined_uncertainty_inputs_base:
-            newResults.combined_uncertainty_inputs_base, // Save intermediate
+            newResults.combined_uncertainty_inputs_base,
           effective_dof: newResults.effective_dof,
           k_value: newResults.k_value,
           expanded_uncertainty: newResults.expanded_uncertainty,
@@ -3561,60 +3764,62 @@ function Analysis({
             <h4 className="analyzed-components-title">
               Test Measurement Device Equipment
             </h4>
+            
             <div className="analyzed-components-container">
-              {tmdeTolerancesData.map((tmde, index) => {
-                const referencePoint = tmde.measurementPoint;
-                if (!referencePoint?.value || !referencePoint?.unit) {
-                  console.warn("TMDE missing ref:", tmde);
+              {tmdeTolerancesData.flatMap((tmde, index) => {
+                const quantity = tmde.quantity || 1;
+                
+                return Array.from({ length: quantity }, (_, i) => {
+                  const referencePoint = tmde.measurementPoint;
+                  if (!referencePoint?.value || !referencePoint?.unit) {
+                    console.warn("TMDE missing ref:", tmde);
+                    return (
+                      <div
+                        key={`${tmde.id || index}-${i}`}
+                        className="tmde-seal tmde-seal-error"
+                      >
+                        <div className="uut-seal-content">
+                          <span className="seal-label">TMDE (Error)</span>
+                          <h4>{tmde.name || "TMDE"}</h4>
+                          <p
+                            style={{
+                              color: "var(--status-bad)",
+                              fontSize: "0.8rem",
+                              marginTop: "10px",
+                            }}
+                          >
+                            Missing Reference
+                          </p>
+                          <button
+                            onClick={() =>
+                              handleOpenSessionEditor("tmdes", {
+                                tmde,
+                                testPoint: testPointData,
+                              })
+                            }
+                            className="button button-small"
+                            style={{ marginTop: "auto" }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
                   return (
                     <div
-                      key={tmde.id || index}
-                      className="tmde-seal tmde-seal-error"
-                    >
-                      <div className="uut-seal-content">
-                        <span className="seal-label">TMDE (Error)</span>
-                        <h4>{tmde.name || "TMDE"}</h4>
-                        <p
-                          style={{
-                            color: "var(--status-bad)",
-                            fontSize: "0.8rem",
-                            marginTop: "10px",
-                          }}
-                        >
-                          Missing Reference
-                        </p>
-                        <button
-                          onClick={() =>
-                            handleOpenSessionEditor("tmdes", {
-                              tmde,
-                              testPoint: testPointData,
-                            })
-                          }
-                          className="button button-small"
-                          style={{ marginTop: "auto" }}
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-                return (
-                  <div
-                    key={tmde.id || index}
-                    className="tmde-seal"
-                    onClick={() =>
-                      handleOpenSessionEditor("tmdes", {
-                        tmde,
-                        testPoint: testPointData,
-                      })
-                    }
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setContextMenu({
-                        x: e.pageX,
-                        y: e.pageY,
-                        items: [
+                      key={`${tmde.id || index}-${i}`}
+                      className="tmde-seal"
+                      onClick={() =>
+                        handleOpenSessionEditor("tmdes", {
+                          tmde,
+                          testPoint: testPointData,
+                        })
+                      }
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.preventDefault();
+                        const menuItems = [
                           {
                             label: `View ${tmde.name || "TMDE"} Calculation`,
                             action: () =>
@@ -3625,81 +3830,117 @@ function Analysis({
                               }),
                             icon: faCalculator,
                           },
-                        ],
-                      });
-                    }}
-                  >
-                    <div className="uut-seal-content">
-                      <span className="seal-label">TMDE</span>
-                      <h4 className="seal-title">{tmde.name || "TMDE"}</h4>
-                      {testPointData.measurementType === "derived" &&
-                        tmde.variableType && (
-                          <div className="seal-info-item">
-                            <span>Equation Input Type</span>
-                            <strong
-                              style={{
-                                color: "var(--primary-color-dark)",
-                                fontSize: "0.9rem",
-                              }}
-                            >
-                              {tmde.variableType}
-                            </strong>
-                          </div>
+                          {
+                            label: `Edit "${tmde.name}" (All ${quantity})`,
+                            action: () => handleOpenSessionEditor("tmdes", { tmde, testPoint: testPointData }),
+                            icon: faPencilAlt,
+                          },
+                          { type: "divider" }
+                        ];
+
+                        if (quantity > 1) {
+                          menuItems.push({
+                            label: `Delete This Instance`,
+                            action: () => onDecrementTmdeQuantity(tmde.id),
+                            icon: faTrashAlt,
+                            className: "destructive",
+                          });
+                        }
+                        
+                        menuItems.push({
+                          label: `Delete All "${tmde.name}"`,
+                          action: () => onDeleteTmdeDefinition(tmde.id),
+                          icon: faTrashAlt,
+                          className: "destructive",
+                        });
+
+                        setContextMenu({
+                          x: e.pageX,
+                          y: e.pageY,
+                          items: menuItems,
+                        });
+                      }}
+                    >
+                      <div className="uut-seal-content">
+                        <span className="seal-label">TMDE</span>
+                        <h4 className="seal-title">{tmde.name || "TMDE"}</h4>
+                        
+                        {quantity > 1 && (
+                          <span className="seal-label seal-instance-label">
+                            (Device {i + 1} of {quantity})
+                          </span>
                         )}
-                      <div className="seal-info-item">
-                        <span>Measurement Point</span>
-                        <strong>
-                          {referencePoint.value} {referencePoint.unit}
-                        </strong>
-                      </div>
-                      <div className="seal-info-item">
-                        <span>Tolerance Spec</span>
-                        <strong>{getToleranceSummary(tmde)}</strong>
-                      </div>
-                      <div className="seal-info-item">
-                        <span>Calculated Error</span>
-                        <strong>
-                          {getToleranceErrorSummary(tmde, referencePoint)}
-                        </strong>
-                      </div>
-                      <div className="seal-info-item">
-                        <span>Std. Unc (u)</span>
-                        <strong>
-                          {(() => {
-                            const { standardUncertainty: uPpm } =
-                              calculateUncertaintyFromToleranceObject(
-                                tmde,
-                                referencePoint
-                              );
-                            const uAbs = convertPpmToUnit(
-                              uPpm,
-                              referencePoint.unit,
-                              referencePoint
-                            );
-                            return typeof uAbs === "number"
-                              ? `${uAbs.toPrecision(3)} ${referencePoint.unit}`
-                              : uAbs;
-                          })()}
-                        </strong>
-                      </div>
-                      <div className="seal-limits-split">
+                        
+                        {testPointData.measurementType === "derived" &&
+                          tmde.variableType && (
+                            <div className="seal-info-item">
+                              <span>Equation Input Type</span>
+                              <strong
+                                style={{
+                                  color: "var(--primary-color-dark)",
+                                  fontSize: "0.9rem",
+                                }}
+                              >
+                                {tmde.variableType}
+                              </strong>
+                            </div>
+                          )}
                         <div className="seal-info-item">
-                          <span>Low Limit</span>
-                          <strong className="calculated-limit">
-                            {getAbsoluteLimits(tmde, referencePoint).low}
+                          <span>Measurement Point</span>
+                          <strong>
+                            {referencePoint.value} {referencePoint.unit}
                           </strong>
                         </div>
                         <div className="seal-info-item">
-                          <span>High Limit</span>
-                          <strong className="calculated-limit">
-                            {getAbsoluteLimits(tmde, referencePoint).high}
+                          <span>Tolerance Spec</span>
+                          <strong>{getToleranceSummary(tmde)}</strong>
+                        </div>
+                        <div className="seal-info-item">
+                          <span>Calculated Error</span>
+                          <strong>
+                            {getToleranceErrorSummary(tmde, referencePoint)}
                           </strong>
+                        </div>
+                        <div className="seal-info-item">
+                          <span>Std. Unc (u)</span>
+                          <strong>
+                            {(() => {
+                              const { standardUncertainty: uPpm } =
+                                calculateUncertaintyFromToleranceObject(
+                                  tmde,
+                                  referencePoint
+                                );
+                              const uAbs = convertPpmToUnit(
+                                uPpm,
+                                referencePoint.unit,
+                                referencePoint
+                              );
+                              return typeof uAbs === "number"
+                                ? `${uAbs.toPrecision(3)} ${referencePoint.unit}`
+                                : uAbs;
+                            })()}
+                          </strong>
+                        </div>
+                        <div className="seal-limits-split">
+                          <div className="seal-info-item">
+                            <span>Low Limit</span>
+                            <strong className="calculated-limit">
+                              {getAbsoluteLimits(tmde, referencePoint).low}
+                            </strong>
+                          </div>
+                          <div className="seal-info-item">
+                            <span>High Limit</span>
+                            <strong className="calculated-limit">
+                              {getAbsoluteLimits(tmde, referencePoint).high}
+                            </strong>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
+                  );
+                });
               })}
+              
               <div className="add-tmde-card">
                 <button
                   className="add-tmde-button"
@@ -3740,29 +3981,39 @@ function Analysis({
         </div>
       )}
       {analysisMode === "risk" && (
-        <Accordion title="Risk & Conformance Analysis" startOpen={true}>
-          {!calcResults ? (
-            <div className="form-section-warning">
-              <p>Uncertainty budget must be calculated first.</p>
-            </div>
-          ) : (
-            <>         
-              {riskResults ? (
-                <RiskAnalysisDashboard
-                  results={riskResults}
-                  onShowBreakdown={(modalType) =>
-                    setLocalBreakdownModal(modalType)
-                  }
-                />
-              ) : (
-                <div className="placeholder-content" style={{ minHeight: "200px" }}>
-                  <p>Calculating risk...</p>
-                </div>
-              )}
+    <Accordion title="Risk & Conformance Analysis" startOpen={true}>
+      {!calcResults ? (
+        <div className="form-section-warning">
+          <p>Uncertainty budget must be calculated first.</p>
+        </div>
+      ) : (
+        <>         
+          {riskResults ? (
+            <>
+              <RiskAnalysisDashboard
+                results={riskResults}
+                onShowBreakdown={(modalType) =>
+                  setLocalBreakdownModal(modalType)
+                }
+              />
+              {/* --- ADD THIS COMPONENT --- */}
+              <RiskScatterplot
+                results={riskResults}
+                inputs={{
+                  LLow: parseFloat(riskInputs.LLow),
+                  LUp: parseFloat(riskInputs.LUp),
+                }}
+              />
             </>
+          ) : (
+            <div className="placeholder-content" style={{ minHeight: "200px" }}>
+              <p>Calculating risk...</p>
+            </div>
           )}
-        </Accordion>
+        </>
       )}
+    </Accordion>
+  )}
       {analysisMode === "spec" && (
         <Accordion title="Specification Comparison Analysis" startOpen={true}>
           {renderSpecComparison()}
@@ -3937,6 +4188,46 @@ function App() {
       prevSessions.map((s) => (s.id === updatedSession.id ? updatedSession : s))
     );
     setEditingSession(null);
+  };
+
+  const handleDeleteTmdeDefinition = (tmdeId) => {
+    if (!window.confirm("Are you sure you want to delete this entire TMDE definition (all instances)?")) return;
+    
+    setSessions((prev) =>
+      prev.map((session) => {
+        if (session.id !== selectedSessionId) return session;
+        const updatedTestPoints = session.testPoints.map((tp) => {
+          if (tp.id !== selectedTestPointId) return tp;
+          const newTolerances = tp.tmdeTolerances.filter(
+            (t) => t.id !== tmdeId
+          );
+          return { ...tp, tmdeTolerances: newTolerances };
+        });
+        return { ...session, testPoints: updatedTestPoints };
+      })
+    );
+  };
+
+  const handleDecrementTmdeQuantity = (tmdeId) => {
+    setSessions((prev) =>
+      prev.map((session) => {
+        if (session.id !== selectedSessionId) return session;
+        const updatedTestPoints = session.testPoints.map((tp) => {
+          if (tp.id !== selectedTestPointId) return tp;
+          
+          const newTolerances = tp.tmdeTolerances.map(t => {
+            if (t.id === tmdeId) {
+              const newQuantity = (t.quantity || 1) - 1;
+              return { ...t, quantity: newQuantity };
+            }
+            return t;
+          }).filter(t => t.quantity > 0); // Filter out if quantity becomes 0
+          
+          return { ...tp, tmdeTolerances: newTolerances };
+        });
+        return { ...session, testPoints: updatedTestPoints };
+      })
+    );
   };
 
   const handleSaveToFile = async () => {
@@ -4151,273 +4442,284 @@ function App() {
   }, [currentSessionData, selectedTestPointId, currentTestPoints]);
 
   return (
-    <div className="App">
-      <AddTestPointModal
-        isOpen={isAddModalOpen || !!editingTestPoint}
-        onClose={() => {
-          setIsAddModalOpen(false);
-          setEditingTestPoint(null);
-        }}
-        onSave={handleSaveTestPoint}
-        initialData={editingTestPoint}
-        hasExistingPoints={currentTestPoints.length > 0}
-      />
-
-      <EditSessionModal
-        isOpen={!!editingSession}
-        onClose={() => {
-          setEditingSession(null);
-          setInitialTmdeToEdit(null);
-          setInitialSessionTab("details");
-        }}
-        sessionData={editingSession}
-        onSave={handleSessionChange}
-        onSaveToFile={handleSaveToFile}
-        initialSection={initialSessionTab}
-        initialTmdeToEdit={initialTmdeToEdit}
-      />
-
-      {testPointData && (
-        <ToleranceToolModal
-          isOpen={isToleranceModalOpen}
-          onClose={() => setIsToleranceModalOpen(false)}
-          onSave={(data) => {
-            const { uutTolerance, ...testPointSpecificData } = data;
-
-            // Update session-level UUT tolerance if it exists
-            if (uutTolerance) {
-              setSessions((prev) =>
-                prev.map((session) =>
-                  session.id === selectedSessionId
-                    ? { ...session, uutTolerance: uutTolerance }
-                    : session
-                )
-              );
-            }
-
-            // Update test point-level data (e.g., tmdeTolerances)
-            handleDataSave(testPointSpecificData);
+    <ThemeContext.Provider value={isDarkMode}>
+      <div className="App">
+        <AddTestPointModal
+          isOpen={isAddModalOpen || !!editingTestPoint}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setEditingTestPoint(null);
           }}
-          testPointData={testPointData}
+          onSave={handleSaveTestPoint}
+          initialData={editingTestPoint}
+          hasExistingPoints={currentTestPoints.length > 0}
         />
-      )}
 
-      <FullBreakdownModal
-        isOpen={!!breakdownPoint}
-        breakdownData={breakdownPoint}
-        onClose={() => setBreakdownPoint(null)}
-      />
-
-      <TestPointInfoModal
-        isOpen={!!infoModalPoint}
-        testPoint={infoModalPoint}
-        onClose={() => setInfoModalPoint(null)}
-      />
-
-      {contextMenu && (
-        <ContextMenu menu={contextMenu} onClose={handleCloseContextMenu} />
-      )}
-
-      <div className="content-area uncertainty-analysis-page">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
+        <EditSessionModal
+          isOpen={!!editingSession}
+          onClose={() => {
+            setEditingSession(null);
+            setInitialTmdeToEdit(null);
+            setInitialSessionTab("details");
           }}
-        >
-          <h2>Uncertainty Analysis</h2>
-          <label className="dark-mode-toggle">
-            <input
-              type="checkbox"
-              checked={isDarkMode}
-              onChange={() => setIsDarkMode(!isDarkMode)}
-            />
-            <span className="slider"></span>
-          </label>
-        </div>
-        <div className="results-workflow-container">
-          <aside className="results-sidebar">
-            <div className="sidebar-header" style={{ alignItems: "flex-end" }}>
-              <div className="session-controls">
-                <label htmlFor="session-select">Analysis Session</label>
-                <select
-                  id="session-select"
-                  className="session-selector"
-                  value={selectedSessionId || ""}
-                  onChange={handleSessionSelect}
-                >
-                  {sessions.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="session-actions">
-                <button
-                  onClick={handleAddNewSession}
-                  title="Add New Session"
-                  className="sidebar-action-button"
-                >
-                  <FontAwesomeIcon icon={faPlus} />
-                </button>
-                <button
-                  onClick={() => setEditingSession(currentSessionData)}
-                  title="Edit Session"
-                  className="sidebar-action-button"
-                >
-                  <FontAwesomeIcon icon={faEdit} />
-                </button>
-                <button
-                  onClick={() => handleDeleteSession(selectedSessionId)}
-                  title="Delete Session"
-                  className="sidebar-action-button delete"
-                >
-                  <FontAwesomeIcon icon={faTrashAlt} />
-                </button>
-              </div>
-            </div>
+          sessionData={editingSession}
+          onSave={handleSessionChange}
+          onSaveToFile={handleSaveToFile}
+          initialSection={initialSessionTab}
+          initialTmdeToEdit={initialTmdeToEdit}
+        />
 
-            <div className="sidebar-header">
-              <h4 style={{ margin: "0" }}>Measurement Points</h4>
-              <div className="add-point-controls">
-                <button
-                  className="add-point-button"
-                  onClick={() => setIsAddModalOpen(true)}
-                  title="Add New Measurement Point"
-                >
-                  <FontAwesomeIcon icon={faPlus} />
-                </button>
-              </div>
-            </div>
-            <p className="sidebar-hint">
-              Check items to include them in the budget.
-            </p>
-            <div className="measurement-point-list">
-              {currentTestPoints.length > 0 ? (
-                currentTestPoints.map((tp) => (
-                  <button
-                    key={tp.id}
-                    onClick={() => setSelectedTestPointId(tp.id)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      const completeTestPointForMenu = {
-                        ...tp,
-                        uutTolerance: currentSessionData.uutTolerance,
-                        uutDescription: currentSessionData.uutDescription,
-                      };
-                      const menuItems = [
-                        {
-                          label: "Edit Details",
-                          action: () => setEditingTestPoint(tp),
-                          icon: faPencilAlt,
-                        },
-                        {
-                          label: "Edit Tolerances",
-                          action: () => {
-                            setSelectedTestPointId(tp.id);
-                            setIsToleranceModalOpen(true);
-                          },
-                          icon: faSlidersH,
-                        },
-                        { type: "divider" },
-                        {
-                          label: "View Details",
-                          action: () =>
-                            setInfoModalPoint(completeTestPointForMenu),
-                          icon: faInfoCircle,
-                        },
-                        { type: "divider" },
-                        {
-                          label: "Delete Point",
-                          action: () => handleDeleteTestPoint(tp.id),
-                          icon: faTrashAlt,
-                          className: "destructive",
-                        },
-                      ];
-                      setContextMenu({
-                        x: e.pageX,
-                        y: e.pageY,
-                        items: menuItems,
-                      });
-                    }}
-                    className={`measurement-point-item ${
-                      selectedTestPointId === tp.id ? "active" : ""
-                    }`}
+        {testPointData && (
+          <ToleranceToolModal
+            isOpen={isToleranceModalOpen}
+            onClose={() => setIsToleranceModalOpen(false)}
+            onSave={(data) => {
+              const { uutTolerance, ...testPointSpecificData } = data;
+
+              // Update session-level UUT tolerance if it exists
+              if (uutTolerance) {
+                setSessions((prev) =>
+                  prev.map((session) =>
+                    session.id === selectedSessionId
+                      ? { ...session, uutTolerance: uutTolerance }
+                      : session
+                  )
+                );
+              }
+
+              // Update test point-level data (e.g., tmdeTolerances)
+              handleDataSave(testPointSpecificData);
+            }}
+            testPointData={testPointData}
+          />
+        )}
+
+        <FullBreakdownModal
+          isOpen={!!breakdownPoint}
+          breakdownData={breakdownPoint}
+          onClose={() => setBreakdownPoint(null)}
+        />
+
+        <TestPointInfoModal
+          isOpen={!!infoModalPoint}
+          testPoint={infoModalPoint}
+          onClose={() => setInfoModalPoint(null)}
+        />
+
+        {contextMenu && (
+          <ContextMenu menu={contextMenu} onClose={handleCloseContextMenu} />
+        )}
+
+        <div className="content-area uncertainty-analysis-page">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "20px",
+            }}
+          >
+            <h2>Uncertainty Analysis</h2>
+            <label className="dark-mode-toggle">
+              <input
+                type="checkbox"
+                checked={isDarkMode}
+                onChange={() => setIsDarkMode(!isDarkMode)}
+              />
+              <span className="slider"></span>
+            </label>
+          </div>
+          <div className="results-workflow-container">
+            <aside className="results-sidebar">
+              <div
+                className="sidebar-header"
+                style={{ alignItems: "flex-end" }}
+              >
+                <div className="session-controls">
+                  <label htmlFor="session-select">Analysis Session</label>
+                  <select
+                    id="session-select"
+                    className="session-selector"
+                    value={selectedSessionId || ""}
+                    onChange={handleSessionSelect}
                   >
-                    <span className="measurement-point-content">
-                      <span className="point-main">
-                        {tp.testPointInfo.parameter.name}:{" "}
-                        {tp.testPointInfo.parameter.value}{" "}
-                        {tp.testPointInfo.parameter.unit}
-                      </span>
-                      {tp.testPointInfo.qualifier &&
-                        tp.testPointInfo.qualifier.value && (
-                          <span className="point-qualifier">
-                            @{tp.testPointInfo.qualifier.value}
-                            {tp.testPointInfo.qualifier.unit}
-                          </span>
-                        )}
-                    </span>
+                    {sessions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="session-actions">
+                  <button
+                    onClick={handleAddNewSession}
+                    title="Add New Session"
+                    className="sidebar-action-button"
+                  >
+                    <FontAwesomeIcon icon={faPlus} />
                   </button>
-                ))
-              ) : (
-                <div
-                  className="placeholder-content"
-                  style={{
-                    minHeight: "100px",
-                    fontSize: "0.9rem",
-                    margin: "1rem 0",
-                  }}
+                  <button
+                    onClick={() => setEditingSession(currentSessionData)}
+                    title="Edit Session"
+                    className="sidebar-action-button"
+                  >
+                    <FontAwesomeIcon icon={faEdit} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSession(selectedSessionId)}
+                    title="Delete Session"
+                    className="sidebar-action-button delete"
+                  >
+                    <FontAwesomeIcon icon={faTrashAlt} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="sidebar-header">
+                <h4 style={{ margin: "0" }}>Measurement Points</h4>
+                <div className="add-point-controls">
+                  <button
+                    className="add-point-button"
+                    onClick={() => setIsAddModalOpen(true)}
+                    title="Add New Measurement Point"
+                  >
+                    <FontAwesomeIcon icon={faPlus} />
+                  </button>
+                </div>
+              </div>
+              <p className="sidebar-hint">
+                Check items to include them in the budget.
+              </p>
+              <div className="measurement-point-list">
+                {currentTestPoints.length > 0 ? (
+                  currentTestPoints.map((tp) => (
+                    <button
+                      key={tp.id}
+                      onClick={() => {
+                        setSelectedTestPointId(tp.id);
+                        setEditingTestPoint(tp);
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        const completeTestPointForMenu = {
+                          ...tp,
+                          uutTolerance: currentSessionData.uutTolerance,
+                          uutDescription: currentSessionData.uutDescription,
+                        };
+                        const menuItems = [
+                          {
+                            label: "Edit Details",
+                            action: () => setEditingTestPoint(tp),
+                            icon: faPencilAlt,
+                          },
+                          {
+                            label: "Edit Tolerances",
+                            action: () => {
+                              setSelectedTestPointId(tp.id);
+                              setIsToleranceModalOpen(true);
+                            },
+                            icon: faSlidersH,
+                          },
+                          { type: "divider" },
+                          {
+                            label: "View Details",
+                            action: () =>
+                              setInfoModalPoint(completeTestPointForMenu),
+                            icon: faInfoCircle,
+                          },
+                          { type: "divider" },
+                          {
+                            label: "Delete Point",
+                            action: () => handleDeleteTestPoint(tp.id),
+                            icon: faTrashAlt,
+                            className: "destructive",
+                          },
+                        ];
+                        setContextMenu({
+                          x: e.pageX,
+                          y: e.pageY,
+                          items: menuItems,
+                        });
+                      }}
+                      className={`measurement-point-item ${
+                        selectedTestPointId === tp.id ? "active" : ""
+                      }`}
+                    >
+                      <span className="measurement-point-content">
+                        <span className="point-main">
+                          {tp.testPointInfo.parameter.name}:{" "}
+                          {tp.testPointInfo.parameter.value}{" "}
+                          {tp.testPointInfo.parameter.unit}
+                        </span>
+                        {tp.testPointInfo.qualifier &&
+                          tp.testPointInfo.qualifier.value && (
+                            <span className="point-qualifier">
+                              @{tp.testPointInfo.qualifier.value}
+                              {tp.testPointInfo.qualifier.unit}
+                            </span>
+                          )}
+                      </span>
+                    </button>
+                  ))
+                ) : (
+                  <div
+                    className="placeholder-content"
+                    style={{
+                      minHeight: "100px",
+                      fontSize: "0.9rem",
+                      margin: "1rem 0",
+                    }}
+                  >
+                    <p>
+                      No measurement points in this session. <br /> Click '+' to
+                      add one.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </aside>
+            <main className="results-content">
+              {testPointData ? (
+                <TestPointDetailView
+                  key={selectedTestPointId}
+                  testPointData={testPointData}
                 >
-                  <p>
-                    No measurement points in this session. <br /> Click '+' to
-                    add one.
-                  </p>
+                  <Analysis
+                    sessionData={currentSessionData}
+                    testPointData={testPointData}
+                    onDataSave={handleDataSave}
+                    defaultTestPoint={defaultTestPoint}
+                    setContextMenu={setContextMenu}
+                    setBreakdownPoint={setBreakdownPoint}
+                    handleOpenSessionEditor={handleOpenSessionEditor}
+                    budgetTestPoints={testPointData ? [testPointData] : []}
+                    riskResults={riskResults}
+                    setRiskResults={setRiskResults}
+                    isDarkMode={isDarkMode}
+                    onDeleteTmdeDefinition={handleDeleteTmdeDefinition}
+                    onDecrementTmdeQuantity={handleDecrementTmdeQuantity}
+                  />
+                </TestPointDetailView>
+              ) : currentSessionData && currentTestPoints.length > 0 ? (
+                <div className="placeholder-content">
+                  <h3>Select a measurement point to see details.</h3>
+                </div>
+              ) : currentSessionData && currentTestPoints.length === 0 ? (
+                <div className="placeholder-content">
+                  <h3>This session has no measurement points.</h3>
+                  <p>Click the '+' button in the sidebar to add one.</p>
+                </div>
+              ) : (
+                <div className="placeholder-content">
+                  <h3>No Session Available</h3>
+                  <p>Create a new session to begin your analysis.</p>
                 </div>
               )}
-            </div>
-          </aside>
-          <main className="results-content">
-            {testPointData ? (
-              <TestPointDetailView
-                key={selectedTestPointId}
-                testPointData={testPointData}
-              >
-                <Analysis
-                  sessionData={currentSessionData}
-                  testPointData={testPointData}
-                  onDataSave={handleDataSave}
-                  defaultTestPoint={defaultTestPoint}
-                  setContextMenu={setContextMenu}
-                  setBreakdownPoint={setBreakdownPoint}
-                  handleOpenSessionEditor={handleOpenSessionEditor}
-                  budgetTestPoints={testPointData ? [testPointData] : []}
-                  riskResults={riskResults}
-                  setRiskResults={setRiskResults}
-                />
-              </TestPointDetailView>
-            ) : currentSessionData && currentTestPoints.length > 0 ? (
-              <div className="placeholder-content">
-                <h3>Select a measurement point to see details.</h3>
-              </div>
-            ) : currentSessionData && currentTestPoints.length === 0 ? (
-              <div className="placeholder-content">
-                <h3>This session has no measurement points.</h3>
-                <p>Click the '+' button in the sidebar to add one.</p>
-              </div>
-            ) : (
-              <div className="placeholder-content">
-                <h3>No Session Available</h3>
-                <p>Create a new session to begin your analysis.</p>
-              </div>
-            )}
-          </main>
+            </main>
+          </div>
         </div>
       </div>
-    </div>
+    </ThemeContext.Provider>
   );
 }
 

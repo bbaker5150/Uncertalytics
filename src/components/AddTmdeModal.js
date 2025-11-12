@@ -34,6 +34,7 @@ const AddTmdeModal = ({
       measurementPoint: { ...uutMeasurementPoint },
       variableType:
         isDerived && availableTypes.length > 0 ? availableTypes[0] : "",
+      quantity: 1, // <-- ADDED DEFAULT
     };
 
     if (initialTmdeData) {
@@ -48,7 +49,8 @@ const AddTmdeModal = ({
       if (!existingData.id) {
         existingData.id = Date.now() + Math.random();
       }
-      return existingData;
+      // Merge default state to ensure quantity is present if missing
+      return { ...defaultState, ...existingData }; // <-- UPDATED MERGE
     }
     return defaultState;
   }, [uutMeasurementPoint, initialTmdeData, isDerived, availableTypes]);
@@ -117,7 +119,12 @@ const AddTmdeModal = ({
       }
       return cleaned;
     };
-    onSave(cleanupTolerance(tmde));
+    // Ensure quantity is a valid number on save
+    const finalTmde = {
+      ...tmde,
+      quantity: parseInt(tmde.quantity, 10) || 1,
+    };
+    onSave(cleanupTolerance(finalTmde));
     onClose();
   };
 
@@ -132,15 +139,36 @@ const AddTmdeModal = ({
 
       <div className="modal-body-scrollable">
         <div className="tmde-header">
-          <div className="form-section">
-            <label>TMDE Name</label>
-            <input
-              type="text"
-              value={tmde.name || ""}
-              onChange={(e) => setTmde({ ...tmde, name: e.target.value })}
-              placeholder="e.g., Standard DMM"
-            />
+          {/* --- MODIFICATION: Added details-grid wrapper --- */}
+          <div className="details-grid">
+            <div className="form-section">
+              <label>TMDE Name</label>
+              <input
+                type="text"
+                value={tmde.name || ""}
+                onChange={(e) => setTmde({ ...tmde, name: e.target.value })}
+                placeholder="e.g., Standard DMM"
+              />
+            </div>
+
+            {/* --- MODIFICATION: Added Quantity Field --- */}
+            <div className="form-section">
+              <label>Quantity</label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={tmde.quantity || 1}
+                onChange={(e) =>
+                  setTmde({
+                    ...tmde,
+                    quantity: parseInt(e.target.value, 10) || 1,
+                  })
+                }
+              />
+            </div>
           </div>
+
           {isDerived && availableTypes.length > 0 && (
             <div className="form-section">
               <label>Variable Type (Input to Equation)</label>

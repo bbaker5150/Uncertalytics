@@ -12,6 +12,12 @@ const TmdeSealDisplay = ({ tmde, onEditClick, onContextMenu }) => (
             <div className="uut-seal-content">
                 <span className="seal-label">TMDE</span>
                 <h4 className="seal-title">{tmde.name}</h4>
+                {/* --- MODIFICATION: Show quantity if > 1 --- */}
+                {tmde.quantity > 1 && (
+                    <span className="seal-label" style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>
+                        (1 of {tmde.quantity})
+                    </span>
+                )}
             </div>
         </div>
     </div>
@@ -249,29 +255,36 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                                 formData.testPoints.map(tp => (
                                     <div className="tmde-test-point-group" key={tp.id}>
                                         <div className="tmde-seals-grid">
-                                            {(tp.tmdeTolerances || []).map(tmde => (
-                                                <TmdeSealDisplay
-                                                    key={tmde.id}
-                                                    tmde={tmde}
-                                                    onEditClick={() => handleEditTmdeClick(tmde, tp)}
-                                                    onContextMenu={(e) => {
-                                                        e.preventDefault();
-                                                        setContextMenu(null);
-                                                        setContextMenu({
-                                                            x: e.pageX,
-                                                            y: e.pageY,
-                                                            items: [
-                                                                {
-                                                                    label: `Delete "${tmde.name}"`,
-                                                                    action: () => handleDeleteTmde(tp.id, tmde.id),
-                                                                    icon: faTrashAlt,
-                                                                    className: 'destructive'
-                                                                }
-                                                            ]
-                                                        });
-                                                    }}
-                                                />
-                                            ))}
+                                            {/* --- MODIFICATION: Replaced .map with .flatMap --- */}
+                                            {(tp.tmdeTolerances || []).flatMap((tmde) => {
+                                                const quantity = tmde.quantity || 1;
+                                                // Create an array of 'quantity' length to render a seal for each instance
+                                                return Array.from({ length: quantity }, (_, i) => (
+                                                    <TmdeSealDisplay
+                                                        key={`${tmde.id}-${i}`} // Unique key for each instance
+                                                        tmde={tmde}
+                                                        onEditClick={() => handleEditTmdeClick(tmde, tp)}
+                                                        onContextMenu={(e) => {
+                                                            e.preventDefault();
+                                                            setContextMenu(null);
+                                                            setContextMenu({
+                                                                x: e.pageX,
+                                                                y: e.pageY,
+                                                                items: [
+                                                                    {
+                                                                        // Label now clarifies it will delete all
+                                                                        label: `Delete "${tmde.name}" (All ${quantity})`,
+                                                                        action: () => handleDeleteTmde(tp.id, tmde.id),
+                                                                        icon: faTrashAlt,
+                                                                        className: 'destructive'
+                                                                    }
+                                                                ]
+                                                            });
+                                                        }}
+                                                    />
+                                                ));
+                                            })}
+                                            {/* --- END MODIFICATION --- */}
                                             <AddTmdeSeal onClick={() => handleAddTmdeClick(tp)} />
                                         </div>
                                     </div>
