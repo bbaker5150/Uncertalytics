@@ -24,7 +24,7 @@ import {
   faPencilAlt,
   faSlidersH,
 } from "@fortawesome/free-solid-svg-icons";
-import { PDFDocument, StandardFonts } from 'pdf-lib';
+// import { PDFDocument, StandardFonts } from 'pdf-lib';
 
 export const unitSystem = {
   units: {
@@ -4242,56 +4242,72 @@ function App() {
     const formattedDate = `${month}/${day}/${year}`;
     const formattedTime = `${hours}:${minutes}:${seconds}`;
 
-    const currentSession = sessions.find((s) => s.id === selectedSessionId);
-    if (!currentSession) return;
-    const fileName = `MUA_${currentSession.uutDescription || "Session_"}${formattedDate + "_" + formattedTime}.pdf`;
+    // const currentSession = sessions.find((s) => s.id === selectedSessionId);
+    // if (!currentSession) return;
 
-    const jsonData = JSON.stringify(currentSession, null, 2);
+    // const fileName = `MUA_${currentSession.uutDescription || "Session_"}${formattedDate + "_" + formattedTime}.pdf`;
+
+    // const jsonData = JSON.stringify(currentSession, null, 2);
     
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage();
-    const { width, height } = page.getSize();
+    // const pdfDoc = await PDFDocument.create();
+    // const page = pdfDoc.addPage();
+    // const { width, height } = page.getSize();
 
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontSize = 12;
+    // const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    // const fontSize = 12;
 
-    const summaryText = `Session Summary\n\nDescription: ${currentSession.uutDescription}\nDate: ${formattedDate} ${formattedTime}`;
-    page.drawText(summaryText, {
-      x: 50,
-      y: height - 50,
-      size: fontSize,
-      font,
-      lineHeight: 16,
-    });
+    // const summaryText = `Session Summary\n\nDescription: ${currentSession.uutDescription}\nDate: ${formattedDate} ${formattedTime}`;
+    // page.drawText(summaryText, {
+    //   x: 50,
+    //   y: height - 50,
+    //   size: fontSize,
+    //   font,
+    //   lineHeight: 16,
+    // });
 
-    pdfDoc.setTitle(fileName);
-    pdfDoc.setSubject('MUA Session Data');
-    pdfDoc.setKeywords(['MUA', 'Session', 'JSON']);
-    pdfDoc.setProducer('MUA Tool');
-    pdfDoc.setCreator('MUA Tool');
-    pdfDoc.setCreationDate(now);
-    pdfDoc.setModificationDate(now);
+    // pdfDoc.setTitle(fileName);
+    // pdfDoc.setSubject('MUA Session Data');
+    // pdfDoc.setKeywords(['MUA', 'Session', 'JSON']);
+    // pdfDoc.setProducer('MUA Tool');
+    // pdfDoc.setCreator('MUA Tool');
+    // pdfDoc.setCreationDate(now);
+    // pdfDoc.setModificationDate(now);
+    
+    // const lineHeight = 10;
+    // const margin = 50;
+    // const maxWidth = width - margin * 2;
 
-    const metadataPage = pdfDoc.addPage();
-    metadataPage.drawText(jsonData.slice(0, 1000), {
-      x: 50,
-      y: height - 50,
-      size: 8,
-      font,
-      lineHeight: 10,
-    });
+    // const jsonLines = jsonData.split('\n');
+    // let y = height - margin;
+    // let metadataPage = pdfDoc.addPage();
 
-    const pdfBytes = await pdfDoc.save();
+    // for (const line of jsonLines) {
+    //   if (y < margin) {
+    //     metadataPage = pdfDoc.addPage();
+    //     y = height - margin;
+    //   }
 
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const href = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = href;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(href);
+    //   metadataPage.drawText(line, {
+    //     x: margin,
+    //     y,
+    //     size: fontSize,
+    //     font,
+    //   });
+
+    //   y -= lineHeight;
+    // }
+
+    // const pdfBytes = await pdfDoc.save();
+
+    // const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    // const href = URL.createObjectURL(blob);
+    // const link = document.createElement("a");
+    // link.href = href;
+    // link.download = fileName;
+    // document.body.appendChild(link);
+    // link.click();
+    // document.body.removeChild(link);
+    // URL.revokeObjectURL(href);
   };
 
   const handleSaveTestPoint = (formData) => {
