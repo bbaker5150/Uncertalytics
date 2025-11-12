@@ -1,7 +1,8 @@
 /* global math */
 import React, { useMemo } from 'react';
 import Latex from "react-latex-next";
-import { unitSystem } from '../App';
+// --- UPDATED: Import calculateUncertaintyFromToleranceObject ---
+import { unitSystem, calculateUncertaintyFromToleranceObject } from '../App';
 
 // Helper to format numbers for LaTeX display
 const formatNumberForLatex = (num, precision = 4) => {
@@ -17,80 +18,95 @@ const formatNumberForLatex = (num, precision = 4) => {
 
 const DerivedBreakdownModal = ({ isOpen, onClose, breakdownData }) => {
 
-    // Calculate terms for display and final calculation check
+    // --- UPDATED: This hook now rebuilds the formula from individual TMDEs ---
     const formulaTerms = useMemo(() => {
+        const tmdes = breakdownData?.tmdeTolerances || [];
         const components = breakdownData?.results?.calculatedBudgetComponents || [];
         const derivedUnit = breakdownData?.derivedNominalPoint?.unit || 'Units';
         const targetUnitInfo = unitSystem.units[derivedUnit];
-        if (!components || !targetUnitInfo?.to_si) return []; // Need target conversion factor
+        if (!tmdes || !components || !targetUnitInfo?.to_si) return [];
 
-        return components.map(c => {
-            const symbolMatch = c.name?.match(/\(([^)]+)\)$/);
-            const symbol = symbolMatch ? symbolMatch[1] : (c.name?.includes('Resolution') ? 'res' : 'i');
-            let termSymbolLatex = '';
-            let ciValue = NaN;
-            let uiValueAbsoluteNative = NaN; // ui in native units (e.g., inches, oz)
-            let uiUnit = c.unit || '';
-            let contributionInDerivedUnit = NaN; // |ci * ui| in derived units
-            let varianceInDerivedUnitSq = NaN; // (ci * ui)^2 in derived units sq
+        // 1. Get terms from TMDE definitions
+        const tmdeTerms = tmdes.map(tmde => {
+            const quantity = tmde.quantity || 1;
+            const varType = tmde.variableType;
 
-            // Get ui in native absolute units
-            if (c.isBaseUnitValue && !isNaN(c.value) && c.unit) {
-                const unitInfo = unitSystem.units[c.unit];
-                if (unitInfo?.to_si) {
-                    uiValueAbsoluteNative = c.value / unitInfo.to_si; // Convert base ui back to native unit
-                }
-            } else if (!c.isBaseUnitValue && !isNaN(c.value)) { // Direct component (PPM) - Fallback
-                 uiValueAbsoluteNative = c.value; uiUnit = 'ppm';
-            }
+            // Find the matching component in the budget to get the symbol and ci
+            const budgetComp = components.find(c => c.name.startsWith(`Input: ${varType}`));
+            if (!budgetComp) return null;
+
+            const symbolMatch = budgetComp.name?.match(/\(([^)]+)\)$/);
+            const symbol = symbolMatch ? symbolMatch[1] : varType;
+            const ciValue = budgetComp.sensitivityCoefficient;
+
+            // Calculate the *individual* standard uncertainty (u_i) for this one TMDE
+            const { standardUncertainty: ui_ppm } = calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint);
+            if (isNaN(ui_ppm)) return null;
+
+            // Convert individual u_i from PPM to native absolute units (e.g., oz, in)
+            const nominalValue = parseFloat(tmde.measurementPoint.value);
+            const nominalInBase = unitSystem.toBaseUnit(nominalValue, tmde.measurementPoint.unit);
+            const ui_absolute_base = (ui_ppm / 1e6) * Math.abs(nominalInBase);
+            
+            const unitInfo = unitSystem.units[tmde.measurementPoint.unit];
+            if (!unitInfo || !unitInfo.to_si) return null;
+            const uiValueAbsoluteNative = ui_absolute_base / unitInfo.to_si; // ui in native units (e.g., inches, oz)
 
             // Calculate contribution and variance in derived units
-            if (typeof c.sensitivityCoefficient === 'number' && !isNaN(uiValueAbsoluteNative)) {
-                ciValue = c.sensitivityCoefficient;
-
-                // --- START FIX ---
-
-                // Calculate contribution in derived units using NATIVE values
-                contributionInDerivedUnit = Math.abs(ciValue * uiValueAbsoluteNative);
-                
-                // The variance is just the square of this contribution
-                varianceInDerivedUnitSq = contributionInDerivedUnit ** 2;
-
-                // --- END FIX ---
-
-
-                 if (c.name?.includes('Input:')) {
-                    termSymbolLatex = `(c_{${symbol}} u_{${symbol}})^2`;
-                 } else if (c.name?.includes('Resolution')) {
-                    termSymbolLatex = `u_{${symbol}}^2`;
-                    ciValue = 1; // Explicitly state Ci=1 for resolution contribution
-                    
-                    // --- START FIX (for Resolution) ---
-                    
-                    // For resolution, ui_native IS the contribution
-                    contributionInDerivedUnit = Math.abs(uiValueAbsoluteNative);
-                    varianceInDerivedUnitSq = contributionInDerivedUnit ** 2;
-                    uiUnit = derivedUnit;
-                    
-                    // --- END FIX (for Resolution) ---
-                 }
-            } else { return null; } // Skip invalid data
+            const contributionInDerivedUnit = Math.abs(ciValue * uiValueAbsoluteNative);
+            const varianceInDerivedUnitSq = contributionInDerivedUnit ** 2;
 
             return {
-                symbolLatex: termSymbolLatex, // (ci*ui)^2 or u_res^2 (LaTeX)
-                varianceDerivedSq: varianceInDerivedUnitSq, // Variance term (derived units sq)
+                symbolLatex: quantity > 1
+                    ? `${quantity} \\cdot (c_{${symbol}} u_{${symbol}})^2`
+                    : `(c_{${symbol}} u_{${symbol}})^2`,
+                varianceDerivedSq: varianceInDerivedUnitSq * quantity, // Total variance for this definition
                 ci: ciValue,
-                ui_native: uiValueAbsoluteNative, // ui in native absolute units
-                ui_unit_native: uiUnit, // native unit string
-                contribution: contributionInDerivedUnit, // |ci * ui| in derived units
-                varSymbol: symbol
+                ui_native: uiValueAbsoluteNative,
+                ui_unit_native: tmde.measurementPoint.unit || '',
+                contribution: contributionInDerivedUnit, // Contribution of a *single* unit
+                varSymbol: symbol,
+                name: tmde.name || 'TMDE',
+                quantity: quantity,
             };
         }).filter(term => term !== null);
+
+        // 2. Get term from Resolution (which is a 'direct' component)
+        const resolutionComp = components.find(c => c.name?.includes('Resolution'));
+        if (resolutionComp) {
+            const symbol = 'res';
+            const ciValue = 1; // By definition for direct components
+
+            // Get ui in native absolute units (which is derivedUnit)
+            let uiValueAbsoluteNative = NaN;
+            if (resolutionComp.isBaseUnitValue && !isNaN(resolutionComp.value) && resolutionComp.unit) {
+                const unitInfo = unitSystem.units[resolutionComp.unit];
+                if (unitInfo?.to_si) {
+                    uiValueAbsoluteNative = resolutionComp.value / unitInfo.to_si; // Convert base ui back to native unit
+                }
+            }
+            
+            const contributionInDerivedUnit = Math.abs(ciValue * uiValueAbsoluteNative);
+            const varianceInDerivedUnitSq = contributionInDerivedUnit ** 2;
+
+            tmdeTerms.push({
+                symbolLatex: `u_{${symbol}}^2`,
+                varianceDerivedSq: varianceInDerivedUnitSq,
+                ci: ciValue,
+                ui_native: uiValueAbsoluteNative,
+                ui_unit_native: resolutionComp.unit || '',
+                contribution: contributionInDerivedUnit,
+                varSymbol: symbol,
+                name: 'Resolution',
+                quantity: 1,
+            });
+        }
+        
+        return tmdeTerms;
     }, [breakdownData]);
 
     // Reconstruct nominal scope for display
     const nominalScopeForDisplay = useMemo(() => {
-        // ... (logic remains the same) ...
         const scope = {}; const components = breakdownData?.results?.calculatedBudgetComponents || [];
          components.forEach(c => {
              if (c.name?.includes('Input:')) {
@@ -106,7 +122,7 @@ const DerivedBreakdownModal = ({ isOpen, onClose, breakdownData }) => {
     if (!isOpen || !breakdownData || !breakdownData.results) return null;
 
     // Destructure data
-    const { equationString, components, derivedNominalPoint } = breakdownData;
+    const { equationString, derivedNominalPoint } = breakdownData;
     let displayEquation = equationString || 'N/A';
     const equalsIndex = displayEquation.indexOf('=');
     let expressionOnly = displayEquation; if (equalsIndex !== -1) { expressionOnly = displayEquation.substring(equalsIndex + 1).trim(); }
@@ -133,55 +149,67 @@ const DerivedBreakdownModal = ({ isOpen, onClose, breakdownData }) => {
                     </div>
 
                     {/* Component Breakdown Loop */}
-                    {components.map((comp, index) => {
-                         const formulaTerm = formulaTerms.find(ft => ft.varSymbol === (comp.name?.match(/\(([^)]+)\)$/)?.[1] || (comp.name?.includes('Resolution') ? 'res' : null)));
-                         const formattedValueUi = formulaTerm ? formatNumberForLatex(formulaTerm.ui_native) : 'N/A';
-                         const displayValueUnitUi = formulaTerm ? formulaTerm.ui_unit_native : '';
-                         const formattedCi = formulaTerm ? formatNumberForLatex(formulaTerm.ci) : 'N/A'; // Use ci from formulaTerm
-                         const formattedContribution = (formulaTerm && !isNaN(formulaTerm.contribution)) ? formatNumberForLatex(formulaTerm.contribution) : 'N/A';
+                    {formulaTerms.map((term, index) => {
+                         const formattedValueUi = formatNumberForLatex(term.ui_native);
+                         const displayValueUnitUi = term.ui_unit_native;
+                         const formattedCi = formatNumberForLatex(term.ci);
+                         const formattedContribution = (term && !isNaN(term.contribution)) ? formatNumberForLatex(term.contribution) : 'N/A';
 
-                        let derivativeDisplay = comp.derivativeString;
+                        let derivativeDisplay = '';
                         let derivativeTex = '';
-                        let symbol = '?';
-                        const symbolMatch = comp.name?.match(/\(([^)]+)\)$/);
-                        if(symbolMatch) symbol = symbolMatch[1]; else if (comp.name?.includes('Resolution')) symbol = 'res';
-
-                         if(derivativeDisplay){ try { derivativeTex = math.parse(derivativeDisplay).toTex(); } catch (e) { derivativeTex = derivativeDisplay; } }
+                        // Find the original budget component to get the derivative string
+                        const budgetComp = breakdownData.results.calculatedBudgetComponents.find(c => c.name.includes(`(${term.varSymbol})`));
+                        if (budgetComp) {
+                            derivativeDisplay = budgetComp.derivativeString;
+                            if(derivativeDisplay){ try { derivativeTex = math.parse(derivativeDisplay).toTex(); } catch (e) { derivativeTex = derivativeDisplay; } }
+                        } else if (term.varSymbol === 'res') {
+                            derivativeTex = "1"; // Ci for resolution is 1
+                        }
 
                         let evaluationStepTex = '';
                         if (derivativeDisplay && Object.keys(nominalScopeForDisplay).length > 0) {
                             try { const derivativeNode = math.parse(derivativeDisplay); evaluationStepTex = derivativeNode.toTex({ handler: (node, options) => { if (node.isSymbolNode && nominalScopeForDisplay.hasOwnProperty(node.name)) { return formatNumberForLatex(nominalScopeForDisplay[node.name]); } } }); evaluationStepTex = `${evaluationStepTex} = ${formattedCi}`; } catch (e) { evaluationStepTex = `${formattedCi}`; }
                         } else if (derivativeTex) { evaluationStepTex = `${derivativeTex} = ${formattedCi}`; }
+                        
+                        const symbol = term.varSymbol;
 
                         return (
-                            <div className="breakdown-step" key={comp.id || index}>
-                                <h5>{comp.name}</h5>
+                            <div className="breakdown-step" key={term.name || index}>
+                                <h5>{term.name} {term.quantity > 1 ? `(x${term.quantity})` : ''}</h5>
                                 <ul>
-                                    <li><strong>Source/Nominal:</strong> {comp.sourcePointLabel}</li>
-                                    <li><strong>Std. Uncertainty (<Latex>{`$u_{${symbol}}$`}</Latex>):</strong> {formattedValueUi} {displayValueUnitUi}</li>
-                                    <li><strong>Distribution:</strong> {comp.distribution}</li>
-                                    <li><strong>Sensitivity Coeffcient (Partial Derivative):</strong>
-                                    {expressionTex && comp.name.includes('Input:') && ( <li><Latex>{`$$ \\text{Calculate } c_{${symbol}} = \\frac{\\partial}{\\partial ${symbol}} \\left( ${expressionTex} \\right) $$`}</Latex></li> )}
-                                    {derivativeTex && ( <li><Latex>{`$$ \\rightarrow c_{${symbol}} = ${derivativeTex} $$`}</Latex></li> )}
-                                    {(derivativeDisplay || comp.name.includes('Resolution')) && evaluationStepTex && ( <li><Latex>{`$$ \\text{Evaluate: } c_{${symbol}} = ${evaluationStepTex} $$`}</Latex></li> )}
+                                    <li><strong>Std. Uncertainty (<Latex>{`$u_{${symbol}}$`}</Latex>):</strong> {formattedValueUi} {displayValueUnitUi} (per instance)</li>
+                                    
+                                    {/* --- MODIFICATION START --- */}
+                                    <li>
+                                        <strong>Sensitivity Coeffcient (<Latex>{`$c_{${symbol}}$`}</Latex>):</strong>
+                                        {/* Wrap the conditional items in a <ul> */}
+                                        <ul style={{ listStyleType: 'none', paddingLeft: '10px' }}>
+                                            {expressionTex && term.varSymbol !== 'res' && ( <li><Latex>{`$$ \\text{Calculate } c_{${symbol}} = \\frac{\\partial}{\\partial ${symbol}} \\left( ${expressionTex} \\right) $$`}</Latex></li> )}
+                                            {derivativeTex && term.varSymbol !== 'res' && ( <li><Latex>{`$$ \\rightarrow c_{${symbol}} = ${derivativeTex} $$`}</Latex></li> )}
+                                            {evaluationStepTex && ( <li><Latex>{`$$ \\text{Evaluate: } c_{${symbol}} = ${evaluationStepTex} $$`}</Latex></li> )}
+                                        </ul>
                                     </li>
-                                    <li><strong>Contribution (<Latex>{`$|c_{${symbol}} \\times u_{${symbol}}|$`}</Latex>):</strong> {formattedContribution} {derivedUnit}</li>
+                                    {/* --- MODIFICATION END --- */}
+
+                                    <li><strong>Contribution (<Latex>{`$|c_{${symbol}} \\times u_{${symbol}}|$`}</Latex>):</strong> {formattedContribution} {derivedUnit} (per instance)</li>
+                                    {term.quantity > 1 && (
+                                        <li><strong>Total Variance Term (<Latex>{`$${term.quantity} \\cdot (c_{${symbol}} u_{${symbol}})^2$`}</Latex>):</strong> {formatNumberForLatex(term.varianceDerivedSq, 5)}</li>
+                                    )}
                                 </ul>
                             </div>
                         );
                     })}
+                    {/* --- END UPDATED LOOP --- */}
+
 
                     {/* Final Calculation Section */}
                     <div className="breakdown-step">
                         <h5>Combined Uncertainty Calculation (<Latex>{`$u_y$`}</Latex> in {derivedUnit})</h5>
                         <p>Using the formula:</p>
                         <Latex>{`$$ u_y = \\sqrt{\\sum_{i} (c_i u_i)^2 + \\sum_{j} u_j^2} $$`}</Latex>
-                        <p>Where <Latex>$c_i u_i$</Latex> terms are contributions from input variables and <Latex>$u_j$</Latex> terms are direct uncertainties (like resolution).</p>
                         <Latex>{`$$ u_y = \\sqrt{${formulaTerms.map(t => t.symbolLatex).join(" + ")}} $$`}</Latex>
 
-                        <p>Plugging in values (using absolute units):</p>
-                        {/* This step shows (ci x ui_native)^2 */}
-                        <Latex>{`$$ u_y = \\sqrt{${formulaTerms.map(t => `(${formatNumberForLatex(t.ci)} \\times ${formatNumberForLatex(t.ui_native)})^2`).join(" + ")}} $$`}</Latex>
+                        <p>Plugging in values (showing total variance for each term):</p>
                         <Latex>{`$$ u_y = \\sqrt{${formulaTerms.map(t => isNaN(t.varianceDerivedSq) ? 'NaN' : formatNumberForLatex(t.varianceDerivedSq, 5)).join(" + ")}} $$`}</Latex>
                         <Latex>{`$$ u_y = \\sqrt{${formatNumberForLatex(sumOfVariancesDerivedUnits, 5)}} = \\mathbf{${formatNumberForLatex(combinedUncertaintyInDerivedUnit, 5)}} \\text{ (${derivedUnit})} $$`}</Latex>
 

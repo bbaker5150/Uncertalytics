@@ -869,6 +869,8 @@ const UncertaintyBudgetTable = ({
           let displayValueUnitUi = "";
           let formattedContribution = "N/A";
           let displayContributionUnit = derivedUnit;
+          const quantity = c.quantity || 1;
+          const displayName = quantity > 1 ? `${c.name} (Qty: ${quantity})` : c.name;
 
           if (c.value_native !== undefined && c.unit_native) {
             formattedValueUi = c.value_native.toPrecision(4);
@@ -911,7 +913,7 @@ const UncertaintyBudgetTable = ({
                 }
               }}
             >
-              <td>{c.name}</td>
+              <td>{displayName}</td>
               <td>{c.sourcePointLabel || "N/A"}</td>
               <td>{c.type}</td>
               <td>
@@ -2798,6 +2800,14 @@ function Analysis({
               ).breakdown[0]?.distributionLabel || "N/A"
             : "N/A";
 
+          const allContributingTmdes = tmdeTolerancesData.filter(
+            (tmde) => tmde.variableType === item.type
+          );
+          const totalQuantity = allContributingTmdes.reduce(
+            (sum, tmde) => sum + (tmde.quantity || 1),
+            0
+          );
+
           componentsForBudgetTable.push({
             id: `derived_${item.variable}_${index}`,
             name: `Input: ${item.type} (${item.variable})`, // This name is used for filtering
@@ -2812,6 +2822,7 @@ function Analysis({
             isCore: true,
             distribution: distributionLabel,
             sourcePointLabel: `${item.nominal} ${item.unit || ""}`,
+            quantity: totalQuantity
           });
         });
 
@@ -2852,6 +2863,7 @@ function Analysis({
               isCore: true,
               distribution: "Rectangular",
               sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`,
+              quantity: 1
             });
           } else {
             console.warn(
@@ -2914,6 +2926,7 @@ function Analysis({
             ).map((c) => ({
               ...c,
               sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`,
+              quantity: quantity
             }));
 
             componentsForBudgetTable.push(...components);
@@ -3104,6 +3117,7 @@ function Analysis({
       components: calcResults.calculatedBudgetComponents || [],
       results: calcResults,
       derivedNominalPoint: uutNominal,
+      tmdeTolerances: tmdeTolerancesData,
     };
 
     setDerivedBreakdownData(breakdownPayload);
@@ -3120,6 +3134,7 @@ function Analysis({
       components: calcResults.calculatedBudgetComponents || [],
       results: calcResults,
       derivedNominalPoint: uutNominal,
+      tmdeTolerances: tmdeTolerancesData,
     };
 
     setDerivedBreakdownData(breakdownPayload);
