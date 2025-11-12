@@ -2051,11 +2051,7 @@ function Analysis({
     const nominalUnit = uutNominal?.unit;
     const targetUnitInfo = unitSystem.units[nominalUnit];
 
-    const pfaRequired = parseFloat(sessionData.uncReq.reqPFA)/100;
     const reliability = parseFloat(sessionData.uncReq.reliability)/100;
-    const calInt = parseFloat(sessionData.uncReq.calInt);
-    const measRelCalc = parseFloat(sessionData.uncReq.measRelCalcAssumed)/100;
-    const turNeeded = parseFloat(sessionData.uncReq.neededTUR);
 
          if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) {
         setNotification({
@@ -2086,6 +2082,165 @@ function Analysis({
         return;
       }
       
+    const guardBandMultiplier = 1;
+
+    const uCal_Base = calcResults.combined_uncertainty_absolute_base;
+    const uCal_Native = uCal_Base / targetUnitInfo.to_si;
+
+    let tmdeToleranceSpan_Native = 0;
+    let missingTmdeRef = false;
+
+    if (tmdeTolerancesData.length > 0) {
+      tmdeToleranceSpan_Native = tmdeTolerancesData.reduce((totalSpan, tmde) => {
+        if (!tmde.measurementPoint || !tmde.measurementPoint.value) {
+          missingTmdeRef = true;
+          return totalSpan;
+        }
+
+        const { breakdown: tmdeBreakdown } =
+          calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint);
+        const tmdeNominal = parseFloat(tmde.measurementPoint.value);
+
+        const tmdeSpecComponents = tmdeBreakdown.filter(
+          (comp) => comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
+        );
+        if (tmdeSpecComponents.length === 0) return totalSpan;
+
+        const tmdeHighDev = tmdeSpecComponents.reduce(
+          (sum, comp) => sum + (comp.absoluteHigh - tmdeNominal),
+          0
+        );
+        const tmdeLowDev = tmdeSpecComponents.reduce(
+          (sum, comp) => sum + (comp.absoluteLow - tmdeNominal),
+          0
+        );
+
+        const tmdeSpan = tmdeHighDev - tmdeLowDev;
+
+        const tmdeUnitInfo = unitSystem.units[tmde.measurementPoint.unit];
+        if (!tmdeUnitInfo || isNaN(tmdeUnitInfo.to_si)) {
+          missingTmdeRef = true;
+          return totalSpan;
+        }
+        const tmdeSpanInBase = tmdeSpan * tmdeUnitInfo.to_si;
+        const tmdeSpanInUutNative = tmdeSpanInBase / targetUnitInfo.to_si;
+
+        return totalSpan + tmdeSpanInUutNative;
+      }, 0);
+    }
+
+    if (missingTmdeRef) {
+      setNotification({
+        title: "Missing Info",
+        message: "TMDE missing Reference Point for TAR calculation.",
+      });
+    } else if (tmdeToleranceSpan_Native === 0 && LUp - LLow > 0) {
+      if (riskInputs.LUp && riskInputs.LLow) {
+        setNotification({
+          title: "Missing Component",
+          message: "Could not find TMDE tolerances for TAR.",
+        });
+      }
+    }
+
+    const mid = (LUp + LLow) / 2;
+    const LUp_symmetric = Math.abs(LUp - mid);
+    const uDev = LUp_symmetric / probit((1 + reliability) / 2);
+    const uUUT2 = uDev ** 2 - uCal_Native ** 2;
+    let uUUT = 0;
+    if (uUUT2 <= 0) {
+      setNotification({
+        title: "Calc Warning",
+        message: `uCal (${uCal_Native.toFixed(
+          3
+        )}) exceeds uDev (${uDev.toFixed(
+          3
+        )}) for reliability ${reliability}. UUT unc treated as zero.`,
+      });
+      uUUT = 0;
+    } else {
+      uUUT = Math.sqrt(uUUT2);
+    }
+
+    const ALow = LLow * guardBandMultiplier;
+    const AUp = LUp * guardBandMultiplier;
+    const correlation = uUUT === 0 || uDev === 0 ? 0 : uUUT / uDev;
+    const LLow_norm = LLow - mid;
+    const LUp_norm = LUp - mid;
+    const ALow_norm = ALow - mid;
+    const AUp_norm = AUp - mid;
+
+    const pfa_term1 =
+      bivariateNormalCDF(LLow_norm / uUUT, AUp_norm / uDev, correlation) -
+      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
+    const pfa_term2 =
+      bivariateNormalCDF(-LUp_norm / uUUT, -ALow_norm / uDev, correlation) -
+      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
+    const pfaResult =
+      isNaN(pfa_term1) || isNaN(pfa_term2) ? 0 : pfa_term1 + pfa_term2;
+
+    const pfr_term1 =
+      bivariateNormalCDF(LUp_norm / uUUT, ALow_norm / uDev, correlation) -
+      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
+    const pfr_term2 =
+      bivariateNormalCDF(-LLow_norm / uUUT, -AUp_norm / uDev, correlation) -
+      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
+    const pfrResult =
+      isNaN(pfr_term1) || isNaN(pfr_term2) ? 0 : pfr_term1 + pfr_term2;
+
+    const U_Base = calcResults.expanded_uncertainty_absolute_base;
+    const U_Native = U_Base / targetUnitInfo.to_si;
+
+    const turResult = (LUp - LLow) / (2 * U_Native);
+
+    const tarResult =
+      tmdeToleranceSpan_Native !== 0
+        ? (LUp - LLow) / tmdeToleranceSpan_Native
+        : 0;
+
+    const gbResults = calcGuardBand(turResult);
+
+    setRiskResults({
+      LLow: LLow,
+      LUp: LUp,
+      tur: turResult,
+      tar: tarResult,
+      pfa: pfaResult * 100,
+      pfr: pfrResult * 100,
+      pfa_term1: (isNaN(pfa_term1) ? 0 : pfa_term1) * 100,
+      pfa_term2: (isNaN(pfa_term2) ? 0 : pfa_term2) * 100,
+      pfr_term1: (isNaN(pfr_term1) ? 0 : pfr_term1) * 100,
+      pfr_term2: (isNaN(pfr_term2) ? 0 : pfr_term2) * 100,
+      uCal: uCal_Native,
+      uUUT: uUUT,
+      uDev: uDev,
+      correlation,
+      ALow: ALow,
+      AUp: AUp,
+      expandedUncertainty: U_Native,
+      tmdeToleranceSpan: tmdeToleranceSpan_Native,
+      nativeUnit: nominalUnit,
+    });
+  }, [
+    riskInputs.LLow,
+    riskInputs.LUp,
+    sessionData,
+    uutNominal,
+    calcResults,
+    tmdeTolerancesData,
+    setNotification,
+    setRiskResults
+  ]);
+
+  const calcGuardBand = (turResult) => {
+    const LLow = parseFloat(riskInputs.LLow);
+    const LUp = parseFloat(riskInputs.LUp);
+    const pfaRequired = parseFloat(sessionData.uncReq.reqPFA)/100;
+    const reliability = parseFloat(sessionData.uncReq.reliability)/100;
+    const calInt = parseFloat(sessionData.uncReq.calInt);
+    const measRelCalc = parseFloat(sessionData.uncReq.measRelCalcAssumed)/100;
+    const turNeeded = parseFloat(sessionData.uncReq.neededTUR);
+
     function GetGBInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp) {
       const isNotNumeric = val => isNaN(parseFloat(val));
       const vbaNbrValidate = val => isNotNumeric(val) ? 0 : parseFloat(val);
@@ -2562,7 +2717,6 @@ function Analysis({
 
       const term2 = bivariateNormalCDF(-LUp / uUUT, -ALow / uDev, cor) -
                     bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
-
       return term1 + term2;
     }
 
@@ -3080,10 +3234,44 @@ function Analysis({
       return dPFA === -1 ? "" : dPredRel;
     }
 
-    // let combUncVal = 0.347610893576903;
-    let combUncVal = calcResults.combined_uncertainty_absolute_base;
-    let gbLow = gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, combUncVal, reliability);
-    let gbHigh = gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, combUncVal, reliability);
+    function resDwn(dVal, dRes) {
+      if (dRes <= 0) {
+        return dVal;
+      }
+      if (dVal === 0) {
+        return dVal;
+      }
+      let x = Math.floor(dVal / dRes) * dRes;
+      const dZero = 0.000001;
+      if (Math.abs(Math.trunc(dVal / dRes) - (dVal / dRes)) > dZero) {
+        if (dVal > 0) {
+          x = x + dRes;
+        }
+      }
+      return x;
+    }
+
+    function resUp(dVal, dRes) {
+      if (dRes <= 0) {
+        return dVal;
+      }
+      if (dVal === 0) {
+        return dVal;
+      }
+      let x = Math.trunc(dVal / dRes) * dRes;
+      const dZero = 0.000001;
+      if (Math.abs(Math.trunc(dVal / dRes) - (dVal / dRes)) > dZero) {
+        if (dVal < 0) {
+          x = x - dRes;
+        }
+      }
+      return x;
+    }
+
+    let combUncVal = 0.29011491975882;
+    // let combUncVal = calcResults.combined_uncertainty_absolute_base;
+    let gbLow = resDwn(gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, combUncVal, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
+    let gbHigh = resUp(gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, combUncVal, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
     let gbMult = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh);
     let gbPFA = PFAwGBMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, gbLow, gbHigh);
     let gbPFR = PFRwGBMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, gbLow, gbHigh);
@@ -3094,160 +3282,13 @@ function Analysis({
     console.log("GBPFA: ", gbPFA);
     console.log("GBPFR: ", gbPFR);
 
-    const guardBandMultiplier = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh);
-
-    const uCal_Base = calcResults.combined_uncertainty_absolute_base;
-    const uCal_Native = uCal_Base / targetUnitInfo.to_si;
-
-    let tmdeToleranceSpan_Native = 0;
-    let missingTmdeRef = false;
-
-    if (tmdeTolerancesData.length > 0) {
-      tmdeToleranceSpan_Native = tmdeTolerancesData.reduce((totalSpan, tmde) => {
-        if (!tmde.measurementPoint || !tmde.measurementPoint.value) {
-          missingTmdeRef = true;
-          return totalSpan;
-        }
-
-        const { breakdown: tmdeBreakdown } =
-          calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint);
-        const tmdeNominal = parseFloat(tmde.measurementPoint.value);
-
-        const tmdeSpecComponents = tmdeBreakdown.filter(
-          (comp) => comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
-        );
-        if (tmdeSpecComponents.length === 0) return totalSpan;
-
-        const tmdeHighDev = tmdeSpecComponents.reduce(
-          (sum, comp) => sum + (comp.absoluteHigh - tmdeNominal),
-          0
-        );
-        const tmdeLowDev = tmdeSpecComponents.reduce(
-          (sum, comp) => sum + (comp.absoluteLow - tmdeNominal),
-          0
-        );
-
-        const tmdeSpan = tmdeHighDev - tmdeLowDev;
-
-        const tmdeUnitInfo = unitSystem.units[tmde.measurementPoint.unit];
-        if (!tmdeUnitInfo || isNaN(tmdeUnitInfo.to_si)) {
-          missingTmdeRef = true;
-          return totalSpan;
-        }
-        const tmdeSpanInBase = tmdeSpan * tmdeUnitInfo.to_si;
-        const tmdeSpanInUutNative = tmdeSpanInBase / targetUnitInfo.to_si;
-
-        return totalSpan + tmdeSpanInUutNative;
-      }, 0);
-    }
-
-    if (missingTmdeRef) {
-      setNotification({
-        title: "Missing Info",
-        message: "TMDE missing Reference Point for TAR calculation.",
-      });
-    } else if (tmdeToleranceSpan_Native === 0 && LUp - LLow > 0) {
-      if (riskInputs.LUp && riskInputs.LLow) {
-        setNotification({
-          title: "Missing Component",
-          message: "Could not find TMDE tolerances for TAR.",
-        });
-      }
-    }
-
-    const mid = (LUp + LLow) / 2;
-    const LUp_symmetric = Math.abs(LUp - mid);
-    const uDev = LUp_symmetric / probit((1 + reliability) / 2);
-    const uUUT2 = uDev ** 2 - uCal_Native ** 2;
-    let uUUT = 0;
-    if (uUUT2 <= 0) {
-      setNotification({
-        title: "Calc Warning",
-        message: `uCal (${uCal_Native.toFixed(
-          3
-        )}) exceeds uDev (${uDev.toFixed(
-          3
-        )}) for reliability ${reliability}. UUT unc treated as zero.`,
-      });
-      uUUT = 0;
-    } else {
-      uUUT = Math.sqrt(uUUT2);
-    }
-
-    const ALow = LLow * guardBandMultiplier;
-    const AUp = LUp * guardBandMultiplier;
-    const correlation = uUUT === 0 || uDev === 0 ? 0 : uUUT / uDev;
-    const LLow_norm = LLow - mid;
-    const LUp_norm = LUp - mid;
-    const ALow_norm = ALow - mid;
-    const AUp_norm = AUp - mid;
-
-    const pfa_term1 =
-      bivariateNormalCDF(LLow_norm / uUUT, AUp_norm / uDev, correlation) -
-      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
-    const pfa_term2 =
-      bivariateNormalCDF(-LUp_norm / uUUT, -ALow_norm / uDev, correlation) -
-      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
-    const pfaResult =
-      isNaN(pfa_term1) || isNaN(pfa_term2) ? 0 : pfa_term1 + pfa_term2;
-
-    const pfr_term1 =
-      bivariateNormalCDF(LUp_norm / uUUT, ALow_norm / uDev, correlation) -
-      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
-    const pfr_term2 =
-      bivariateNormalCDF(-LLow_norm / uUUT, -AUp_norm / uDev, correlation) -
-      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
-    const pfrResult =
-      isNaN(pfr_term1) || isNaN(pfr_term2) ? 0 : pfr_term1 + pfr_term2;
-
-    const U_Base = calcResults.expanded_uncertainty_absolute_base;
-    const U_Native = U_Base / targetUnitInfo.to_si;
-
-    const turResult = (LUp - LLow) / (2 * U_Native);
-
     let gbCalInt = CalIntwGBMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, gbLow, gbHigh, turResult, turNeeded, calInt);
     let nogbCalInt = CalIntMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
     let nogbMeasRel = CalRelMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
     console.log("GBCALINT: ", gbCalInt);
     console.log("NOGBCALINT: ", nogbCalInt);
     console.log("NOGBMEASREL: ", nogbMeasRel);
-
-    const tarResult =
-      tmdeToleranceSpan_Native !== 0
-        ? (LUp - LLow) / tmdeToleranceSpan_Native
-        : 0;
-
-    setRiskResults({
-      LLow: LLow,
-      LUp: LUp,
-      tur: turResult,
-      tar: tarResult,
-      pfa: pfaResult * 100,
-      pfr: pfrResult * 100,
-      pfa_term1: (isNaN(pfa_term1) ? 0 : pfa_term1) * 100,
-      pfa_term2: (isNaN(pfa_term2) ? 0 : pfa_term2) * 100,
-      pfr_term1: (isNaN(pfr_term1) ? 0 : pfr_term1) * 100,
-      pfr_term2: (isNaN(pfr_term2) ? 0 : pfr_term2) * 100,
-      uCal: uCal_Native,
-      uUUT: uUUT,
-      uDev: uDev,
-      correlation,
-      ALow: ALow,
-      AUp: AUp,
-      expandedUncertainty: U_Native,
-      tmdeToleranceSpan: tmdeToleranceSpan_Native,
-      nativeUnit: nominalUnit,
-    });
-  }, [
-    riskInputs.LLow,
-    riskInputs.LUp,
-    sessionData,
-    uutNominal,
-    calcResults,
-    tmdeTolerancesData,
-    setNotification,
-    setRiskResults
-  ]);
+  };
 
   useEffect(() => {
     const shouldCalculate = (analysisMode === "risk" || analysisMode === "uncertaintyTool");
