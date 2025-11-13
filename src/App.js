@@ -24,6 +24,8 @@ import {
   faTrashAlt,
   faPencilAlt,
   faSlidersH,
+  faSave,
+  faFolderOpen,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   PDFDocument,
@@ -4557,14 +4559,14 @@ function App() {
         });
 
         // 8. Set the UI to view the newly loaded session
-        setSelectedSessionId(sessionToSelect.id);
-        setSelectedTestPointId(sessionToSelect.testPoints?.[0]?.id || null);
-        setEditingSession(sessionToSelect); 
+        setSelectedSessionId(loadedSession.id);
+        setSelectedTestPointId(loadedSession.testPoints?.[0]?.id || null);
+        setEditingSession(loadedSession); 
 
         // 9. Use the notification modal
         setAppNotification({
           title: 'Success',
-          message: `Session "${sessionToSelect.name}" loaded successfully.`,
+          message: `Session "${loadedSession.name}" loaded successfully.`,
         });
 
       } catch (err) {
@@ -4815,14 +4817,40 @@ function App() {
             }}
           >
             <h2>Uncertainty Analysis</h2>
-            <label className="dark-mode-toggle">
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <button
+                className="sidebar-action-button"
+                onClick={handleSaveToFile}
+                title="Save Session to File (.pdf)"
+              >
+                <FontAwesomeIcon icon={faSave} />
+              </button>
+
+              <label
+                className="sidebar-action-button"
+                htmlFor="load-session-pdf-main"
+                title="Load Session from File (.pdf)"
+                style={{ cursor: "pointer", margin: "0" }}
+              >
+                <FontAwesomeIcon icon={faFolderOpen} />
+              </label>
               <input
-                type="checkbox"
-                checked={isDarkMode}
-                onChange={() => setIsDarkMode(!isDarkMode)}
+                type="file"
+                id="load-session-pdf-main"
+                accept=".pdf"
+                style={{ display: "none" }}
+                onChange={handleLoadFromFile}
               />
-              <span className="slider"></span>
-            </label>
+
+              <label className="dark-mode-toggle">
+                <input
+                  type="checkbox"
+                  checked={isDarkMode}
+                  onChange={() => setIsDarkMode(!isDarkMode)}
+                />
+                <span className="slider"></span>
+              </label>
+            </div>
           </div>
           <div className="results-workflow-container">
             <aside className="results-sidebar">

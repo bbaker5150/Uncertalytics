@@ -195,10 +195,8 @@ const EditSessionModal = ({
   onClose,
   sessionData,
   onSave,
-  onSaveToFile,
   initialSection,
   initialTmdeToEdit,
-  handleLoadFromFile,
   sessionImageCache,
   onImageCacheChange,
 }) => {
@@ -209,6 +207,7 @@ const EditSessionModal = ({
   const [notification, setNotification] = useState(null);
   const [newlyAddedFiles, setNewlyAddedFiles] = useState([]);
   const [imageSrcCache, setImageSrcCache] = useState(new Map());
+  const [viewingImageSrc, setViewingImageSrc] = useState(null);
 
   // Gets the URL for an image, either from the session cache or a new file
   const getImageSrc = (imageRef) => {
@@ -491,6 +490,24 @@ const EditSessionModal = ({
           hasParentOverlay={true}
         />
       )}
+      {viewingImageSrc && (
+      <div
+        className="image-viewer-overlay"
+        onClick={() => setViewingImageSrc(null)}
+      >
+        <button
+          className="image-viewer-close"
+          onClick={() => setViewingImageSrc(null)}
+        >
+          &times;
+        </button>
+        <img
+          src={viewingImageSrc}
+          alt="Full-size preview"
+          onClick={(e) => e.stopPropagation()} // Prevents image click from closing modal
+        />
+      </div>
+    )}
       <div
         className={`modal-content edit-session-modal ${
           editingTmde ? "modal-content-hidden" : ""
@@ -595,11 +612,16 @@ const EditSessionModal = ({
                   {(formData.noteImages || []).map((imageRef) => {
                     const src = getImageSrc(imageRef);
                     return (
-                      <div key={imageRef.id} className="image-thumbnail">
+                      <div 
+                        key={imageRef.id} 
+                        className="image-thumbnail"
+                        onClick={() => setViewingImageSrc(src)}
+                        style={{ cursor: 'pointer' }}
+                        title={`Click to view ${imageRef.fileName}`}
+                        >
                         <img
-                          src={src}
-                          alt={imageRef.fileName}
-                          title={imageRef.fileName}
+                            src={src}
+                            alt={imageRef.fileName}
                         />
                         <button
                           className="remove-image-btn"
@@ -921,32 +943,6 @@ const EditSessionModal = ({
               paddingTop: "20px",
             }}
           >
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button
-                className="modal-icon-button secondary"
-                onClick={onSaveToFile}
-                title="Save Session to File (.pdf)"
-              >
-                <FontAwesomeIcon icon={faSave} />
-              </button>
-
-              <label
-                className="modal-icon-button secondary"
-                htmlFor="load-session-pdf"
-                title="Load Session from File (.pdf)"
-                style={{ cursor: "pointer", margin: "0" }}
-              >
-                <FontAwesomeIcon icon={faFolderOpen} />
-              </label>
-              <input
-                type="file"
-                id="load-session-pdf"
-                accept=".pdf"
-                style={{ display: "none" }}
-                onChange={handleLoadFromFile}
-              />
-            </div>
-
             <div style={{ display: "flex", gap: "10px" }}>
               <button
                 className="modal-icon-button primary"

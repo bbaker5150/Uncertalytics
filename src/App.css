@@ -3653,6 +3653,9 @@ body.dark-mode .final-result-display {
   gap: 0.5rem;
 }
 
+/* =================================================================== */
+/* 13. Session Modal Images                                */
+/* =================================================================== */
 .image-gallery-container {
   display: flex;
   flex-wrap: wrap;
@@ -3730,4 +3733,49 @@ body.dark-mode .final-result-display {
 
 .image-thumbnail:hover .remove-image-btn {
   opacity: 1;
+}
+
+.image-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000; /* Must be higher than the EditSessionModal overlay */
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+.image-viewer-overlay img {
+  display: block;
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+
+.image-viewer-close {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  background: transparent;
+  border: none;
+  font-size: 3rem;
+  font-weight: 300;
+  line-height: 1;
+  color: white;
+  opacity: 0.8;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.image-viewer-close:hover {
+  opacity: 1;
+  transform: scale(1.1);
 }
