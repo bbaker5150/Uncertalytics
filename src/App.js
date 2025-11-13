@@ -14,6 +14,7 @@ import DerivedBreakdownModal from "./components/DerivedBreakdownModal";
 import TestPointInfoModal from "./components/TestPointInfoModal";
 import RiskScatterplot from "./components/RiskScatterplot";
 import AddTmdeModal from "./components/AddTmdeModal";
+import { generateOverviewReport } from './utils/pdfGenerator.js';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faInfoCircle,
@@ -2347,11 +2348,21 @@ const extractRawAttachments = (pdfDoc) => {
 
 const extractAttachments = (pdfDoc) => {
   const rawAttachments = extractRawAttachments(pdfDoc);
+  
   return rawAttachments.map(({ fileName, fileSpec }) => {
-    const stream = fileSpec
-      .lookup(PDFName.of('EF'), PDFDict)
-      .lookup(PDFName.of('F'), PDFStream);
-      
+    const EF = fileSpec.lookup(PDFName.of('EF'), PDFDict);
+    const stream = EF.lookup(PDFName.of('F'), PDFStream);
+
+    // Get the MIME type, which is stored as /Subtype
+    // e.g., /image#2Fjpeg -> "image/jpeg" or /application#2Fjson -> "application/json"
+    const subtype = EF.lookup(PDFName.of('Subtype'));
+    let mimeType = 'application/octet-stream'; // Default
+    if (subtype instanceof PDFName) {
+        // The subtype is often encoded, e.g., /image#2Fjpeg for "image/jpeg"
+        // PDFName.decodeText() handles this decoding.
+        mimeType = subtype.decodeText();
+    }
+
     // Handle different file name encodings
     let name;
     if (fileName instanceof PDFHexString) {
@@ -2367,14 +2378,13 @@ const extractAttachments = (pdfDoc) => {
     if (stream instanceof PDFRawStream) {
         data = decodePDFRawStream(stream).decode();
     } else {
-        // Fallback or error for other stream types if necessary
-        // For simplicity, we assume PDFRawStream here
         data = stream.contents;
     }
 
     return {
       name: name,
       data: data, // This is a Uint8Array
+      mimeType: mimeType,
     };
   });
 };
@@ -2667,7 +2677,8 @@ function Analysis({
         ? (LUp - LLow) / tmdeToleranceSpan_Native
         : 0;
 
-    setRiskResults({
+    // --- MODIFICATION IS HERE ---
+    const newRiskMetrics = {
       LLow: LLow,
       LUp: LUp,
       tur: turResult,
@@ -2691,7 +2702,11 @@ function Analysis({
       uutBreakdownForTar: uutBreakdownForTar,
       tmdeBreakdownForTar: tmdeBreakdownForTar,
       nativeUnit: nominalUnit,
-    });
+    };
+
+    setRiskResults(newRiskMetrics);
+    onDataSave({ riskMetrics: newRiskMetrics }); // <-- This line was added
+
   }, [
     riskInputs.LLow,
     riskInputs.LUp,
@@ -2701,34 +2716,37 @@ function Analysis({
     uutToleranceData,
     tmdeTolerancesData,
     setNotification,
-    setRiskResults,
     sessionData.uutDescription,
+    onDataSave // <-- This dependency was added
   ]);
 
   useEffect(() => {
-    const shouldCalculate = (analysisMode === "risk" || analysisMode === "uncertaintyTool");
+  const shouldCalculate = (analysisMode === "risk" || analysisMode === "uncertaintyTool");
 
-    if (shouldCalculate && calcResults) {
-      calculateRiskMetrics();
-    }
-    
-    // If we are NOT on a tab that shows risk, clear the results
-    if (!shouldCalculate) {
-      setRiskResults(prevResults => {
-        if (prevResults !== null) {
-          return null; // Only set to null if it's not already null
-        }
-        return prevResults;
-      });
-    }
-  }, [
-    analysisMode, 
-    calcResults, 
-    sessionData.uncReq.reliability, 
-    sessionData.uncReq.guardBandMultiplier,
-    calculateRiskMetrics,
-    setRiskResults
-  ]);
+  if (shouldCalculate && calcResults) {
+    calculateRiskMetrics();
+  }
+
+  // If we are NOT on a tab that shows risk, clear the results
+  if (!shouldCalculate) {
+    setRiskResults(prevResults => {
+      if (prevResults !== null) {
+        onDataSave({ riskMetrics: null }); 
+        return null;
+      }
+      return prevResults;
+    });
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [
+  // This hook should ONLY depend on the data that triggers a new calculation
+  analysisMode, 
+  calcResults, 
+  sessionData.uncReq.reliability, 
+  sessionData.uncReq.guardBandMultiplier,
+  riskInputs.LLow, // This was missing but is a key input
+  riskInputs.LUp   // This was missing but is a key input
+]);
 
   // Effect to update risk input tolerances when UUT tolerance changes
   useEffect(() => {
@@ -4139,6 +4157,7 @@ function App() {
       document: "",
       documentDate: "",
       notes: "",
+      noteImages: [],
       uutTolerance: {},
       testPoints: [],
       uncReq: {
@@ -4169,6 +4188,7 @@ function App() {
   const [initialTmdeToEdit, setInitialTmdeToEdit] = useState(null);
   const [riskResults, setRiskResults] = useState(null);
   const [appNotification, setAppNotification] = useState(null);
+  const [sessionImageCache, setSessionImageCache] = useState(new Map());
 
   const handleOpenSessionEditor = (
     initialTab = "details",
@@ -4267,10 +4287,26 @@ function App() {
     });
   };
 
-  const handleSessionChange = (updatedSession) => {
+  const handleSessionChange = (updatedSession, newImageFiles = []) => {
     setSessions((prevSessions) => 
       prevSessions.map((s) => (s.id === updatedSession.id ? updatedSession : s))
     );
+
+    // Update the image cache with the new files
+    if (newImageFiles.length > 0) {
+      setSessionImageCache((prevCache) => {
+        const newCache = new Map(prevCache);
+        const sessionCache = new Map(newCache.get(updatedSession.id) || []);
+
+        newImageFiles.forEach((img) => {
+          sessionCache.set(img.id, img.fileObject); // Store the actual File object
+        });
+
+        newCache.set(updatedSession.id, sessionCache);
+        return newCache;
+      });
+    }
+
     setEditingSession(null);
   };
 
@@ -4314,161 +4350,106 @@ function App() {
     );
   };
 
-  // const handleSaveToFile = async () => {
-  //   let now = new Date();
 
-  //   const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  //   const day = now.getDate().toString().padStart(2, '0');
-  //   const year = now.getFullYear();
-  //   const hours = now.getHours().toString().padStart(2, '0');
-  //   const minutes = now.getMinutes().toString().padStart(2, '0');
-  //   const seconds = now.getSeconds().toString().padStart(2, '0');
-  //   const formattedDate = `${month}/${day}/${year}`;
-  //   const formattedTime = `${hours}:${minutes}:${seconds}`;
-
-  //   const currentSession = sessions.find((s) => s.id === selectedSessionId);
-  //   if (!currentSession) return;
-
-  //   const fileName = `MUA_${currentSession.uutDescription || "Session_"}${formattedDate + "_" + formattedTime}.pdf`;
-
-  //   const jsonData = JSON.stringify(currentSession, null, 2);
-    
-  //   const pdfDoc = await PDFDocument.create();
-  //   const page = pdfDoc.addPage();
-  //   const { width, height } = page.getSize();
-
-  //   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  //   const fontSize = 12;
-
-  //   const summaryText = `Session Summary\n\nDescription: ${currentSession.uutDescription}\nDate: ${formattedDate} ${formattedTime}`;
-  //   page.drawText(summaryText, {
-  //     x: 50,
-  //     y: height - 50,
-  //     size: fontSize,
-  //     font,
-  //     lineHeight: 16,
-  //   });
-
-  //   pdfDoc.setTitle(fileName);
-  //   pdfDoc.setSubject('MUA Session Data');
-  //   pdfDoc.setKeywords(['MUA', 'Session', 'JSON']);
-  //   pdfDoc.setProducer('MUA Tool');
-  //   pdfDoc.setCreator('MUA Tool');
-  //   pdfDoc.setCreationDate(now);
-  //   pdfDoc.setModificationDate(now);
-    
-  //   const lineHeight = 10;
-  //   const margin = 50;
-  //   const maxWidth = width - margin * 2;
-
-  //   const jsonLines = jsonData.split('\n');
-  //   let y = height - margin;
-  //   let metadataPage = pdfDoc.addPage();
-
-  //   for (const line of jsonLines) {
-  //     if (y < margin) {
-  //       metadataPage = pdfDoc.addPage();
-  //       y = height - margin;
-  //     }
-
-  //     metadataPage.drawText(line, {
-  //       x: margin,
-  //       y,
-  //       size: fontSize,
-  //       font,
-  //     });
-
-  //     y -= lineHeight;
-  //   }
-
-  //   const pdfBytes = await pdfDoc.save();
-
-  //   const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-  //   const href = URL.createObjectURL(blob);
-  //   const link = document.createElement("a");
-  //   link.href = href;
-  //   link.download = fileName;
-  //   document.body.appendChild(link);
-  //   link.click();
-  //   document.body.removeChild(link);
-  //   URL.revokeObjectURL(href);
-  // };
 
   const textEncoder = new TextEncoder();
   const handleSaveToFile = async () => {
-      let now = new Date();
+    let now = new Date();
 
-      const month = (now.getMonth() + 1).toString().padStart(2, '0');
-      const day = now.getDate().toString().padStart(2, '0');
-      const year = now.getFullYear();
-      const hours = now.getHours().toString().padStart(2, '0');
-      const minutes = now.getMinutes().toString().padStart(2, '0');
-      const seconds = now.getSeconds().toString().padStart(2, '0');
-      const formattedDate = `${month}/${day}/${year}`;
-      const formattedTime = `${hours}:${minutes}:${seconds}`;
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
 
-      const currentSession = sessions.find((s) => s.id === selectedSessionId);
-      if (!currentSession) return;
+    const currentSession = sessions.find((s) => s.id === selectedSessionId);
+    if (!currentSession) return;
 
-      const fileName = `MUA_${currentSession.uutDescription || "Session_"}${formattedDate + "_" + formattedTime}.pdf`;
-
-      // 1. Prepare JSON Data
-      const jsonData = JSON.stringify(currentSession, null, 2);
-      // Convert the JSON string to a Uint8Array for attachment
-      const jsonDataBytes = textEncoder.encode(jsonData);
-      
-      // 2. Initialize PDF Document
-      const pdfDoc = await PDFDocument.create();
-      const page = pdfDoc.addPage();
-      const { width, height } = page.getSize();
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const fontSize = 12;
-
-      // 3. Set Visible Summary Text
-      const summaryText = `Session Summary\n\nDescription: ${currentSession.uutDescription}\nDate: ${formattedDate} ${formattedTime}\n\n(Full session data is in the PDF attachments)`;
-      page.drawText(summaryText, {
-          x: 50,
-          y: height - 50,
-          size: fontSize,
-          font,
-          lineHeight: 16,
+    // Get this session's image files from the main app cache
+    const imagesToSave = [];
+    const sessionCache = sessionImageCache.get(currentSession.id);
+    if (sessionCache && currentSession.noteImages) {
+      currentSession.noteImages.forEach(imageRef => {
+        if (sessionCache.has(imageRef.id)) {
+          imagesToSave.push({
+            fileName: imageRef.fileName,
+            fileObject: sessionCache.get(imageRef.id) // This is the File object
+          });
+        }
       });
+    }
 
-      // 4. Set Standard PDF Document Metadata
-      pdfDoc.setTitle(fileName);
-      pdfDoc.setSubject('MUA Session Data');
-      pdfDoc.setKeywords(['MUA', 'Session', 'JSON']);
-      pdfDoc.setProducer('MUA Tool');
-      pdfDoc.setCreator('MUA Tool');
-      pdfDoc.setCreationDate(now);
-      pdfDoc.setModificationDate(now);
-      
-      // 5. ATTACH THE JSON DATA (Simple & Efficient Method)
-      // This embeds the full JSON data as a 'sessionData.json' file
-      await pdfDoc.attach(jsonDataBytes, 'sessionData.json', {
-          mimeType: 'application/json',
-          description: 'Full MUA session data',
+    const fileName = `MUA_${currentSession.uutDescription || "Session"}_${year}${month}${day}_${hours}${minutes}.pdf`;
+
+    // 1. Prepare JSON Data for attachment
+    const jsonData = JSON.stringify(currentSession, null, 2);
+    const jsonDataBytes = textEncoder.encode(jsonData);
+    
+    // 2. Initialize PDF Document
+    const pdfDoc = await PDFDocument.create();
+    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const fonts = { regular: helveticaFont, bold: helveticaBoldFont };
+
+    // 3. Set Standard PDF Document Metadata
+    pdfDoc.setTitle(fileName);
+    pdfDoc.setSubject('MUA Session Data and Overview');
+    pdfDoc.setKeywords(['MUA', 'Session', 'JSON', 'Overview']);
+    pdfDoc.setProducer('MUA Tool');
+    pdfDoc.setCreator('MUA Tool');
+    pdfDoc.setCreationDate(now);
+    pdfDoc.setModificationDate(now);
+    
+    // 4. Generate the new Overview Pages
+    try {
+      const helpers = {
+        getToleranceSummary,
+        calculateUncertaintyFromToleranceObject,
+        convertPpmToUnit,
+        getAbsoluteLimits
+      };
+      await generateOverviewReport(pdfDoc, currentSession, fonts, helpers);
+    } catch (error) {
+      console.error("Failed to generate PDF overview report:", error);
+      setAppNotification({
+        title: "PDF Error",
+        message: `Failed to generate PDF overview: ${error.message}`
       });
+    }
 
-      // 6. Draw Full JSON onto PDF Pages (REMOVED FOR SIMPLICITY AND RELIABILITY)
-      // This section was removed as it's redundant with the attachment,
-      // makes the PDF very large, and can cause encoding/decoding errors.
+    // 5. ATTACH THE JSON DATA
+    await pdfDoc.attach(jsonDataBytes, 'sessionData.json', {
+        mimeType: 'application/json',
+        description: 'Full MUA session data',
+    });
 
-      // 7. Finalize and Save
-      const pdfBytes = await pdfDoc.save();
+    // 6. ATTACH ALL IMAGES
+    for (const image of imagesToSave) {
+      try {
+        const imageBytes = await image.fileObject.arrayBuffer();
+        await pdfDoc.attach(imageBytes, image.fileName, {
+          mimeType: image.fileObject.type,
+          description: 'User-uploaded note image',
+        });
+      } catch (err) {
+        console.error(`Failed to attach image ${image.fileName}:`, err);
+        // Continue to save the PDF even if one image fails
+      }
+    }
 
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = href;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(href);
+    // 7. Finalize and Save
+    const pdfBytes = await pdfDoc.save();
+
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(href);
   };
-
-
 
   const handleLoadFromFile = (event) => {
     const file = event.target.files[0];
@@ -4489,7 +4470,7 @@ function App() {
           throw new Error('Failed to load: This does not appear to be a valid PDF file.');
         }
 
-        // 2. Use the new helper function to get attachments
+        // 2. Use the new helper function to get ALL attachments (including mimeType)
         const attachments = extractAttachments(pdfDoc);
 
         if (attachments.length === 0) {
@@ -4505,7 +4486,7 @@ function App() {
           throw new Error('Error: Could not find the required "sessionData.json" attachment in this PDF.');
         }
 
-        // 4. Decode the data (Uint8Array to String)
+        // 4. Decode and Parse the JSON
         let jsonData;
         try {
           const textDecoder = new TextDecoder(); 
@@ -4515,7 +4496,6 @@ function App() {
           throw new Error('Failed to decode session data. The attachment may be corrupt.');
         }
 
-        // 5. Parse the JSON
         let loadedSession;
         try {
           loadedSession = JSON.parse(jsonData);
@@ -4527,6 +4507,27 @@ function App() {
 
         if (!loadedSession || !loadedSession.id) {
            throw new Error('Error: Attached data is not a valid session object.');
+        }
+
+        // 5. FIND AND LOAD IMAGE DATA
+        // This will hold the loaded images for the cache
+        const newSessionImageCache = new Map();
+        if (loadedSession.noteImages && loadedSession.noteImages.length > 0) {
+          loadedSession.noteImages.forEach(imageRef => {
+            const imageAttachment = attachments.find(
+              (a) => a.name === imageRef.fileName
+            );
+            
+            if (imageAttachment) {
+              // Create a Blob from the raw data, which can be used to create an object URL
+              const imageBlob = new Blob(
+                [imageAttachment.data], 
+                { type: imageAttachment.mimeType }
+              );
+              
+              newSessionImageCache.set(imageRef.id, imageBlob);
+            }
+          });
         }
 
         // 6. Update the main sessions state
@@ -4544,15 +4545,20 @@ function App() {
           } else {
             newSessions = [...prevSessions, loadedSession];
           }
-          sessionToSelect = loadedSession; // Store the session for use outside this setter
+          sessionToSelect = loadedSession; 
           return newSessions;
         });
 
-        // 7. Set the UI to view the newly loaded session
+        // 7. Update the main image cache
+        setSessionImageCache((prevCache) => {
+          const newCache = new Map(prevCache);
+          newCache.set(loadedSession.id, newSessionImageCache);
+          return newCache;
+        });
+
+        // 8. Set the UI to view the newly loaded session
         setSelectedSessionId(sessionToSelect.id);
         setSelectedTestPointId(sessionToSelect.testPoints?.[0]?.id || null);
-
-        // 8. Update the currently editing session to trigger modal refresh
         setEditingSession(sessionToSelect); 
 
         // 9. Use the notification modal
@@ -4562,11 +4568,10 @@ function App() {
         });
 
       } catch (err) {
-        // This is now the catch-all for any thrown error
         console.error('Failed to load session from PDF:', err);
         setAppNotification({
           title: 'Load Failed',
-          message: err.message, // Display the specific error message
+          message: err.message,
         });
       }
     };
@@ -4755,6 +4760,8 @@ function App() {
           handleLoadFromFile={handleLoadFromFile}
           initialSection={initialSessionTab}
           initialTmdeToEdit={initialTmdeToEdit}
+          sessionImageCache={sessionImageCache}
+          onImageCacheChange={setSessionImageCache}
         />
 
         {testPointData && (
@@ -4875,9 +4882,6 @@ function App() {
                   </button>
                 </div>
               </div>
-              <p className="sidebar-hint">
-                Check items to include them in the budget.
-              </p>
               <div className="measurement-point-list">
                 {currentTestPoints.length > 0 ? (
                   currentTestPoints.map((tp) => (
