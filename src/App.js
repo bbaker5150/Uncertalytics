@@ -3268,8 +3268,7 @@ function Analysis({
       return x;
     }
 
-    let combUncVal = 0.29011491975882;
-    // let combUncVal = calcResults.combined_uncertainty_absolute_base;
+    let combUncVal = calcResults.combined_uncertainty_absolute_base;
     let gbLow = resDwn(gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, combUncVal, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
     let gbHigh = resUp(gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, combUncVal, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
     let gbMult = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh);
@@ -3285,9 +3284,12 @@ function Analysis({
     let gbCalInt = CalIntwGBMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, gbLow, gbHigh, turResult, turNeeded, calInt);
     let nogbCalInt = CalIntMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
     let nogbMeasRel = CalRelMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
+    
     console.log("GBCALINT: ", gbCalInt);
     console.log("NOGBCALINT: ", nogbCalInt);
     console.log("NOGBMEASREL: ", nogbMeasRel);
+
+    return [gbLow,gbHigh,gbMult,gbPFA,gbPFR,gbCalInt,nogbCalInt,nogbMeasRel];
   };
 
   useEffect(() => {
@@ -4817,7 +4819,13 @@ function App() {
     pdfDoc.setCreator('MUA Tool');
     pdfDoc.setCreationDate(now);
     pdfDoc.setModificationDate(now);
-    
+
+    const jsonBytes = new TextEncoder().encode(JSON.stringify(jsonData));
+    await pdfDoc.attach(jsonBytes, 'session.json', {
+      mimeType: 'application/json',
+      description: 'Session data',
+    });
+     
     const lineHeight = 10;
     const margin = 50;
     const maxWidth = width - margin * 2;
