@@ -3,7 +3,15 @@ import AddTmdeModal from './AddTmdeModal';
 import ToleranceForm from './ToleranceForm';
 import ContextMenu from './ContextMenu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck, faTimes, faSave, faPlus, faTrashAlt, faPencilAlt } from '@fortawesome/free-solid-svg-icons';
+import { 
+    faCheck, 
+    faTimes, 
+    faSave, 
+    faPlus, 
+    faTrashAlt, 
+    faPencilAlt, 
+    faFolderOpen
+} from '@fortawesome/free-solid-svg-icons';
 import { NotificationModal } from '../App';
 
 const TmdeSealDisplay = ({ tmde, onEditClick, onContextMenu, instanceIndex, totalQuantity }) => (
@@ -32,7 +40,16 @@ const AddTmdeSeal = ({ onClick }) => (
 );
 
 
-const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, initialSection, initialTmdeToEdit }) => {
+const EditSessionModal = ({ 
+    isOpen, 
+    onClose, 
+    sessionData, 
+    onSave, 
+    onSaveToFile, 
+    initialSection, 
+    initialTmdeToEdit,
+    handleLoadFromFile // Added prop
+}) => {
     const [formData, setFormData] = useState({});
     const [activeSection, setActiveSection] = useState('details');
     const [editingTmde, setEditingTmde] = useState(null);
@@ -430,10 +447,29 @@ const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onSaveToFile, 
                     )}
                     
                     <div className="modal-actions" style={{justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '20px'}}>
-                        <button className="modal-icon-button secondary" onClick={onSaveToFile} title="Save Session to File (.pdf)">
-                           <FontAwesomeIcon icon={faSave} />
-                        </button>
                         
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button className="modal-icon-button secondary" onClick={onSaveToFile} title="Save Session to File (.pdf)">
+                               <FontAwesomeIcon icon={faSave} />
+                            </button>
+                            
+                            <label 
+                              className="modal-icon-button secondary" 
+                              htmlFor="load-session-pdf"
+                              title="Load Session from File (.pdf)"
+                              style={{ cursor: 'pointer', margin: '0' }} // Added margin 0
+                            >
+                               <FontAwesomeIcon icon={faFolderOpen} />
+                            </label>
+                            <input
+                              type="file"
+                              id="load-session-pdf"
+                              accept=".pdf"
+                              style={{ display: 'none' }}
+                              onChange={handleLoadFromFile} 
+                            />
+                        </div>
+
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <button className="modal-icon-button secondary" onClick={onClose} title="Cancel">
                                 <FontAwesomeIcon icon={faTimes} />

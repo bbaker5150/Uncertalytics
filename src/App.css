@@ -287,6 +287,8 @@ select:focus {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
+  font-size: 1rem;
+  
 }
 
 
@@ -1250,7 +1252,6 @@ body.dark-mode .measurement-point-list-item:hover {
     width: 100%;
 }
 
-/* --- Dynamic Tolerance Modal Styles --- */
 .components-container {
   display: flex;
   flex-direction: column;
@@ -1515,18 +1516,10 @@ body.dark-mode .measurement-point-list-item:hover {
   line-height: 1.6;
 }
 
-/* ============================================= */
-/* --- Pristine Batch Add Test Point Modal Styles --- */
-/* ============================================= */
-
-/* --- Main 2-Column Layout --- */
-/* Gives more horizontal space to the points list on the right */
 .modal-form-grid {
   grid-template-columns: 1fr 1.5fr;
 }
 
-/* --- Right-Side Points Container --- */
-/* This container holds the header, list, and add form */
 .measurement-points-container {
   background-color: var(--background-color);
   padding: 20px;
@@ -1534,7 +1527,6 @@ body.dark-mode .measurement-point-list-item:hover {
   border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  /* Prevents the container from growing too tall on large screens */
   max-height: 480px;
 }
 
@@ -1599,15 +1591,6 @@ body.dark-mode .measurement-point-list-item:hover {
   flex-shrink: 0;
 }
 
-
-/*
- * ==========================================================
- * ### CORE FIX: DYNAMIC GRID COLUMN LAYOUTS ###
- * These rules ensure that the header, rows, AND the add form
- * all switch between 3 and 5 columns correctly.
- * ==========================================================
- */
-
 /* 1. Base Layout (3 Columns) */
 .points-table-header,
 .points-table-row,
@@ -1637,6 +1620,145 @@ body.dark-mode .measurement-point-list-item:hover {
   width: 40px;
   height: 40px; /* Makes it a square that aligns with inputs */
   font-size: 1rem;
+}
+
+/* ======================================== */
+/* --- Symbol Button & Pop-out Styles --- */
+/* ======================================== */
+
+/* Wrapper for the equation input and symbol button */
+.input-with-symbol-button {
+  display: flex;
+  position: relative; /* Key for positioning the pop-out */
+}
+
+/* Make the input flexible */
+.input-with-symbol-button input {
+  flex-grow: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  margin: 0;
+}
+
+.symbol-toggle-button {
+  flex-shrink: 0;
+  width: auto;
+  padding: 0 12px;
+  height: 44px;
+  margin: 0;
+  border: 1px solid var(--border-color);
+  border-left: none;
+  background-color: var(--background-color);
+  color: var(--text-color-muted);
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.symbol-toggle-button:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* --- Symbol Pop-out Categories --- */
+.symbol-popout {
+  position: absolute;
+  top: 100%; 
+  right: 0; 
+  z-index: 1010; 
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  padding: 10px;
+  margin-top: 4px;
+  animation: context-menu-fade-in 0.1s ease-out;
+  min-width: 300px; 
+}
+
+.symbol-category {
+  margin-bottom: 8px;
+}
+
+.symbol-category:last-child {
+  margin-bottom: 0;
+}
+
+.symbol-category-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 6px 4px;
+  padding: 0;
+}
+
+.symbol-category-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Style for buttons INSIDE the pop-out */
+.symbol-popout .symbol-button {
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  border-radius: 4px;
+  padding: 6px 10px; 
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 40px; 
+  text-align: center;
+}
+
+.symbol-popout .symbol-button:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+
+/* --- DARK MODE --- */
+body.dark-mode .symbol-toggle-button {
+  background-color: #2c2c2c;
+  border-color: #424242;
+  color: var(--text-color-muted);
+}
+
+body.dark-mode .symbol-toggle-button:hover {
+  background-color: var(--primary-color-dark);
+  color: #121212;
+}
+
+body.dark-mode .symbol-popout {
+  background-color: #2c2c2c;
+  border-color: #424242;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+body.dark-mode .symbol-category-title {
+  color: var(--text-color-muted);
+}
+
+body.dark-mode .symbol-popout .symbol-button {
+  background-color: #1e1e1e;
+  border-color: #424242;
+  color: var(--text-color);
+}
+
+body.dark-mode .symbol-popout .symbol-button:hover {
+  background-color: var(--primary-color-dark);
+  color: #121212;
+  border-color: var(--primary-color-dark);
 }
 
 /* =================================================================== */

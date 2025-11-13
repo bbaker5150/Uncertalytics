@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import ToleranceForm from "./ToleranceForm";
 import { unitSystem } from "../App";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faTimes, faPlus } from "@fortawesome/free-solid-svg-icons";
+
 
 const AddTmdeModal = ({
   isOpen,
@@ -34,7 +35,7 @@ const AddTmdeModal = ({
       measurementPoint: { ...uutMeasurementPoint },
       variableType:
         isDerived && availableTypes.length > 0 ? availableTypes[0] : "",
-      quantity: 1, // <-- ADDED DEFAULT
+      quantity: 1,
     };
 
     if (initialTmdeData) {
@@ -49,8 +50,7 @@ const AddTmdeModal = ({
       if (!existingData.id) {
         existingData.id = Date.now() + Math.random();
       }
-      // Merge default state to ensure quantity is present if missing
-      return { ...defaultState, ...existingData }; // <-- UPDATED MERGE
+      return { ...defaultState, ...existingData };
     }
     return defaultState;
   }, [uutMeasurementPoint, initialTmdeData, isDerived, availableTypes]);
@@ -86,23 +86,20 @@ const AddTmdeModal = ({
 
   useEffect(() => {
     if (!isDerived && useUutRef && uutMeasurementPoint) {
-      // Only apply if not derived and toggle is on
       setTmde((prev) => ({
         ...prev,
         measurementPoint: { ...uutMeasurementPoint },
       }));
     } else if (!isDerived && !useUutRef && !initialTmdeData) {
-      // Clear value only if direct, toggle off, and adding new
       setTmde((prev) => ({
         ...prev,
         measurementPoint: { ...(prev.measurementPoint || {}), value: "" },
       }));
     }
-    // If derived, measurementPoint is always manual or based on initialState
-    // If editing a direct point and toggling off, it reverts via getInitialState logic.
-  }, [useUutRef, uutMeasurementPoint, initialTmdeData, isDerived]); // Added isDerived
+  }, [useUutRef, uutMeasurementPoint, initialTmdeData, isDerived]);
 
-  const handleSave = () => {
+  // Updated handleSave to accept an 'andClose' flag ---
+  const handleSave = (andClose = true) => {
     const cleanupTolerance = (tol) => {
       const cleaned = { ...tol };
       const componentKeys = ["reading", "range", "floor", "db"];
@@ -119,13 +116,21 @@ const AddTmdeModal = ({
       }
       return cleaned;
     };
-    // Ensure quantity is a valid number on save
+
     const finalTmde = {
       ...tmde,
       quantity: parseInt(tmde.quantity, 10) || 1,
     };
-    onSave(cleanupTolerance(finalTmde));
-    onClose();
+
+    // Pass the 'andClose' flag to the parent's save handler
+    onSave(cleanupTolerance(finalTmde), andClose);
+
+    if (!andClose) {
+      // If NOT closing, just reset the form for the next item
+      setTmde(getInitialState());
+      setUseUutRef(true); // Also reset the toggle
+    }
+    // The parent will handle the actual closing if andClose is true
   };
 
   if (!isOpen) return null;
@@ -139,7 +144,6 @@ const AddTmdeModal = ({
 
       <div className="modal-body-scrollable">
         <div className="tmde-header">
-          {/* --- MODIFICATION: Added details-grid wrapper --- */}
           <div className="details-grid">
             <div className="form-section">
               <label>TMDE Name</label>
@@ -151,7 +155,6 @@ const AddTmdeModal = ({
               />
             </div>
 
-            {/* --- MODIFICATION: Added Quantity Field --- */}
             <div className="form-section">
               <label>Quantity</label>
               <input
@@ -189,7 +192,6 @@ const AddTmdeModal = ({
           )}
           <div className="form-section">
             <label>Reference Measurement Point</label>
-            {/* Conditionally render the toggle section only if NOT derived */}
             {!isDerived && (
               <div className="reference-point-control">
                 <div className="toggle-switch-container">
@@ -216,7 +218,6 @@ const AddTmdeModal = ({
                 </div>
               </div>
             )}
-            {/* Manual input container is always rendered, but might be disabled for direct points */}
             <div
               className={`manual-input-container ${
                 !isDerived && useUutRef ? "disabled" : ""
@@ -226,7 +227,6 @@ const AddTmdeModal = ({
                 <input
                   type="text"
                   placeholder="Value"
-                  // Disable only if it's a direct measurement AND the toggle is checked
                   disabled={!isDerived && useUutRef}
                   value={tmde.measurementPoint?.value || ""}
                   onChange={(e) =>
@@ -240,7 +240,6 @@ const AddTmdeModal = ({
                   }
                 />
                 <select
-                  // Disable only if it's a direct measurement AND the toggle is checked
                   disabled={!isDerived && useUutRef}
                   value={tmde.measurementPoint?.unit || ""}
                   onChange={(e) =>
@@ -272,7 +271,10 @@ const AddTmdeModal = ({
         />
       </div>
 
-      <div className="modal-actions">
+      <div
+        className="modal-actions"
+        style={{ justifyContent: "space-between", alignItems: "center" }}
+      >
         <button
           className="modal-icon-button secondary"
           onClick={onClose}
@@ -280,13 +282,26 @@ const AddTmdeModal = ({
         >
           <FontAwesomeIcon icon={faTimes} />
         </button>
-        <button
-          className="modal-icon-button primary"
-          onClick={handleSave}
-          title="Save TMDE"
-        >
-          <FontAwesomeIcon icon={faCheck} />
-        </button>
+
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {!initialTmdeData && (
+            <button
+              className="modal-icon-button primary"
+              onClick={() => handleSave(false)} // Calls handleSave with andClose=false
+              title="Save this TMDE and add another"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+            </button>
+          )}
+
+          <button
+            className="modal-icon-button primary"
+            onClick={() => handleSave(true)} // Calls handleSave with andClose=true
+            title={initialTmdeData ? "Save Changes" : "Save and Close"}
+          >
+            <FontAwesomeIcon icon={faCheck} />
+          </button>
+        </div>
       </div>
     </div>
   );
