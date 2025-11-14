@@ -75,7 +75,7 @@ const SearchableDropdown = ({ name, value, onChange, options }) => {
 };
 
 
-const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPoints }) => {
+const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPoints, previousTestPointData = null }) => {
     const getInitialFormData = () => ({
         section: '',
         paramName: '', paramValue: '', paramUnit: '',
@@ -230,6 +230,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
     useEffect(() => {
         if (isOpen) {
             if (initialData) {
+                // --- EDITING MODE ---
                 const qualExists = !!initialData.testPointInfo.qualifier?.value;
                 setHasQualifier(qualExists);
                 const initialMappings = initialData.variableMappings || {};
@@ -251,13 +252,38 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                 } else {
                     setEquationVariables([]);
                 }
+            } else if (previousTestPointData) {
+                // --- ADDING NEW, WITH PREVIOUS DATA ---
+                const prev = previousTestPointData;
+                const qualExists = !!prev.testPointInfo.qualifier;
+                setHasQualifier(qualExists);
+                const prevMappings = prev.variableMappings || {};
+                setFormData({
+                    section: prev.section || '',
+                    paramName: prev.testPointInfo.parameter.name || '',
+                    paramValue: '', // <-- Auto-fill, but leave value blank
+                    paramUnit: prev.testPointInfo.parameter.unit || '',
+                    qualName: prev.testPointInfo.qualifier?.name || 'Frequency',
+                    qualValue: '', // <-- Auto-fill, but leave value blank
+                    qualUnit: prev.testPointInfo.qualifier?.unit || 'kHz',
+                    copyTmdes: true, // Default to copying TMDEs
+                    measurementType: prev.measurementType || 'direct',
+                    equationString: prev.equationString || '',
+                    variableMappings: prevMappings,
+                });
+                if (prev.measurementType === 'derived') {
+                    updateEquationVariables(prev.equationString);
+                } else {
+                    setEquationVariables([]);
+                }
             } else {
+                // --- ADDING NEW, FIRST POINT ---
                 setHasQualifier(false);
                 setFormData(getInitialFormData());
                 setEquationVariables([]);
             }
         }
-    }, [initialData, isOpen]);
+    }, [initialData, isOpen, previousTestPointData]); // Added previousTestPointData
 
     if (!isOpen) return null;
 

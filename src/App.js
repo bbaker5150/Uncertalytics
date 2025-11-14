@@ -4747,6 +4747,7 @@ function App() {
           onSave={handleSaveTestPoint}
           initialData={editingTestPoint}
           hasExistingPoints={currentTestPoints.length > 0}
+          previousTestPointData={currentTestPoints.length > 0 ? currentTestPoints[currentTestPoints.length - 1] : null}
         />
 
         <EditSessionModal

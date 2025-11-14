@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect, useMemo, useEffect, useRef } from "react";
+import React, { useState, useLayoutEffect, useMemo, useEffect } from "react";
 import AddTmdeModal from "./AddTmdeModal";
 import ToleranceForm from "./ToleranceForm";
 import ContextMenu from "./ContextMenu";
@@ -6,11 +6,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { v4 as uuidv4 } from "uuid";
 import {
   faCheck,
-  faSave,
   faPlus,
   faTrashAlt,
   faPencilAlt,
-  faFolderOpen,
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -336,14 +334,10 @@ const EditSessionModal = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const updatedFormData = { ...formData, [name]: value };
-
-    if (name === "uutDescription" && value) {
-      updatedFormData.name = `MUA: ${value}`;
-    } else if (name === "uutDescription" && !value) {
-      updatedFormData.name = "New Session";
-    }
-    setFormData(updatedFormData);
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      [name]: value
+    }));
   };
 
   const handleReqChange = (e) => {
@@ -556,6 +550,16 @@ const EditSessionModal = ({
 
           {activeSection === "details" && (
             <div className="details-grid">
+              <div className="form-section full-span">
+                <label>Session Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name || ""}
+                  onChange={handleChange}
+                  placeholder="e.g., Fluke 8588A Verification"
+                />
+              </div>
               <div className="form-section">
                 <label>Analyst</label>
                 <input
@@ -937,7 +941,7 @@ const EditSessionModal = ({
           <div
             className="modal-actions"
             style={{
-              justifyContent: "space-between",
+              justifyContent: "flex-end",
               alignItems: "center",
               marginTop: "auto",
               paddingTop: "20px",
