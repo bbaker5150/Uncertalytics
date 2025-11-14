@@ -807,6 +807,8 @@ const UncertaintyBudgetTable = ({
   const headerColSpan = isDirect ? 6 : 8;
   const finalColSpan = isDirect ? 3 : 5;
 
+  const [showGuardband, setShowGuardband] = useState(false);
+
   const getPfaClass = (pfa) => {
     if (pfa > 5) return "status-bad";
     if (pfa > 2) return "status-warning";
@@ -1044,6 +1046,14 @@ const UncertaintyBudgetTable = ({
                     The reported expanded uncertainty... k≈
                     {calcResults.k_value.toFixed(3)}... {confidencePercent}%.
                   </span>
+                  <div>
+                    <input
+                      type="checkbox"
+                      checked={showGuardband}
+                      onChange={(e) => setShowGuardband(e.target.checked)}
+                    />
+                    <label>Show Guardband</label>
+                  </div>
                   {riskResults && (
                     <div className="budget-risk-metrics">
                       <div className={`metric-pod ${getPfaClass(riskResults.pfa)}`}>
@@ -1070,6 +1080,58 @@ const UncertaintyBudgetTable = ({
                           {riskResults.tar.toFixed(2)} : 1
                         </span>
                       </div>
+                      {showGuardband && (<>
+                      <div className="metric-pod gblow">
+                        <span className="metric-pod-label">GB LOW</span>
+                        <span className="metric-pod-value">
+                          {riskResults.gbResults.GBLOW.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className="metric-pod gbhigh">
+                        <span className="metric-pod-label">GB HIGH</span>
+                        <span className="metric-pod-value">
+                          {riskResults.gbResults.GBUP.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className="metric-pod gbpfa">
+                        <span className="metric-pod-label">PFA w/ GB</span>
+                        <span className="metric-pod-value">
+                          {riskResults.gbResults.GBPFA.toFixed(4)} %
+                        </span>
+                      </div>
+                      <div className="metric-pod gbpfr">
+                        <span className="metric-pod-label">PFR w/ GB</span>
+                        <span className="metric-pod-value">
+                          {riskResults.gbResults.GBPFR.toFixed(4)} %
+                        </span>
+                      </div>
+                      <div className="metric-pod gbmult">
+                        <span className="metric-pod-label">GB Multiplier</span>
+                        <span className="metric-pod-value">
+                          {riskResults.gbResults.GBMULT.toFixed(4)} %
+                        </span>
+                      </div>
+                      <div className="metric-pod gbcalint">
+                        <span className="metric-pod-label">CAL INT w/ GB</span>
+                        <span className="metric-pod-value">
+                          {riskResults.gbResults.GBCALINT.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className="metric-pod calint">
+                        <span className="metric-pod-label">CAL INT w/o GB</span>
+                        <span className="metric-pod-value">
+                          {riskResults.gbResults.NOGBCALINT.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className="metric-pod measrel">
+                        <span className="metric-pod-label">MEAS REL w/o GB</span>
+                        <span className="metric-pod-value">
+                          {riskResults.gbResults.NOGBMEASREL.toFixed(4)} %
+                        </span>
+                      </div>
+                      </>
+                      )}
+                      
                     </div>
                   )}
                 </div>
@@ -1559,6 +1621,101 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
             </li>
           </ul>
           {/* Button Removed */}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
+  if (!results) return null;
+  const guardBand = results.gbResults
+
+  const nativeUnit = results.nativeUnit || "units";
+
+  return (
+    <div className="risk-analysis-container">
+      <div className="risk-analysis-dashboard">
+        <div className="risk-card clickable" onClick={() => onShowBreakdown("inputs")}>
+          <div
+            className="risk-label"
+            style={{
+              fontWeight: "bold",
+              fontSize: "1.1rem",
+              marginBottom: "15px",
+            }}
+          >
+            Key Calculation Inputs
+          </div>
+          <ul className="result-breakdown" style={{ marginTop: 0 }}>
+            <li>
+              <span className="label">UUT Limit (LLow)</span>
+              <span className="value">{results.LLow.toFixed(3)} {nativeUnit}</span>
+            </li>
+            <li>
+              <span className="label">UUT Limit (LUp)</span>
+              <span className="value">{results.LUp.toFixed(3)} {nativeUnit}</span>
+            </li>
+            <li>
+              <span className="label">Std. Unc. of Cal (uₑₐₗ)</span>
+              <span className="value">{results.uCal.toFixed(3)} {nativeUnit}</span>
+            </li>
+            <li>
+              <span className="label">Std. Unc. of UUT (uᵤᵤₜ)</span>
+              <span className="value">{results.uUUT.toFixed(3)} {nativeUnit}</span>
+            </li>
+            <li>
+              <span className="label">Acceptance Limit (Aₗₒw)</span>
+              <span className="value">{results.ALow.toFixed(3)} {nativeUnit}</span>
+            </li>
+            <li>
+              <span className="label">Acceptance Limit (Aᵤₚ)</span>
+              <span className="value">{results.AUp.toFixed(3)} {nativeUnit}</span>
+            </li>
+          </ul>
+        </div>
+        <div className="risk-card gblow-card clickable" onClick={() => onShowBreakdown("gblow")}>
+          <div className="risk-value">{guardBand.GBLOW.toFixed(4)}</div>
+          <div className="risk-label">GB Limit Low Value</div>
+          <div className="risk-explanation">
+            A ratio of the UUT's tolerance to the measurement uncertainty.
+          </div>
+        </div>
+        <div className="risk-card gbhigh-card clickable" onClick={() => onShowBreakdown("gbhigh")}>
+          <div className="risk-value">{guardBand.GBUP.toFixed(4)}</div>
+          <div className="risk-label">GB Limit High Value</div>
+          <div className="risk-explanation">
+            A ratio of the UUT's tolerance to the measurement uncertainty.
+          </div>
+        </div>
+
+        <div className={`risk-card pfa-card`} onClick={() => onShowBreakdown("pfa")}>
+          <div className="risk-value">{results.pfa.toFixed(4)} %</div>
+          <div className="risk-label">Probability of False Accept (PFA)</div>
+          <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
+            <li>
+              <span className="label">Lower Tail Risk</span>
+              <span className="value">{results.pfa_term1.toFixed(4)} %</span>
+            </li>
+            <li>
+              <span className="label">Upper Tail Risk</span>
+              <span className="value">{results.pfa_term2.toFixed(4)} %</span>
+            </li>
+          </ul>
+        </div>
+        <div className="risk-card pfr-card clickable" onClick={() => onShowBreakdown("pfr")}>
+          <div className="risk-value">{results.pfr.toFixed(4)} %</div>
+          <div className="risk-label">Probability of False Reject (PFR)</div>
+          <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
+            <li>
+              <span className="label">Lower Side Risk</span>
+              <span className="value">{results.pfr_term1.toFixed(4)} %</span>
+            </li>
+            <li>
+              <span className="label">Upper Side Risk</span>
+              <span className="value">{results.pfr_term2.toFixed(4)} %</span>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
@@ -2220,6 +2377,7 @@ function Analysis({
       expandedUncertainty: U_Native,
       tmdeToleranceSpan: tmdeToleranceSpan_Native,
       nativeUnit: nominalUnit,
+      gbResults: gbResults
     });
   }, [
     riskInputs.LLow,
@@ -3268,28 +3426,16 @@ function Analysis({
       return x;
     }
 
-    let combUncVal = calcResults.combined_uncertainty_absolute_base;
-    let gbLow = resDwn(gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, combUncVal, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
-    let gbHigh = resUp(gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, combUncVal, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
-    let gbMult = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh);
-    let gbPFA = PFAwGBMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, gbLow, gbHigh);
-    let gbPFR = PFRwGBMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, gbLow, gbHigh);
+    let gbLow = resDwn(gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
+    let gbHigh = resUp(gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
+    let gbMult = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh) * 100;
+    let gbPFA = PFAwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, gbLow, gbHigh) * 100;
+    let gbPFR = PFRwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, gbLow, gbHigh) * 100;
+    let gbCalInt = CalIntwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, gbLow, gbHigh, turResult, turNeeded, calInt);
+    let nogbCalInt = CalIntMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
+    let nogbMeasRel = CalRelMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired) * 100;
 
-    console.log("GBLOW: ", gbLow);
-    console.log("GBUP: ", gbHigh);
-    console.log("GBMULT: ", gbMult);
-    console.log("GBPFA: ", gbPFA);
-    console.log("GBPFR: ", gbPFR);
-
-    let gbCalInt = CalIntwGBMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, gbLow, gbHigh, turResult, turNeeded, calInt);
-    let nogbCalInt = CalIntMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
-    let nogbMeasRel = CalRelMgr(uutNominal.value, 0, LLow, LUp, combUncVal, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
-    
-    console.log("GBCALINT: ", gbCalInt);
-    console.log("NOGBCALINT: ", nogbCalInt);
-    console.log("NOGBMEASREL: ", nogbMeasRel);
-
-    return [gbLow,gbHigh,gbMult,gbPFA,gbPFR,gbCalInt,nogbCalInt,nogbMeasRel];
+    return {GBLOW: gbLow, GBUP: gbHigh, GBMULT: gbMult, GBPFA: gbPFA, GBPFR: gbPFR, GBCALINT: gbCalInt, NOGBCALINT: nogbCalInt, NOGBMEASREL: nogbMeasRel};
   };
 
   useEffect(() => {
@@ -3299,11 +3445,10 @@ function Analysis({
       calculateRiskMetrics();
     }
     
-    // If we are NOT on a tab that shows risk, clear the results
     if (!shouldCalculate) {
       setRiskResults(prevResults => {
         if (prevResults !== null) {
-          return null; // Only set to null if it's not already null
+          return null;
         }
         return prevResults;
       });
@@ -4577,6 +4722,7 @@ function Analysis({
         </div>
       )}
       {analysisMode === "risk" && (
+        <div>
         <Accordion title="Risk & Conformance Analysis" startOpen={true}>
           {!calcResults ? (
             <div className="form-section-warning">
@@ -4599,6 +4745,29 @@ function Analysis({
             </>
           )}
         </Accordion>
+                <Accordion title="Risk Mitigation" startOpen={true}>
+          {!calcResults ? (
+            <div className="form-section-warning">
+              <p>Uncertainty budget must be calculated first.</p>
+            </div>
+          ) : (
+            <>         
+              {riskResults ? (
+                <RiskMitigationDashboard
+                  results={riskResults}
+                  onShowBreakdown={(modalType) =>
+                    setLocalBreakdownModal(modalType)
+                  }
+                />
+              ) : (
+                <div className="placeholder-content" style={{ minHeight: "200px" }}>
+                  <p>Calculating risk...</p>
+                </div>
+              )}
+            </>
+          )}
+        </Accordion>
+        </div>
       )}
       {analysisMode === "spec" && (
         <Accordion title="Specification Comparison Analysis" startOpen={true}>

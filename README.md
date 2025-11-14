@@ -30,7 +30,7 @@ Before you begin, ensure you have the following software installed on your machi
 3.  **Install the dependencies**:
 
     ```sh
-    npm install
+    npm install --legacy-peer-deps 
     ```
 
 ### Running the Application

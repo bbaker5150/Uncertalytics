@@ -2406,6 +2406,19 @@ body.dark-mode .measurement-point-list-item:hover {
   color: var(--text-color-muted);
 }
 
+.metric-pod.gbmult,
+.metric-pod.gblow,
+.metric-pod.gbhigh,
+.metric-pod.gbpfa,
+.metric-pod.gbpfr,
+.metric-pod.gbcalint,
+.metric-pod.calint,
+.metric-pod.measrel {
+  border-color: var(--status-good);
+  color: var(--status-good);
+  animation: glow-good 3s infinite alternate;
+}
+
 /* --- Metric Pod Glow Animations --- */
 @keyframes glow-good {
     from { box-shadow: 0 0 3px 0px var(--status-good); }
