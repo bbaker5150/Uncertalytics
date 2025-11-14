@@ -1689,9 +1689,9 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           </div>
         </div>
 
-        <div className={`risk-card pfa-card`} onClick={() => onShowBreakdown("pfa")}>
-          <div className="risk-value">{results.pfa.toFixed(4)} %</div>
-          <div className="risk-label">Probability of False Accept (PFA)</div>
+        <div className={`risk-card gbpfa-card clickable`} onClick={() => onShowBreakdown("gbpfa")}>
+          <div className="risk-value">{guardBand.GBPFA.toFixed(4)} %</div>
+          <div className="risk-label">Probability of False Accept (PFA) with Guard Banding</div>
           <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
             <li>
               <span className="label">Lower Tail Risk</span>
@@ -1703,9 +1703,65 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
             </li>
           </ul>
         </div>
-        <div className="risk-card pfr-card clickable" onClick={() => onShowBreakdown("pfr")}>
-          <div className="risk-value">{results.pfr.toFixed(4)} %</div>
-          <div className="risk-label">Probability of False Reject (PFR)</div>
+        <div className="risk-card gbpfr-card clickable" onClick={() => onShowBreakdown("gbpfr")}>
+          <div className="risk-value">{guardBand.GBPFR.toFixed(4)} %</div>
+          <div className="risk-label">Probability of False Reject (PFR) with Guard Banding</div>
+          <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
+            <li>
+              <span className="label">Lower Side Risk</span>
+              <span className="value">{results.pfr_term1.toFixed(4)} %</span>
+            </li>
+            <li>
+              <span className="label">Upper Side Risk</span>
+              <span className="value">{results.pfr_term2.toFixed(4)} %</span>
+            </li>
+          </ul>
+        </div>
+        <div className="risk-card gbmult-card clickable" onClick={() => onShowBreakdown("gbmult")}>
+          <div className="risk-value">{guardBand.GBMULT.toFixed(4)} %</div>
+          <div className="risk-label">Guard Band Multiplier</div>
+          <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
+            <li>
+              <span className="label">Lower Side Risk</span>
+              <span className="value">{results.pfr_term1.toFixed(4)} %</span>
+            </li>
+            <li>
+              <span className="label">Upper Side Risk</span>
+              <span className="value">{results.pfr_term2.toFixed(4)} %</span>
+            </li>
+          </ul>
+        </div>
+        <div className="risk-card gbcalint-card clickable" onClick={() => onShowBreakdown("gbcalint")}>
+          <div className="risk-value">{guardBand.GBCALINT.toFixed(4)} %</div>
+          <div className="risk-label">Calibration Interval with Guard Banding</div>
+          <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
+            <li>
+              <span className="label">Lower Side Risk</span>
+              <span className="value">{results.pfr_term1.toFixed(4)} %</span>
+            </li>
+            <li>
+              <span className="label">Upper Side Risk</span>
+              <span className="value">{results.pfr_term2.toFixed(4)} %</span>
+            </li>
+          </ul>
+        </div>
+        <div className="risk-card calint-card clickable" onClick={() => onShowBreakdown("calint")}>
+          <div className="risk-value">{guardBand.NOGBCALINT.toFixed(4)} %</div>
+          <div className="risk-label">Calibration without Guard Banding</div>
+          <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
+            <li>
+              <span className="label">Lower Side Risk</span>
+              <span className="value">{results.pfr_term1.toFixed(4)} %</span>
+            </li>
+            <li>
+              <span className="label">Upper Side Risk</span>
+              <span className="value">{results.pfr_term2.toFixed(4)} %</span>
+            </li>
+          </ul>
+        </div>
+        <div className="risk-card measrel-card clickable" onClick={() => onShowBreakdown("measrel")}>
+          <div className="risk-value">{guardBand.NOGBMEASREL.toFixed(4)} %</div>
+          <div className="risk-label">Measurement Reliability Needed without Guard Banding</div>
           <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
             <li>
               <span className="label">Lower Side Risk</span>
