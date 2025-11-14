@@ -2813,7 +2813,7 @@ function Analysis({
       let ALow = LLow;
 
       let uUUT = uutUnc(REOP, uCal, ALow, AUp);
-      let EstPFA = PFA(uUUT, uCal, LLow, LUp, ALow, AUp);
+      let [EstPFA] = PFA(uUUT, uCal, LLow, LUp, ALow, AUp);
 
       if (EstPFA > req) {
         let change = 0.05;
@@ -2823,7 +2823,7 @@ function Analysis({
           AUp = LUp * GBMult;
           ALow = LLow * GBMult;
           uUUT = uutUnc(REOP, uCal, ALow, AUp);
-          EstPFA = PFA(uUUT, uCal, LLow, LUp, ALow, AUp);
+          [EstPFA] = PFA(uUUT, uCal, LLow, LUp, ALow, AUp);
         } while (EstPFA > req);
 
         do {
@@ -2832,7 +2832,7 @@ function Analysis({
           AUp = LUp * GBMult;
           ALow = LLow * GBMult;
           uUUT = uutUnc(REOP, uCal, ALow, AUp);
-          EstPFA = PFA(uUUT, uCal, LLow, LUp, ALow, AUp);
+          [EstPFA] = PFA(uUUT, uCal, LLow, LUp, ALow, AUp);
         } while (!(EstPFA >= req - precision && EstPFA <= req));
       }
 
@@ -2845,7 +2845,7 @@ function Analysis({
       let AUp = LUp;
 
       let uUUT = UUTuncUL(REOP, uCal, avg, AUp);
-      let EstPFA = PFAUL(uUUT, uCal, avg, LUp, AUp);
+      let [EstPFA] = PFAUL(uUUT, uCal, avg, LUp, AUp);
 
       if (EstPFA > req) {
         let change = 0.05;
@@ -2854,7 +2854,7 @@ function Analysis({
           GBMult -= change;
           AUp = (LUp - avg) * GBMult + avg;
           uUUT = UUTuncUL(REOP, uCal, avg, AUp);
-          EstPFA = PFAUL(uUUT, uCal, avg, LUp, AUp);
+          [EstPFA] = PFAUL(uUUT, uCal, avg, LUp, AUp);
         } while (EstPFA > req);
 
         do {
@@ -2862,7 +2862,7 @@ function Analysis({
           GBMult += EstPFA < req ? change : -change;
           AUp = (LUp - avg) * GBMult + avg;
           uUUT = UUTuncUL(REOP, uCal, avg, AUp);
-          EstPFA = PFAUL(uUUT, uCal, avg, LUp, AUp);
+          [EstPFA] = PFAUL(uUUT, uCal, avg, LUp, AUp);
         } while (!(EstPFA >= req - precision && EstPFA <= req));
       }
 
@@ -2903,7 +2903,7 @@ function Analysis({
 
       const term2 = bivariateNormalCDF(-LUp / uUUT, -ALow / uDev, cor) -
                     bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
-      return term1 + term2;
+      return [term1 + term2, term1, term2];
     }
 
     function PFALL(uUUT, uCal, avg, LLow, ALow) {
@@ -2913,7 +2913,7 @@ function Analysis({
       const term1 = vbNormSDist((LLow - avg) / uUUT);
       const term2 = bivariateNormalCDF((LLow - avg) / uUUT, (ALow - avg) / uDev, cor);
 
-      return term1 - term2;
+      return [term1 - term2, term1, term2];
     }
 
     function PFAUL(uUUT, uCal, avg, LUp, AUp) {
@@ -2923,7 +2923,7 @@ function Analysis({
       const term1 = vbNormSDist((LUp - avg) / uUUT);
       const term2 = bivariateNormalCDF(-(LUp - avg) / uUUT, -(AUp - avg) / uDev, cor);
 
-      return 1 - term1 - term2;
+      return [1 - term1 - term2, term1, term2];
     }
 
     function PFR(uUUT, uCal, LLow, LUp, ALow, AUp) {
@@ -2936,7 +2936,7 @@ function Analysis({
       const term2 = bivariateNormalCDF(-LLow / uUUT, -AUp / uDev, cor) -
                     bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
 
-      return term1 + term2;
+      return [term1 + term2, term1, term2];
     }
 
     function PFRLL(uUUT, uCal, avg, LLow, ALow) {
@@ -2946,7 +2946,7 @@ function Analysis({
       const term1 = vbNormSDist((LLow - avg) / uUUT);
       const term2 = bivariateNormalCDF(-(LLow - avg) / uUUT, -(ALow - avg) / uDev, cor);
 
-      return 1 - term1 - term2;
+      return [1 - term1 - term2, term1, term2];
     }
 
     function PFRUL(uUUT, uCal, avg, LUp, AUp) {
@@ -2956,7 +2956,7 @@ function Analysis({
       const term1 = vbNormSDist((LUp - avg) / uUUT);
       const term2 = bivariateNormalCDF((LUp - avg) / uUUT, (AUp - avg) / uDev, cor);
 
-      return term1 - term2;
+      return [term1 - term2, term1, term2];
     }
 
     function RInAccLLGBMult(req, REOP, uCal, avg, LLow) {
@@ -2965,7 +2965,7 @@ function Analysis({
       let ALow = LLow;
 
       let uUUT = uutUncLL(REOP, uCal, avg, ALow);
-      let EstPFA = PFALL(uUUT, uCal, avg, LLow, ALow);
+      let [EstPFA] = PFALL(uUUT, uCal, avg, LLow, ALow);
 
       if (EstPFA > req) {
         let change = 0.05;
@@ -2974,7 +2974,7 @@ function Analysis({
           GBMult -= change;
           ALow = avg - (avg - LLow) * GBMult;
           uUUT = uutUncLL(REOP, uCal, avg, ALow);
-          EstPFA = PFALL(uUUT, uCal, avg, LLow, ALow);
+          [EstPFA] = PFALL(uUUT, uCal, avg, LLow, ALow);
         } while (EstPFA > req);
 
         do {
@@ -2982,7 +2982,7 @@ function Analysis({
           GBMult += EstPFA < req ? change : -change;
           ALow = avg - (avg - LLow) * GBMult;
           uUUT = uutUncLL(REOP, uCal, avg, ALow);
-          EstPFA = PFALL(uUUT, uCal, avg, LLow, ALow);
+          [EstPFA] = PFALL(uUUT, uCal, avg, LLow, ALow);
         } while (!(EstPFA >= req - precision && EstPFA <= req));
       }
 
@@ -3323,7 +3323,7 @@ function Analysis({
         dObsRel = dMeasRel;
       }
 
-      let dPFA = PFAIter(sRiskType, dObsRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+      let [dPFA] = PFAIter(sRiskType, dObsRel,dAvg,dTolLow,dTolUp,dMeasUnc);
       if (dPFA === -1) return "";
 
       if (dPFA <= dReqPFA) {
@@ -3331,7 +3331,7 @@ function Analysis({
       }
 
       let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
-      dPFA = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+      [dPFA] = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
 
       let dChg = dPFA < dReqPFA
         ? -Math.abs(dPredRel - dObsRel)
@@ -3341,13 +3341,13 @@ function Analysis({
       while (Math.abs(dPFA - dReqPFA) >= 0.00001 && lIter < 20) {
         dChg = dPFA < dReqPFA ? -Math.abs(dChg) / 2 : Math.abs(dChg) / 2;
         dPredRel += dChg;
-        dPFA = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+        [dPFA] = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
         lIter++;
       }
 
       if (dPredRel < dReqRel) {
         dPredRel = dReqRel;
-        dPFA = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+        [dPFA] = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
       }
 
       return dPFA === -1 ? "" : Math.log(dPredRel) / Math.log(dObsRel) * dInt;
@@ -3392,13 +3392,13 @@ function Analysis({
         dObsRel = dMeasRel;
       }
 
-      let dPFA = PFAIter(sRiskType, dObsRel);
+      let [dPFA] = PFAIter(sRiskType, dObsRel);
       if (dPFA === -1) return "";
 
       if (dPFA <= dReqPFA) return dReqRel;
 
       let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
-      dPFA = PFAIter(sRiskType, dPredRel);
+      [dPFA] = PFAIter(sRiskType, dPredRel);
 
       let dChg = dPFA < dReqPFA
         ? -Math.abs(dPredRel - dObsRel)
@@ -3408,13 +3408,13 @@ function Analysis({
       while (Math.abs(dPFA - dReqPFA) >= 0.00001 && lIter < 20) {
         dChg = dPFA < dReqPFA ? -Math.abs(dChg) / 2 : Math.abs(dChg) / 2;
         dPredRel += dChg;
-        dPFA = PFAIter(sRiskType, dPredRel);
+        [dPFA] = PFAIter(sRiskType, dPredRel);
         lIter++;
       }
 
       if (dPredRel < dReqRel) {
         dPredRel = dReqRel;
-        dPFA = PFAIter(sRiskType, dPredRel);
+        [dPFA] = PFAIter(sRiskType, dPredRel);
       }
 
       return dPFA === -1 ? "" : dPredRel;
@@ -3456,14 +3456,14 @@ function Analysis({
 
     let gbLow = resDwn(gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
     let gbHigh = resUp(gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
-    let gbMult = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh) * 100;
-    let gbPFA = PFAwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, gbLow, gbHigh) * 100;
-    let gbPFR = PFRwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, gbLow, gbHigh) * 100;
+    let gbMult = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh);
+    let [gbPFA, gbPFAT1, gbPFAT2] = PFAwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, gbLow, gbHigh);
+    let [gbPFR, gbPFRT1, gbPFRT2] = PFRwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, gbLow, gbHigh);
     let gbCalInt = CalIntwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, gbLow, gbHigh, turResult, turNeeded, calInt);
     let nogbCalInt = CalIntMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
-    let nogbMeasRel = CalRelMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired) * 100;
-
-    return {GBLOW: gbLow, GBUP: gbHigh, GBMULT: gbMult, GBPFA: gbPFA, GBPFR: gbPFR, GBCALINT: gbCalInt, NOGBCALINT: nogbCalInt, NOGBMEASREL: nogbMeasRel};
+    let nogbMeasRel = CalRelMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
+    console.log({GBLOW: gbLow, GBUP: gbHigh, GBMULT: gbMult * 100, GBPFA: gbPFA * 100, GBPFAT1: gbPFAT1 * 100, GBPFAT2: gbPFAT2 * 100, GBPFR: gbPFR * 100, GBPFTR1: gbPFRT1 * 100, GBPFRT2: gbPFRT2 * 100, GBCALINT: gbCalInt, NOGBCALINT: nogbCalInt, NOGBMEASREL: nogbMeasRel * 100});
+    return {GBLOW: gbLow, GBUP: gbHigh, GBMULT: gbMult * 100, GBPFA: gbPFA * 100, GBPFAT1: gbPFAT1 * 100, GBPFAT2: gbPFAT2 * 100, GBPFR: gbPFR * 100, GBPFTR1: gbPFRT1 * 100, GBPFRT2: gbPFRT2 * 100, GBCALINT: gbCalInt, NOGBCALINT: nogbCalInt, NOGBMEASREL: nogbMeasRel * 100};
   };
 
   useEffect(() => {
