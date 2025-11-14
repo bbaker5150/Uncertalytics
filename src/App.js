@@ -2462,14 +2462,14 @@ function Analysis({
   );
 
   const calculateRiskMetrics = useCallback(() => {
+    // --- Get all initial inputs ---
     const LLow = parseFloat(riskInputs.LLow);
     const LUp = parseFloat(riskInputs.LUp);
-    const reliability = parseFloat(sessionData.uncReq.reliability)/100;
-    const nominalUnit = uutNominal?.unit;
-    const targetUnitInfo = unitSystem.units[nominalUnit];
-    const pfaRequired = parseFloat(sessionData.uncReq.reqPFA)/100;
-    const tmdeBreakdownForTar = [];
+    const initial_reliability = parseFloat(sessionData.uncReq.reliability) / 100;
+    const reqTur = parseFloat(sessionData.uncReq.neededTUR); // This is 'rngReqTUR'
+    const guardBandMultiplier = parseFloat(sessionData.uncReq.guardBandMultiplier);
 
+    // --- Validation Checks (Existing) ---
     if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) {
       setNotification({
         title: "Invalid Input",
@@ -2477,7 +2477,7 @@ function Analysis({
       });
       return;
     }
-    if (isNaN(reliability) || reliability <= 0 || reliability >= 1) {
+    if (isNaN(initial_reliability) || initial_reliability <= 0 || initial_reliability >= 1) {
       setNotification({
         title: "Invalid Input",
         message: "Enter valid reliability (e.g., 0.95).",
@@ -2491,6 +2491,10 @@ function Analysis({
       });
       return;
     }
+    
+    const nominalUnit = uutNominal?.unit;
+    const targetUnitInfo = unitSystem.units[nominalUnit];
+
     if (!targetUnitInfo || isNaN(targetUnitInfo.to_si)) {
       setNotification({
         title: "Calculation Error",
@@ -2499,22 +2503,97 @@ function Analysis({
       return;
     }
 
-    const guardBandMultiplier = parseFloat(sessionData.uncReq.guardBandMultiplier);
+    // --- Get VBA-equivalent variables ---
+    const uCal_Base = calcResults.combined_uncertainty_absolute_base;
+    const uCal_Native = uCal_Base / targetUnitInfo.to_si; // This is dMeasUnc
+    
+    const mid = (LUp + LLow) / 2;
+    const LLow_norm = LLow - mid; // This is dTolLow
+    const LUp_norm = LUp - mid;   // This is dTolUp
+    const LUp_symmetric = Math.abs(LUp_norm); // Used for symmetric UUTunc logic
 
-    if (
-      isNaN(guardBandMultiplier) ||
-      guardBandMultiplier < 0 ||
-      guardBandMultiplier > 1
-    ) {
-      setNotification({
-        title: "Invalid Input",
-        message: "Guard Band Multiplier must be 0 to 1.",
-      });
-      return;
-    }
+    const U_Base = calcResults.expanded_uncertainty_absolute_base;
+    const U_Native = U_Base / targetUnitInfo.to_si;
+    const turResult = (LUp - LLow) / (2 * U_Native); // This is dTUR
+    
+    // 'CalRelwTUR' Logic
 
     
+    let adjusted_reliability = initial_reliability; // This is dMeasRel
 
+    // Check if a Required TUR is set and valid
+    if (reqTur > 0 && !isNaN(reqTur) && !isNaN(turResult)) {
+      // dCalUnc = dMeasUnc * dTUR / dReqTur
+      // Calculate the 'assumed' calibration uncertainty needed to meet the ReqTUR
+      const dCalUnc = uCal_Native * turResult / reqTur;
+
+      // dBiasUnc = UUTunc(dMeasRel, dCalUnc, dTolLow, dTolUp)
+      // We use the *initial_reliability* and the *assumed* dCalUnc to find the bias
+      const uDev_temp = LUp_symmetric / probit((1 + initial_reliability) / 2);
+      const uUUT2_temp = uDev_temp ** 2 - dCalUnc ** 2;
+      const dBiasUnc = (uUUT2_temp <= 0) ? 0 : Math.sqrt(uUUT2_temp);
+      
+      // dDevUnc = Sqr(dMeasUnc^2 + dBiasUnc^2)
+      // Calculate a new 'observed' deviation using the *actual* uCal and the *assumed* bias
+      const dDevUnc = Math.sqrt(uCal_Native ** 2 + dBiasUnc ** 2);
+      
+      // dMeasRel = vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc)
+      // Overwrite the reliability with the new adjusted value
+      if (dDevUnc > 0) {
+        adjusted_reliability = CumNorm(LUp_norm / dDevUnc) - CumNorm(LLow_norm / dDevUnc);
+      }
+    }
+
+    // --- Resume calculation using the 'adjusted_reliability' ---
+    const uDev = LUp_symmetric / probit((1 + adjusted_reliability) / 2);
+    const uUUT2 = uDev ** 2 - uCal_Native ** 2;
+    
+    let uUUT = 0;
+    if (uUUT2 <= 0) {
+      if (reqTur > 0) { // Only show this warning if the adjustment was made
+        setNotification({
+          title: "Calc Warning",
+          message: `uCal (${uCal_Native.toFixed(
+            3
+          )}) exceeds uDev (${uDev.toFixed(
+            3
+          )}) for adjusted reliability ${adjusted_reliability.toFixed(4)}. UUT unc treated as zero.`,
+        });
+      }
+      uUUT = 0;
+    } else {
+      uUUT = Math.sqrt(uUUT2);
+    }
+
+    const ALow = LLow * guardBandMultiplier;
+    const AUp = LUp * guardBandMultiplier;
+    const correlation = uUUT === 0 || uDev === 0 ? 0 : uUUT / uDev;
+    
+    // Normalized Acceptance Limits
+    const ALow_norm = ALow - mid;
+    const AUp_norm = AUp - mid;
+
+    // PFA Calculation
+    const pfa_term1 =
+      bivariateNormalCDF(LLow_norm / uUUT, AUp_norm / uDev, correlation) -
+      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
+    const pfa_term2 =
+      bivariateNormalCDF(-LUp_norm / uUUT, -ALow_norm / uDev, correlation) -
+      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
+    const pfaResult =
+      isNaN(pfa_term1) || isNaN(pfa_term2) ? 0 : pfa_term1 + pfa_term2;
+
+    // PFR Calculation
+    const pfr_term1 =
+      bivariateNormalCDF(LUp_norm / uUUT, ALow_norm / uDev, correlation) -
+      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
+    const pfr_term2 =
+      bivariateNormalCDF(-LLow_norm / uUUT, -AUp_norm / uDev, correlation) -
+      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
+    const pfrResult =
+      isNaN(pfr_term1) || isNaN(pfr_term2) ? 0 : pfr_term1 + pfr_term2;
+
+    // --- TAR Calculation ---
     const uutBreakdownResult = calculateUncertaintyFromToleranceObject(
       uutToleranceData,
       uutNominal
@@ -2535,10 +2614,8 @@ function Analysis({
         span: span,
       };
     });
-
-    const uCal_Base = calcResults.combined_uncertainty_absolute_base;
-    const uCal_Native = uCal_Base / targetUnitInfo.to_si;
-
+    
+    const tmdeBreakdownForTar = [];
     let missingTmdeRef = false;
     let tmdeToleranceHigh_Native = 0;
     let tmdeToleranceLow_Native = 0;
@@ -2624,62 +2701,13 @@ function Analysis({
         });
       }
     }
-
-    const mid = (LUp + LLow) / 2;
-    const LUp_symmetric = Math.abs(LUp - mid);
-    const uDev = LUp_symmetric / probit((1 + reliability) / 2);
-    const uUUT2 = uDev ** 2 - uCal_Native ** 2;
-    let uUUT = 0;
-    if (uUUT2 <= 0) {
-      setNotification({
-        title: "Calc Warning",
-        message: `uCal (${uCal_Native.toFixed(
-          3
-        )}) exceeds uDev (${uDev.toFixed(
-          3
-        )}) for reliability ${reliability}. UUT unc treated as zero.`,
-      });
-      uUUT = 0;
-    } else {
-      uUUT = Math.sqrt(uUUT2);
-    }
-
-    const ALow = LLow * guardBandMultiplier;
-    const AUp = LUp * guardBandMultiplier;
-    const correlation = uUUT === 0 || uDev === 0 ? 0 : uUUT / uDev;
-    const LLow_norm = LLow - mid;
-    const LUp_norm = LUp - mid;
-    const ALow_norm = ALow - mid;
-    const AUp_norm = AUp - mid;
-
-    const pfa_term1 =
-      bivariateNormalCDF(LLow_norm / uUUT, AUp_norm / uDev, correlation) -
-      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
-    const pfa_term2 =
-      bivariateNormalCDF(-LUp_norm / uUUT, -ALow_norm / uDev, correlation) -
-      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
-    const pfaResult =
-      isNaN(pfa_term1) || isNaN(pfa_term2) ? 0 : pfa_term1 + pfa_term2;
-
-    const pfr_term1 =
-      bivariateNormalCDF(LUp_norm / uUUT, ALow_norm / uDev, correlation) -
-      bivariateNormalCDF(LLow_norm / uUUT, ALow_norm / uDev, correlation);
-    const pfr_term2 =
-      bivariateNormalCDF(-LLow_norm / uUUT, -AUp_norm / uDev, correlation) -
-      bivariateNormalCDF(-LUp_norm / uUUT, -AUp_norm / uDev, correlation);
-    const pfrResult =
-      isNaN(pfr_term1) || isNaN(pfr_term2) ? 0 : pfr_term1 + pfr_term2;
-
-    const U_Base = calcResults.expanded_uncertainty_absolute_base;
-    const U_Native = U_Base / targetUnitInfo.to_si;
-
-    const turResult = (LUp - LLow) / (2 * U_Native);
+    
     const tarResult =
       tmdeToleranceSpan_Native !== 0
         ? (LUp - LLow) / tmdeToleranceSpan_Native
         : 0;
 
-    // --- MODIFICATION IS HERE ---
+    // --- Final Results Object ---
     const newRiskMetrics = {
       LLow: LLow,
       LUp: LUp,
@@ -2707,7 +2735,7 @@ function Analysis({
     };
 
     setRiskResults(newRiskMetrics);
-    onDataSave({ riskMetrics: newRiskMetrics }); // <-- This line was added
+    onDataSave({ riskMetrics: newRiskMetrics });
 
   }, [
     riskInputs.LLow,
@@ -2718,8 +2746,8 @@ function Analysis({
     uutToleranceData,
     tmdeTolerancesData,
     setNotification,
-    sessionData.uutDescription,
-    onDataSave // <-- This dependency was added
+    onDataSave,
+    setRiskResults
   ]);
 
   useEffect(() => {
@@ -4533,7 +4561,6 @@ function App() {
         }
 
         // 6. Update the main sessions state
-        let sessionToSelect;
         setSessions((prevSessions) => {
           const sessionExists = prevSessions.some(
             (s) => s.id === loadedSession.id
@@ -4547,7 +4574,6 @@ function App() {
           } else {
             newSessions = [...prevSessions, loadedSession];
           }
-          sessionToSelect = loadedSession; 
           return newSessions;
         });
 
