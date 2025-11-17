@@ -1,9 +1,20 @@
 /* global math */
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck, faTimes, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import { unitSystem } from '../App';
 import { NotificationModal } from '../App';
+
+const SymbolButton = ({ onSymbolClick, symbol, title }) => (
+    <button
+        type="button"
+        className="symbol-button"
+        title={title || `Insert ${symbol}`}
+        onClick={() => onSymbolClick(symbol)}
+    >
+        {symbol.replace('()', '( )')}
+    </button>
+);
 
 const SearchableDropdown = ({ name, value, onChange, options }) => {
     const [searchTerm, setSearchTerm] = useState(value);
@@ -64,7 +75,7 @@ const SearchableDropdown = ({ name, value, onChange, options }) => {
 };
 
 
-const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPoints }) => {
+const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPoints, previousTestPointData = null }) => {
     const getInitialFormData = () => ({
         section: '',
         paramName: '', paramValue: '', paramUnit: '',
@@ -80,6 +91,67 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
     const [notification, setNotification] = useState(null);
     const [equationVariables, setEquationVariables] = useState([]);
 
+    const equationInputRef = useRef(null);
+    const [cursorPos, setCursorPos] = useState(null);
+    const [isSymbolMenuOpen, setIsSymbolMenuOpen] = useState(false);
+    const symbolButtonRef = useRef(null);
+    const symbolMenuRef = useRef(null);
+
+    const symbolCategories = {
+        'Operators': [
+            { symbol: '+', title: 'Add' },
+            { symbol: '-', title: 'Subtract' },
+            { symbol: '*', title: 'Multiply' },
+            { symbol: '/', title: 'Divide' },
+            { symbol: '^', title: 'Power' },
+            { symbol: '()', title: 'Parentheses' },
+            { symbol: '%', title: 'Percent (e.g., 5%)' },
+            { symbol: '!', title: 'Factorial (e.g., 5!)' },
+        ],
+        'Functions': [
+            { symbol: 'sqrt()', title: 'Square Root' },
+            { symbol: 'abs()', title: 'Absolute Value' },
+            { symbol: 'log()', title: 'Log (base 10)' },
+            { symbol: 'ln()', title: 'Natural Log (base e)' },
+            { symbol: 'exp()', title: 'Exponential (e^x)' },
+            { symbol: 'mod()', title: 'Modulus (a mod b)' },
+        ],
+        'Trigonometry': [
+            { symbol: 'sin()', title: 'Sine' },
+            { symbol: 'cos()', title: 'Cosine' },
+            { symbol: 'tan()', title: 'Tangent' },
+            { symbol: 'asin()', title: 'Arcsine' },
+            { symbol: 'acos()', title: 'Arccosine' },
+            { symbol: 'atan()', title: 'Arctangent' },
+        ],
+        'Greek': [
+            { symbol: 'α', title: 'Alpha' },
+            { symbol: 'β', title: 'Beta' },
+            { symbol: 'γ', title: 'Gamma' },
+            { symbol: 'Δ', title: 'Delta (upper)' },
+            { symbol: 'δ', title: 'Delta (lower)' },
+            { symbol: 'ε', title: 'Epsilon' },
+            { symbol: 'θ', title: 'Theta' },
+            { symbol: 'λ', title: 'Lambda' },
+            { symbol: 'μ', title: 'Mu' },
+            { symbol: 'ρ', title: 'Rho' },
+            { symbol: 'σ', title: 'Sigma' },
+            { symbol: 'τ', title: 'Tau' },
+            { symbol: 'Φ', title: 'Phi (upper)' },
+            { symbol: 'φ', title: 'Phi (lower)' },
+            { symbol: 'Ω', title: 'Omega (upper)' },
+            { symbol: 'ω', title: 'Omega (lower)' },
+        ],
+        'Constants & Other': [
+            { symbol: 'pi', title: 'Constant Pi' },
+            { symbol: 'e', title: 'Constant e' },
+            { symbol: 'i', title: 'Imaginary Unit' },
+            { symbol: 'Infinity', title: 'Infinity' },
+            { symbol: '∠', title: 'Angle (Phasor)' },
+            { symbol: '°', title: 'Degrees' },
+        ]
+    };
+
     const availableUnits = useMemo(() => Object.keys(unitSystem.units), []);
 
     const updateEquationVariables = (equation) => {
@@ -89,31 +161,25 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
             return;
         }
 
-        let expressionToParse = equation.trim(); // Trim whitespace
+        let expressionToParse = equation.trim(); 
 
         const equalsIndex = expressionToParse.indexOf('=');
         if (equalsIndex !== -1) {
-             // Check if there's content *after* the '='
              if (equalsIndex < expressionToParse.length - 1) {
                  expressionToParse = expressionToParse.substring(equalsIndex + 1).trim();
-                 // Optionally, you could try to extract the variable name on the left (e.g., 'T')
-                 // const targetVariable = equation.substring(0, equalsIndex).trim();
-                 // You might want to store or validate this targetVariable if needed elsewhere.
              } else {
-                 // Equation ends with '=', invalid expression part
-                 expressionToParse = ''; // Treat as empty if only 'T =' was entered
+                 expressionToParse = '';
              }
         }
 
-        // Proceed with parsing only the expression part
-        if (!expressionToParse) { // Handle empty expression after stripping assignment
+        if (!expressionToParse) { 
             setEquationVariables([]);
             setFormData(prev => ({ ...prev, variableMappings: {} }));
             return;
         }
 
         try {
-            const node = math.parse(expressionToParse); // Parse only the right-hand side
+            const node = math.parse(expressionToParse); 
             const variables = new Set();
             node.traverse(function (node, path, parent) {
                 if (node.isSymbolNode && !math[node.name] && !['e', 'pi', 'i'].includes(node.name.toLowerCase())) {
@@ -139,8 +205,32 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
     }
 
     useEffect(() => {
+        if (cursorPos !== null && equationInputRef.current) {
+            equationInputRef.current.focus();
+            equationInputRef.current.setSelectionRange(cursorPos, cursorPos);
+            setCursorPos(null); 
+        }
+    }, [cursorPos, formData.equationString]); 
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (
+                symbolMenuRef.current &&
+                !symbolMenuRef.current.contains(event.target) &&
+                symbolButtonRef.current &&
+                !symbolButtonRef.current.contains(event.target)
+            ) {
+                setIsSymbolMenuOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [symbolMenuRef, symbolButtonRef]);
+
+    useEffect(() => {
         if (isOpen) {
             if (initialData) {
+                // --- EDITING MODE ---
                 const qualExists = !!initialData.testPointInfo.qualifier?.value;
                 setHasQualifier(qualExists);
                 const initialMappings = initialData.variableMappings || {};
@@ -162,13 +252,38 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                 } else {
                     setEquationVariables([]);
                 }
+            } else if (previousTestPointData) {
+                // --- ADDING NEW, WITH PREVIOUS DATA ---
+                const prev = previousTestPointData;
+                const qualExists = !!prev.testPointInfo.qualifier;
+                setHasQualifier(qualExists);
+                const prevMappings = prev.variableMappings || {};
+                setFormData({
+                    section: prev.section || '',
+                    paramName: prev.testPointInfo.parameter.name || '',
+                    paramValue: '', // <-- Auto-fill, but leave value blank
+                    paramUnit: prev.testPointInfo.parameter.unit || '',
+                    qualName: prev.testPointInfo.qualifier?.name || 'Frequency',
+                    qualValue: '', // <-- Auto-fill, but leave value blank
+                    qualUnit: prev.testPointInfo.qualifier?.unit || 'kHz',
+                    copyTmdes: true, // Default to copying TMDEs
+                    measurementType: prev.measurementType || 'direct',
+                    equationString: prev.equationString || '',
+                    variableMappings: prevMappings,
+                });
+                if (prev.measurementType === 'derived') {
+                    updateEquationVariables(prev.equationString);
+                } else {
+                    setEquationVariables([]);
+                }
             } else {
+                // --- ADDING NEW, FIRST POINT ---
                 setHasQualifier(false);
                 setFormData(getInitialFormData());
                 setEquationVariables([]);
             }
         }
-    }, [initialData, isOpen]);
+    }, [initialData, isOpen, previousTestPointData]); // Added previousTestPointData
 
     if (!isOpen) return null;
 
@@ -184,6 +299,40 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
         if (name === 'equationString') {
             updateEquationVariables(newValue);
         }
+    };
+    
+    const handleSymbolClick = (symbol) => {
+        const input = equationInputRef.current;
+        if (!input) return;
+
+        input.focus();
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const currentValue = input.value;
+        const selectedText = currentValue.substring(start, end);
+
+        let newValue;
+        let newCursorPos;
+
+        const isFunction = symbol.endsWith('()');
+
+        if (isFunction) {
+            const funcName = symbol.slice(0, -2); 
+            const textToInsert = `${funcName}(${selectedText})`;
+            newValue = currentValue.substring(0, start) + textToInsert + currentValue.substring(end);
+            
+            if (selectedText) {
+                newCursorPos = start + textToInsert.length + 1;
+            } else {
+                newCursorPos = start + funcName.length + 1;
+            }
+        } else {
+            newValue = currentValue.substring(0, start) + symbol + currentValue.substring(end);
+            newCursorPos = start + symbol.length;
+        }
+        
+        handleChange({ target: { name: 'equationString', value: newValue } });
+        setCursorPos(newCursorPos);
     };
 
     const handleMappingChange = (variableSymbol, userFriendlyName) => {
@@ -299,14 +448,48 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                          {formData.measurementType === 'derived' && (
                             <>
                                 <label style={{marginTop: '15px'}}>Equation *</label>
-                                <input
-                                    type="text"
-                                    name="equationString"
-                                    value={formData.equationString}
-                                    onChange={handleChange}
-                                    placeholder="e.g., V / I or W * L"
-                                    style={{ fontFamily: 'monospace' }}
-                                />
+                                
+                                <div className="input-with-symbol-button">
+                                    <input
+                                        ref={equationInputRef} 
+                                        type="text"
+                                        name="equationString"
+                                        value={formData.equationString}
+                                        onChange={handleChange}
+                                        placeholder="e.g., V / I or W * L"
+                                        style={{ fontFamily: 'monospace' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="symbol-toggle-button"
+                                        title="Show Symbols"
+                                        ref={symbolButtonRef}
+                                        onClick={() => setIsSymbolMenuOpen(prev => !prev)}
+                                    >
+                                        f(x)
+                                    </button>
+                                    
+                                    {isSymbolMenuOpen && (
+                                        <div className="symbol-popout" ref={symbolMenuRef}>
+                                            {Object.entries(symbolCategories).map(([category, symbols]) => (
+                                                <div key={category} className="symbol-category">
+                                                    <h5 className="symbol-category-title">{category}</h5>
+                                                    <div className="symbol-category-grid">
+                                                        {symbols.map(s => (
+                                                            <SymbolButton 
+                                                                key={s.symbol} 
+                                                                symbol={s.symbol} 
+                                                                title={s.title} 
+                                                                onSymbolClick={handleSymbolClick} 
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                
                                 {equationVariables.length > 0 && (
                                     <div style={{marginTop: '15px', paddingLeft: '10px', borderLeft: '3px solid var(--border-color)'}}>
                                         <label style={{fontSize: '0.9em', color: 'var(--text-color-muted)', marginBottom: '5px'}}>Map Variables (*required):</label>
@@ -368,7 +551,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                     </div>
                 )}
                  <div className="modal-actions">
-                    <button className="modal-icon-button secondary" onClick={onClose} title="Cancel"><FontAwesomeIcon icon={faTimes} /></button>
                     <button className="modal-icon-button primary" onClick={handleSave} title="Save Changes"><FontAwesomeIcon icon={faCheck} /></button>
                 </div>
             </div>
