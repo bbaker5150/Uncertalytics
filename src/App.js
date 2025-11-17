@@ -2059,11 +2059,11 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
             <li>
               <span className="label">Lower Tail Risk</span>
-              <span className="value">{results.pfa_term1.toFixed(4)} %</span>
+              <span className="value">{guardBand.GBPFAT1.toFixed(4)} %</span>
             </li>
             <li>
               <span className="label">Upper Tail Risk</span>
-              <span className="value">{results.pfa_term2.toFixed(4)} %</span>
+              <span className="value">{guardBand.GBPFAT2.toFixed(4)} %</span>
             </li>
           </ul>
         </div>
@@ -2073,11 +2073,11 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
             <li>
               <span className="label">Lower Side Risk</span>
-              <span className="value">{results.pfr_term1.toFixed(4)} %</span>
+              <span className="value">{guardBand.GBPFRT1.toFixed(4)} %</span>
             </li>
             <li>
               <span className="label">Upper Side Risk</span>
-              <span className="value">{results.pfr_term2.toFixed(4)} %</span>
+              <span className="value">{guardBand.GBPFRT2.toFixed(4)} %</span>
             </li>
           </ul>
         </div>
@@ -3984,12 +3984,11 @@ function Analysis({
     let gbCalInt = CalIntwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, gbLow, gbHigh, turResult, turNeeded, calInt);
     let nogbCalInt = CalIntMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
     let nogbMeasRel = CalRelMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
-    console.log({GBLOW: gbLow, GBUP: gbHigh, GBMULT: gbMult * 100, GBPFA: gbPFA * 100, GBPFAT1: gbPFAT1 * 100, GBPFAT2: gbPFAT2 * 100, GBPFR: gbPFR * 100, GBPFTR1: gbPFRT1 * 100, GBPFRT2: gbPFRT2 * 100, GBCALINT: gbCalInt, NOGBCALINT: nogbCalInt, NOGBMEASREL: nogbMeasRel * 100});
-    return {GBLOW: gbLow, GBUP: gbHigh, GBMULT: gbMult * 100, GBPFA: gbPFA * 100, GBPFAT1: gbPFAT1 * 100, GBPFAT2: gbPFAT2 * 100, GBPFR: gbPFR * 100, GBPFTR1: gbPFRT1 * 100, GBPFRT2: gbPFRT2 * 100, GBCALINT: gbCalInt, NOGBCALINT: nogbCalInt, NOGBMEASREL: nogbMeasRel * 100};
+    return {GBLOW: gbLow, GBUP: gbHigh, GBMULT: gbMult * 100, GBPFA: gbPFA * 100, GBPFAT1: gbPFAT1 * 100, GBPFAT2: gbPFAT2 * 100, GBPFR: gbPFR * 100, GBPFRT1: gbPFRT1 * 100, GBPFRT2: gbPFRT2 * 100, GBCALINT: gbCalInt, NOGBCALINT: nogbCalInt, NOGBMEASREL: nogbMeasRel * 100};
   };
 
   useEffect(() => {
-  const shouldCalculate = (analysisMode === "risk" || analysisMode === "uncertaintyTool");
+  const shouldCalculate = (analysisMode === "risk" || analysisMode === "uncertaintyTool" || analysisMode === "riskmitigation");
 
   if (shouldCalculate && calcResults) {
     calculateRiskMetrics();
@@ -5023,6 +5022,12 @@ function Analysis({
           Risk Analysis
         </button>
         <button
+          className={analysisMode === "riskmitigation" ? "active" : ""}
+          onClick={() => setAnalysisMode("riskmitigation")}
+        >
+          Risk Mitigation
+        </button>
+        <button
           className={analysisMode === "spec" ? "active" : ""}
           onClick={() => setAnalysisMode("spec")}
         >
@@ -5383,29 +5388,31 @@ function Analysis({
         </>
       )}
     </Accordion>
-                <Accordion title="Risk Mitigation" startOpen={true}>
-          {!calcResults ? (
-            <div className="form-section-warning">
-              <p>Uncertainty budget must be calculated first.</p>
-            </div>
-          ) : (
-            <>         
-              {riskResults ? (
-                <RiskMitigationDashboard
-                  results={riskResults}
-                  onShowBreakdown={(modalType) =>
-                    setLocalBreakdownModal(modalType)
-                  }
-                />
-              ) : (
-                <div className="placeholder-content" style={{ minHeight: "200px" }}>
-                  <p>Calculating risk...</p>
-                </div>
-              )}
-            </>
-          )}
-        </Accordion>
+    </div>
+  )}
+  {analysisMode === "riskmitigation" && (
+    <Accordion title="Risk Mitigation" startOpen={true}>
+      {!calcResults ? (
+        <div className="form-section-warning">
+          <p>Uncertainty budget must be calculated first.</p>
         </div>
+      ) : (
+        <>         
+          {riskResults ? (
+            <RiskMitigationDashboard
+              results={riskResults}
+              onShowBreakdown={(modalType) =>
+                setLocalBreakdownModal(modalType)
+              }
+            />
+          ) : (
+            <div className="placeholder-content" style={{ minHeight: "200px" }}>
+              <p>Calculating risk...</p>
+            </div>
+          )}
+        </>
+      )}
+    </Accordion>
   )}
       {analysisMode === "spec" && (
         <Accordion title="Specification Comparison Analysis (Not Fully Implemented)" startOpen={true}>
