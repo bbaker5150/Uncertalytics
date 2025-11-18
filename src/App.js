@@ -13,6 +13,7 @@ import FullBreakdownModal from "./components/FullBreakdownModal";
 import DerivedBreakdownModal from "./components/DerivedBreakdownModal";
 import TestPointInfoModal from "./components/TestPointInfoModal";
 import RiskScatterplot from "./components/RiskScatterplot";
+import PercentageBarGraph from "./components/ContributionPlot.js";
 import AddTmdeModal from "./components/AddTmdeModal";
 import { generateOverviewReport } from './utils/pdfGenerator.js';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -2926,6 +2927,7 @@ function Analysis({
 
     setRiskResults(newRiskMetrics);
     onDataSave({ riskMetrics: newRiskMetrics });
+    console.log(calcResults);
 
   }, [
     riskInputs.LLow,
@@ -5325,7 +5327,8 @@ function Analysis({
                 </button>
               </div>
             </div>
-            <Accordion title="Uncertainty Budget" startOpen={true}>
+            {/* <Accordion title="Uncertainty Budget" startOpen={true}> */}
+            <>
               {calculationError ? (
               <div className="form-section-warning">
                 <p><strong>Calculation Error:</strong> {calculationError}</p>
@@ -5334,29 +5337,36 @@ function Analysis({
                 </p>
               </div>
             ) : (
-              <UncertaintyBudgetTable
-                components={calcResults?.calculatedBudgetComponents || []}
-                onRemove={handleRemoveComponent}
-                calcResults={calcResults}
-                referencePoint={uutNominal}
-                uncertaintyConfidence={sessionData.uncReq.uncertaintyConfidence}
-                onRowContextMenu={handleBudgetRowContextMenu}
-                equationString={testPointData.equationString}
-                measurementType={testPointData.measurementType}
-                riskResults={riskResults}
-                onShowDerivedBreakdown={handleShowDerivedBreakdown}
-                onShowRiskBreakdown={(modalType) =>
-                  setLocalBreakdownModal(modalType)
+              <>
+                <UncertaintyBudgetTable
+                  components={calcResults?.calculatedBudgetComponents || []}
+                  onRemove={handleRemoveComponent}
+                  calcResults={calcResults}
+                  referencePoint={uutNominal}
+                  uncertaintyConfidence={sessionData.uncReq.uncertaintyConfidence}
+                  onRowContextMenu={handleBudgetRowContextMenu}
+                  equationString={testPointData.equationString}
+                  measurementType={testPointData.measurementType}
+                  riskResults={riskResults}
+                  onShowDerivedBreakdown={handleShowDerivedBreakdown}
+                  onShowRiskBreakdown={(modalType) =>
+                    setLocalBreakdownModal(modalType)
                 }
-              />
+                />
+                {calcResults?.calculatedBudgetComponents && (
+                  <PercentageBarGraph inputs={Object.fromEntries(calcResults.calculatedBudgetComponents.map(item => [item.name, item.value_native]))} />
+                )}
+              </>
             )}
-            </Accordion>
+            </>
+            {/* </Accordion> */}
           </div>
         </div>
       )}
       {analysisMode === "risk" && (
         <div>
-    <Accordion title="Risk & Conformance Analysis" startOpen={true}>
+    {/* <Accordion title="Risk & Conformance Analysis" startOpen={true}> */}
+      <>
       {!calcResults ? (
         <div className="form-section-warning">
           <p>Uncertainty budget must be calculated first.</p>
@@ -5387,11 +5397,12 @@ function Analysis({
           )}
         </>
       )}
-    </Accordion>
+      </>
+    {/* </Accordion> */}
     </div>
   )}
   {analysisMode === "riskmitigation" && (
-    <Accordion title="Risk Mitigation" startOpen={true}>
+    <>
       {!calcResults ? (
         <div className="form-section-warning">
           <p>Uncertainty budget must be calculated first.</p>
@@ -5412,12 +5423,14 @@ function Analysis({
           )}
         </>
       )}
-    </Accordion>
+    </>
   )}
       {analysisMode === "spec" && (
-        <Accordion title="Specification Comparison Analysis (Not Fully Implemented)" startOpen={true}>
-          {renderSpecComparison()}
-        </Accordion>
+        // <Accordion title="Specification Comparison Analysis (Not Fully Implemented)" startOpen={true}>
+        <>
+        {renderSpecComparison()}
+        </>
+        // </Accordion>
       )}
     </div>
   );
