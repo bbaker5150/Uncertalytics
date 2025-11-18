@@ -2655,7 +2655,7 @@ function Analysis({
     const LUp = parseFloat(riskInputs.LUp);
     const initial_reliability = parseFloat(sessionData.uncReq.reliability) / 100;
     const reqTur = parseFloat(sessionData.uncReq.neededTUR); // This is 'rngReqTUR'
-    const guardBandMultiplier = parseFloat(sessionData.uncReq.guardBandMultiplier);
+    const guardBandMultiplier = 1;
 
     // --- Validation Checks (Existing) ---
     if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) {
@@ -2927,7 +2927,6 @@ function Analysis({
 
     setRiskResults(newRiskMetrics);
     onDataSave({ riskMetrics: newRiskMetrics });
-    console.log(calcResults);
 
   }, [
     riskInputs.LLow,
@@ -5029,12 +5028,12 @@ function Analysis({
         >
           Risk Mitigation
         </button>
-        <button
+        {/* <button
           className={analysisMode === "spec" ? "active" : ""}
           onClick={() => setAnalysisMode("spec")}
         >
           Specification Comparison
-        </button>
+        </button> */}
       </div>
 
       {analysisMode === "uncertaintyTool" && (

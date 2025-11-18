@@ -297,7 +297,7 @@ const EditSessionModal = ({
       imageSrcCache.forEach(url => URL.revokeObjectURL(url));
     };
     
-  }, [formData.noteImages, sessionData, sessionImageCache, newlyAddedFiles]);
+  }, [formData.noteImages, sessionData, sessionImageCache, newlyAddedFiles, imageSrcCache]);
 
   const showOverviewTab = useMemo(() => {
     if (!formData.testPoints) return false;
@@ -923,7 +923,7 @@ const EditSessionModal = ({
                   step="0.01"
                 />
               </div>
-              <div className="form-section">
+              {/* <div className="form-section">
                 <label>Default Guard Band Multiplier</label>
                 <input
                   type="number"
@@ -934,7 +934,7 @@ const EditSessionModal = ({
                   value={formData.uncReq?.guardBandMultiplier || ""}
                   onChange={handleReqChange}
                 />
-              </div>
+              </div> */}
             </div>
           )}
 

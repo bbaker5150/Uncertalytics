@@ -2526,6 +2526,10 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   cursor: pointer;
 }
 
+.risk-card:first-child {
+  grid-column: 1 / -1;
+}
+
 .risk-value {
   font-size: 2.2rem; /* Adjusted font size */
   font-weight: 700;
