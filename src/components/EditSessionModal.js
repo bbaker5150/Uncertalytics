@@ -297,7 +297,7 @@ const EditSessionModal = ({
       imageSrcCache.forEach(url => URL.revokeObjectURL(url));
     };
     
-  }, [formData.noteImages, sessionData, sessionImageCache, newlyAddedFiles, imageSrcCache]);
+  }, [formData.noteImages, sessionData, sessionImageCache, newlyAddedFiles]);
 
   const showOverviewTab = useMemo(() => {
     if (!formData.testPoints) return false;
