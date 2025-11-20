@@ -1,3 +1,31 @@
+const prefixMap = {
+  yotta: 1e24, Y: 1e24,
+  zetta: 1e21, Z: 1e21,
+  exa: 1e18,   E: 1e18,
+  peta: 1e15,  P: 1e15,
+  tera: 1e12,  T: 1e12,
+  giga: 1e9,   G: 1e9,
+  mega: 1e6,   M: 1e6,
+  kilo: 1e3,   k: 1e3,
+  hecto: 1e2,  h: 1e2,
+  deca: 1e1,   da: 1e1,
+  deci: 1e-1,  d: 1e-1,
+  centi: 1e-2, c: 1e-2,
+  milli: 1e-3, m: 1e-3,
+  micro: 1e-6, u: 1e-6, μ: 1e-6,
+  nano: 1e-9,  n: 1e-9,
+  pico: 1e-12, p: 1e-12,
+  femto: 1e-15,f: 1e-15,
+  atto: 1e-18, a: 1e-18,
+  zepto: 1e-21,z: 1e-21,
+  yocto: 1e-24,y: 1e-24
+};
+
+// just some food for thought, here is a prefix map, we probably could've used this to make an easier calculateuncertaintyfromtoleranceobject instead of the one we had
+// and then on derived units to utilize uncertainty for both units and use the final calculated uncertainty and map it back into this.
+// calculate uncertainty from tolerance object may be hard to maintain
+
+
 const calculateRiskMetrics = useCallback(() => {
     // --- Get all initial inputs ---
     const LLow = parseFloat(riskInputs.LLow);
