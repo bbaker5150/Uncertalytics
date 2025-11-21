@@ -25,6 +25,141 @@ const prefixMap = {
 // and then on derived units to utilize uncertainty for both units and use the final calculated uncertainty and map it back into this.
 // calculate uncertainty from tolerance object may be hard to maintain
 
+   // function PFAMgrRewrite(nominal, average, lowerTolerance, upperTolerance, measurementUncertainty, measurementReliability, resultTUR, requiredTUR) {
+
+    //   // Tolerance Information
+
+    //   // Passes Values to Nominal, Average, LowerTolerance, UpperTolerance
+    //   const toleranceTypes = ["UpThreshold","AltUpThreshold","LowThreshold","AltLowThreshold","NotThreshold"];
+    //   let tolInfo = "";
+    //   const noUpper = isNaN(upperTolerance);
+    //   const noLower = isNaN(lowerTolerance);
+    //   if (noLower && noUpper) return;
+
+    //   if( noLower ){
+    //     if(isNaN(nominal)) nominal = upperTolerance
+    //     if(isNaN(average)) {
+    //       average = nominal
+    //       tolInfo = toleranceTypes[1]
+    //     } else {
+    //       tolInfo = toleranceTypes[0]
+    //     }
+    //   } else if ( noUpper ) {
+    //     if(isNaN(nominal)) nominal = lowerTolerance
+    //     if(isNaN(average)) {
+    //       average = nominal
+    //       tolInfo = toleranceTypes[3]
+    //     } else {
+    //       tolInfo = toleranceTypes[2]
+    //     }
+    //   } else {
+    //     if (upperTolerance <= lowerTolerance) return;
+    //     nominal = ( upperTolerance + lowerTolerance ) / 2;
+    //     if(!isNaN(average) && nominal !== average){
+    //       if(upperTolerance > average && lowerTolerance < average){
+    //         nominal = average;
+    //       }
+    //     }
+    //     lowerTolerance = lowerTolerance - nominal;
+    //     upperTolerance = upperTolerance - nominal;
+    //     tolInfo = toleranceTypes[4]
+    //   }
+
+    //   // Risk Information
+
+    //   // Checks UNC and REL if they're real values
+    //   if( (isNaN(measurementUncertainty)) || (isNaN(measurementReliability)) ) return;
+      
+    //   // Calibration Reliability with TUR
+
+    //   // Changes our Reliability based on our TUR value
+
+    //   // PFA Calculation
+
+    //   // Calculate PFA using bivariate normal distribution
+
+    //   if (tolInfo === "NotThreshold") {
+    //     dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
+    //     if (dUUTUnc <= 0) return ["","","","","",""];
+    //     result = PFA(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dTolLow, dTolUp);
+
+    //   } else if (tolInfo === "UpThreshold") {
+    //     dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
+    //     if (dUUTUnc <= 0) return ["","","","","",""];
+    //     result = PFAUL(dUUTUnc, dMeasUnc, dAvg, dTolUp, dTolUp);
+
+    //   } else if (tolInfo === "LowThreshold") {
+    //     dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
+    //     if (dUUTUnc <= 0) return ["","","","","",""];
+    //     result = PFALL(dUUTUnc, dMeasUnc, dAvg, dTolLow, dTolLow);
+
+    //   } else {
+    //     result = ["","","","","",""];
+    //   }
+
+    //   if (dUUTUnc <= measurementUncertainty / 10) {
+    //     result = ["","","","","",""];
+    //   }
+
+    //   return result;
+    // };
+
+   // function calcTUR(nominal, average, lowerTolerance, upperTolerance, measurementUncertainty) {
+
+    //   const validateNumber = val => isNaN(val) ? 0 : parseFloat(val);
+
+    //   if (isNaN(measurementUncertainty)) {
+    //     return "";
+    //   } else {
+    //     measurementUncertainty = validateNumber(measurementUncertainty);
+    //   }
+
+    //   const toleranceTypes = ["UpThreshold","AltUpThreshold","LowThreshold","AltLowThreshold","NotThreshold"];
+
+    //   let tolInfo = "";
+    //   const noUpper = isNaN(upperTolerance);
+    //   const noLower = isNaN(lowerTolerance);
+    //   if (noLower && noUpper) return;
+
+    //   if( noLower ){
+    //     if(isNaN(nominal)) nominal = upperTolerance
+    //     if(isNaN(average)) {
+    //       average = nominal
+    //       tolInfo = toleranceTypes[1]
+    //     } else {
+    //       tolInfo = toleranceTypes[0]
+    //     }
+    //   } else if ( noUpper ) {
+    //     if(isNaN(nominal)) nominal = lowerTolerance
+    //     if(isNaN(average)) {
+    //       average = nominal
+    //       tolInfo = toleranceTypes[3]
+    //     } else {
+    //       tolInfo = toleranceTypes[2]
+    //     }
+    //   } else {
+    //     if (upperTolerance <= lowerTolerance) return;
+    //     nominal = ( upperTolerance + lowerTolerance ) / 2;
+    //     if(!isNaN(average) && nominal !== average){
+    //       if(upperTolerance > average && lowerTolerance < average){
+    //         nominal = average;
+    //       }
+    //     }
+    //     lowerTolerance = lowerTolerance - nominal;
+    //     upperTolerance = upperTolerance - nominal;
+    //     tolInfo = toleranceTypes[4]
+    //   }
+
+    //   if (tolInfo === "NotThreshold") {
+    //     return Math.abs((upperTolerance - lowerTolerance) / (2 * measurementUncertainty));
+    //   } else if (tolInfo === "LowThreshold") {
+    //     return Math.abs((average - lowerTolerance) / measurementUncertainty);
+    //   } else if (tolInfo === "UpThreshold") {
+    //     return Math.abs((upperTolerance - average) / measurementUncertainty);
+    //   } else {
+    //     return "";
+    //   }
+    // };
 
 const calculateRiskMetrics = useCallback(() => {
     // --- Get all initial inputs ---
