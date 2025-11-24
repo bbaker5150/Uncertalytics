@@ -1,7 +1,6 @@
-/* global math */
+import * as math from 'mathjs';
 import React, { useMemo } from 'react';
-import Latex from "react-latex-next";
-// --- UPDATED: Import calculateUncertaintyFromToleranceObject ---
+import Latex from "./Latex";
 import { unitSystem, calculateUncertaintyFromToleranceObject } from '../App';
 
 // Helper to format numbers for LaTeX display
@@ -179,17 +178,14 @@ const DerivedBreakdownModal = ({ isOpen, onClose, breakdownData }) => {
                                 <ul>
                                     <li><strong>Std. Uncertainty (<Latex>{`$u_{${symbol}}$`}</Latex>):</strong> {formattedValueUi} {displayValueUnitUi} (per instance)</li>
                                     
-                                    {/* --- MODIFICATION START --- */}
                                     <li>
                                         <strong>Sensitivity Coeffcient (<Latex>{`$c_{${symbol}}$`}</Latex>):</strong>
-                                        {/* Wrap the conditional items in a <ul> */}
                                         <ul style={{ listStyleType: 'none', paddingLeft: '10px' }}>
                                             {expressionTex && term.varSymbol !== 'res' && ( <li><Latex>{`$$ \\text{Calculate } c_{${symbol}} = \\frac{\\partial}{\\partial ${symbol}} \\left( ${expressionTex} \\right) $$`}</Latex></li> )}
                                             {derivativeTex && term.varSymbol !== 'res' && ( <li><Latex>{`$$ \\rightarrow c_{${symbol}} = ${derivativeTex} $$`}</Latex></li> )}
                                             {evaluationStepTex && ( <li><Latex>{`$$ \\text{Evaluate: } c_{${symbol}} = ${evaluationStepTex} $$`}</Latex></li> )}
                                         </ul>
                                     </li>
-                                    {/* --- MODIFICATION END --- */}
 
                                     <li><strong>Contribution (<Latex>{`$|c_{${symbol}} \\times u_{${symbol}}|$`}</Latex>):</strong> {formattedContribution} {derivedUnit} (per instance)</li>
                                     {term.quantity > 1 && (
@@ -199,10 +195,7 @@ const DerivedBreakdownModal = ({ isOpen, onClose, breakdownData }) => {
                             </div>
                         );
                     })}
-                    {/* --- END UPDATED LOOP --- */}
 
-
-                    {/* Final Calculation Section */}
                     <div className="breakdown-step">
                         <h5>Combined Uncertainty Calculation (<Latex>{`$u_y$`}</Latex> in {derivedUnit})</h5>
                         <p>Using the formula:</p>

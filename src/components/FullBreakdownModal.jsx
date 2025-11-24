@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import Latex from "react-latex-next";
+import Latex from "./Latex";
 import {
   calculateUncertaintyFromToleranceObject,
   unitSystem,

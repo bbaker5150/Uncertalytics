@@ -1,19 +1,18 @@
-/* global math */
+import * as math from 'mathjs';
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { probit } from "simple-statistics";
-import Latex from "react-latex-next";
-import "katex/dist/katex.min.css";
 import "./App.css";
-import AddTestPointModal from "./components/AddTestPointModal";
-import TestPointDetailView from "./components/TestPointDetailView";
-import ToleranceToolModal from "./components/ToleranceToolModal";
-import EditSessionModal from "./components/EditSessionModal";
-import ContextMenu from "./components/ContextMenu";
-import FullBreakdownModal from "./components/FullBreakdownModal";
-import DerivedBreakdownModal from "./components/DerivedBreakdownModal";
-import TestPointInfoModal from "./components/TestPointInfoModal";
-import RiskScatterplot from "./components/RiskScatterplot";
-import AddTmdeModal from "./components/AddTmdeModal";
+import AddTestPointModal from "./components/AddTestPointModal.jsx";
+import TestPointDetailView from "./components/TestPointDetailView.jsx";
+import ToleranceToolModal from "./components/ToleranceToolModal.jsx";
+import EditSessionModal from "./components/EditSessionModal.jsx";
+import ContextMenu from "./components/ContextMenu.jsx";
+import FullBreakdownModal from "./components/FullBreakdownModal.jsx";
+import DerivedBreakdownModal from "./components/DerivedBreakdownModal.jsx";
+import TestPointInfoModal from "./components/TestPointInfoModal.jsx";
+import RiskScatterplot from "./components/RiskScatterplot.jsx";
+import Latex from "./components/Latex.jsx";
+import AddTmdeModal from "./components/AddTmdeModal.jsx";
 import { generateOverviewReport } from './utils/pdfGenerator.js';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {

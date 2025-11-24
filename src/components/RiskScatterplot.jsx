@@ -1,5 +1,11 @@
-import React, { useMemo, useEffect, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTheme } from "../App";
+
+// Use the factory to create a Plot component that uses the basic distribution
+// This ensures we don't need a CDN and keeps the bundle size smaller than the full Plotly
+import Plotly from 'plotly.js-basic-dist';
+import createPlotlyComponent from 'react-plotly.js/factory';
+const Plot = createPlotlyComponent(Plotly);
 
 let spareRandom = null;
 function generateStandardNormal() {
@@ -22,7 +28,6 @@ function generateStandardNormal() {
 
 const RiskScatterplot = ({ results, inputs }) => {
   const isDarkMode = useTheme();
-  const plotContainer = useRef(null);
   const [numPoints, setNumPoints] = useState(3000);
 
   const plotData = useMemo(() => {
@@ -271,17 +276,6 @@ const RiskScatterplot = ({ results, inputs }) => {
     []
   );
 
-  useEffect(() => {
-    if (window.Plotly && plotContainer.current && plotData.length > 0) {
-      window.Plotly.react(
-        plotContainer.current,
-        plotData,
-        plotLayout,
-        plotConfig
-      );
-    }
-  }, [plotData, plotLayout, plotConfig]);
-
   return (
     <React.Fragment>
       <div className="risk-inputs-container" style={{ paddingBottom: "0", marginTop: "1rem" }}>
@@ -299,7 +293,15 @@ const RiskScatterplot = ({ results, inputs }) => {
         </div>
       </div>
 
-      <div ref={plotContainer} className="scatterplot-container"></div>
+      <div className="scatterplot-container" style={{ height: "400px", width: "100%" }}>
+        <Plot
+          data={plotData}
+          layout={plotLayout}
+          config={plotConfig}
+          style={{ width: "100%", height: "100%" }}
+          useResizeHandler={true}
+        />
+      </div>
     </React.Fragment>
   );
 };
