@@ -1,9 +1,15 @@
 import React, { useMemo, useEffect, useRef } from "react";
 import { useTheme } from "../App";
 
-const PercentageBarGraph = ({ inputs }) => {
+const PercentageBarGraph = ({ type, data }) => {
   const isDarkMode = useTheme();
   const plotContainer = useRef(null);
+  let inputs = data;
+  if (type) {
+    inputs = Object.fromEntries(Object.entries(inputs).filter(([key]) => key.substring(0, 5) !== "Input"));
+  } else {
+    inputs = Object.fromEntries(Object.entries(inputs).filter(([key, value]) => value !== 0));
+  }
 
   const plotData = useMemo(() => {
     if (!inputs || typeof inputs !== "object") return [];

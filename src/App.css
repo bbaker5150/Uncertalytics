@@ -2621,6 +2621,19 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   color: #6c757d;
 }
 
+.gblow-card .risk-value,
+.gbhigh-card .risk-value,
+.gbpfa-card .risk-value,
+.gbpfr-card .risk-value,
+.gbmult-card .risk-value,
+.gbcalint-card .risk-value,
+.calint-card .risk-value,
+.measrel-card .risk-value {
+  color: #198754;
+}
+
+
+
 .modal-placeholder {
   position: fixed;
   top: 0;
