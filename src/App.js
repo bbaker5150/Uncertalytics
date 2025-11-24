@@ -1925,9 +1925,759 @@ const PfrBreakdownModal = ({ results, inputs, onClose }) => {
   );
 };
 
-const GBInputsBreakdownModal = ({ inputs, onClose }) => {
+const GBInputsBreakdownModal = ({ inputs, results, onClose }) => {
 
-  console.log(inputs)
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content breakdown-modal-content">
+        <button onClick={onClose} className="modal-close-button">
+          &times;
+        </button>
+        
+        <h3>Key Inputs Breakdown</h3>
+
+        <div className="modal-body-scrollable">
+
+        <div className="breakdown-step">
+          <h5>
+            Uncertainty Requirements
+          </h5>
+          <p>
+            These values are uncertainty requirements set on the Uncertainty Tool.
+          </p>
+          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
+          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
+          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
+          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Calculated TUR Value
+          </h5>
+          <p>
+            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
+          </p>
+          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Cal Process Error (u<sub>combined</sub>)
+          </h5>
+          <p>
+            This value is the Combined Standard Uncertainty, calculated
+            from the detailed budget.
+          </p>
+          <Latex>
+            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        <div className="breakdown-step">
+          <h5>Nominal Value</h5>
+          <p>
+            The is the current measurement point.
+          </p>
+          <Latex>
+            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>UUT Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Unit Under Test (UUT).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>TMDE Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        </div>
+        
+      </div>
+    </div>
+  );
+};
+
+const GBLowBreakdownModal = ({ inputs, results, onClose }) => {
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content breakdown-modal-content">
+        <button onClick={onClose} className="modal-close-button">
+          &times;
+        </button>
+        
+        <h3>Key Inputs Breakdown</h3>
+
+        <div className="modal-body-scrollable">
+
+        <div className="breakdown-step">
+          <h5>
+            Uncertainty Requirements
+          </h5>
+          <p>
+            These values are uncertainty requirements set on the Uncertainty Tool.
+          </p>
+          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
+          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
+          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
+          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Calculated TUR Value
+          </h5>
+          <p>
+            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
+          </p>
+          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Cal Process Error (u<sub>combined</sub>)
+          </h5>
+          <p>
+            This value is the Combined Standard Uncertainty, calculated
+            from the detailed budget.
+          </p>
+          <Latex>
+            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        <div className="breakdown-step">
+          <h5>Nominal Value</h5>
+          <p>
+            The is the current measurement point.
+          </p>
+          <Latex>
+            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>UUT Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Unit Under Test (UUT).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>TMDE Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        </div>
+        
+      </div>
+    </div>
+  );
+};
+
+const GBHighBreakdownModal = ({ inputs, results, onClose }) => {
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content breakdown-modal-content">
+        <button onClick={onClose} className="modal-close-button">
+          &times;
+        </button>
+        
+        <h3>Key Inputs Breakdown</h3>
+
+        <div className="modal-body-scrollable">
+
+        <div className="breakdown-step">
+          <h5>
+            Uncertainty Requirements
+          </h5>
+          <p>
+            These values are uncertainty requirements set on the Uncertainty Tool.
+          </p>
+          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
+          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
+          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
+          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Calculated TUR Value
+          </h5>
+          <p>
+            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
+          </p>
+          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Cal Process Error (u<sub>combined</sub>)
+          </h5>
+          <p>
+            This value is the Combined Standard Uncertainty, calculated
+            from the detailed budget.
+          </p>
+          <Latex>
+            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        <div className="breakdown-step">
+          <h5>Nominal Value</h5>
+          <p>
+            The is the current measurement point.
+          </p>
+          <Latex>
+            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>UUT Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Unit Under Test (UUT).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>TMDE Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        </div>
+        
+      </div>
+    </div>
+  );
+};
+
+const GBPFABreakdownModal = ({ inputs, results, onClose }) => {
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content breakdown-modal-content">
+        <button onClick={onClose} className="modal-close-button">
+          &times;
+        </button>
+        
+        <h3>Key Inputs Breakdown</h3>
+
+        <div className="modal-body-scrollable">
+
+        <div className="breakdown-step">
+          <h5>
+            Uncertainty Requirements
+          </h5>
+          <p>
+            These values are uncertainty requirements set on the Uncertainty Tool.
+          </p>
+          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
+          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
+          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
+          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Calculated TUR Value
+          </h5>
+          <p>
+            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
+          </p>
+          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Cal Process Error (u<sub>combined</sub>)
+          </h5>
+          <p>
+            This value is the Combined Standard Uncertainty, calculated
+            from the detailed budget.
+          </p>
+          <Latex>
+            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        <div className="breakdown-step">
+          <h5>Nominal Value</h5>
+          <p>
+            The is the current measurement point.
+          </p>
+          <Latex>
+            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>UUT Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Unit Under Test (UUT).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>TMDE Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        </div>
+        
+      </div>
+    </div>
+  );
+};
+
+const GBPFRBreakdownModal = ({ inputs, results, onClose }) => {
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content breakdown-modal-content">
+        <button onClick={onClose} className="modal-close-button">
+          &times;
+        </button>
+        
+        <h3>Key Inputs Breakdown</h3>
+
+        <div className="modal-body-scrollable">
+
+        <div className="breakdown-step">
+          <h5>
+            Uncertainty Requirements
+          </h5>
+          <p>
+            These values are uncertainty requirements set on the Uncertainty Tool.
+          </p>
+          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
+          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
+          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
+          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Calculated TUR Value
+          </h5>
+          <p>
+            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
+          </p>
+          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Cal Process Error (u<sub>combined</sub>)
+          </h5>
+          <p>
+            This value is the Combined Standard Uncertainty, calculated
+            from the detailed budget.
+          </p>
+          <Latex>
+            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        <div className="breakdown-step">
+          <h5>Nominal Value</h5>
+          <p>
+            The is the current measurement point.
+          </p>
+          <Latex>
+            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>UUT Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Unit Under Test (UUT).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>TMDE Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        </div>
+        
+      </div>
+    </div>
+  );
+};
+
+const GBMultBreakdownModal = ({ inputs, results, onClose }) => {
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content breakdown-modal-content">
+        <button onClick={onClose} className="modal-close-button">
+          &times;
+        </button>
+        
+        <h3>Key Inputs Breakdown</h3>
+
+        <div className="modal-body-scrollable">
+
+        <div className="breakdown-step">
+          <h5>
+            Uncertainty Requirements
+          </h5>
+          <p>
+            These values are uncertainty requirements set on the Uncertainty Tool.
+          </p>
+          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
+          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
+          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
+          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Calculated TUR Value
+          </h5>
+          <p>
+            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
+          </p>
+          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Cal Process Error (u<sub>combined</sub>)
+          </h5>
+          <p>
+            This value is the Combined Standard Uncertainty, calculated
+            from the detailed budget.
+          </p>
+          <Latex>
+            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        <div className="breakdown-step">
+          <h5>Nominal Value</h5>
+          <p>
+            The is the current measurement point.
+          </p>
+          <Latex>
+            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>UUT Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Unit Under Test (UUT).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>TMDE Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        </div>
+        
+      </div>
+    </div>
+  );
+};
+
+const GBCalIntBreakdownModal = ({ inputs, results, onClose }) => {
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content breakdown-modal-content">
+        <button onClick={onClose} className="modal-close-button">
+          &times;
+        </button>
+        
+        <h3>Key Inputs Breakdown</h3>
+
+        <div className="modal-body-scrollable">
+
+        <div className="breakdown-step">
+          <h5>
+            Uncertainty Requirements
+          </h5>
+          <p>
+            These values are uncertainty requirements set on the Uncertainty Tool.
+          </p>
+          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
+          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
+          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
+          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Calculated TUR Value
+          </h5>
+          <p>
+            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
+          </p>
+          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Cal Process Error (u<sub>combined</sub>)
+          </h5>
+          <p>
+            This value is the Combined Standard Uncertainty, calculated
+            from the detailed budget.
+          </p>
+          <Latex>
+            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        <div className="breakdown-step">
+          <h5>Nominal Value</h5>
+          <p>
+            The is the current measurement point.
+          </p>
+          <Latex>
+            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>UUT Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Unit Under Test (UUT).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>TMDE Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        </div>
+        
+      </div>
+    </div>
+  );
+};
+
+const NoGBCalIntBreakdownModal = ({ inputs, results, onClose }) => {
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content breakdown-modal-content">
+        <button onClick={onClose} className="modal-close-button">
+          &times;
+        </button>
+        
+        <h3>Key Inputs Breakdown</h3>
+
+        <div className="modal-body-scrollable">
+
+        <div className="breakdown-step">
+          <h5>
+            Uncertainty Requirements
+          </h5>
+          <p>
+            These values are uncertainty requirements set on the Uncertainty Tool.
+          </p>
+          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
+          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
+          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
+          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Calculated TUR Value
+          </h5>
+          <p>
+            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
+          </p>
+          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>
+            Cal Process Error (u<sub>combined</sub>)
+          </h5>
+          <p>
+            This value is the Combined Standard Uncertainty, calculated
+            from the detailed budget.
+          </p>
+          <Latex>
+            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        <div className="breakdown-step">
+          <h5>Nominal Value</h5>
+          <p>
+            The is the current measurement point.
+          </p>
+          <Latex>
+            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>UUT Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Unit Under Test (UUT).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+
+        <div className="breakdown-step">
+          <h5>TMDE Tolerance Limits</h5>
+          <p>
+            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
+          </p>
+          <Latex>
+            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+          <Latex>
+            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
+          </Latex>
+        </div>
+        
+        </div>
+        
+      </div>
+    </div>
+  );
+};
+
+const NoGBMeasRelBreakdownModal = ({ inputs, results, onClose }) => {
 
   return (
     <div className="modal-overlay">
@@ -2952,7 +3702,7 @@ function Analysis({
 
     const tmdeToleranceSpan_Native =
       tmdeToleranceHigh_Native - tmdeToleranceLow_Native;
-
+ 
     if (missingTmdeRef) {
       setNotification({
         title: "Missing Info",
@@ -3452,6 +4202,7 @@ function Analysis({
     };
     // TUR FUNCTIONS -------------------------------------------------------------------------------------------------------------------------------------
     function calcTUR(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc) {
+
       let dMeasUnc;
 
       if (isNotNumeric(rngMeasUnc)) {
@@ -4141,17 +4892,20 @@ function Analysis({
     };
 
     let tarResult = calcTAR(uutNominal.value, 0, LLow, LUp, parseFloat(uutNominal.value) + tmdeToleranceLow_Native, parseFloat(uutNominal.value) + tmdeToleranceHigh_Native);
-    let turResult = calcTUR(uutNominal.value, 0, LLow, LUp,calcResults.expanded_uncertainty_absolute_base);
-    let [pfaResult, pfa_term1, pfa_term2, uUUT, uDev, cor] = PFAMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, turResult ,turNeeded);
-    let [pfrResult, pfr_term1, pfr_term2] = PFRMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, turResult ,turNeeded);
-    let gbLow = resDwn(gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
-    let gbHigh = resUp(gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
+    let turResult = calcTUR(uutNominal.value, 0, LLow, LUp, U_Native);
+    let [pfaResult, pfa_term1, pfa_term2, uUUT, uDev, cor] = PFAMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, turResult ,turNeeded);
+    let [pfrResult, pfr_term1, pfr_term2] = PFRMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, turResult ,turNeeded);
+    let gbLow = resDwn(gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, uCal_Native, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
+    let gbHigh = resUp(gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, uCal_Native, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
     let gbMult = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh);
-    let [gbPFA, gbPFAT1, gbPFAT2] = PFAwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, gbLow, gbHigh);
-    let [gbPFR, gbPFRT1, gbPFRT2] = PFRwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, gbLow, gbHigh);
-    let gbCalInt = CalIntwGBMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, gbLow, gbHigh, turResult, turNeeded, calInt);
-    let nogbCalInt = CalIntMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
-    let nogbMeasRel = CalRelMgr(uutNominal.value, 0, LLow, LUp, calcResults.combined_uncertainty_absolute_base, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
+    let [gbPFA, gbPFAT1, gbPFAT2] = PFAwGBMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, gbLow, gbHigh);
+    let [gbPFR, gbPFRT1, gbPFRT2] = PFRwGBMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, gbLow, gbHigh);
+    let gbCalInt = CalIntwGBMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, measRelCalc, gbLow, gbHigh, turResult, turNeeded, calInt);
+    let nogbCalInt = CalIntMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
+    let nogbMeasRel = CalRelMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
+
+
+
 
     let gbInputs = {
       nominal:parseFloat(uutNominal.value),
@@ -5253,98 +6007,58 @@ function Analysis({
         />
       )}
       {breakdownModal === "gblow" && (
-        <PfrBreakdownModal
-          results={riskResults}
-          inputs={{
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
-          }}
+        <GBLowBreakdownModal
+          inputs={riskResults.gbInputs}
+          results={riskResults.gbResults}
           onClose={() => setLocalBreakdownModal(null)}
         />
       )}
       {breakdownModal === "gbhigh" && (
-        <PfrBreakdownModal
-          results={riskResults}
-          inputs={{
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
-          }}
+        <GBHighBreakdownModal
+          inputs={riskResults.gbInputs}
+          results={riskResults.gbResults}
           onClose={() => setLocalBreakdownModal(null)}
         />
       )}
       {breakdownModal === "gbpfa" && (
-        <PfrBreakdownModal
-          results={riskResults}
-          inputs={{
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
-          }}
+        <GBPFABreakdownModal
+          inputs={riskResults.gbInputs}
+          results={riskResults.gbResults}
           onClose={() => setLocalBreakdownModal(null)}
         />
       )}
       {breakdownModal === "gbpfr" && (
-        <PfrBreakdownModal
-          results={riskResults}
-          inputs={{
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
-          }}
+        <GBPFRBreakdownModal
+          inputs={riskResults.gbInputs}
+          results={riskResults.gbResults}
           onClose={() => setLocalBreakdownModal(null)}
         />
       )}
       {breakdownModal === "gbmult" && (
-        <PfrBreakdownModal
-          results={riskResults}
-          inputs={{
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
-          }}
+        <GBMultBreakdownModal
+          inputs={riskResults.gbInputs}
+          results={riskResults.gbResults}
           onClose={() => setLocalBreakdownModal(null)}
         />
       )}
       {breakdownModal === "gbcalint" && (
-        <PfrBreakdownModal
-          results={riskResults}
-          inputs={{
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
-          }}
+        <GBCalIntBreakdownModal
+          inputs={riskResults.gbInputs}
+          results={riskResults.gbResults}
           onClose={() => setLocalBreakdownModal(null)}
         />
       )}
       {breakdownModal === "calint" && (
-        <PfrBreakdownModal
-          results={riskResults}
-          inputs={{
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
-          }}
+        <NoGBCalIntBreakdownModal
+          inputs={riskResults.gbInputs}
+          results={riskResults.gbResults}
           onClose={() => setLocalBreakdownModal(null)}
         />
       )}
       {breakdownModal === "measrel" && (
-        <PfrBreakdownModal
-          results={riskResults}
-          inputs={{
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
-          }}
+        <NoGBMeasRelBreakdownModal
+          inputs={riskResults.gbInputs}
+          results={riskResults.gbResults}
           onClose={() => setLocalBreakdownModal(null)}
         />
       )}
@@ -5693,8 +6407,11 @@ function Analysis({
                 }
                 />
                 {calcResults?.calculatedBudgetComponents && (
-                  <PercentageBarGraph inputs={Object.fromEntries(calcResults.calculatedBudgetComponents.map(item => [item.name, item.value_native]))} />
+                  <PercentageBarGraph type = {testPointData.measurementType === "derived"} data={Object.fromEntries([...calcResults.calculatedBudgetComponents.map(item => [item.name, item.value_native || item.value]),[tmdeTolerancesData[0].measurementPoint.name, calcResults.combined_uncertainty_inputs_native
+]])} />
                 )}
+
+
               </>
             )}
             </>
