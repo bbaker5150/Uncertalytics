@@ -26,7 +26,9 @@ import {
   faSave,
   faFolderOpen,
 } from "@fortawesome/free-solid-svg-icons";
-import {
+
+import * as PDFLib from 'pdf-lib';
+const {
   PDFDocument,
   StandardFonts,
   PDFName,
@@ -37,7 +39,7 @@ import {
   PDFStream,
   decodePDFRawStream,
   PDFRawStream,
-} from 'pdf-lib';
+} = PDFLib;
 
 export const unitSystem = {
   units: {

@@ -1,4 +1,5 @@
-import { rgb } from 'pdf-lib';
+import * as PDFLib from 'pdf-lib';
+const { rgb } = PDFLib;
 
 class PdfPageManager {
   constructor(pdfDoc, font, boldFont, pageOptions) {
