@@ -923,7 +923,7 @@ const EditSessionModal = ({
                   step="0.01"
                 />
               </div>
-              <div className="form-section">
+              {/* <div className="form-section">
                 <label>Default Guard Band Multiplier</label>
                 <input
                   type="number"
@@ -934,7 +934,7 @@ const EditSessionModal = ({
                   value={formData.uncReq?.guardBandMultiplier || ""}
                   onChange={handleReqChange}
                 />
-              </div>
+              </div> */}
             </div>
           )}
 

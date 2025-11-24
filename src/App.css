@@ -2526,6 +2526,10 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   cursor: pointer;
 }
 
+.risk-card:first-child {
+  grid-column: 1 / -1;
+}
+
 .risk-value {
   font-size: 2.2rem; /* Adjusted font size */
   font-weight: 700;
@@ -2711,6 +2715,19 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   color: var(--text-color-muted);
 }
 
+.metric-pod.gbmult,
+.metric-pod.gblow,
+.metric-pod.gbhigh,
+.metric-pod.gbpfa,
+.metric-pod.gbpfr,
+.metric-pod.gbcalint,
+.metric-pod.calint,
+.metric-pod.measrel {
+  border-color: var(--status-good);
+  color: var(--status-good);
+  animation: glow-good 3s infinite alternate;
+}
+
 /* --- Metric Pod Glow Animations --- */
 @keyframes glow-good {
     from { box-shadow: 0 0 3px 0px var(--status-good); }
@@ -2798,6 +2815,21 @@ body.dark-mode .metric-pod.pfr .metric-pod-value {
 }
 
 body.dark-mode .scatterplot-container {
+  background-color: var(--background-color);
+}
+
+.bargraph-container {
+  width: 100%;
+  height: 500px;
+  margin-top: 2rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--content-background);
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+body.dark-mode .bargraph-container {
   background-color: var(--background-color);
 }
 
