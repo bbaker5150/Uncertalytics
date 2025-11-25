@@ -1,35 +1,60 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, Menu, MenuItem } from 'electron';
 
-// Determine if we are in development mode based on the environment variable set by cross-env
-const isDev = process.env.NODE_ENV === 'development';
+// This effectively means "If running from source (dev), do this."
+const isDev = !app.isPackaged;
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: false,
     webPreferences: {
-      // These settings allow the renderer (React) to access Node.js features if needed
       nodeIntegration: true,
       contextIsolation: false,
-      // Disabling webSecurity allows the app to load local resources (file:// protocol)
-      // without hitting strict security blocks in the built app.
       webSecurity: false, 
     },
   });
 
+  // 1. Remove the default menu bar
+  win.setMenu(null); 
+
+  // 2. Maximize
+  win.maximize();
+
+  // 3. Enable Right-Click "Inspect Element"
+  win.webContents.on('context-menu', (event, params) => {
+
+    if (isDev) {
+      const menu = new Menu();
+      
+      menu.append(new MenuItem({
+        label: 'Inspect Element',
+        click: () => {
+          win.webContents.inspectElement(params.x, params.y);
+        }
+      }));
+
+      menu.append(new MenuItem({ type: 'separator' }));
+      menu.append(new MenuItem({ 
+        label: 'Clear Data and Reload',
+        click: () => { 
+          win.webContents.executeJavaScript('localStorage.clear(); window.location.reload();');
+        } 
+      }));
+
+      menu.popup();
+    }
+  });
+
+  win.show();
+
   if (isDev) {
-    // In Development: Load the Vite dev server
     win.loadURL('http://localhost:3000');
-    // Optional: Open DevTools automatically in dev mode
-    // win.webContents.openDevTools(); 
   } else {
-    // In Production: Load the built index.html relative to the application root.
-    // Electron automatically maps this to the correct path inside the ASAR archive.
     win.loadFile('dist/index.html');
   }
 }
 
-// App Lifecycle Listeners
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {

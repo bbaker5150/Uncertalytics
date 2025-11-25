@@ -7110,7 +7110,11 @@ function App() {
           onSave={handleSaveTestPoint}
           initialData={editingTestPoint}
           hasExistingPoints={currentTestPoints.length > 0}
-          previousTestPointData={currentTestPoints.length > 0 ? currentTestPoints[currentTestPoints.length - 1] : null}
+          previousTestPointData={
+            currentTestPoints.length > 0
+              ? currentTestPoints[currentTestPoints.length - 1]
+              : null
+          }
         />
 
         <EditSessionModal
@@ -7275,91 +7279,75 @@ function App() {
                 </div>
               </div>
               <div className="measurement-point-list">
-                {currentTestPoints.length > 0 ? (
-                  currentTestPoints.map((tp) => (
-                    <button
-                      key={tp.id}
-                      onClick={() => {
-                        setSelectedTestPointId(tp.id);
-                        setEditingTestPoint(tp);
-                      }}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        const completeTestPointForMenu = {
-                          ...tp,
-                          uutTolerance: currentSessionData.uutTolerance,
-                          uutDescription: currentSessionData.uutDescription,
-                        };
-                        const menuItems = [
-                          {
-                            label: "Edit Details",
-                            action: () => setEditingTestPoint(tp),
-                            icon: faPencilAlt,
-                          },
-                          {
-                            label: "Edit Tolerances",
-                            action: () => {
-                              setSelectedTestPointId(tp.id);
-                              setIsToleranceModalOpen(true);
-                            },
-                            icon: faSlidersH,
-                          },
-                          { type: "divider" },
-                          {
-                            label: "View Details",
-                            action: () =>
-                              setInfoModalPoint(completeTestPointForMenu),
-                            icon: faInfoCircle,
-                          },
-                          { type: "divider" },
-                          {
-                            label: "Delete Point",
-                            action: () => handleDeleteTestPoint(tp.id),
-                            icon: faTrashAlt,
-                            className: "destructive",
-                          },
-                        ];
-                        setContextMenu({
-                          x: e.pageX,
-                          y: e.pageY,
-                          items: menuItems,
-                        });
-                      }}
-                      className={`measurement-point-item ${
-                        selectedTestPointId === tp.id ? "active" : ""
-                      }`}
-                    >
-                      <span className="measurement-point-content">
-                        <span className="point-main">
-                          {tp.testPointInfo.parameter.name}:{" "}
-                          {tp.testPointInfo.parameter.value}{" "}
-                          {tp.testPointInfo.parameter.unit}
-                        </span>
-                        {tp.testPointInfo.qualifier &&
-                          tp.testPointInfo.qualifier.value && (
-                            <span className="point-qualifier">
-                              @{tp.testPointInfo.qualifier.value}
-                              {tp.testPointInfo.qualifier.unit}
-                            </span>
-                          )}
-                      </span>
-                    </button>
-                  ))
-                ) : (
-                  <div
-                    className="placeholder-content"
-                    style={{
-                      minHeight: "100px",
-                      fontSize: "0.9rem",
-                      margin: "1rem 0",
+                {currentTestPoints.map((tp) => (
+                  <button
+                    key={tp.id}
+                    onClick={() => {
+                      setSelectedTestPointId(tp.id);
+                      setEditingTestPoint(tp);
                     }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      const completeTestPointForMenu = {
+                        ...tp,
+                        uutTolerance: currentSessionData.uutTolerance,
+                        uutDescription: currentSessionData.uutDescription,
+                      };
+                      const menuItems = [
+                        {
+                          label: "Edit Details",
+                          action: () => setEditingTestPoint(tp),
+                          icon: faPencilAlt,
+                        },
+                        {
+                          label: "Edit Tolerances",
+                          action: () => {
+                            setSelectedTestPointId(tp.id);
+                            setIsToleranceModalOpen(true);
+                          },
+                          icon: faSlidersH,
+                        },
+                        { type: "divider" },
+                        {
+                          label: "View Details",
+                          action: () =>
+                            setInfoModalPoint(completeTestPointForMenu),
+                          icon: faInfoCircle,
+                        },
+                        { type: "divider" },
+                        {
+                          label: "Delete Point",
+                          action: () => handleDeleteTestPoint(tp.id),
+                          icon: faTrashAlt,
+                          className: "destructive",
+                        },
+                      ];
+                      setContextMenu({
+                        x: e.pageX,
+                        y: e.pageY,
+                        items: menuItems,
+                      });
+                    }}
+                    className={`measurement-point-item ${
+                      selectedTestPointId === tp.id ? "active" : ""
+                    }`}
                   >
-                    <p>
-                      No measurement points in this session. <br /> Click '+' to
-                      add one.
-                    </p>
-                  </div>
-                )}
+                    <span className="measurement-point-content">
+                      <span className="point-main">
+                        {tp.testPointInfo.parameter.name}:{" "}
+                        {tp.testPointInfo.parameter.value}{" "}
+                        {tp.testPointInfo.parameter.unit}
+                      </span>
+                      {tp.testPointInfo.qualifier &&
+                        tp.testPointInfo.qualifier.value && (
+                          <span className="point-qualifier">
+                            @{tp.testPointInfo.qualifier.value}
+                            {tp.testPointInfo.qualifier.unit}
+                          </span>
+                        )}
+                    </span>
+                  </button>
+                ))}
               </div>
             </aside>
             <main className="results-content">
