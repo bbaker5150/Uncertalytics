@@ -2,6 +2,8 @@
   "name": "uncertainty-tool",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.js",
+  "type": "module",
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.0.1",
     "@fortawesome/free-solid-svg-icons": "^7.0.1",
@@ -25,7 +27,23 @@
   "scripts": {
     "start": "vite",
     "build": "vite build",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "electron:dev": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on tcp:3000 && electron .\"",
+    "electron:build": "vite build && electron-builder"
+  },
+  "build": {
+    "appId": "com.uncertainty.tool",
+    "productName": "Uncertainty Tool",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": "nsis"
+    }
   },
   "eslintConfig": {
     "extends": [
@@ -47,6 +65,11 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.1",
-    "vite": "^7.2.4"
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^39.2.3",
+    "electron-builder": "^26.0.12",
+    "vite": "^7.2.4",
+    "wait-on": "^9.0.3"
   }
 }
