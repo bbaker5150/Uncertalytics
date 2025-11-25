@@ -6405,7 +6405,7 @@ function Analysis({
                     setLocalBreakdownModal(modalType)
                 }
                 />
-                {calcResults?.calculatedBudgetComponents && (
+                {calcResults?.calculatedBudgetComponents && tmdeTolerancesData[0] && (
                   <PercentageBarGraph type = {testPointData.measurementType === "derived"} data={Object.fromEntries([...calcResults.calculatedBudgetComponents.map(item => [item.name, item.value_native || item.value]),[tmdeTolerancesData[0].measurementPoint.name, calcResults.combined_uncertainty_inputs_native
 ]])} />
                 )}
