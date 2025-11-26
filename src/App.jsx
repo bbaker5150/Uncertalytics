@@ -2951,14 +2951,14 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           </ul>
         </div>
         <div className="risk-card gblow-card clickable" onClick={() => onShowBreakdown("gblow")}>
-          <div className="risk-value">{guardBand.GBLOW.toFixed(4)}</div>
+          <div className="risk-value">{guardBand.GBLOW.toFixed(results.uutResolution+1)}</div>
           <div className="risk-label">GB Limit Low Value</div>
           <div className="risk-explanation">
             Guardbanded UUT Lower Tolerance Limit.
           </div>
         </div>
         <div className="risk-card gbhigh-card clickable" onClick={() => onShowBreakdown("gbhigh")}>
-          <div className="risk-value">{guardBand.GBUP.toFixed(4)}</div>
+          <div className="risk-value">{guardBand.GBUP.toFixed(results.uutResolution+1)}</div>
           <div className="risk-label">GB Limit High Value</div>
           <div className="risk-explanation">
             Guardbanded UUT Upper Tolerance Limit.
@@ -4960,7 +4960,8 @@ function Analysis({
       tmdeBreakdownForTar: tmdeBreakdownForTar,
       nativeUnit: nominalUnit,
       gbInputs: gbInputs,
-      gbResults: gbResults
+      gbResults: gbResults,
+      uutResolution: testPointData.uutTolerance.measuringResolution.length
     };
 
     setRiskResults(newRiskMetrics);
