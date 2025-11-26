@@ -35,7 +35,7 @@ const componentDefinitions = {
     defaultState: {
       high: "",
       low: "",
-      unit: "",
+      unit: "", // Intentionally empty initially, handled by handleAddComponent
       distribution: "1.960",
       symmetric: true,
     },
@@ -78,11 +78,31 @@ const ToleranceForm = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Synchronization Effect
   useEffect(() => {
-    if (referencePoint?.unit && !componentDefinitions.floor.defaultState.unit) {
-      componentDefinitions.floor.defaultState.unit = referencePoint.unit;
-    }
-  }, [referencePoint]);
+    // We only strictly sync if referencePoint exists. 
+    // If it's null (EditSessionModal), we rely on handleAddComponent's fallback.
+    if (!referencePoint?.unit) return;
+
+    setTolerance((prev) => {
+      let updated = false;
+      const next = { ...prev };
+
+      // 1. Sync Floor Unit
+      if (next.floor && !next.floor.unit) {
+        next.floor = { ...next.floor, unit: referencePoint.unit };
+        updated = true;
+      }
+
+      // 2. Sync UUT Resolution Unit
+      if (isUUT && !next.measuringResolutionUnit) {
+        next.measuringResolutionUnit = referencePoint.unit;
+        updated = true;
+      }
+
+      return updated ? next : prev;
+    });
+  }, [referencePoint, isUUT, setTolerance, tolerance.floor, tolerance.measuringResolutionUnit]);
 
   const handleChange = (e) => {
     const { name, value, checked, dataset } = e.target;
@@ -123,12 +143,33 @@ const ToleranceForm = ({
 
   const handleAddComponent = (componentKey) => {
     if (componentKey && !tolerance[componentKey]) {
+      // Create a copy of the default state
+      const newState = { ...componentDefinitions[componentKey].defaultState };
+      
+      // --- FIX START ---
+      // Determine the default unit.
+      // 1. Try the reference point unit.
+      // 2. If null, find the first valid physical unit (e.g. "V") from the system list.
+      if (!newState.unit) {
+        if (referencePoint?.unit) {
+             newState.unit = referencePoint.unit;
+        } else if (componentKey === 'floor') {
+             // Fallback: This fixes the bug in EditSessionModal where ref is null.
+             // We pick the first unit that isn't %, ppm, or dB (likely 'V').
+             const validUnits = allUnits.filter((u) => !["%", "ppm", "dB"].includes(u));
+             if (validUnits.length > 0) {
+                 newState.unit = validUnits[0];
+             }
+        }
+      }
+      // --- FIX END ---
+
       setTolerance((prev) => ({
         ...prev,
-        [componentKey]: { ...componentDefinitions[componentKey].defaultState },
+        [componentKey]: newState,
       }));
     }
-    setAddComponentVisible(false); // Hide menu after adding
+    setAddComponentVisible(false); 
   };
 
   const handleRemoveComponent = (key) => {
@@ -220,7 +261,13 @@ const ToleranceForm = ({
           <div className="config-stack">
             {commonFields}
             <label>Units</label>
-            <select data-component-key="floor" data-field="unit" value={componentData.unit || referencePoint?.unit} onChange={handleChange}>
+            <select 
+                data-component-key="floor" 
+                data-field="unit" 
+                // Fallback to reference unit OR first available unit if state is empty
+                value={componentData.unit || referencePoint?.unit || allUnits.filter((u) => !["%", "ppm", "dB"].includes(u))[0] || ""} 
+                onChange={handleChange}
+            >
               {allUnits.filter((u) => !["%", "ppm", "dB"].includes(u)).map((u) => (<option key={u} value={u}>{u}</option>))}
             </select>
             {distributionSelect}
@@ -300,7 +347,12 @@ const ToleranceForm = ({
           <label>Measuring Resolution (Least Significant Digit)</label>
           <div className="input-with-unit">
             <input type="number" step="any" name="measuringResolution" data-type="misc" value={tolerance.measuringResolution || ""} onChange={handleChange} placeholder="e.g., 1" />
-            <select name="measuringResolutionUnit" data-type="misc" value={tolerance.measuringResolutionUnit || referencePoint?.unit} onChange={handleChange}>
+            <select 
+                name="measuringResolutionUnit" 
+                data-type="misc" 
+                value={tolerance.measuringResolutionUnit || referencePoint?.unit || allUnits.filter((u) => !["%", "ppm", "dB"].includes(u))[0] || ""} 
+                onChange={handleChange}
+            >
               {allUnits.filter((u) => !["%", "ppm", "dB"].includes(u)).map((u) => (<option key={u} value={u}>{u}</option>))}
             </select>
           </div>

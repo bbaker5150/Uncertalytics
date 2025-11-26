@@ -20,7 +20,17 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
   useEffect(() => {
     if (isOpen && testPointData) {
       const cleanObject = (obj) => Object.fromEntries(Object.entries(obj || {}).filter(([_, v]) => v !== undefined && v !== null));
-      setUutTolerance(cleanObject(testPointData.uutTolerance));
+      
+      let initialUut = cleanObject(testPointData.uutTolerance);
+      
+      if (initialUut.floor && !initialUut.floor.unit && testPointData.testPointInfo?.parameter?.unit) {
+        initialUut = {
+            ...initialUut,
+            floor: { ...initialUut.floor, unit: testPointData.testPointInfo.parameter.unit }
+        };
+      }
+
+      setUutTolerance(initialUut);
       setTmdeTolerances((testPointData.tmdeTolerances || []).map(t => cleanObject(t)));
       setActiveTab("UUT");
     }

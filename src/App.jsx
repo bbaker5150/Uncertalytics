@@ -3569,11 +3569,10 @@ function Analysis({
     const measRelCalc = parseFloat(sessionData.uncReq.measRelCalcAssumed)/100;
     const turNeeded = parseFloat(sessionData.uncReq.neededTUR);
   
-        // --- Validation Checks (Existing) ---
-    if (isNaN(LLow) || isNaN(LUp) || LUp <= LLow) {
+    if (isNaN(LLow) || isNaN(LUp) || LUp === LLow) {
       setNotification({
         title: "Invalid Input",
-        message: "Enter valid UUT tolerance limits.",
+        message: "Enter valid UUT tolerance limits (Span cannot be zero).",
       });
       return;
     }
@@ -4894,8 +4893,11 @@ function Analysis({
     let turResult = calcTUR(uutNominal.value, 0, LLow, LUp, U_Native);
     let [pfaResult, pfa_term1, pfa_term2, uUUT, uDev, cor] = PFAMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, turResult ,turNeeded);
     let [pfrResult, pfr_term1, pfr_term2] = PFRMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, turResult ,turNeeded);
-    let gbLow = resDwn(gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, uCal_Native, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
-    let gbHigh = resUp(gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, uCal_Native, reliability),parseFloat(testPointData.uutTolerance.measuringResolution));
+    // If user doesn't set measuring Resolution
+    const resRaw = parseFloat(testPointData.uutTolerance.measuringResolution);
+    const safeRes = isNaN(resRaw) ? 0 : resRaw;
+    let gbLow = resDwn(gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, uCal_Native, reliability), safeRes);
+    let gbHigh = resUp(gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, uCal_Native, reliability), safeRes);
     let gbMult = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh);
     let [gbPFA, gbPFAT1, gbPFAT2] = PFAwGBMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, gbLow, gbHigh);
     let [gbPFR, gbPFRT1, gbPFRT2] = PFRwGBMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, gbLow, gbHigh);
@@ -6556,6 +6558,8 @@ function App() {
   const [riskResults, setRiskResults] = useState(null);
   const [appNotification, setAppNotification] = useState(null);
   const [sessionImageCache, setSessionImageCache] = useState(new Map());
+  const [confirmationModal, setConfirmationModal] = useState(null);
+  const closeConfirmation = () => setConfirmationModal(null)
 
   const handleOpenSessionEditor = (
     initialTab = "details",
@@ -6616,6 +6620,14 @@ function App() {
     } else {
       document.body.classList.remove("dark-mode");
     }
+    if (window.require) {
+      try {
+        const { ipcRenderer } = window.require('electron');
+        ipcRenderer.send('set-theme', isDarkMode ? 'dark' : 'light');
+      } catch (error) {
+        console.warn('Could not connect to Electron IPC', error);
+      }
+    }
   }, [isDarkMode]);
 
   const handleCloseContextMenu = useCallback(() => setContextMenu(null), []);
@@ -6628,31 +6640,56 @@ function App() {
     setEditingSession(newSession);
   };
 
-  const handleDeleteSession = (sessionId) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this session and all its measurement points?"
-      )
-    )
-      return;
+  const executeDeleteSession = (sessionId) => {
+    // 1. Calculate new sessions list based on CURRENT state
+    const newSessions = sessions.filter((s) => s.id !== sessionId);
 
-    setSessions((prev) => {
-      const newSessions = prev.filter((s) => s.id !== sessionId);
+    // 2. Handle Case: No sessions left
+    if (newSessions.length === 0) {
+      const firstSession = createNewSession();
+      setSessions([firstSession]);
+      setSelectedSessionId(firstSession.id);
+      setSelectedTestPointId(null);
+      setEditingSession(firstSession);
+    } else {
+      // 3. Handle Case: Deleting the currently selected session
       if (selectedSessionId === sessionId) {
-        const newSelectedId = newSessions[0]?.id || null;
-        setSelectedSessionId(newSelectedId);
-        setSelectedTestPointId(newSessions[0]?.testPoints?.[0]?.id || null);
+        const newSelectedSession = newSessions[0];
+        setSelectedSessionId(newSelectedSession.id);
+        const newTpId = newSelectedSession.testPoints?.[0]?.id || null;
+        setSelectedTestPointId(newTpId);
       }
-      if (newSessions.length === 0) {
-        const firstSession = createNewSession();
-        setEditingSession(firstSession);
-        setSelectedSessionId(firstSession.id);
-        setSelectedTestPointId(null);
-        return [firstSession];
-      }
-      return newSessions;
-    });
+      setSessions(newSessions);
+    }
+    closeConfirmation();
   };
+
+  const executeDeleteTestPoint = (idToDelete) => {
+    let nextSelectedTestPointId = selectedTestPointId;
+    
+    const updatedSessions = sessions.map((session) => {
+      if (session.id === selectedSessionId) {
+        const filteredTestPoints = session.testPoints.filter((tp) => tp.id !== idToDelete);
+        if (selectedTestPointId === idToDelete) {
+          nextSelectedTestPointId = filteredTestPoints[0]?.id || null;
+        }
+        return { ...session, testPoints: filteredTestPoints };
+      }
+      return session;
+    });
+
+    setSessions(updatedSessions);
+    setSelectedTestPointId(nextSelectedTestPointId);
+    closeConfirmation();
+  };
+
+  const handleDeleteSession = (sessionId) => {
+    setConfirmationModal({
+      title: "Delete Session",
+      message: "Are you sure you want to delete this session and all its measurement points?",
+      onConfirm: () => executeDeleteSession(sessionId)
+    });
+  }
 
   const handleSessionChange = (updatedSession, newImageFiles = []) => {
     setSessions((prevSessions) => 
@@ -6677,22 +6714,27 @@ function App() {
     setEditingSession(null);
   };
 
-  const handleDeleteTmdeDefinition = (tmdeId) => {
-    if (!window.confirm("Are you sure you want to delete this entire TMDE definition (all instances)?")) return;
-    
+  const executeDeleteTmdeDefinition = (tmdeId) => {
     setSessions((prev) =>
       prev.map((session) => {
         if (session.id !== selectedSessionId) return session;
         const updatedTestPoints = session.testPoints.map((tp) => {
           if (tp.id !== selectedTestPointId) return tp;
-          const newTolerances = tp.tmdeTolerances.filter(
-            (t) => t.id !== tmdeId
-          );
+          const newTolerances = tp.tmdeTolerances.filter((t) => t.id !== tmdeId);
           return { ...tp, tmdeTolerances: newTolerances };
         });
         return { ...session, testPoints: updatedTestPoints };
       })
     );
+    closeConfirmation();
+  };
+
+  const handleDeleteTmdeDefinition = (tmdeId) => {
+    setConfirmationModal({
+      title: "Delete TMDE",
+      message: "Are you sure you want to delete this entire TMDE definition (all instances)?",
+      onConfirm: () => executeDeleteTmdeDefinition(tmdeId)
+    });
   };
 
   const handleDecrementTmdeQuantity = (tmdeId) => {
@@ -7020,26 +7062,11 @@ function App() {
   };
 
   const handleDeleteTestPoint = (idToDelete) => {
-    if (
-      !window.confirm("Are you sure you want to delete this measurement point?")
-    )
-      return;
-    let nextSelectedTestPointId = selectedTestPointId;
-    setSessions((prev) =>
-      prev.map((session) => {
-        if (session.id === selectedSessionId) {
-          const filteredTestPoints = session.testPoints.filter(
-            (tp) => tp.id !== idToDelete
-          );
-          if (selectedTestPointId === idToDelete) {
-            nextSelectedTestPointId = filteredTestPoints[0]?.id || null;
-          }
-          return { ...session, testPoints: filteredTestPoints };
-        }
-        return session;
-      })
-    );
-    setSelectedTestPointId(nextSelectedTestPointId);
+    setConfirmationModal({
+      title: "Delete Measurement Point",
+      message: "Are you sure you want to delete this measurement point?",
+      onConfirm: () => executeDeleteTestPoint(idToDelete)
+    });
   };
 
   const handleDataSave = useCallback(
@@ -7101,6 +7128,33 @@ function App() {
           title={appNotification?.title}
           message={appNotification?.message}
         />
+        {/* --- Confirmation Modal --- */}
+      {confirmationModal && (
+        <div className="modal-overlay" style={{ zIndex: 2001 }}>
+          <div className="modal-content">
+            <button onClick={closeConfirmation} className="modal-close-button">
+              &times;
+            </button>
+            <h3>{confirmationModal.title}</h3>
+            <p>{confirmationModal.message}</p>
+            <div className="modal-actions" style={{ justifyContent: "center", gap: "15px" }}>
+              <button 
+                className="button button-secondary" 
+                onClick={closeConfirmation}
+              >
+                Cancel
+              </button>
+              <button 
+                className="button" 
+                style={{ backgroundColor: 'var(--status-bad)' }} // Red color for danger
+                onClick={confirmationModal.onConfirm}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
         <AddTestPointModal
           isOpen={isAddModalOpen || !!editingTestPoint}
           onClose={() => {
@@ -7284,7 +7338,6 @@ function App() {
                     key={tp.id}
                     onClick={() => {
                       setSelectedTestPointId(tp.id);
-                      setEditingTestPoint(tp);
                     }}
                     onContextMenu={(e) => {
                       e.preventDefault();
