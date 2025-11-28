@@ -1087,7 +1087,8 @@ const UncertaintyBudgetTable = ({
                     <label>Show Guardband</label>
                   </div>
                   {riskResults && (
-                    <div className="budget-risk-metrics">
+                    <div>
+                      <div className="budget-risk-metrics">
                       <div
                         className={`metric-pod ${getPfaClass(
                           riskResults.pfa
@@ -1140,6 +1141,8 @@ const UncertaintyBudgetTable = ({
                           </span>
                         </div>
                       )}
+                      </div>
+                      <div className="budget-risk-metrics">
                       {showGuardband && (<>
                       <div className="metric-pod gblow clickable"
                         onClick={() =>
@@ -1231,8 +1234,9 @@ const UncertaintyBudgetTable = ({
                       </div>
                       </>
                       )}
-                      
+                      </div>
                     </div>
+                    
                   )}
                 </div>
               </td>
