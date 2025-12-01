@@ -48,7 +48,7 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "build/favicon.ico"
+      "icon": "public/favicon.ico"
     }
   },
   "eslintConfig": {

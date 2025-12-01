@@ -34,7 +34,6 @@ def generate_manifest_icons(input_file):
         print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
-    # CHANGE THIS to your actual source filename if it's different
-    source_image = "icon.png" 
+    source_image = "icon.png"
     
     generate_manifest_icons(source_image)
