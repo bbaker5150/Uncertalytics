@@ -287,7 +287,7 @@ select:focus {
   text-align: left;
   padding: 12px 15px;
   border-radius: 8px;
-  border: none;
+  border: 1px solid transparent;
   background-color: transparent;
   color: var(--text-color);
   font-weight: 500;
@@ -334,10 +334,39 @@ select:focus {
   background-color: transparent;
 }
 
+@keyframes listActiveGlow {
+  from {
+    box-shadow: 
+      inset 4px 0 0 var(--primary-color), /* The solid left bar */
+      0 2px 4px rgba(0, 123, 255, 0.1);   /* Subtle outer shadow */
+  }
+  to {
+    box-shadow: 
+      inset 4px 0 0 var(--primary-color), /* The solid left bar stays */
+      0 4px 15px rgba(0, 123, 255, 0.4),  /* The outer glow expands */
+      inset 0 0 20px rgba(0, 123, 255, 0.1); /* Inner glow breathing */
+  }
+}
+
 .session-list-item.active,
 .measurement-point-item.active {
-  background-color: var(--primary-color-light);
+  /* Futuristic Gradient Background */
+  background: linear-gradient(90deg, var(--primary-color-light) 0%, rgba(255,255,255,0) 100%);
+  
+  /* Text Color */
   color: var(--primary-color-dark);
+  font-weight: 700;
+  
+  /* Remove default border if any */
+  border: 1px solid transparent;
+  
+  /* Apply the animation */
+  animation: listActiveGlow 2s infinite alternate ease-in-out;
+  
+  /* Ensure text doesn't jitter */
+  transform: translateZ(0); 
+  position: relative;
+  overflow: hidden;
 }
 
 .session-list-item.active {
@@ -425,6 +454,13 @@ select:focus {
   font-weight: 600;
   color: #495057;
   font-size: 0.9rem;
+}
+
+.form-section input[type="date"]:hover {
+  background-color: #f0f8ff;
+  border-color:var(--primary-color);
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+  cursor: pointer;
 }
 
 .dark-mode-toggle {
@@ -605,11 +641,13 @@ body.dark-mode .measurement-point-list-item:hover {
 
 .modal-content.edit-session-modal {
     display: flex;
-    flex-direction: column; /* Changed from row */
+    flex-direction: column;
     width: 90vw;
     max-width: 1000px;
     height: 80vh;
     padding: 0;
+    padding-top: 40px; 
+    padding-right: 30px; 
     text-align: left;
 }
 
@@ -2649,22 +2687,41 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   z-index: 999;
 }
 
+/* =================================================================== */
+/* UPDATED METRICS DASHBOARD                                           */
+/* =================================================================== */
+
 .budget-risk-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
   width: 100%;
-  max-width: 500px;
-  margin-top: 20px;
+  max-width: 100%; /* Removed the 500px limit to allow full width */
+  margin-top: 25px;
+}
+
+/* New class for grouping pods into lines */
+.metrics-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
 }
 
 .metric-pod {
+  /* Flexible width: grows/shrinks but tries to be ~130px */
+  flex: 1 1 130px; 
+  max-width: 200px; /* Prevents them from getting too wide on large screens */
   background-color: var(--content-background);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color); /* Thinner border (1px) looks cleaner */
   border-radius: 12px;
   padding: 10px 12px;
   text-align: center;
-  transition: border-color 0.3s ease, transform 0.2s ease-in-out;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .metric-pod.clickable {
@@ -2673,25 +2730,52 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 
 .metric-pod.clickable:hover {
   transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
 }
 
 .metric-pod-label {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-color-muted);
   display: block;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap; /* Prevent label wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .metric-pod-value {
-  font-size: 1.1rem;
+  font-size: 1.0rem; /* Slightly smaller to fit better */
   font-weight: 700;
   line-height: 1.2;
+  white-space: nowrap; /* CRITICAL: Prevents value wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Color Logic */
+/* Separator for Guardband Section */
+.metrics-separator {
+  width: 100%;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  line-height: 0.1em;
+  margin: 15px 0 10px 0;
+  opacity: 0.6;
+}
+
+.metrics-separator span {
+  background: var(--background-color); /* Matches footer/modal bg */
+  padding: 0 10px;
+  color: var(--text-color-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* --- Color Logic (Preserved) --- */
 .metric-pod.status-good {
   border-color: var(--status-good);
   animation: glow-good 3s infinite alternate;
@@ -2734,6 +2818,7 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   color: var(--text-color-muted);
 }
 
+/* Guardband Colors */
 .metric-pod.gbmult,
 .metric-pod.gblow,
 .metric-pod.gbhigh,
@@ -2749,28 +2834,33 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 
 /* --- Metric Pod Glow Animations --- */
 @keyframes glow-good {
-    from { box-shadow: 0 0 3px 0px var(--status-good); }
-    to { box-shadow: 0 0 8px 2px var(--status-good); }
+  from { box-shadow: 0 0 3px 0px var(--status-good); }
+  to { box-shadow: 0 0 8px 2px var(--status-good); }
 }
 @keyframes glow-warning {
-    from { box-shadow: 0 0 3px 0px var(--status-warning); }
-    to { box-shadow: 0 0 8px 2px var(--status-warning); }
+  from { box-shadow: 0 0 3px 0px var(--status-warning); }
+  to { box-shadow: 0 0 8px 2px var(--status-warning); }
 }
 @keyframes glow-bad {
-    from { box-shadow: 0 0 3px 0px var(--status-bad); }
-    to { box-shadow: 0 0 8px 2px var(--status-bad); }
+  from { box-shadow: 0 0 3px 0px var(--status-bad); }
+  to { box-shadow: 0 0 8px 2px var(--status-bad); }
 }
 @keyframes glow-primary {
-    from { box-shadow: 0 0 3px 0px var(--primary-color); }
-    to { box-shadow: 0 0 8px 2px var(--primary-color); }
+  from { box-shadow: 0 0 3px 0px var(--primary-color); }
+  to { box-shadow: 0 0 8px 2px var(--primary-color); }
 }
 @keyframes glow-muted {
-    from { box-shadow: 0 0 3px 0px var(--text-color-muted); }
-    to { box-shadow: 0 0 8px 2px var(--text-color-muted); }
+  from { box-shadow: 0 0 3px 0px var(--text-color-muted); }
+  to { box-shadow: 0 0 8px 2px var(--text-color-muted); }
 }
 
+/* --- Dark Mode Overrides --- */
 body.dark-mode .metric-pod {
   background-color: var(--background-color);
+}
+
+body.dark-mode .metrics-separator span {
+  background: #1A202C; /* Matches dark mode final result bg */
 }
 
 body.dark-mode .metric-pod.tur,
@@ -2790,15 +2880,14 @@ body.dark-mode .metric-pod.pfr .metric-pod-value {
 }
 
 /* --- Edit Session Modal - Overview Tab Risk Metrics --- */
-
 .metric-pods-row-condensed {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
-  margin-top: 1.5rem; /* Adds space between pods and seals */
+  margin-top: 1.5rem;
 }
 
-/* Override default metric pod padding/font for a denser fit */
+/* Condensed overrides */
 .metric-pods-row-condensed .metric-pod {
   padding: 8px 10px;
   min-height: 50px;
@@ -2835,6 +2924,86 @@ body.dark-mode .metric-pod.pfr .metric-pod-value {
 
 body.dark-mode .scatterplot-container {
   background-color: var(--background-color);
+}
+
+.plot-floating-control {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  
+  /* Glassmorphism Effect */
+  background-color: rgba(255, 255, 255, 0.85);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  padding: 6px 14px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* Hover State: make it slightly more solid */
+.plot-floating-control:hover {
+  background-color: var(--content-background);
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.plot-floating-control label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-color-muted);
+  margin: 0;
+  letter-spacing: 0.5px;
+  cursor: default;
+}
+
+.plot-floating-control input {
+  width: 50px;
+  border: none;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  padding: 0;
+  text-align: right;
+  height: auto;
+  cursor: pointer;
+}
+
+.plot-floating-control input:focus {
+  outline: none;
+  box-shadow: none;
+  border-bottom: 1px dashed var(--primary-color);
+  border-radius: 0;
+}
+
+/* Remove spinner buttons on input for a cleaner look (optional) */
+.plot-floating-control input::-webkit-outer-spin-button,
+.plot-floating-control input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* --- Dark Mode Overrides --- */
+body.dark-mode .plot-floating-control {
+  background-color: rgba(30, 30, 30, 0.7); /* Dark semi-transparent */
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .plot-floating-control:hover {
+  background-color: rgba(40, 40, 40, 0.9);
+  border-color: var(--primary-color-dark);
+}
+
+body.dark-mode .plot-floating-control input {
+  color: var(--primary-color-dark);
 }
 
 .bargraph-container {
@@ -3038,10 +3207,35 @@ body.dark-mode .measurement-point-item:hover {
   background-color: #2a2a2a;
 }
 
+@keyframes listActiveGlowDark {
+  from {
+    box-shadow: 
+      inset 4px 0 0 var(--primary-color), 
+      0 2px 4px rgba(0, 0, 0, 0.2); 
+  }
+  to {
+    box-shadow: 
+      inset 4px 0 0 var(--primary-color), 
+      0 0 15px rgba(59, 130, 246, 0.5), /* Brighter glow for dark background */
+      inset 0 0 20px rgba(59, 130, 246, 0.2); 
+  }
+}
+
 body.dark-mode .session-list-item.active,
 body.dark-mode .measurement-point-item.active {
-  color: var(--primary-color-dark);
-  background-color: var(--primary-color-light);
+  /* Darker gradient for dark mode */
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.25) 0%, rgba(30, 30, 30, 0) 100%);
+  color: #63b3ed; /* Lighter blue text for contrast */
+  
+  /* Adjust animation colors for dark mode visibility */
+  animation: listActiveGlowDark 2s infinite alternate ease-in-out;
+}
+
+body.dark-mode .measurement-point-item.active .info-icon,
+body.dark-mode .measurement-point-item.active .calc-icon {
+  background-color: #2D3748;
+  color: #63b3ed;
+  border-color: #63b3ed;
 }
 
 body.dark-mode .view-toggle {
@@ -3596,7 +3790,8 @@ body.dark-mode .final-result-display {
 .measurement-point-item.active .calc-icon {
   background-color: white;
   color: var(--primary-color);
-  border-color: var(--border-color);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.4);
 }
 
 .measurement-point-item.active .info-icon:hover,

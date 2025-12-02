@@ -273,16 +273,8 @@ const AddTmdeModal = ({
 
       <div
         className="modal-actions"
-        style={{ justifyContent: "space-between", alignItems: "center" }}
+        style={{ justifyContent: "flex-end", alignItems: "center" }}
       >
-        <button
-          className="modal-icon-button secondary"
-          onClick={onClose}
-          title="Cancel"
-        >
-          <FontAwesomeIcon icon={faTimes} />
-        </button>
-
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           {!initialTmdeData && (
             <button

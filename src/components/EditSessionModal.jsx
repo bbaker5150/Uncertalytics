@@ -512,7 +512,6 @@ const EditSessionModal = ({
         </button>
 
         <div className="modal-main-content">
-          <h3>Session Settings</h3>
           <div className="modal-tabs">
             <button
               className={`modal-tab ${

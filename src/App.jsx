@@ -1,4 +1,4 @@
-import * as math from 'mathjs';
+import * as math from "mathjs";
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { probit } from "simple-statistics";
 import Latex from "./components/Latex";
@@ -14,7 +14,7 @@ import TestPointInfoModal from "./components/TestPointInfoModal";
 import RiskScatterplot from "./components/RiskScatterplot";
 import PercentageBarGraph from "./components/ContributionPlot";
 import AddTmdeModal from "./components/AddTmdeModal";
-import { generateOverviewReport } from './utils/pdfGenerator';
+import { generateOverviewReport } from "./utils/pdfGenerator";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faInfoCircle,
@@ -28,7 +28,7 @@ import {
   faFolderOpen,
 } from "@fortawesome/free-solid-svg-icons";
 
-import * as PDFLib from 'pdf-lib';
+import * as PDFLib from "pdf-lib";
 const {
   PDFDocument,
   StandardFonts,
@@ -505,24 +505,26 @@ function CumNorm(x) {
   let Build;
   let Exponential;
 
-  if (XAbs > 37) { // [cite: 5883]
+  if (XAbs > 37) {
+    // [cite: 5883]
     if (x > 0) {
       return 1.0;
     } else {
       return 0.0;
     }
   } else {
-    Exponential = Math.exp(-XAbs * XAbs / 2); // [cite: 5883]
-    if (XAbs < 7.07106781186547) { // [cite: 5883]
-      Build = 3.52624965998911E-02 * XAbs + 0.700383064443688;
+    Exponential = Math.exp((-XAbs * XAbs) / 2); // [cite: 5883]
+    if (XAbs < 7.07106781186547) {
+      // [cite: 5883]
+      Build = 3.52624965998911e-2 * XAbs + 0.700383064443688;
       Build = Build * XAbs + 6.37396220353165;
       Build = Build * XAbs + 33.912866078383;
       Build = Build * XAbs + 112.079291497871;
       Build = Build * XAbs + 221.213596169931;
       Build = Build * XAbs + 220.206867912376;
       let CumNormVal = Exponential * Build; // [cite: 5883]
-      
-      Build = 8.83883476483184E-02 * XAbs + 1.75566716318264;
+
+      Build = 8.83883476483184e-2 * XAbs + 1.75566716318264;
       Build = Build * XAbs + 16.064177579207;
       Build = Build * XAbs + 86.7807322029461;
       Build = Build * XAbs + 296.564248779674;
@@ -530,20 +532,21 @@ function CumNorm(x) {
       Build = Build * XAbs + 793.826512519948;
       Build = Build * XAbs + 440.413735824752;
       CumNormVal = CumNormVal / Build; // [cite: 5884]
-      
+
       if (x > 0) {
         return 1 - CumNormVal; // [cite: 5884]
       } else {
         return CumNormVal;
       }
-    } else { // [cite: 5884]
+    } else {
+      // [cite: 5884]
       Build = XAbs + 0.65;
       Build = XAbs + 4 / Build;
       Build = XAbs + 3 / Build;
       Build = XAbs + 2 / Build;
       Build = XAbs + 1 / Build;
       let CumNormVal = Exponential / Build / 2.506628274631; // [cite: 5885]
-      
+
       if (x > 0) {
         return 1 - CumNormVal; // [cite: 5884]
       } else {
@@ -560,50 +563,60 @@ function CumNorm(x) {
 function bivariateNormalCDF(A, B, r) {
   // Weights and abscissas for 5-point Gauss-Legendre quadrature [cite: 5888, 5894]
   // (VBA arrays are 1-indexed, so we use 0-indexed JS arrays)
-  const x_quad = [ 0.04691008, 0.23076534, 0.5, 0.76923466, 0.95308992 ];
-  const w_quad = [ 0.018854042, 0.038088059, 0.0452707394, 0.038088059, 0.018854042 ];
+  const x_quad = [0.04691008, 0.23076534, 0.5, 0.76923466, 0.95308992];
+  const w_quad = [
+    0.018854042, 0.038088059, 0.0452707394, 0.038088059, 0.018854042,
+  ];
 
   let h1 = A;
   let h2 = B;
   let h12 = (h1 * h1 + h2 * h2) / 2.0;
-  let LH = 0.0; // 
+  let LH = 0.0; //
 
-  if (Math.abs(r) < 0.7) { // [cite: 5897]
+  if (Math.abs(r) < 0.7) {
+    // [cite: 5897]
     let h3 = h1 * h2;
     if (r !== 0) {
       for (let i = 0; i < 5; i++) {
         let r1 = r * x_quad[i];
         let r2 = 1 - r1 * r1;
-        LH = LH + w_quad[i] * Math.exp((r1 * h3 - h12) / r2) / Math.sqrt(r2); // [cite: 5892]
+        LH = LH + (w_quad[i] * Math.exp((r1 * h3 - h12) / r2)) / Math.sqrt(r2); // [cite: 5892]
       }
     }
     return CumNorm(h1) * CumNorm(h2) + r * LH; // [cite: 5897]
-    
-  } else { // 
+  } else {
+    //
     let r2 = 1 - r * r;
     let r3 = Math.sqrt(r2);
     if (r < 0) {
-      h2 = -h2; // 
+      h2 = -h2; //
     }
     let h3 = h1 * h2;
-    let h7 = Math.exp(-h3 / 2.0); // 
-    
-    if (Math.abs(r) < 1) { // 
+    let h7 = Math.exp(-h3 / 2.0); //
+
+    if (Math.abs(r) < 1) {
+      //
       let h6 = Math.abs(h1 - h2);
-      let h5 = h6 * h6 / 2.0; // [cite: 5895]
+      let h5 = (h6 * h6) / 2.0; // [cite: 5895]
       h6 = h6 / r3;
       let AA = 0.5 - h3 / 8.0;
       let ab = 3 - 2 * AA * h5;
-      LH = 0.13298076 * h6 * ab * (1 - CumNorm(h6)) - Math.exp(-h5 / r2) * (ab + AA * r2) * 0.053051647; // [cite: 5895-5896]
-      
+      LH =
+        0.13298076 * h6 * ab * (1 - CumNorm(h6)) -
+        Math.exp(-h5 / r2) * (ab + AA * r2) * 0.053051647; // [cite: 5895-5896]
+
       for (let i = 0; i < 5; i++) {
         let r1 = r3 * x_quad[i];
         let rr = r1 * r1;
         let r2_inner = Math.sqrt(1 - rr);
-        LH = LH - w_quad[i] * Math.exp(-h5 / rr) * (Math.exp(-h3 / (1 + r2_inner)) / r2_inner / h7 - 1 - AA * rr); // [cite: 5896]
+        LH =
+          LH -
+          w_quad[i] *
+            Math.exp(-h5 / rr) *
+            (Math.exp(-h3 / (1 + r2_inner)) / r2_inner / h7 - 1 - AA * rr); // [cite: 5896]
       }
     }
-    
+
     let BiVar = LH * r3 * h7 + CumNorm(Math.min(h1, h2)); // [cite: 5896, 5898]
     if (r < 0) {
       BiVar = CumNorm(h1) - BiVar; // [cite: 5896]
@@ -761,10 +774,7 @@ export const Accordion = ({
 export const NotificationModal = ({ isOpen, onClose, title, message }) => {
   if (!isOpen) return null;
   return (
-    <div
-      className="modal-overlay"
-      style={{ zIndex: 2000 }}
-    >
+    <div className="modal-overlay" style={{ zIndex: 2000 }}>
       <div className="modal-content">
         <button onClick={onClose} className="modal-close-button">
           &times;
@@ -819,6 +829,8 @@ const UncertaintyBudgetTable = ({
   riskResults,
   onShowDerivedBreakdown,
   onShowRiskBreakdown,
+  showContribution,
+  setShowContribution,
 }) => {
   const confidencePercent = parseFloat(uncertaintyConfidence) || 95;
   const derivedUnit = referencePoint?.unit || "Units";
@@ -891,7 +903,8 @@ const UncertaintyBudgetTable = ({
           let formattedContribution = "N/A";
           let displayContributionUnit = derivedUnit;
           const quantity = c.quantity || 1;
-          const displayName = quantity > 1 ? `${c.name} (Qty: ${quantity})` : c.name;
+          const displayName =
+            quantity > 1 ? `${c.name} (Qty: ${quantity})` : c.name;
 
           if (c.value_native !== undefined && c.unit_native) {
             formattedValueUi = c.value_native.toPrecision(4);
@@ -1007,8 +1020,7 @@ const UncertaintyBudgetTable = ({
             </td>
           </tr>
         ) : (
-          <tr className="category-header">
-          </tr>
+          <tr className="category-header"></tr>
         )}
 
         {showDerivedInputs && (
@@ -1063,7 +1075,72 @@ const UncertaintyBudgetTable = ({
           <>
             <tr className="final-uncertainty-row">
               <td colSpan={headerColSpan}>
-                <div className="final-result-display">
+                <div
+                  className="final-result-display"
+                  style={{ position: "relative" }}
+                >
+                  {/* Absolute Toggle Switch */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "20px",
+                      left: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "0.8rem",
+                        fontWeight: "600",
+                        color: "var(--text-color-muted)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      Show Contribution
+                    </span>
+                    <label className="dark-mode-toggle" style={{ margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={showContribution}
+                        onChange={(e) => setShowContribution(e.target.checked)}
+                      />
+                      <span className="slider"></span>
+                    </label>
+                  </div>
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "20px",
+                      right: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "0.8rem",
+                        fontWeight: "600",
+                        color: "var(--text-color-muted)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      Show Guardband
+                    </span>
+                    <label className="dark-mode-toggle" style={{ margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={showGuardband}
+                        onChange={(e) => setShowGuardband(e.target.checked)}
+                      />
+                      <span className="slider"></span>
+                    </label>
+                  </div>
+
                   <span className="final-result-label">
                     Expanded Uncertainty (U)
                   </span>
@@ -1078,160 +1155,170 @@ const UncertaintyBudgetTable = ({
                     The reported expanded uncertainty... k≈
                     {calcResults.k_value.toFixed(3)}... {confidencePercent}%.
                   </span>
-                  <div>
-                    <input
-                      type="checkbox"
-                      checked={showGuardband}
-                      onChange={(e) => setShowGuardband(e.target.checked)}
-                    />
-                    <label>Show Guardband</label>
-                  </div>
+
+                  {/* Cleaned Up Metric Pods */}
                   {riskResults && (
                     <div className="budget-risk-metrics">
-                      <div
-                        className={`metric-pod ${getPfaClass(
-                          riskResults.pfa
-                        )} clickable`}
-                        onClick={() =>
-                          onShowRiskBreakdown && onShowRiskBreakdown("pfa")
-                        }
-                        title="Show PFA Breakdown"
-                      >
-                        <span className="metric-pod-label">PFA</span>
-                        <span className="metric-pod-value">
-                          {riskResults.pfa.toFixed(4)} %
-                        </span>
-                      </div>
-                      <div
-                        className="metric-pod pfr clickable"
-                        onClick={() =>
-                          onShowRiskBreakdown && onShowRiskBreakdown("pfr")
-                        }
-                        title="Show PFR Breakdown"
-                      >
-                        <span className="metric-pod-label">PFR</span>
-                        <span className="metric-pod-value">
-                          {riskResults.pfr.toFixed(4)} %
-                        </span>
-                      </div>
-                      <div
-                        className="metric-pod tur clickable"
-                        onClick={() =>
-                          onShowRiskBreakdown && onShowRiskBreakdown("tur")
-                        }
-                        title="Show TUR Breakdown"
-                      >
-                        <span className="metric-pod-label">TUR</span>
-                        <span className="metric-pod-value">
-                          {riskResults.tur.toFixed(2)} : 1
-                        </span>
-                      </div>
-                      {isDirect && (
+                      {/* Row 1: Core Risk Metrics */}
+                      <div className="metrics-row">
                         <div
-                          className="metric-pod tar clickable"
+                          className={`metric-pod ${getPfaClass(
+                            riskResults.pfa
+                          )} clickable`}
                           onClick={() =>
-                            onShowRiskBreakdown && onShowRiskBreakdown("tar")
+                            onShowRiskBreakdown && onShowRiskBreakdown("pfa")
                           }
-                          title="Show TAR Breakdown"
+                          title="Show PFA Breakdown"
                         >
-                          <span className="metric-pod-label">TAR</span>
+                          <span className="metric-pod-label">PFA</span>
                           <span className="metric-pod-value">
-                            {riskResults.tar.toFixed(2)} : 1
+                            {riskResults.pfa.toFixed(4)} %
                           </span>
                         </div>
+                        <div
+                          className="metric-pod pfr clickable"
+                          onClick={() =>
+                            onShowRiskBreakdown && onShowRiskBreakdown("pfr")
+                          }
+                          title="Show PFR Breakdown"
+                        >
+                          <span className="metric-pod-label">PFR</span>
+                          <span className="metric-pod-value">
+                            {riskResults.pfr.toFixed(4)} %
+                          </span>
+                        </div>
+                        <div
+                          className="metric-pod tur clickable"
+                          onClick={() =>
+                            onShowRiskBreakdown && onShowRiskBreakdown("tur")
+                          }
+                          title="Show TUR Breakdown"
+                        >
+                          <span className="metric-pod-label">TUR</span>
+                          <span className="metric-pod-value">
+                            {riskResults.tur.toFixed(2)} : 1
+                          </span>
+                        </div>
+                        {isDirect && (
+                          <div
+                            className="metric-pod tar clickable"
+                            onClick={() =>
+                              onShowRiskBreakdown && onShowRiskBreakdown("tar")
+                            }
+                            title="Show TAR Breakdown"
+                          >
+                            <span className="metric-pod-label">TAR</span>
+                            <span className="metric-pod-value">
+                              {riskResults.tar.toFixed(2)} : 1
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Optional Guardband Section */}
+                      {showGuardband && (
+                        <>
+                          <div className="metrics-separator">
+                            <span>Guardband Analysis</span>
+                          </div>
+
+                          {/* Row 2: Guardband Limits & Multiplier */}
+                          <div className="metrics-row">
+                            <div
+                              className="metric-pod gblow clickable"
+                              onClick={() => onShowRiskBreakdown("gblow")}
+                            >
+                              <span className="metric-pod-label">GB LOW</span>
+                              <span className="metric-pod-value">
+                                {riskResults.gbResults.GBLOW.toFixed(4)}
+                              </span>
+                            </div>
+                            <div
+                              className="metric-pod gbhigh clickable"
+                              onClick={() => onShowRiskBreakdown("gbhigh")}
+                            >
+                              <span className="metric-pod-label">GB HIGH</span>
+                              <span className="metric-pod-value">
+                                {riskResults.gbResults.GBUP.toFixed(4)}
+                              </span>
+                            </div>
+                            <div
+                              className="metric-pod gbmult clickable"
+                              onClick={() => onShowRiskBreakdown("gbmult")}
+                            >
+                              <span className="metric-pod-label">
+                                GB Multiplier
+                              </span>
+                              <span className="metric-pod-value">
+                                {riskResults.gbResults.GBMULT.toFixed(4)} %
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Row 3: Guardband Risk */}
+                          <div className="metrics-row">
+                            <div
+                              className="metric-pod gbpfa clickable"
+                              onClick={() => onShowRiskBreakdown("gbpfa")}
+                            >
+                              <span className="metric-pod-label">
+                                PFA w/ GB
+                              </span>
+                              <span className="metric-pod-value">
+                                {riskResults.gbResults.GBPFA.toFixed(4)} %
+                              </span>
+                            </div>
+                            <div
+                              className="metric-pod gbpfr clickable"
+                              onClick={() => onShowRiskBreakdown("gbpfr")}
+                            >
+                              <span className="metric-pod-label">
+                                PFR w/ GB
+                              </span>
+                              <span className="metric-pod-value">
+                                {riskResults.gbResults.GBPFR.toFixed(4)} %
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Row 4: Intervals & Reliability */}
+                          <div className="metrics-row">
+                            <div
+                              className="metric-pod gbcalint clickable"
+                              onClick={() => onShowRiskBreakdown("gbcalint")}
+                            >
+                              <span className="metric-pod-label">
+                                CAL INT w/ GB
+                              </span>
+                              <span className="metric-pod-value">
+                                {riskResults.gbResults.GBCALINT.toFixed(4)}
+                              </span>
+                            </div>
+                            <div
+                              className="metric-pod calint clickable"
+                              onClick={() => onShowRiskBreakdown("calint")}
+                            >
+                              <span className="metric-pod-label">
+                                CAL INT w/o GB
+                              </span>
+                              <span className="metric-pod-value">
+                                {riskResults.gbResults.NOGBCALINT.toFixed(4)}
+                              </span>
+                            </div>
+                            <div
+                              className="metric-pod measrel clickable"
+                              onClick={() => onShowRiskBreakdown("measrel")}
+                            >
+                              <span className="metric-pod-label">
+                                REL w/o GB
+                              </span>
+                              <span className="metric-pod-value">
+                                {riskResults.gbResults.NOGBMEASREL.toFixed(4)} %
+                              </span>
+                            </div>
+                          </div>
+                        </>
                       )}
-                      {showGuardband && (<>
-                      <div className="metric-pod gblow clickable"
-                        onClick={() =>
-                          onShowRiskBreakdown && onShowRiskBreakdown("gblow")
-                        }
-                        title="Show GB Low Breakdown"
-                      >
-                        <span className="metric-pod-label">GB LOW</span>
-                        <span className="metric-pod-value">
-                          {riskResults.gbResults.GBLOW.toFixed(4)}
-                        </span>
-                      </div>
-                      <div className="metric-pod gbhigh clickable"
-                        onClick={() =>
-                          onShowRiskBreakdown && onShowRiskBreakdown("gbhigh")
-                        }
-                        title="Show GB High Breakdown"
-                      >
-                        <span className="metric-pod-label">GB HIGH</span>
-                        <span className="metric-pod-value">
-                          {riskResults.gbResults.GBUP.toFixed(4)}
-                        </span>
-                      </div>
-                      <div className="metric-pod gbpfa clickable"
-                        onClick={() =>
-                          onShowRiskBreakdown && onShowRiskBreakdown("gbpfa")
-                        }
-                        title="Show GB PFA Breakdown"
-                      >
-                        <span className="metric-pod-label">PFA w/ GB</span>
-                        <span className="metric-pod-value">
-                          {riskResults.gbResults.GBPFA.toFixed(4)} %
-                        </span>
-                      </div>
-                      <div className="metric-pod gbpfr clickable"
-                        onClick={() =>
-                          onShowRiskBreakdown && onShowRiskBreakdown("gbpfr")
-                        }
-                        title="Show GB PFR Breakdown"
-                      >
-                        <span className="metric-pod-label">PFR w/ GB</span>
-                        <span className="metric-pod-value">
-                          {riskResults.gbResults.GBPFR.toFixed(4)} %
-                        </span>
-                      </div>
-                      <div className="metric-pod gbmult clickable"
-                        onClick={() =>
-                          onShowRiskBreakdown && onShowRiskBreakdown("gbmult")
-                        }
-                        title="Show GB Multiplier Breakdown"
-                      >
-                        <span className="metric-pod-label">GB Multiplier</span>
-                        <span className="metric-pod-value">
-                          {riskResults.gbResults.GBMULT.toFixed(4)} %
-                        </span>
-                      </div>
-                      <div className="metric-pod gbcalint clickable"
-                        onClick={() =>
-                          onShowRiskBreakdown && onShowRiskBreakdown("gbcalint")
-                        }
-                        title="Show GB Calibration Interval Breakdown"
-                      >
-                        <span className="metric-pod-label">CAL INT w/ GB</span>
-                        <span className="metric-pod-value">
-                          {riskResults.gbResults.GBCALINT.toFixed(4)}
-                        </span>
-                      </div>
-                      <div className="metric-pod calint clickable"
-                        onClick={() =>
-                          onShowRiskBreakdown && onShowRiskBreakdown("calint")
-                        }
-                        title="Show No GB Calibration Interval Breakdown"
-                      >
-                        <span className="metric-pod-label">CAL INT w/o GB</span>
-                        <span className="metric-pod-value">
-                          {riskResults.gbResults.NOGBCALINT.toFixed(4)}
-                        </span>
-                      </div>
-                      <div className="metric-pod measrel clickable"
-                        onClick={() =>
-                          onShowRiskBreakdown && onShowRiskBreakdown("measrel")
-                        }
-                        title="Show No GB Measurement Reliability Needed Breakdown"
-                      >
-                        <span className="metric-pod-label">MEAS REL w/o GB</span>
-                        <span className="metric-pod-value">
-                          {riskResults.gbResults.NOGBMEASREL.toFixed(4)} %
-                        </span>
-                      </div>
-                      </>
-                      )}
-                      
                     </div>
                   )}
                 </div>
@@ -1247,8 +1334,9 @@ const UncertaintyBudgetTable = ({
 const InputsBreakdownModal = ({ results, inputs, onClose }) => {
   const mid = (inputs.LUp + inputs.LLow) / 2;
   const LUp_symmetric = Math.abs(inputs.LUp - mid);
-  const safeNativeUnit = results.nativeUnit === "%" ? "\\%" : (results.nativeUnit || "units");
-  const zScore = (results.uDev > 0) ? (LUp_symmetric / results.uDev) : 0;
+  const safeNativeUnit =
+    results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
+  const zScore = results.uDev > 0 ? LUp_symmetric / results.uDev : 0;
   const reliability = parseFloat(inputs.reliability);
   const p_cumulative = (1 + reliability) / 2;
 
@@ -1258,98 +1346,132 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>
-        
+
         <h3>Key Inputs Breakdown</h3>
 
         <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>
+              Cal Process Error (u<sub>combined</sub>)
+            </h5>
+            <p>
+              This value is the Combined Standard Uncertainty, calculated from
+              the detailed budget.
+            </p>
+            <Latex>
+              {`$$ u_{combined} = \\mathbf{${results.uCal.toPrecision(
+                6
+              )}} \\text{ ${safeNativeUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Cal Process Error (u<sub>combined</sub>)
-          </h5>
-          <p>
-            This value is the Combined Standard Uncertainty, calculated
-            from the detailed budget.
-          </p>
-          <Latex>
-            {`$$ u_{combined} = \\mathbf{${results.uCal.toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>
+              Observed (measured) UUT Error (&sigma;<sub>observed</sub>)
+            </h5>
+            <p>
+              This value is calculated using the EOP reliability (REOP) and the
+              Inverse Normal Distribution Function to determine a Z-Score. The
+              Z-score (number of standard deviations) is found using the Inverse
+              Normal CDF (`Φ⁻¹`, or `probit`) on the cumulative probability `p`
+              (our REOP percentage).
+            </p>
+            <Latex>
+              {`$$ p = (1 + R) / 2 = (1 + ${reliability}) / 2 = \\mathbf{${p_cumulative.toFixed(
+                4
+              )}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Z_{\\text{score}} = \\Phi^{-1}(p) = \\Phi^{-1}(${p_cumulative.toFixed(
+                4
+              )}) = \\mathbf{${zScore.toPrecision(4)}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} = \\frac{${LUp_symmetric.toPrecision(
+                6
+              )}}{\\Phi^{-1}((1+${
+                inputs.reliability
+              })/2)} = \\mathbf{${results.uDev.toPrecision(
+                6
+              )}} \\text{ ${safeNativeUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Observed (measured) UUT Error (&sigma;<sub>observed</sub>)
-          </h5>
-          <p>
-            This value is calculated using the EOP reliability (REOP) and the
-            Inverse Normal Distribution Function to determine a Z-Score. The
-            Z-score (number of standard deviations) is found using the Inverse
-            Normal CDF (`Φ⁻¹`, or `probit`) on the cumulative probability `p` (our REOP percentage).
-          </p>
-          <Latex>
-            {`$$ p = (1 + R) / 2 = (1 + ${reliability}) / 2 = \\mathbf{${p_cumulative.toFixed(4)}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Z_{\\text{score}} = \\Phi^{-1}(p) = \\Phi^{-1}(${p_cumulative.toFixed(4)}) = \\mathbf{${zScore.toPrecision(4)}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} = \\frac{${LUp_symmetric.toPrecision(6)}}{\\Phi^{-1}((1+${inputs.reliability})/2)} = \\mathbf{${results.uDev.toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>
+              UUT True Error (&sigma;<sub>uut</sub>)
+            </h5>
+            <p>
+              The intrinsic error of the UUT, calculated by removing the
+              calibration process uncertainty from the observed error.
+            </p>
+            <Latex>
+              {`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} = \\sqrt{${results.uDev.toPrecision(
+                6
+              )}^2 - ${results.uCal.toPrecision(
+                6
+              )}^2} = \\mathbf{${results.uUUT.toPrecision(
+                6
+              )}} \\text{ ${safeNativeUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            UUT True Error (&sigma;<sub>uut</sub>)
-          </h5>
-          <p>
-            The intrinsic error of the UUT, calculated by removing the
-            calibration process uncertainty from the observed error.
-          </p>
-          <Latex>
-            {`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} = \\sqrt{${results.uDev.toPrecision(6)}^2 - ${results.uCal.toPrecision(6)}^2} = \\mathbf{${results.uUUT.toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
-          </Latex>
-        </div>
-        
-        <div className="breakdown-step">
-          <h5>UUT Tolerance Limits (L)</h5>
-          <p>
-            The specified tolerance limits for the Unit Under Test (UUT).
-          </p>
-          <Latex>
-            {`$$ L_{Low} = \\mathbf{${parseFloat(inputs.LLow).toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ L_{Up} = \\mathbf{${parseFloat(inputs.LUp).toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>UUT Tolerance Limits (L)</h5>
+            <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
+            <Latex>
+              {`$$ L_{Low} = \\mathbf{${parseFloat(inputs.LLow).toPrecision(
+                6
+              )}} \\text{ ${safeNativeUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ L_{Up} = \\mathbf{${parseFloat(inputs.LUp).toPrecision(
+                6
+              )}} \\text{ ${safeNativeUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>Acceptance Limits (A)</h5>
-          <p>
-            Calculated by applying the Guard Band Multiplier to the
-            tolerance limits.
-          </p>
-          <Latex>
-            {`$$ A_{Low} = L_{Low} \\times G = ${parseFloat(inputs.LLow).toPrecision(6)} \\times ${inputs.guardBandMultiplier} = \\mathbf{${results.ALow.toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ A_{Up} = L_{Up} \\times G = ${parseFloat(inputs.LUp).toPrecision(6)} \\times ${inputs.guardBandMultiplier} = \\mathbf{${results.AUp.toPrecision(6)}} \\text{ ${safeNativeUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>Acceptance Limits (A)</h5>
+            <p>
+              Calculated by applying the Guard Band Multiplier to the tolerance
+              limits.
+            </p>
+            <Latex>
+              {`$$ A_{Low} = L_{Low} \\times G = ${parseFloat(
+                inputs.LLow
+              ).toPrecision(6)} \\times ${
+                inputs.guardBandMultiplier
+              } = \\mathbf{${results.ALow.toPrecision(
+                6
+              )}} \\text{ ${safeNativeUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ A_{Up} = L_{Up} \\times G = ${parseFloat(
+                inputs.LUp
+              ).toPrecision(6)} \\times ${
+                inputs.guardBandMultiplier
+              } = \\mathbf{${results.AUp.toPrecision(
+                6
+              )}} \\text{ ${safeNativeUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>Correlation (ρ)</h5>
-          <p>
-            The statistical correlation between the UUT's true error value and the
-            observed (measured) value.
-          </p>
-          <Latex>
-            {`$$ \\rho = \\frac{\\sigma_{UUT}}{\\sigma_{observed}} = \\frac{${results.uUUT.toPrecision(6)}}{${results.uDev.toPrecision(6)}} = \\mathbf{${results.correlation.toPrecision(6)}} $$`}
-          </Latex>
+          <div className="breakdown-step">
+            <h5>Correlation (ρ)</h5>
+            <p>
+              The statistical correlation between the UUT's true error value and
+              the observed (measured) value.
+            </p>
+            <Latex>
+              {`$$ \\rho = \\frac{\\sigma_{UUT}}{\\sigma_{observed}} = \\frac{${results.uUUT.toPrecision(
+                6
+              )}}{${results.uDev.toPrecision(
+                6
+              )}} = \\mathbf{${results.correlation.toPrecision(6)}} $$`}
+            </Latex>
+          </div>
         </div>
-        
-        </div>
-        
       </div>
     </div>
   );
@@ -1358,7 +1480,8 @@ const InputsBreakdownModal = ({ results, inputs, onClose }) => {
 const TurBreakdownModal = ({ results, inputs, onClose }) => {
   if (!results || !inputs) return null;
 
-  const safeNativeUnit = results.nativeUnit === "%" ? "\\%" : (results.nativeUnit || "units");
+  const safeNativeUnit =
+    results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
   const uutToleranceSpan = inputs.LUp - inputs.LLow;
   const expandedUncertaintySpan = results.expandedUncertainty * 2;
 
@@ -1589,15 +1712,16 @@ const PfaBreakdownModal = ({ results, inputs, onClose }) => {
             <p>
               The Probability of False Accept (PFA) is the sum of the
               probabilities in the two "False Accept" regions of the risk
-              scatterplot. This is calculated using the Bivariate
-              Normal Cumulative Distribution Function (Φ₂).
+              scatterplot. This is calculated using the Bivariate Normal
+              Cumulative Distribution Function (Φ₂).
             </p>
             <Latex>{"$$ PFA = PFA_{Lower} + PFA_{Upper} $$"}</Latex>
           </div>
           <div className="breakdown-step">
             <h5>Step 2: Key Statistical Inputs</h5>
             <p>
-              These values are derived from your budget and reliability settings.
+              These values are derived from your budget and reliability
+              settings.
             </p>
             <ul>
               <li>
@@ -1637,33 +1761,33 @@ const PfaBreakdownModal = ({ results, inputs, onClose }) => {
                 z<sub>x_low</sub> (True Error):{" "}
                 <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
                   4
-                )}}{${results.uUUT.toPrecision(4)}} = \\mathbf{${z_x_low.toFixed(
+                )}}{${results.uUUT.toPrecision(
                   4
-                )}} $$`}</Latex>
+                )}} = \\mathbf{${z_x_low.toFixed(4)}} $$`}</Latex>
               </li>
               <li>
                 z<sub>x_high</sub> (True Error):{" "}
                 <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
                   4
-                )}}{${results.uUUT.toPrecision(4)}} = \\mathbf{${z_x_high.toFixed(
+                )}}{${results.uUUT.toPrecision(
                   4
-                )}} $$`}</Latex>
+                )}} = \\mathbf{${z_x_high.toFixed(4)}} $$`}</Latex>
               </li>
               <li>
                 z<sub>y_low</sub> (Measured Error):{" "}
                 <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
                   4
-                )}}{${results.uDev.toPrecision(4)}} = \\mathbf{${z_y_low.toFixed(
+                )}}{${results.uDev.toPrecision(
                   4
-                )}} $$`}</Latex>
+                )}} = \\mathbf{${z_y_low.toFixed(4)}} $$`}</Latex>
               </li>
               <li>
                 z<sub>y_high</sub> (Measured Error):{" "}
                 <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
                   4
-                )}}{${results.uDev.toPrecision(4)}} = \\mathbf{${z_y_high.toFixed(
+                )}}{${results.uDev.toPrecision(
                   4
-                )}} $$`}</Latex>
+                )}} = \\mathbf{${z_y_high.toFixed(4)}} $$`}</Latex>
               </li>
             </ul>
           </div>
@@ -1681,13 +1805,13 @@ const PfaBreakdownModal = ({ results, inputs, onClose }) => {
               }
             </Latex>
             <Latex>{`$$ = \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
-            <Latex>{`$$ = \\Phi_2(${z_x_low.toFixed(
+            <Latex>{`$$ = \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_high.toFixed(
               2
-            )}, ${z_y_high.toFixed(2)}, ${results.correlation.toFixed(
+            )}, ${results.correlation.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
               2
-            )}) - \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_low.toFixed(
+            )}, ${z_y_low.toFixed(2)}, ${results.correlation.toFixed(
               2
-            )}, ${results.correlation.toFixed(2)}) $$`}</Latex>
+            )}) $$`}</Latex>
             <Latex>{`$$ = \\mathbf{${(results.pfa_term1 / 100).toExponential(
               4
             )}} $$`}</Latex>
@@ -1704,15 +1828,13 @@ const PfaBreakdownModal = ({ results, inputs, onClose }) => {
               <Latex>{`$$ = P(z_x < -z_{x\\_high} \\text{ and } -z_{y\\_high} < z_y < -z_{y\\_low}) $$`}</Latex>
             </p>
             <Latex>{`$$ = \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
-            <Latex>{`$$ = \\Phi_2(${-z_x_high.toFixed(
+            <Latex>{`$$ = \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_low.toFixed(
               2
-            )}, ${-z_y_low.toFixed(2)}, ${results.correlation.toFixed(
+            )}, ${results.correlation.toFixed(
               2
-            )}) - \\Phi_2(${-z_x_high.toFixed(
+            )}) - \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_high.toFixed(
               2
-            )}, ${-z_y_high.toFixed(2)}, ${results.correlation.toFixed(
-              2
-            )}) $$`}</Latex>
+            )}, ${results.correlation.toFixed(2)}) $$`}</Latex>
             <Latex>{`$$ = \\mathbf{${(results.pfa_term2 / 100).toExponential(
               4
             )}} $$`}</Latex>
@@ -1768,8 +1890,8 @@ const PfrBreakdownModal = ({ results, inputs, onClose }) => {
             <p>
               The Probability of False Reject (PFR) is the sum of the
               probabilities in the two "False Reject" regions of the risk
-              scatterplot. This is calculated using the Bivariate
-              Normal Cumulative Distribution Function (Φ₂).
+              scatterplot. This is calculated using the Bivariate Normal
+              Cumulative Distribution Function (Φ₂).
             </p>
             <Latex>{"$$ PFR = PFR_{Lower} + PFR_{Upper} $$"}</Latex>
             <Latex>
@@ -1786,7 +1908,8 @@ const PfrBreakdownModal = ({ results, inputs, onClose }) => {
           <div className="breakdown-step">
             <h5>Step 2: Key Statistical Inputs</h5>
             <p>
-              These values are derived from your budget and reliability settings.
+              These values are derived from your budget and reliability
+              settings.
             </p>
             <ul>
               <li>
@@ -1826,33 +1949,33 @@ const PfrBreakdownModal = ({ results, inputs, onClose }) => {
                 z<sub>x_low</sub> (True Error):{" "}
                 <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
                   4
-                )}}{${results.uUUT.toPrecision(4)}} = \\mathbf{${z_x_low.toFixed(
+                )}}{${results.uUUT.toPrecision(
                   4
-                )}} $$`}</Latex>
+                )}} = \\mathbf{${z_x_low.toFixed(4)}} $$`}</Latex>
               </li>
               <li>
                 z<sub>x_high</sub> (True Error):{" "}
                 <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
                   4
-                )}}{${results.uUUT.toPrecision(4)}} = \\mathbf{${z_x_high.toFixed(
+                )}}{${results.uUUT.toPrecision(
                   4
-                )}} $$`}</Latex>
+                )}} = \\mathbf{${z_x_high.toFixed(4)}} $$`}</Latex>
               </li>
               <li>
                 z<sub>y_low</sub> (Measured Error):{" "}
                 <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
                   4
-                )}}{${results.uDev.toPrecision(4)}} = \\mathbf{${z_y_low.toFixed(
+                )}}{${results.uDev.toPrecision(
                   4
-                )}} $$`}</Latex>
+                )}} = \\mathbf{${z_y_low.toFixed(4)}} $$`}</Latex>
               </li>
               <li>
                 z<sub>y_high</sub> (Measured Error):{" "}
                 <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
                   4
-                )}}{${results.uDev.toPrecision(4)}} = \\mathbf{${z_y_high.toFixed(
+                )}}{${results.uDev.toPrecision(
                   4
-                )}} $$`}</Latex>
+                )}} = \\mathbf{${z_y_high.toFixed(4)}} $$`}</Latex>
               </li>
             </ul>
           </div>
@@ -1870,13 +1993,13 @@ const PfrBreakdownModal = ({ results, inputs, onClose }) => {
               }
             </Latex>
             <Latex>{`$$ = \\Phi_2(z_{x\\_high}, z_{y\\_low}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
-            <Latex>{`$$ = \\Phi_2(${z_x_high.toFixed(
+            <Latex>{`$$ = \\Phi_2(${z_x_high.toFixed(2)}, ${z_y_low.toFixed(
+              2
+            )}, ${results.correlation.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
               2
             )}, ${z_y_low.toFixed(2)}, ${results.correlation.toFixed(
               2
-            )}) - \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_low.toFixed(
-              2
-            )}, ${results.correlation.toFixed(2)}) $$`}</Latex>
+            )}) $$`}</Latex>
             <Latex>{`$$ = \\mathbf{${(results.pfr_term1 / 100).toExponential(
               4
             )}} $$`}</Latex>
@@ -1893,15 +2016,13 @@ const PfrBreakdownModal = ({ results, inputs, onClose }) => {
               <Latex>{`$$ = P(-z_{x\\_high} < z_x < -z_{x\\_low} \\text{ and } z_y < -z_{y\\_high}) $$`}</Latex>
             </p>
             <Latex>{`$$ = \\Phi_2(-z_{x\\_low}, -z_{y\\_high}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
-            <Latex>{`$$ = \\Phi_2(${-z_x_low.toFixed(
+            <Latex>{`$$ = \\Phi_2(${-z_x_low.toFixed(2)}, ${-z_y_high.toFixed(
               2
-            )}, ${-z_y_high.toFixed(2)}, ${results.correlation.toFixed(
+            )}, ${results.correlation.toFixed(
               2
-            )}) - \\Phi_2(${-z_x_high.toFixed(
+            )}) - \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_high.toFixed(
               2
-            )}, ${-z_y_high.toFixed(2)}, ${results.correlation.toFixed(
-              2
-            )}) $$`}</Latex>
+            )}, ${results.correlation.toFixed(2)}) $$`}</Latex>
             <Latex>{`$$ = \\mathbf{${(results.pfr_term2 / 100).toExponential(
               4
             )}} $$`}</Latex>
@@ -1925,846 +2046,936 @@ const PfrBreakdownModal = ({ results, inputs, onClose }) => {
 };
 
 const GBInputsBreakdownModal = ({ inputs, results, onClose }) => {
-
   return (
     <div className="modal-overlay">
       <div className="modal-content breakdown-modal-content">
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>
-        
+
         <h3>Key Inputs Breakdown</h3>
 
         <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>Uncertainty Requirements</h5>
+            <p>
+              These values are uncertainty requirements set on the Uncertainty
+              Tool.
+            </p>
+            <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
+              inputs.measRelTarget * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${
+              inputs.measrelCalcAssumed * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ PFA\\ Required = \\mathbf{${
+              inputs.reqPFA * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+            <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Uncertainty Requirements
-          </h5>
-          <p>
-            These values are uncertainty requirements set on the Uncertainty Tool.
-          </p>
-          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
-          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
-          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
-          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
-          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          <div className="breakdown-step">
+            <h5>Calculated TUR Value</h5>
+            <p>
+              The Test Uncertainty Ratio (TUR) is the ratio of the tolerance
+              span to the expanded measurement uncertainty span.
+            </p>
+            <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(
+              4
+            )}:1} $$`}</Latex>
+          </div>
 
-        </div>
+          <div className="breakdown-step">
+            <h5>
+              Cal Process Error (u<sub>combined</sub>)
+            </h5>
+            <p>
+              This value is the Combined Standard Uncertainty, calculated from
+              the detailed budget.
+            </p>
+            <Latex>
+              {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Calculated TUR Value
-          </h5>
-          <p>
-            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
-          </p>
-          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>Nominal Value</h5>
+            <p>The is the current measurement point.</p>
+            <Latex>
+              {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Cal Process Error (u<sub>combined</sub>)
-          </h5>
-          <p>
-            This value is the Combined Standard Uncertainty, calculated
-            from the detailed budget.
-          </p>
-          <Latex>
-            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        <div className="breakdown-step">
-          <h5>Nominal Value</h5>
-          <p>
-            The is the current measurement point.
-          </p>
-          <Latex>
-            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>UUT Tolerance Limits</h5>
+            <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>UUT Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Unit Under Test (UUT).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
+          <div className="breakdown-step">
+            <h5>TMDE Tolerance Limits</h5>
+            <p>
+              The specified tolerance limits for the Test, Measurement, and
+              Diagnostic Equipment (TMDE).
+            </p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
         </div>
-
-        <div className="breakdown-step">
-          <h5>TMDE Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        </div>
-        
       </div>
     </div>
   );
 };
 
 const GBLowBreakdownModal = ({ inputs, results, onClose }) => {
-
   return (
     <div className="modal-overlay">
       <div className="modal-content breakdown-modal-content">
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>
-        
+
         <h3>Key Inputs Breakdown</h3>
 
         <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>Uncertainty Requirements</h5>
+            <p>
+              These values are uncertainty requirements set on the Uncertainty
+              Tool.
+            </p>
+            <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
+              inputs.measRelTarget * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${
+              inputs.measrelCalcAssumed * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ PFA\\ Required = \\mathbf{${
+              inputs.reqPFA * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+            <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Uncertainty Requirements
-          </h5>
-          <p>
-            These values are uncertainty requirements set on the Uncertainty Tool.
-          </p>
-          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
-          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
-          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
-          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
-          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          <div className="breakdown-step">
+            <h5>Calculated TUR Value</h5>
+            <p>
+              The Test Uncertainty Ratio (TUR) is the ratio of the tolerance
+              span to the expanded measurement uncertainty span.
+            </p>
+            <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(
+              4
+            )}:1} $$`}</Latex>
+          </div>
 
-        </div>
+          <div className="breakdown-step">
+            <h5>
+              Cal Process Error (u<sub>combined</sub>)
+            </h5>
+            <p>
+              This value is the Combined Standard Uncertainty, calculated from
+              the detailed budget.
+            </p>
+            <Latex>
+              {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Calculated TUR Value
-          </h5>
-          <p>
-            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
-          </p>
-          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>Nominal Value</h5>
+            <p>The is the current measurement point.</p>
+            <Latex>
+              {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Cal Process Error (u<sub>combined</sub>)
-          </h5>
-          <p>
-            This value is the Combined Standard Uncertainty, calculated
-            from the detailed budget.
-          </p>
-          <Latex>
-            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        <div className="breakdown-step">
-          <h5>Nominal Value</h5>
-          <p>
-            The is the current measurement point.
-          </p>
-          <Latex>
-            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>UUT Tolerance Limits</h5>
+            <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>UUT Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Unit Under Test (UUT).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
+          <div className="breakdown-step">
+            <h5>TMDE Tolerance Limits</h5>
+            <p>
+              The specified tolerance limits for the Test, Measurement, and
+              Diagnostic Equipment (TMDE).
+            </p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
         </div>
-
-        <div className="breakdown-step">
-          <h5>TMDE Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        </div>
-        
       </div>
     </div>
   );
 };
 
 const GBHighBreakdownModal = ({ inputs, results, onClose }) => {
-
   return (
     <div className="modal-overlay">
       <div className="modal-content breakdown-modal-content">
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>
-        
+
         <h3>Key Inputs Breakdown</h3>
 
         <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>Uncertainty Requirements</h5>
+            <p>
+              These values are uncertainty requirements set on the Uncertainty
+              Tool.
+            </p>
+            <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
+              inputs.measRelTarget * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${
+              inputs.measrelCalcAssumed * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ PFA\\ Required = \\mathbf{${
+              inputs.reqPFA * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+            <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Uncertainty Requirements
-          </h5>
-          <p>
-            These values are uncertainty requirements set on the Uncertainty Tool.
-          </p>
-          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
-          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
-          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
-          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
-          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          <div className="breakdown-step">
+            <h5>Calculated TUR Value</h5>
+            <p>
+              The Test Uncertainty Ratio (TUR) is the ratio of the tolerance
+              span to the expanded measurement uncertainty span.
+            </p>
+            <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(
+              4
+            )}:1} $$`}</Latex>
+          </div>
 
-        </div>
+          <div className="breakdown-step">
+            <h5>
+              Cal Process Error (u<sub>combined</sub>)
+            </h5>
+            <p>
+              This value is the Combined Standard Uncertainty, calculated from
+              the detailed budget.
+            </p>
+            <Latex>
+              {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Calculated TUR Value
-          </h5>
-          <p>
-            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
-          </p>
-          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>Nominal Value</h5>
+            <p>The is the current measurement point.</p>
+            <Latex>
+              {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Cal Process Error (u<sub>combined</sub>)
-          </h5>
-          <p>
-            This value is the Combined Standard Uncertainty, calculated
-            from the detailed budget.
-          </p>
-          <Latex>
-            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        <div className="breakdown-step">
-          <h5>Nominal Value</h5>
-          <p>
-            The is the current measurement point.
-          </p>
-          <Latex>
-            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>UUT Tolerance Limits</h5>
+            <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>UUT Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Unit Under Test (UUT).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
+          <div className="breakdown-step">
+            <h5>TMDE Tolerance Limits</h5>
+            <p>
+              The specified tolerance limits for the Test, Measurement, and
+              Diagnostic Equipment (TMDE).
+            </p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
         </div>
-
-        <div className="breakdown-step">
-          <h5>TMDE Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        </div>
-        
       </div>
     </div>
   );
 };
 
 const GBPFABreakdownModal = ({ inputs, results, onClose }) => {
-
   return (
     <div className="modal-overlay">
       <div className="modal-content breakdown-modal-content">
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>
-        
+
         <h3>Key Inputs Breakdown</h3>
 
         <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>Uncertainty Requirements</h5>
+            <p>
+              These values are uncertainty requirements set on the Uncertainty
+              Tool.
+            </p>
+            <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
+              inputs.measRelTarget * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${
+              inputs.measrelCalcAssumed * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ PFA\\ Required = \\mathbf{${
+              inputs.reqPFA * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+            <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Uncertainty Requirements
-          </h5>
-          <p>
-            These values are uncertainty requirements set on the Uncertainty Tool.
-          </p>
-          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
-          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
-          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
-          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
-          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          <div className="breakdown-step">
+            <h5>Calculated TUR Value</h5>
+            <p>
+              The Test Uncertainty Ratio (TUR) is the ratio of the tolerance
+              span to the expanded measurement uncertainty span.
+            </p>
+            <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(
+              4
+            )}:1} $$`}</Latex>
+          </div>
 
-        </div>
+          <div className="breakdown-step">
+            <h5>
+              Cal Process Error (u<sub>combined</sub>)
+            </h5>
+            <p>
+              This value is the Combined Standard Uncertainty, calculated from
+              the detailed budget.
+            </p>
+            <Latex>
+              {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Calculated TUR Value
-          </h5>
-          <p>
-            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
-          </p>
-          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>Nominal Value</h5>
+            <p>The is the current measurement point.</p>
+            <Latex>
+              {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Cal Process Error (u<sub>combined</sub>)
-          </h5>
-          <p>
-            This value is the Combined Standard Uncertainty, calculated
-            from the detailed budget.
-          </p>
-          <Latex>
-            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        <div className="breakdown-step">
-          <h5>Nominal Value</h5>
-          <p>
-            The is the current measurement point.
-          </p>
-          <Latex>
-            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>UUT Tolerance Limits</h5>
+            <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>UUT Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Unit Under Test (UUT).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
+          <div className="breakdown-step">
+            <h5>TMDE Tolerance Limits</h5>
+            <p>
+              The specified tolerance limits for the Test, Measurement, and
+              Diagnostic Equipment (TMDE).
+            </p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
         </div>
-
-        <div className="breakdown-step">
-          <h5>TMDE Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        </div>
-        
       </div>
     </div>
   );
 };
 
 const GBPFRBreakdownModal = ({ inputs, results, onClose }) => {
-
   return (
     <div className="modal-overlay">
       <div className="modal-content breakdown-modal-content">
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>
-        
+
         <h3>Key Inputs Breakdown</h3>
 
         <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>Uncertainty Requirements</h5>
+            <p>
+              These values are uncertainty requirements set on the Uncertainty
+              Tool.
+            </p>
+            <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
+              inputs.measRelTarget * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${
+              inputs.measrelCalcAssumed * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ PFA\\ Required = \\mathbf{${
+              inputs.reqPFA * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+            <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Uncertainty Requirements
-          </h5>
-          <p>
-            These values are uncertainty requirements set on the Uncertainty Tool.
-          </p>
-          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
-          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
-          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
-          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
-          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          <div className="breakdown-step">
+            <h5>Calculated TUR Value</h5>
+            <p>
+              The Test Uncertainty Ratio (TUR) is the ratio of the tolerance
+              span to the expanded measurement uncertainty span.
+            </p>
+            <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(
+              4
+            )}:1} $$`}</Latex>
+          </div>
 
-        </div>
+          <div className="breakdown-step">
+            <h5>
+              Cal Process Error (u<sub>combined</sub>)
+            </h5>
+            <p>
+              This value is the Combined Standard Uncertainty, calculated from
+              the detailed budget.
+            </p>
+            <Latex>
+              {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Calculated TUR Value
-          </h5>
-          <p>
-            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
-          </p>
-          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>Nominal Value</h5>
+            <p>The is the current measurement point.</p>
+            <Latex>
+              {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Cal Process Error (u<sub>combined</sub>)
-          </h5>
-          <p>
-            This value is the Combined Standard Uncertainty, calculated
-            from the detailed budget.
-          </p>
-          <Latex>
-            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        <div className="breakdown-step">
-          <h5>Nominal Value</h5>
-          <p>
-            The is the current measurement point.
-          </p>
-          <Latex>
-            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>UUT Tolerance Limits</h5>
+            <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>UUT Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Unit Under Test (UUT).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
+          <div className="breakdown-step">
+            <h5>TMDE Tolerance Limits</h5>
+            <p>
+              The specified tolerance limits for the Test, Measurement, and
+              Diagnostic Equipment (TMDE).
+            </p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
         </div>
-
-        <div className="breakdown-step">
-          <h5>TMDE Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        </div>
-        
       </div>
     </div>
   );
 };
 
 const GBMultBreakdownModal = ({ inputs, results, onClose }) => {
-
   return (
     <div className="modal-overlay">
       <div className="modal-content breakdown-modal-content">
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>
-        
+
         <h3>Key Inputs Breakdown</h3>
 
         <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>Uncertainty Requirements</h5>
+            <p>
+              These values are uncertainty requirements set on the Uncertainty
+              Tool.
+            </p>
+            <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
+              inputs.measRelTarget * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${
+              inputs.measrelCalcAssumed * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ PFA\\ Required = \\mathbf{${
+              inputs.reqPFA * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+            <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Uncertainty Requirements
-          </h5>
-          <p>
-            These values are uncertainty requirements set on the Uncertainty Tool.
-          </p>
-          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
-          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
-          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
-          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
-          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          <div className="breakdown-step">
+            <h5>Calculated TUR Value</h5>
+            <p>
+              The Test Uncertainty Ratio (TUR) is the ratio of the tolerance
+              span to the expanded measurement uncertainty span.
+            </p>
+            <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(
+              4
+            )}:1} $$`}</Latex>
+          </div>
 
-        </div>
+          <div className="breakdown-step">
+            <h5>
+              Cal Process Error (u<sub>combined</sub>)
+            </h5>
+            <p>
+              This value is the Combined Standard Uncertainty, calculated from
+              the detailed budget.
+            </p>
+            <Latex>
+              {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Calculated TUR Value
-          </h5>
-          <p>
-            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
-          </p>
-          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>Nominal Value</h5>
+            <p>The is the current measurement point.</p>
+            <Latex>
+              {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Cal Process Error (u<sub>combined</sub>)
-          </h5>
-          <p>
-            This value is the Combined Standard Uncertainty, calculated
-            from the detailed budget.
-          </p>
-          <Latex>
-            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        <div className="breakdown-step">
-          <h5>Nominal Value</h5>
-          <p>
-            The is the current measurement point.
-          </p>
-          <Latex>
-            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>UUT Tolerance Limits</h5>
+            <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>UUT Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Unit Under Test (UUT).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
+          <div className="breakdown-step">
+            <h5>TMDE Tolerance Limits</h5>
+            <p>
+              The specified tolerance limits for the Test, Measurement, and
+              Diagnostic Equipment (TMDE).
+            </p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
         </div>
-
-        <div className="breakdown-step">
-          <h5>TMDE Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        </div>
-        
       </div>
     </div>
   );
 };
 
 const GBCalIntBreakdownModal = ({ inputs, results, onClose }) => {
-
   return (
     <div className="modal-overlay">
       <div className="modal-content breakdown-modal-content">
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>
-        
+
         <h3>Key Inputs Breakdown</h3>
 
         <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>Uncertainty Requirements</h5>
+            <p>
+              These values are uncertainty requirements set on the Uncertainty
+              Tool.
+            </p>
+            <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
+              inputs.measRelTarget * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${
+              inputs.measrelCalcAssumed * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ PFA\\ Required = \\mathbf{${
+              inputs.reqPFA * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+            <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Uncertainty Requirements
-          </h5>
-          <p>
-            These values are uncertainty requirements set on the Uncertainty Tool.
-          </p>
-          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
-          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
-          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
-          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
-          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          <div className="breakdown-step">
+            <h5>Calculated TUR Value</h5>
+            <p>
+              The Test Uncertainty Ratio (TUR) is the ratio of the tolerance
+              span to the expanded measurement uncertainty span.
+            </p>
+            <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(
+              4
+            )}:1} $$`}</Latex>
+          </div>
 
-        </div>
+          <div className="breakdown-step">
+            <h5>
+              Cal Process Error (u<sub>combined</sub>)
+            </h5>
+            <p>
+              This value is the Combined Standard Uncertainty, calculated from
+              the detailed budget.
+            </p>
+            <Latex>
+              {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Calculated TUR Value
-          </h5>
-          <p>
-            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
-          </p>
-          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>Nominal Value</h5>
+            <p>The is the current measurement point.</p>
+            <Latex>
+              {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Cal Process Error (u<sub>combined</sub>)
-          </h5>
-          <p>
-            This value is the Combined Standard Uncertainty, calculated
-            from the detailed budget.
-          </p>
-          <Latex>
-            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        <div className="breakdown-step">
-          <h5>Nominal Value</h5>
-          <p>
-            The is the current measurement point.
-          </p>
-          <Latex>
-            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>UUT Tolerance Limits</h5>
+            <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>UUT Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Unit Under Test (UUT).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
+          <div className="breakdown-step">
+            <h5>TMDE Tolerance Limits</h5>
+            <p>
+              The specified tolerance limits for the Test, Measurement, and
+              Diagnostic Equipment (TMDE).
+            </p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
         </div>
-
-        <div className="breakdown-step">
-          <h5>TMDE Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        </div>
-        
       </div>
     </div>
   );
 };
 
 const NoGBCalIntBreakdownModal = ({ inputs, results, onClose }) => {
-
   return (
     <div className="modal-overlay">
       <div className="modal-content breakdown-modal-content">
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>
-        
+
         <h3>Key Inputs Breakdown</h3>
 
         <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>Uncertainty Requirements</h5>
+            <p>
+              These values are uncertainty requirements set on the Uncertainty
+              Tool.
+            </p>
+            <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
+              inputs.measRelTarget * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${
+              inputs.measrelCalcAssumed * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ PFA\\ Required = \\mathbf{${
+              inputs.reqPFA * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+            <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Uncertainty Requirements
-          </h5>
-          <p>
-            These values are uncertainty requirements set on the Uncertainty Tool.
-          </p>
-          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
-          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
-          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
-          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
-          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          <div className="breakdown-step">
+            <h5>Calculated TUR Value</h5>
+            <p>
+              The Test Uncertainty Ratio (TUR) is the ratio of the tolerance
+              span to the expanded measurement uncertainty span.
+            </p>
+            <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(
+              4
+            )}:1} $$`}</Latex>
+          </div>
 
-        </div>
+          <div className="breakdown-step">
+            <h5>
+              Cal Process Error (u<sub>combined</sub>)
+            </h5>
+            <p>
+              This value is the Combined Standard Uncertainty, calculated from
+              the detailed budget.
+            </p>
+            <Latex>
+              {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Calculated TUR Value
-          </h5>
-          <p>
-            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
-          </p>
-          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>Nominal Value</h5>
+            <p>The is the current measurement point.</p>
+            <Latex>
+              {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Cal Process Error (u<sub>combined</sub>)
-          </h5>
-          <p>
-            This value is the Combined Standard Uncertainty, calculated
-            from the detailed budget.
-          </p>
-          <Latex>
-            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        <div className="breakdown-step">
-          <h5>Nominal Value</h5>
-          <p>
-            The is the current measurement point.
-          </p>
-          <Latex>
-            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>UUT Tolerance Limits</h5>
+            <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>UUT Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Unit Under Test (UUT).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
+          <div className="breakdown-step">
+            <h5>TMDE Tolerance Limits</h5>
+            <p>
+              The specified tolerance limits for the Test, Measurement, and
+              Diagnostic Equipment (TMDE).
+            </p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
         </div>
-
-        <div className="breakdown-step">
-          <h5>TMDE Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        </div>
-        
       </div>
     </div>
   );
 };
 
 const NoGBMeasRelBreakdownModal = ({ inputs, results, onClose }) => {
-
   return (
     <div className="modal-overlay">
       <div className="modal-content breakdown-modal-content">
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>
-        
+
         <h3>Key Inputs Breakdown</h3>
 
         <div className="modal-body-scrollable">
+          <div className="breakdown-step">
+            <h5>Uncertainty Requirements</h5>
+            <p>
+              These values are uncertainty requirements set on the Uncertainty
+              Tool.
+            </p>
+            <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
+              inputs.measRelTarget * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${
+              inputs.measrelCalcAssumed * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ PFA\\ Required = \\mathbf{${
+              inputs.reqPFA * 100
+            }}\\% $$`}</Latex>
+            <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
+            <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Uncertainty Requirements
-          </h5>
-          <p>
-            These values are uncertainty requirements set on the Uncertainty Tool.
-          </p>
-          <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${inputs.measRelTarget*100}}\\% $$`}</Latex>
-          <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${inputs.measrelCalcAssumed*100}}\\% $$`}</Latex>
-          <Latex>{`$$ PFA\\ Required = \\mathbf{${inputs.reqPFA*100}}\\% $$`}</Latex>
-          <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
-          <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+          <div className="breakdown-step">
+            <h5>Calculated TUR Value</h5>
+            <p>
+              The Test Uncertainty Ratio (TUR) is the ratio of the tolerance
+              span to the expanded measurement uncertainty span.
+            </p>
+            <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(
+              4
+            )}:1} $$`}</Latex>
+          </div>
 
-        </div>
+          <div className="breakdown-step">
+            <h5>
+              Cal Process Error (u<sub>combined</sub>)
+            </h5>
+            <p>
+              This value is the Combined Standard Uncertainty, calculated from
+              the detailed budget.
+            </p>
+            <Latex>
+              {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Calculated TUR Value
-          </h5>
-          <p>
-            The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to the expanded measurement uncertainty span.
-          </p>
-          <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>Nominal Value</h5>
+            <p>The is the current measurement point.</p>
+            <Latex>
+              {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>
-            Cal Process Error (u<sub>combined</sub>)
-          </h5>
-          <p>
-            This value is the Combined Standard Uncertainty, calculated
-            from the detailed budget.
-          </p>
-          <Latex>
-            {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        <div className="breakdown-step">
-          <h5>Nominal Value</h5>
-          <p>
-            The is the current measurement point.
-          </p>
-          <Latex>
-            {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
+          <div className="breakdown-step">
+            <h5>UUT Tolerance Limits</h5>
+            <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
 
-        <div className="breakdown-step">
-          <h5>UUT Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Unit Under Test (UUT).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
+          <div className="breakdown-step">
+            <h5>TMDE Tolerance Limits</h5>
+            <p>
+              The specified tolerance limits for the Test, Measurement, and
+              Diagnostic Equipment (TMDE).
+            </p>
+            <Latex>
+              {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+            <Latex>
+              {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+                6
+              )}} \\text{ ${inputs.nominalUnit}} $$`}
+            </Latex>
+          </div>
         </div>
-
-        <div className="breakdown-step">
-          <h5>TMDE Tolerance Limits</h5>
-          <p>
-            The specified tolerance limits for the Test, Measurement, and Diagnostic Equipment (TMDE).
-          </p>
-          <Latex>
-            {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-          <Latex>
-            {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(6)}} \\text{ ${inputs.nominalUnit}} $$`}
-          </Latex>
-        </div>
-        
-        </div>
-        
       </div>
     </div>
   );
@@ -2783,7 +2994,10 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
   return (
     <div className="risk-analysis-container">
       <div className="risk-analysis-dashboard">
-        <div className="risk-card clickable" onClick={() => onShowBreakdown("inputs")}>
+        <div
+          className="risk-card clickable"
+          onClick={() => onShowBreakdown("inputs")}
+        >
           <div
             className="risk-label"
             style={{
@@ -2796,47 +3010,75 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
           </div>
           <ul className="result-breakdown" style={{ marginTop: 0 }}>
             <li>
-              <span className="label">True Error (σ<sub>uut</sub>)</span>
-              <span className="value">{results.uUUT.toPrecision(6)} {nativeUnit}</span>
+              <span className="label">
+                True Error (σ<sub>uut</sub>)
+              </span>
+              <span className="value">
+                {results.uUUT.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
-              <span className="label">Combined Uncertainty (u<sub>cal</sub>)</span>
-              <span className="value">{results.uCal.toPrecision(6)} {nativeUnit}</span>
+              <span className="label">
+                Combined Uncertainty (u<sub>cal</sub>)
+              </span>
+              <span className="value">
+                {results.uCal.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
-              <span className="label">Observed Error (σ<sub>obs</sub>)</span>
-              <span className="value">{results.uDev.toPrecision(6)} {nativeUnit}</span>
+              <span className="label">
+                Observed Error (σ<sub>obs</sub>)
+              </span>
+              <span className="value">
+                {results.uDev.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
               <span className="label">UUT Lower Tolerance</span>
-              <span className="value">{results.LLow.toPrecision(6)} {nativeUnit}</span>
+              <span className="value">
+                {results.LLow.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
               <span className="label">UUT Upper Tolerance</span>
-              <span className="value">{results.LUp.toPrecision(6)} {nativeUnit}</span>
+              <span className="value">
+                {results.LUp.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
               <span className="label">Lower Acceptance</span>
-              <span className="value">{results.ALow.toPrecision(6)} {nativeUnit}</span>
+              <span className="value">
+                {results.ALow.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
               <span className="label">Upper Acceptance</span>
-              <span className="value">{results.AUp.toPrecision(6)} {nativeUnit}</span>
+              <span className="value">
+                {results.AUp.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
               <span className="label">Correlation (ρ)</span>
-              <span className="value">{results.correlation.toPrecision(6)}</span>
+              <span className="value">
+                {results.correlation.toPrecision(6)}
+              </span>
             </li>
           </ul>
         </div>
-        <div className="risk-card tur-card clickable" onClick={() => onShowBreakdown("tur")}>
+        <div
+          className="risk-card tur-card clickable"
+          onClick={() => onShowBreakdown("tur")}
+        >
           <div className="risk-value">{results.tur.toFixed(2)} : 1</div>
           <div className="risk-label">Test Uncertainty Ratio (TUR)</div>
           <div className="risk-explanation">
             A ratio of the UUT's tolerance to the measurement uncertainty.
           </div>
         </div>
-        <div className="risk-card tur-card clickable" onClick={() => onShowBreakdown("tar")}>
+        <div
+          className="risk-card tur-card clickable"
+          onClick={() => onShowBreakdown("tar")}
+        >
           <div className="risk-value">{results.tar.toFixed(2)} : 1</div>
           <div className="risk-label">Test Acceptance Ratio (TAR)</div>
           <div className="risk-explanation">
@@ -2844,7 +3086,10 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
             tolerance span.
           </div>
         </div>
-        <div className={`risk-card pfa-card ${getPfaClass(results.pfa)} clickable`} onClick={() => onShowBreakdown("pfa")}>
+        <div
+          className={`risk-card pfa-card ${getPfaClass(results.pfa)} clickable`}
+          onClick={() => onShowBreakdown("pfa")}
+        >
           <div className="risk-value">{results.pfa.toFixed(4)} %</div>
           <div className="risk-label">Probability of False Accept (PFA)</div>
           <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
@@ -2858,7 +3103,10 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
             </li>
           </ul>
         </div>
-        <div className="risk-card pfr-card clickable" onClick={() => onShowBreakdown("pfr")}>
+        <div
+          className="risk-card pfr-card clickable"
+          onClick={() => onShowBreakdown("pfr")}
+        >
           <div className="risk-value">{results.pfr.toFixed(4)} %</div>
           <div className="risk-label">Probability of False Reject (PFR)</div>
           <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
@@ -2888,7 +3136,10 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
   return (
     <div className="risk-analysis-container">
       <div className="risk-analysis-dashboard">
-        <div className="risk-card clickable" onClick={() => onShowBreakdown("gbinputs")}>
+        <div
+          className="risk-card clickable"
+          onClick={() => onShowBreakdown("gbinputs")}
+        >
           <div
             className="risk-label"
             style={{
@@ -2902,11 +3153,13 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           <ul className="result-breakdown" style={{ marginTop: 0 }}>
             <li>
               <span className="label">Calibration Interval</span>
-              <span className="value">{guardBandInputs.calibrationInt} months</span>
+              <span className="value">
+                {guardBandInputs.calibrationInt} months
+              </span>
             </li>
             <li>
               <span className="label">Required PFA</span>
-              <span className="value">{guardBandInputs.reqPFA*100}%</span>
+              <span className="value">{guardBandInputs.reqPFA * 100}%</span>
             </li>
             <li>
               <span className="label">Required TUR</span>
@@ -2914,50 +3167,78 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
             </li>
             <li>
               <span className="label">Measurement Reliability Target</span>
-              <span className="value">{guardBandInputs.measRelTarget*100}%</span>
+              <span className="value">
+                {guardBandInputs.measRelTarget * 100}%
+              </span>
             </li>
             <li>
-              <span className="label">Measurement Reliability Calculated/Assumed</span>
-              <span className="value">{guardBandInputs.measrelCalcAssumed*100}%</span>
+              <span className="label">
+                Measurement Reliability Calculated/Assumed
+              </span>
+              <span className="value">
+                {guardBandInputs.measrelCalcAssumed * 100}%
+              </span>
             </li>
             <li>
               <span className="label">TUR Result</span>
-              <span className="value">{guardBandInputs.turVal.toPrecision(6)}</span>
+              <span className="value">
+                {guardBandInputs.turVal.toPrecision(6)}
+              </span>
             </li>
             <li>
-              <span className="label">Combined Uncertainty (u<sub>cal</sub>)</span>
-              <span className="value">{guardBandInputs.combUnc.toPrecision(6)} {nativeUnit}</span>
+              <span className="label">
+                Combined Uncertainty (u<sub>cal</sub>)
+              </span>
+              <span className="value">
+                {guardBandInputs.combUnc.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
               <span className="label">Nominal</span>
-              <span className="value">{guardBandInputs.nominal.toPrecision(6)} {nativeUnit}</span>
+              <span className="value">
+                {guardBandInputs.nominal.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
               <span className="label">UUT Lower Tolerance</span>
-              <span className="value">{guardBandInputs.uutLower.toPrecision(6)} {nativeUnit}</span>
+              <span className="value">
+                {guardBandInputs.uutLower.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
               <span className="label">UUT Upper Tolerance</span>
-              <span className="value">{guardBandInputs.uutUpper.toPrecision(6)} {nativeUnit}</span>
+              <span className="value">
+                {guardBandInputs.uutUpper.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
               <span className="label">TMDE Upper Tolerance</span>
-              <span className="value">{guardBandInputs.tmdeLower.toPrecision(6)} {nativeUnit}</span>
+              <span className="value">
+                {guardBandInputs.tmdeLower.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
             <li>
               <span className="label">TMDE Upper Tolerance</span>
-              <span className="value">{guardBandInputs.tmdeUpper.toPrecision(6)} {nativeUnit}</span>
+              <span className="value">
+                {guardBandInputs.tmdeUpper.toPrecision(6)} {nativeUnit}
+              </span>
             </li>
           </ul>
         </div>
-        <div className="risk-card gblow-card clickable" onClick={() => onShowBreakdown("gblow")}>
+        <div
+          className="risk-card gblow-card clickable"
+          onClick={() => onShowBreakdown("gblow")}
+        >
           <div className="risk-value">{guardBand.GBLOW.toFixed(4)}</div>
           <div className="risk-label">GB Limit Low Value</div>
           <div className="risk-explanation">
             Guardbanded UUT Lower Tolerance Limit.
           </div>
         </div>
-        <div className="risk-card gbhigh-card clickable" onClick={() => onShowBreakdown("gbhigh")}>
+        <div
+          className="risk-card gbhigh-card clickable"
+          onClick={() => onShowBreakdown("gbhigh")}
+        >
           <div className="risk-value">{guardBand.GBUP.toFixed(4)}</div>
           <div className="risk-label">GB Limit High Value</div>
           <div className="risk-explanation">
@@ -2965,9 +3246,14 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           </div>
         </div>
 
-        <div className={`risk-card gbpfa-card clickable`} onClick={() => onShowBreakdown("gbpfa")}>
+        <div
+          className={`risk-card gbpfa-card clickable`}
+          onClick={() => onShowBreakdown("gbpfa")}
+        >
           <div className="risk-value">{guardBand.GBPFA.toFixed(4)} %</div>
-          <div className="risk-label">Probability of False Accept (PFA) with Guard Banding</div>
+          <div className="risk-label">
+            Probability of False Accept (PFA) with Guard Banding
+          </div>
           <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
             <li>
               <span className="label">Lower Tail Risk</span>
@@ -2979,9 +3265,14 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
             </li>
           </ul>
         </div>
-        <div className="risk-card gbpfr-card clickable" onClick={() => onShowBreakdown("gbpfr")}>
+        <div
+          className="risk-card gbpfr-card clickable"
+          onClick={() => onShowBreakdown("gbpfr")}
+        >
           <div className="risk-value">{guardBand.GBPFR.toFixed(4)} %</div>
-          <div className="risk-label">Probability of False Reject (PFR) with Guard Banding</div>
+          <div className="risk-label">
+            Probability of False Reject (PFR) with Guard Banding
+          </div>
           <ul className="result-breakdown" style={{ fontSize: "0.85rem" }}>
             <li>
               <span className="label">Lower Side Risk</span>
@@ -2993,30 +3284,48 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
             </li>
           </ul>
         </div>
-        <div className="risk-card gbmult-card clickable" onClick={() => onShowBreakdown("gbmult")}>
+        <div
+          className="risk-card gbmult-card clickable"
+          onClick={() => onShowBreakdown("gbmult")}
+        >
           <div className="risk-value">{guardBand.GBMULT.toFixed(4)} %</div>
           <div className="risk-label">Guard Band Multiplier</div>
           <div className="risk-explanation">
-            Ratio between the guardband tolerance limits and UUT tolerance limits.
+            Ratio between the guardband tolerance limits and UUT tolerance
+            limits.
           </div>
         </div>
-        <div className="risk-card gbcalint-card clickable" onClick={() => onShowBreakdown("gbcalint")}>
+        <div
+          className="risk-card gbcalint-card clickable"
+          onClick={() => onShowBreakdown("gbcalint")}
+        >
           <div className="risk-value">{guardBand.GBCALINT.toFixed(4)}</div>
-          <div className="risk-label">Calibration Interval with Guard Banding</div>
+          <div className="risk-label">
+            Calibration Interval with Guard Banding
+          </div>
           <div className="risk-explanation">
             Recommended Calibration Interval with Guard Band Tolerance Limits.
           </div>
         </div>
-        <div className="risk-card calint-card clickable" onClick={() => onShowBreakdown("calint")}>
+        <div
+          className="risk-card calint-card clickable"
+          onClick={() => onShowBreakdown("calint")}
+        >
           <div className="risk-value">{guardBand.NOGBCALINT.toFixed(4)}</div>
           <div className="risk-label">Calibration without Guard Banding</div>
           <div className="risk-explanation">
-            Recommended Calibration Interval without Guard Band Tolerance Limits.
+            Recommended Calibration Interval without Guard Band Tolerance
+            Limits.
           </div>
         </div>
-        <div className="risk-card measrel-card clickable" onClick={() => onShowBreakdown("measrel")}>
+        <div
+          className="risk-card measrel-card clickable"
+          onClick={() => onShowBreakdown("measrel")}
+        >
           <div className="risk-value">{guardBand.NOGBMEASREL.toFixed(4)} %</div>
-          <div className="risk-label">Measurement Reliability Needed without Guard Banding</div>
+          <div className="risk-label">
+            Measurement Reliability Needed without Guard Banding
+          </div>
           <div className="risk-explanation">
             Required Measurement Reliability without Guard Banding.
           </div>
@@ -3297,11 +3606,7 @@ export const calculateDerivedUncertainty = (
       const variance_base = ui_absolute_base ** 2 * quantity;
       const variance_native = ui_absolute_native ** 2 * quantity;
 
-      if (
-        isNaN(variance_base) ||
-        variance_base < 0 ||
-        isNaN(variance_native)
-      ) {
+      if (isNaN(variance_base) || variance_base < 0 || isNaN(variance_native)) {
         console.warn(
           "Could not calculate valid absolute uncertainty for TMDE:",
           tmde
@@ -3431,13 +3736,13 @@ export const calculateDerivedUncertainty = (
 };
 
 const extractRawAttachments = (pdfDoc) => {
-  if (!pdfDoc.catalog.has(PDFName.of('Names'))) return [];
-  const Names = pdfDoc.catalog.lookup(PDFName.of('Names'), PDFDict);
-  if (!Names.has(PDFName.of('EmbeddedFiles'))) return [];
-  const EmbeddedFiles = Names.lookup(PDFName.of('EmbeddedFiles'), PDFDict);
-  if (!EmbeddedFiles.has(PDFName.of('Names'))) return [];
-  const EFNames = EmbeddedFiles.lookup(PDFName.of('Names'), PDFArray);
-  
+  if (!pdfDoc.catalog.has(PDFName.of("Names"))) return [];
+  const Names = pdfDoc.catalog.lookup(PDFName.of("Names"), PDFDict);
+  if (!Names.has(PDFName.of("EmbeddedFiles"))) return [];
+  const EmbeddedFiles = Names.lookup(PDFName.of("EmbeddedFiles"), PDFDict);
+  if (!EmbeddedFiles.has(PDFName.of("Names"))) return [];
+  const EFNames = EmbeddedFiles.lookup(PDFName.of("Names"), PDFArray);
+
   const rawAttachments = [];
   for (let idx = 0, len = EFNames.size(); idx < len; idx += 2) {
     const fileName = EFNames.lookup(idx);
@@ -3449,19 +3754,19 @@ const extractRawAttachments = (pdfDoc) => {
 
 const extractAttachments = (pdfDoc) => {
   const rawAttachments = extractRawAttachments(pdfDoc);
-  
+
   return rawAttachments.map(({ fileName, fileSpec }) => {
-    const EF = fileSpec.lookup(PDFName.of('EF'), PDFDict);
-    const stream = EF.lookup(PDFName.of('F'), PDFStream);
+    const EF = fileSpec.lookup(PDFName.of("EF"), PDFDict);
+    const stream = EF.lookup(PDFName.of("F"), PDFStream);
 
     // Get the MIME type, which is stored as /Subtype
     // e.g., /image#2Fjpeg -> "image/jpeg" or /application#2Fjson -> "application/json"
-    const subtype = EF.lookup(PDFName.of('Subtype'));
-    let mimeType = 'application/octet-stream'; // Default
+    const subtype = EF.lookup(PDFName.of("Subtype"));
+    let mimeType = "application/octet-stream"; // Default
     if (subtype instanceof PDFName) {
-        // The subtype is often encoded, e.g., /image#2Fjpeg for "image/jpeg"
-        // PDFName.decodeText() handles this decoding.
-        mimeType = subtype.decodeText();
+      // The subtype is often encoded, e.g., /image#2Fjpeg for "image/jpeg"
+      // PDFName.decodeText() handles this decoding.
+      mimeType = subtype.decodeText();
     }
 
     // Handle different file name encodings
@@ -3471,15 +3776,15 @@ const extractAttachments = (pdfDoc) => {
     } else if (fileName instanceof PDFString) {
       name = fileName.toString();
     } else {
-      name = 'unknown_attachment';
+      name = "unknown_attachment";
     }
 
     // Handle stream type
     let data;
     if (stream instanceof PDFRawStream) {
-        data = decodePDFRawStream(stream).decode();
+      data = decodePDFRawStream(stream).decode();
     } else {
-        data = stream.contents;
+      data = stream.contents;
     }
 
     return {
@@ -3503,7 +3808,6 @@ function Analysis({
   onDeleteTmdeDefinition,
   onDecrementTmdeQuantity,
 }) {
-
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const [year, month, day] = dateString.split("-");
@@ -3512,6 +3816,7 @@ function Analysis({
 
   const [isAddTmdeModalOpen, setAddTmdeModalOpen] = useState(false);
   const [analysisMode, setAnalysisMode] = useState("uncertaintyTool");
+  const [showContribution, setShowContribution] = useState(false);
 
   const manualComponents = useMemo(() => {
     return testPointData.measurementType === "direct"
@@ -3554,7 +3859,7 @@ function Analysis({
     () => testPointData.tmdeTolerances || [],
     [testPointData.tmdeTolerances]
   );
-  
+
   const uutNominal = useMemo(
     () => testPointData?.testPointInfo?.parameter,
     [testPointData?.testPointInfo?.parameter]
@@ -3563,12 +3868,12 @@ function Analysis({
   const calculateRiskMetrics = useCallback(() => {
     const LLow = parseFloat(riskInputs.LLow);
     const LUp = parseFloat(riskInputs.LUp);
-    const pfaRequired = parseFloat(sessionData.uncReq.reqPFA)/100;
-    const reliability = parseFloat(sessionData.uncReq.reliability)/100;
+    const pfaRequired = parseFloat(sessionData.uncReq.reqPFA) / 100;
+    const reliability = parseFloat(sessionData.uncReq.reliability) / 100;
     const calInt = parseFloat(sessionData.uncReq.calInt);
-    const measRelCalc = parseFloat(sessionData.uncReq.measRelCalcAssumed)/100;
+    const measRelCalc = parseFloat(sessionData.uncReq.measRelCalcAssumed) / 100;
     const turNeeded = parseFloat(sessionData.uncReq.neededTUR);
-  
+
     if (isNaN(LLow) || isNaN(LUp) || LUp === LLow) {
       setNotification({
         title: "Invalid Input",
@@ -3590,7 +3895,7 @@ function Analysis({
       });
       return;
     }
-    
+
     const nominalUnit = uutNominal?.unit;
     const targetUnitInfo = unitSystem.units[nominalUnit];
 
@@ -3612,7 +3917,8 @@ function Analysis({
       uutNominal
     );
     const uutSpecComponents = uutBreakdownResult.breakdown.filter(
-      (comp) => comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
+      (comp) =>
+        comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
     );
 
     const uutName = sessionData.uutDescription || "UUT";
@@ -3627,7 +3933,7 @@ function Analysis({
         span: span,
       };
     });
-    
+
     const tmdeBreakdownForTar = [];
     let missingTmdeRef = false;
     let tmdeToleranceHigh_Native = 0;
@@ -3642,7 +3948,10 @@ function Analysis({
           }
 
           const { breakdown: tmdeBreakdown } =
-            calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint);
+            calculateUncertaintyFromToleranceObject(
+              tmde,
+              tmde.measurementPoint
+            );
           const tmdeNominal = parseFloat(tmde.measurementPoint.value);
 
           const tmdeSpecComponents = tmdeBreakdown.filter(
@@ -3700,7 +4009,7 @@ function Analysis({
 
     const tmdeToleranceSpan_Native =
       tmdeToleranceHigh_Native - tmdeToleranceLow_Native;
- 
+
     if (missingTmdeRef) {
       setNotification({
         title: "Missing Info",
@@ -3715,29 +4024,16 @@ function Analysis({
       }
     }
 
-
-
     // MATH FUNCTIONS ------------------------------------------------------------------------------------------------------------------------------------
     function PHID(z) {
       const P = [
-        220.206867912376,
-        221.213596169931,
-        112.079291497871,
-        33.912866078383,
-        6.37396220353165,
-        0.700383064443688,
-        0.0352624965998911
+        220.206867912376, 221.213596169931, 112.079291497871, 33.912866078383,
+        6.37396220353165, 0.700383064443688, 0.0352624965998911,
       ];
 
       const Q = [
-        440.413735824752,
-        793.826512519948,
-        637.333633378831,
-        296.564248779674,
-        86.7807322029461,
-        16.064177579207,
-        1.75566716318264,
-        0.0883883476483184
+        440.413735824752, 793.826512519948, 637.333633378831, 296.564248779674,
+        86.7807322029461, 16.064177579207, 1.75566716318264, 0.0883883476483184,
       ];
 
       const CUTOFF = 8;
@@ -3750,27 +4046,45 @@ function Analysis({
         const EXPNTL = Math.exp(-Math.pow(ZABS, 2) / 2);
 
         const numerator =
-          ((((((P[6] * ZABS + P[5]) * ZABS + P[4]) * ZABS + P[3]) * ZABS + P[2]) * ZABS + P[1]) * ZABS + P[0]);
+          (((((P[6] * ZABS + P[5]) * ZABS + P[4]) * ZABS + P[3]) * ZABS +
+            P[2]) *
+            ZABS +
+            P[1]) *
+            ZABS +
+          P[0];
 
         const denominator =
-          (((((((Q[7] * ZABS + Q[6]) * ZABS + Q[5]) * ZABS + Q[4]) * ZABS + Q[3]) * ZABS + Q[2]) * ZABS + Q[1]) * ZABS + Q[0]);
+          ((((((Q[7] * ZABS + Q[6]) * ZABS + Q[5]) * ZABS + Q[4]) * ZABS +
+            Q[3]) *
+            ZABS +
+            Q[2]) *
+            ZABS +
+            Q[1]) *
+            ZABS +
+          Q[0];
 
-        p = EXPNTL * numerator / denominator;
+        p = (EXPNTL * numerator) / denominator;
       }
 
       return z > 0 ? 1 - p : p;
     }
 
-
     function PHIDInv(p) {
-      const a = [-39.6968302866538, 220.946098424521, -275.928510446969,
-                138.357751867269, -30.6647980661472, 2.50662827745924];
-      const b = [-54.4760987982241, 161.585836858041, -155.698979859887,
-                66.8013118877197, -13.2806815528857];
-      const c = [-0.00778489400243029, -0.322396458041136, -2.40075827716184,
-                -2.54973253934373, 4.37466414146497, 2.93816398269878];
-      const d = [0.00778469570904146, 0.32246712907004, 2.445134137143,
-                3.75440866190742];
+      const a = [
+        -39.6968302866538, 220.946098424521, -275.928510446969,
+        138.357751867269, -30.6647980661472, 2.50662827745924,
+      ];
+      const b = [
+        -54.4760987982241, 161.585836858041, -155.698979859887,
+        66.8013118877197, -13.2806815528857,
+      ];
+      const c = [
+        -0.00778489400243029, -0.322396458041136, -2.40075827716184,
+        -2.54973253934373, 4.37466414146497, 2.93816398269878,
+      ];
+      const d = [
+        0.00778469570904146, 0.32246712907004, 2.445134137143, 3.75440866190742,
+      ];
 
       const pLow = 0.02425;
       const pHigh = 1 - pLow;
@@ -3783,17 +4097,29 @@ function Analysis({
 
       if (p < pLow) {
         q = Math.sqrt(-2 * Math.log(p));
-        return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
-              ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+        return (
+          (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q +
+            c[5]) /
+          ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
+        );
       } else if (p <= pHigh) {
         q = p - 0.5;
         r = q * q;
-        return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q /
-              (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+        return (
+          ((((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r +
+            a[5]) *
+            q) /
+          (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
+        );
       } else {
         q = Math.sqrt(-2 * Math.log(1 - p));
-        return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
-                ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+        return (
+          -(
+            ((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q +
+            c[5]
+          ) /
+          ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
+        );
       }
     }
 
@@ -3877,7 +4203,7 @@ function Analysis({
         Q0 = 15.9056225126212 + y2 * Q0;
         Q0 = -1.1833162112133 + y2 * Q0;
 
-        let x = y + y * y2 * P0 / Q0;
+        let x = y + (y * y2 * P0) / Q0;
         return x * S2Pi;
       }
 
@@ -3907,7 +4233,7 @@ function Analysis({
         Q1 = -(3.80806407691578 * 0.01) + z * Q1;
         Q1 = -(9.33259480895457 * 0.0001) + z * Q1;
 
-        x1 = z * P1 / Q1;
+        x1 = (z * P1) / Q1;
       } else {
         let P2 = 3.23774891776946;
         P2 = 6.91522889068984 + z * P2;
@@ -3929,7 +4255,7 @@ function Analysis({
         Q2 = 0.00000289247864745381 + z * Q2;
         Q2 = 0.00000000679019408009981 + z * Q2;
 
-        x1 = z * P2 / Q2;
+        x1 = (z * P2) / Q2;
       }
 
       x = x0 - x1;
@@ -3940,7 +4266,15 @@ function Analysis({
       return InvNormalDistribution(p);
     }
 
-        function ObsRel(sRiskType, dCalUnc, dMeasRel, dAvg,dTolLow,dTolUp,dMeasUnc) {
+    function ObsRel(
+      sRiskType,
+      dCalUnc,
+      dMeasRel,
+      dAvg,
+      dTolLow,
+      dTolUp,
+      dMeasUnc
+    ) {
       let dBiasUnc, dDevUnc;
 
       if (sRiskType === "NotThreshold") {
@@ -3964,7 +4298,17 @@ function Analysis({
       return 0;
     }
 
-    function PredRel(sRiskType, dCalUnc, dMeasRel,dAvg,dTolLow,dTolUp,dMeasUnc,dGBLow,dGBUp) {
+    function PredRel(
+      sRiskType,
+      dCalUnc,
+      dMeasRel,
+      dAvg,
+      dTolLow,
+      dTolUp,
+      dMeasUnc,
+      dGBLow,
+      dGBUp
+    ) {
       let dBiasUnc, dDevUnc;
 
       if (sRiskType === "NotThreshold") {
@@ -3989,8 +4333,8 @@ function Analysis({
     }
 
     // SHARED FUNCTIONS ----------------------------------------------------------------------------------------------------------------------------------
-    const isNotNumeric = val => isNaN(parseFloat(val));
-    const vbaNbrValidate = val => isNotNumeric(val) ? 0 : parseFloat(val);
+    const isNotNumeric = (val) => isNaN(parseFloat(val));
+    const vbaNbrValidate = (val) => (isNotNumeric(val) ? 0 : parseFloat(val));
 
     function getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp) {
       const bNoNominal = isNotNumeric(rngNominal);
@@ -4008,18 +4352,46 @@ function Analysis({
           if (bNoNominal) dNominal = dTolUp;
           if (bNoAvg) {
             dAvg = dNominal;
-            return ["AltUpThreshold", dNominal, dAvg, dTolLow, dTolUp, bIsThreshold];
+            return [
+              "AltUpThreshold",
+              dNominal,
+              dAvg,
+              dTolLow,
+              dTolUp,
+              bIsThreshold,
+            ];
           } else {
-            return ["UpThreshold", dNominal, dAvg, dTolLow, dTolUp, bIsThreshold];
+            return [
+              "UpThreshold",
+              dNominal,
+              dAvg,
+              dTolLow,
+              dTolUp,
+              bIsThreshold,
+            ];
           }
         } else if (bNoTolUp) {
           if (bNoNominal) dNominal = dTolLow;
 
           if (bNoAvg) {
             dAvg = dNominal;
-            return ["AltLowThreshold", dNominal, dAvg, dTolLow, dTolUp, bIsThreshold];
+            return [
+              "AltLowThreshold",
+              dNominal,
+              dAvg,
+              dTolLow,
+              dTolUp,
+              bIsThreshold,
+            ];
           } else {
-            return ["LowThreshold", dNominal, dAvg, dTolLow, dTolUp, bIsThreshold];
+            return [
+              "LowThreshold",
+              dNominal,
+              dAvg,
+              dTolLow,
+              dTolUp,
+              bIsThreshold,
+            ];
           }
         }
       } else {
@@ -4034,25 +4406,40 @@ function Analysis({
         dTolUp = dTolUp - dNominal;
         return ["NotThreshold", dNominal, dAvg, dTolLow, dTolUp, bIsThreshold];
       }
-    };
+    }
 
+    function getRiskInfo(
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngMeasUnc,
+      rngMeasRel
+    ) {
+      const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, bIsThreshold] =
+        getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp);
 
-    function getRiskInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel) {
-
-      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp, bIsThreshold] = getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp);
-      
       const bNoMeasUnc = isNotNumeric(rngMeasUnc);
       const bNoMeasRel = isNotNumeric(rngMeasRel);
 
       if (bNoMeasUnc || bNoMeasRel) {
-          return ["Fail"];
+        return ["Fail"];
       }
 
       const dMeasUnc = vbaNbrValidate(rngMeasUnc);
       const dMeasRel = vbaNbrValidate(rngMeasRel);
 
-      return [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel, bIsThreshold];
-    };
+      return [
+        sRiskType,
+        dNominal,
+        dAvg,
+        dTolLow,
+        dTolUp,
+        dMeasUnc,
+        dMeasRel,
+        bIsThreshold,
+      ];
+    }
 
     function uutUnc(r, uCal, LLow, LUp) {
       const Mid = (LUp + LLow) / 2;
@@ -4065,7 +4452,7 @@ function Analysis({
       const uUUT = uUUT2 <= 0 ? 0 : Math.sqrt(uUUT2);
 
       return uUUT;
-    };
+    }
 
     function uutUncLL(r, uCal, Avg, LLow) {
       let uDev, uUUT, uUUT2;
@@ -4082,7 +4469,7 @@ function Analysis({
       uUUT = uUUT2 <= 0 ? 0 : Math.sqrt(uUUT2);
 
       return uUUT;
-    };
+    }
 
     function uutUncUL(r, uCal, avg, LUp) {
       if (LUp < avg) {
@@ -4097,7 +4484,7 @@ function Analysis({
       const uUUT = uUUT2 <= 0 ? 0 : Math.sqrt(uUUT2);
 
       return uUUT;
-    };
+    }
 
     function resDwn(dVal, dRes) {
       if (dRes <= 0) {
@@ -4108,13 +4495,13 @@ function Analysis({
       }
       let x = Math.floor(dVal / dRes) * dRes;
       const dZero = 0.000001;
-      if (Math.abs(Math.trunc(dVal / dRes) - (dVal / dRes)) > dZero) {
+      if (Math.abs(Math.trunc(dVal / dRes) - dVal / dRes) > dZero) {
         if (dVal > 0) {
           x = x + dRes;
         }
       }
       return x;
-    };
+    }
 
     function resUp(dVal, dRes) {
       if (dRes <= 0) {
@@ -4125,25 +4512,38 @@ function Analysis({
       }
       let x = Math.trunc(dVal / dRes) * dRes;
       const dZero = 0.000001;
-      if (Math.abs(Math.trunc(dVal / dRes) - (dVal / dRes)) > dZero) {
+      if (Math.abs(Math.trunc(dVal / dRes) - dVal / dRes) > dZero) {
         if (dVal < 0) {
           x = x - dRes;
         }
       }
       return x;
-    };
+    }
 
-    function calRelwTUR(sRiskType, rngTUR, rngReqTUR, dMeasUnc, dMeasRel, dTolLow, dTolUp, dAvg) {
+    function calRelwTUR(
+      sRiskType,
+      rngTUR,
+      rngReqTUR,
+      dMeasUnc,
+      dMeasRel,
+      dTolLow,
+      dTolUp,
+      dAvg
+    ) {
       if (rngReqTUR === "" || rngReqTUR === null) {
         return dMeasRel;
       }
 
       let dTUR, dReqTur, dCalUnc;
-      if (sRiskType === "NotThreshold" || sRiskType === "UpThreshold" || sRiskType === "LowThreshold") {
+      if (
+        sRiskType === "NotThreshold" ||
+        sRiskType === "UpThreshold" ||
+        sRiskType === "LowThreshold"
+      ) {
         dTUR = vbaNbrValidate(rngTUR);
         dReqTur = vbaNbrValidate(rngReqTUR);
         if (dReqTur > 0) {
-          dCalUnc = dMeasUnc * dTUR / dReqTur;
+          dCalUnc = (dMeasUnc * dTUR) / dReqTur;
         } else {
           return dMeasRel;
         }
@@ -4154,29 +4554,34 @@ function Analysis({
       let dBiasUnc, dDevUnc;
 
       if (sRiskType === "NotThreshold") {
-
         dBiasUnc = uutUnc(dMeasRel, dCalUnc, dTolLow, dTolUp);
-       
-        dDevUnc = Math.sqrt(dMeasUnc * dMeasUnc + dBiasUnc * dBiasUnc);
-        
-        dMeasRel = vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc);
 
+        dDevUnc = Math.sqrt(dMeasUnc * dMeasUnc + dBiasUnc * dBiasUnc);
+
+        dMeasRel =
+          vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc);
       } else if (sRiskType === "UpThreshold") {
         dBiasUnc = uutUncUL(dMeasRel, dCalUnc, dAvg, dTolUp);
         dDevUnc = Math.sqrt(dMeasUnc * dMeasUnc + dBiasUnc * dBiasUnc);
         dMeasRel = vbNormSDist((dTolUp - dAvg) / dDevUnc);
-
       } else if (sRiskType === "LowThreshold") {
         dBiasUnc = uutUncLL(dMeasRel, dCalUnc, dAvg, dTolLow);
         dDevUnc = Math.sqrt(dMeasUnc * dMeasUnc + dBiasUnc * dBiasUnc);
         dMeasRel = 1 - vbNormSDist((dTolLow - dAvg) / dDevUnc);
       }
-      
+
       return dMeasRel;
-    };
+    }
 
     // TAR FUNCTIONS -------------------------------------------------------------------------------------------------------------------------------------
-    function calcTAR(rngNominal, rngAvg, rngTolLow, rngTolUp, rngSTDLow, rngSTDUp) {
+    function calcTAR(
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngSTDLow,
+      rngSTDUp
+    ) {
       let dSTDLow, dSTDUp;
 
       if (isNotNumeric(rngSTDLow) || isNotNumeric(rngSTDUp)) {
@@ -4186,7 +4591,8 @@ function Analysis({
         dSTDUp = vbaNbrValidate(rngSTDUp);
       }
 
-      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp, bIsThreshold] = getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp);
+      const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, bIsThreshold] =
+        getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp);
 
       if (sRiskType === "NotThreshold") {
         return Math.abs((dTolUp - dTolLow) / (dSTDUp - dSTDLow));
@@ -4197,10 +4603,9 @@ function Analysis({
       } else {
         return "";
       }
-    };
+    }
     // TUR FUNCTIONS -------------------------------------------------------------------------------------------------------------------------------------
     function calcTUR(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc) {
-
       let dMeasUnc;
 
       if (isNotNumeric(rngMeasUnc)) {
@@ -4209,7 +4614,8 @@ function Analysis({
         dMeasUnc = vbaNbrValidate(rngMeasUnc);
       }
 
-      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp, bIsThreshold] = getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp);
+      const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, bIsThreshold] =
+        getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp);
 
       if (sRiskType === "NotThreshold") {
         return Math.abs((dTolUp - dTolLow) / (2 * dMeasUnc));
@@ -4220,10 +4626,10 @@ function Analysis({
       } else {
         return "";
       }
-    };
+    }
 
     // PFA FUNCTIONS -------------------------------------------------------------------------------------------------------------------------------------
-    function PFAIter(sRiskType, dMeasRel,dAvg,dTolLow,dTolUp,dMeasUnc) {
+    function PFAIter(sRiskType, dMeasRel, dAvg, dTolLow, dTolUp, dMeasUnc) {
       let dUUTUnc;
 
       if (sRiskType === "NotThreshold") {
@@ -4245,148 +4651,252 @@ function Analysis({
       }
 
       return -1;
-    };
-
+    }
 
     function PFA(uUUT, uCal, LLow, LUp, ALow, AUp) {
       const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
       const cor = uUUT / uDev;
 
-      const term1 = bivariateNormalCDF(LLow / uUUT, AUp / uDev, cor) -
-                    bivariateNormalCDF(LLow / uUUT, ALow / uDev, cor);
+      const term1 =
+        bivariateNormalCDF(LLow / uUUT, AUp / uDev, cor) -
+        bivariateNormalCDF(LLow / uUUT, ALow / uDev, cor);
 
-      const term2 = bivariateNormalCDF(-LUp / uUUT, -ALow / uDev, cor) -
-                    bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
+      const term2 =
+        bivariateNormalCDF(-LUp / uUUT, -ALow / uDev, cor) -
+        bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
       return [term1 + term2, term1, term2, uUUT, uDev, cor];
-    };
+    }
 
     function PFALL(uUUT, uCal, avg, LLow, ALow) {
       const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
       const cor = uUUT / uDev;
 
       const term1 = vbNormSDist((LLow - avg) / uUUT);
-      const term2 = bivariateNormalCDF((LLow - avg) / uUUT, (ALow - avg) / uDev, cor);
+      const term2 = bivariateNormalCDF(
+        (LLow - avg) / uUUT,
+        (ALow - avg) / uDev,
+        cor
+      );
 
       return [term1 - term2, term1, term2, uUUT, uDev, cor];
-    };
+    }
 
     function PFAUL(uUUT, uCal, avg, LUp, AUp) {
       const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
       const cor = uUUT / uDev;
 
       const term1 = vbNormSDist((LUp - avg) / uUUT);
-      const term2 = bivariateNormalCDF(-(LUp - avg) / uUUT, -(AUp - avg) / uDev, cor);
+      const term2 = bivariateNormalCDF(
+        -(LUp - avg) / uUUT,
+        -(AUp - avg) / uDev,
+        cor
+      );
 
       return [1 - term1 - term2, term1, term2, uUUT, uDev, cor];
-    };
+    }
 
-    function PFAMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngTUR, rngReqTUR) {
+    function PFAMgr(
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngMeasUnc,
+      rngMeasRel,
+      rngTUR,
+      rngReqTUR
+    ) {
+      let [
+        sRiskType,
+        dNominal,
+        dAvg,
+        dTolLow,
+        dTolUp,
+        dMeasUnc,
+        dMeasRel,
+        bIsThreshold,
+      ] = getRiskInfo(
+        rngNominal,
+        rngAvg,
+        rngTolLow,
+        rngTolUp,
+        rngMeasUnc,
+        rngMeasRel
+      );
 
-      let [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel, bIsThreshold] = getRiskInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel);
-
-      dMeasRel = calRelwTUR(sRiskType, rngTUR, rngReqTUR,dMeasUnc,dMeasRel,dTolLow,dTolUp,dAvg);
+      dMeasRel = calRelwTUR(
+        sRiskType,
+        rngTUR,
+        rngReqTUR,
+        dMeasUnc,
+        dMeasRel,
+        dTolLow,
+        dTolUp,
+        dAvg
+      );
 
       let dUUTUnc;
-      let result = ["","","","","",""];
+      let result = ["", "", "", "", "", ""];
 
       if (sRiskType === "NotThreshold") {
         dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-        if (dUUTUnc <= 0) return ["","","","","",""];
+        if (dUUTUnc <= 0) return ["", "", "", "", "", ""];
         result = PFA(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dTolLow, dTolUp);
-
       } else if (sRiskType === "UpThreshold") {
         dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
-        if (dUUTUnc <= 0) return ["","","","","",""];
+        if (dUUTUnc <= 0) return ["", "", "", "", "", ""];
         result = PFAUL(dUUTUnc, dMeasUnc, dAvg, dTolUp, dTolUp);
-
       } else if (sRiskType === "LowThreshold") {
         dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
-        if (dUUTUnc <= 0) return ["","","","","",""];
+        if (dUUTUnc <= 0) return ["", "", "", "", "", ""];
         result = PFALL(dUUTUnc, dMeasUnc, dAvg, dTolLow, dTolLow);
-
       } else {
-        result = ["","","","","",""];
+        result = ["", "", "", "", "", ""];
       }
 
       if (dUUTUnc <= dMeasUnc / 10) {
-        result = ["","","","","",""];
+        result = ["", "", "", "", "", ""];
       }
 
       return result;
-    };
+    }
 
     // PFR FUNCTIONS -------------------------------------------------------------------------------------------------------------------------------------
     function PFR(uUUT, uCal, LLow, LUp, ALow, AUp) {
       const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
       const cor = uUUT / uDev;
 
-      const term1 = bivariateNormalCDF(LUp / uUUT, ALow / uDev, cor) -
-                    bivariateNormalCDF(LLow / uUUT, ALow / uDev, cor);
+      const term1 =
+        bivariateNormalCDF(LUp / uUUT, ALow / uDev, cor) -
+        bivariateNormalCDF(LLow / uUUT, ALow / uDev, cor);
 
-      const term2 = bivariateNormalCDF(-LLow / uUUT, -AUp / uDev, cor) -
-                    bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
+      const term2 =
+        bivariateNormalCDF(-LLow / uUUT, -AUp / uDev, cor) -
+        bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
 
       return [term1 + term2, term1, term2];
-    };
+    }
 
     function PFRLL(uUUT, uCal, avg, LLow, ALow) {
       const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
       const cor = uUUT / uDev;
 
       const term1 = vbNormSDist((LLow - avg) / uUUT);
-      const term2 = bivariateNormalCDF(-(LLow - avg) / uUUT, -(ALow - avg) / uDev, cor);
+      const term2 = bivariateNormalCDF(
+        -(LLow - avg) / uUUT,
+        -(ALow - avg) / uDev,
+        cor
+      );
 
       return [1 - term1 - term2, term1, term2];
-    };
+    }
 
     function PFRUL(uUUT, uCal, avg, LUp, AUp) {
       const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
       const cor = uUUT / uDev;
 
       const term1 = vbNormSDist((LUp - avg) / uUUT);
-      const term2 = bivariateNormalCDF((LUp - avg) / uUUT, (AUp - avg) / uDev, cor);
+      const term2 = bivariateNormalCDF(
+        (LUp - avg) / uUUT,
+        (AUp - avg) / uDev,
+        cor
+      );
 
       return [term1 - term2, term1, term2];
-    };
+    }
 
-    function PFRMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngTUR, rngReqTUR) {
-      let [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel, bIsThreshold] = getRiskInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel);
+    function PFRMgr(
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngMeasUnc,
+      rngMeasRel,
+      rngTUR,
+      rngReqTUR
+    ) {
+      let [
+        sRiskType,
+        dNominal,
+        dAvg,
+        dTolLow,
+        dTolUp,
+        dMeasUnc,
+        dMeasRel,
+        bIsThreshold,
+      ] = getRiskInfo(
+        rngNominal,
+        rngAvg,
+        rngTolLow,
+        rngTolUp,
+        rngMeasUnc,
+        rngMeasRel
+      );
 
-      dMeasRel = calRelwTUR(sRiskType, rngTUR, rngReqTUR,dMeasUnc,dMeasRel,dTolLow,dTolUp,dAvg);
+      dMeasRel = calRelwTUR(
+        sRiskType,
+        rngTUR,
+        rngReqTUR,
+        dMeasUnc,
+        dMeasRel,
+        dTolLow,
+        dTolUp,
+        dAvg
+      );
 
       let dUUTUnc;
-      let result = ["","",""];
+      let result = ["", "", ""];
 
       if (sRiskType === "NotThreshold") {
         dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-        if (dUUTUnc <= 0) return ["","",""];
+        if (dUUTUnc <= 0) return ["", "", ""];
         result = PFR(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dTolLow, dTolUp);
-
       } else if (sRiskType === "UpThreshold") {
         dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
-        if (dUUTUnc <= 0) return ["","",""];
+        if (dUUTUnc <= 0) return ["", "", ""];
         result = PFRUL(dUUTUnc, dMeasUnc, dAvg, dTolUp, dTolUp);
-
       } else if (sRiskType === "LowThreshold") {
         dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
-        if (dUUTUnc <= 0) return ["","",""];
+        if (dUUTUnc <= 0) return ["", "", ""];
         result = PFRLL(dUUTUnc, dMeasUnc, dAvg, dTolLow, dTolLow);
-
       } else {
-        result = ["","",""];
+        result = ["", "", ""];
       }
 
       if (dUUTUnc <= dMeasUnc / 10) {
-        result = ["","",""];
+        result = ["", "", ""];
       }
 
       return result;
-    };
+    }
 
     // GUARD BAND FUNCTIONS ------------------------------------------------------------------------------------------------------------------------------
-    function GetGBInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp) {
-
-      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel, bIsThreshold] = getRiskInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel);
+    function GetGBInfo(
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngMeasUnc,
+      rngMeasRel,
+      rngGBLow,
+      rngGBUp
+    ) {
+      const [
+        sRiskType,
+        dNominal,
+        dAvg,
+        dTolLow,
+        dTolUp,
+        dMeasUnc,
+        dMeasRel,
+        bIsThreshold,
+      ] = getRiskInfo(
+        rngNominal,
+        rngAvg,
+        rngTolLow,
+        rngTolUp,
+        rngMeasUnc,
+        rngMeasRel
+      );
 
       let dGBLow = vbaNbrValidate(rngGBLow);
       let dGBUp = vbaNbrValidate(rngGBUp);
@@ -4400,31 +4910,39 @@ function Analysis({
         dGBUp = dGBUp - dNominal;
       }
 
-      return [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp];
-    };
+      return [
+        sRiskType,
+        dNominal,
+        dAvg,
+        dTolLow,
+        dTolUp,
+        dMeasUnc,
+        dMeasRel,
+        dGBLow,
+        dGBUp,
+      ];
+    }
 
     function pfaGBMult(req, uUUT, uCal, LLow, LUp) {
-
       const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
       const REOP = vbNormSDist(LUp / uDev) - vbNormSDist(LLow / uDev);
 
       return RInAccGBMult(req, REOP, uCal, LLow, LUp);
-    };
+    }
 
     function pfaLLGBMult(req, uUUT, uCal, avg, LLow) {
-
       const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
       const REOP = vbNormSDist((avg - LLow) / uDev);
 
       return RInAccLLGBMult(req, REOP, uCal, avg, LLow);
-    };
+    }
 
     function PFAULGBMult(req, uUUT, uCal, avg, LUp) {
       const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
       const REOP = vbNormSDist((LUp - avg) / uDev);
 
       return RInAccULGBMult(req, REOP, uCal, avg, LUp);
-    };
+    }
 
     function RInAccGBMult(req, REOP, uCal, LLow, LUp) {
       const precision = 0.00001;
@@ -4457,7 +4975,7 @@ function Analysis({
       }
 
       return GBMult;
-    };
+    }
 
     function RInAccULGBMult(req, REOP, uCal, avg, LUp) {
       const precision = 0.00001;
@@ -4487,7 +5005,7 @@ function Analysis({
       }
 
       return GBMult;
-    };
+    }
 
     function RInAccLLGBMult(req, REOP, uCal, avg, LLow) {
       const precision = 0.00001;
@@ -4517,42 +5035,72 @@ function Analysis({
       }
 
       return GBMult;
-    };
+    }
 
-    function gbLowMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel) {
-
-      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel] = getRiskInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel);
+    function gbLowMgr(
+      rngReq,
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngMeasUnc,
+      rngMeasRel
+    ) {
+      const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel] =
+        getRiskInfo(
+          rngNominal,
+          rngAvg,
+          rngTolLow,
+          rngTolUp,
+          rngMeasUnc,
+          rngMeasRel
+        );
 
       const dReq = vbaNbrValidate(rngReq);
 
       let dUUTUnc, GBMult;
 
       if (sRiskType === "NotThreshold") {
-          dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-          if (dUUTUnc <= 0) {
-              return "";
-          } else {
-              GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
-              return dNominal + dTolLow * GBMult;
-          }
-      } else if (sRiskType === "LowThreshold") {
-          dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
-          if (dUUTUnc <= 0) {
-              return "";
-          } else {
-              GBMult = pfaLLGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolLow);
-              return dAvg - (dAvg - dTolLow) * GBMult;
-          }
-      } else if (sRiskType === "AltLowThreshold") {
-          return dTolLow - PHIDInv(dReq) * dMeasUnc;
-      } else {
+        dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
+        if (dUUTUnc <= 0) {
           return "";
+        } else {
+          GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
+          return dNominal + dTolLow * GBMult;
+        }
+      } else if (sRiskType === "LowThreshold") {
+        dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
+        if (dUUTUnc <= 0) {
+          return "";
+        } else {
+          GBMult = pfaLLGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolLow);
+          return dAvg - (dAvg - dTolLow) * GBMult;
+        }
+      } else if (sRiskType === "AltLowThreshold") {
+        return dTolLow - PHIDInv(dReq) * dMeasUnc;
+      } else {
+        return "";
       }
-    };
-    
-    function gbUpMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel) {
+    }
 
-      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel] = getRiskInfo(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel);
+    function gbUpMgr(
+      rngReq,
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngMeasUnc,
+      rngMeasRel
+    ) {
+      const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel] =
+        getRiskInfo(
+          rngNominal,
+          rngAvg,
+          rngTolLow,
+          rngTolUp,
+          rngMeasUnc,
+          rngMeasRel
+        );
 
       const dReq = vbaNbrValidate(rngReq);
 
@@ -4579,11 +5127,23 @@ function Analysis({
       } else {
         return "";
       }
-    };
+    }
 
-    function GBMultMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngGBLow, rngGBUp) {
-
-      const [sRiskType, dNominal, dAvg, dTolLow, dTolUp] = getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp);
+    function GBMultMgr(
+      rngReq,
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngGBLow,
+      rngGBUp
+    ) {
+      const [sRiskType, dNominal, dAvg, dTolLow, dTolUp] = getTolInfo(
+        rngNominal,
+        rngAvg,
+        rngTolLow,
+        rngTolUp
+      );
 
       const dReq = vbaNbrValidate(rngReq);
       const dGBLow = vbaNbrValidate(rngGBLow);
@@ -4596,26 +5156,48 @@ function Analysis({
       let GBMult;
 
       if (sRiskType === "NotThreshold") {
-        GBMult = Math.abs(dTolUp) > 0
-          ? Math.abs(dGBUp - dNominal) / Math.abs(dTolUp)
-          : "";
+        GBMult =
+          Math.abs(dTolUp) > 0
+            ? Math.abs(dGBUp - dNominal) / Math.abs(dTolUp)
+            : "";
       } else if (sRiskType === "UpThreshold") {
-        GBMult = Math.abs(dTolUp - dAvg) > 0
-          ? Math.abs(dGBUp - dAvg) / Math.abs(dTolUp - dAvg)
-          : "";
+        GBMult =
+          Math.abs(dTolUp - dAvg) > 0
+            ? Math.abs(dGBUp - dAvg) / Math.abs(dTolUp - dAvg)
+            : "";
       } else if (sRiskType === "LowThreshold") {
-        GBMult = Math.abs(dAvg - dTolLow) > 0
-          ? Math.abs(dAvg - dGBLow) / Math.abs(dAvg - dTolLow)
-          : "";
+        GBMult =
+          Math.abs(dAvg - dTolLow) > 0
+            ? Math.abs(dAvg - dGBLow) / Math.abs(dAvg - dTolLow)
+            : "";
       } else {
         GBMult = "";
       }
 
       return GBMult;
-    };
+    }
 
-    function PFAwGBMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp) {
-      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp] = GetGBInfo(
+    function PFAwGBMgr(
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngMeasUnc,
+      rngMeasRel,
+      rngGBLow,
+      rngGBUp
+    ) {
+      const [
+        sRiskType,
+        dNominal,
+        dAvg,
+        dTolLow,
+        dTolUp,
+        dMeasUnc,
+        dMeasRel,
+        dGBLow,
+        dGBUp,
+      ] = GetGBInfo(
         rngNominal,
         rngAvg,
         rngTolLow,
@@ -4659,10 +5241,29 @@ function Analysis({
       }
 
       return "";
-    };
+    }
 
-    function PFRwGBMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp) {
-      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp] = GetGBInfo(
+    function PFRwGBMgr(
+      rngNominal,
+      rngAvg,
+      rngTolLow,
+      rngTolUp,
+      rngMeasUnc,
+      rngMeasRel,
+      rngGBLow,
+      rngGBUp
+    ) {
+      const [
+        sRiskType,
+        dNominal,
+        dAvg,
+        dTolLow,
+        dTolUp,
+        dMeasUnc,
+        dMeasRel,
+        dGBLow,
+        dGBUp,
+      ] = GetGBInfo(
         rngNominal,
         rngAvg,
         rngTolLow,
@@ -4698,7 +5299,7 @@ function Analysis({
       }
 
       return "";
-    };
+    }
 
     function CalIntwGBMgr(
       rngNominal,
@@ -4714,8 +5315,17 @@ function Analysis({
       rngReqTUR,
       rngInt
     ) {
-
-      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp] = GetGBInfo(
+      const [
+        sRiskType,
+        dNominal,
+        dAvg,
+        dTolLow,
+        dTolUp,
+        dMeasUnc,
+        dMeasRel,
+        dGBLow,
+        dGBUp,
+      ] = GetGBInfo(
         rngNominal,
         rngAvg,
         rngTolLow,
@@ -4745,17 +5355,35 @@ function Analysis({
 
       let dObsRel;
       if (dReqTur > 0) {
-        const dTstRUnc = dMeasUnc * dTUR / dReqTur;
-        dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+        const dTstRUnc = (dMeasUnc * dTUR) / dReqTur;
+        dObsRel = ObsRel(
+          sRiskType,
+          dTstRUnc,
+          dMeasRel,
+          dAvg,
+          dTolLow,
+          dTolUp,
+          dMeasUnc
+        );
       } else {
         dObsRel = dMeasRel;
       }
 
-      const dPredRel = PredRel(sRiskType, dMeasUnc, dReqRel,dAvg,dTolLow,dTolUp,dMeasUnc,dGBLow,dGBUp);
-      const dPredInt = Math.log(dPredRel) / Math.log(dObsRel) * dInt;
+      const dPredRel = PredRel(
+        sRiskType,
+        dMeasUnc,
+        dReqRel,
+        dAvg,
+        dTolLow,
+        dTolUp,
+        dMeasUnc,
+        dGBLow,
+        dGBUp
+      );
+      const dPredInt = (Math.log(dPredRel) / Math.log(dObsRel)) * dInt;
 
       return dPredInt > 0 ? dPredInt : "";
-    };
+    }
 
     function CalIntMgr(
       rngNominal,
@@ -4770,8 +5398,17 @@ function Analysis({
       rngInt,
       rngReqPFA
     ) {
-
-      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp] = getRiskInfo(
+      const [
+        sRiskType,
+        dNominal,
+        dAvg,
+        dTolLow,
+        dTolUp,
+        dMeasUnc,
+        dMeasRel,
+        dGBLow,
+        dGBUp,
+      ] = getRiskInfo(
         rngNominal,
         rngAvg,
         rngTolLow,
@@ -4788,41 +5425,50 @@ function Analysis({
 
       let dObsRel;
       if (dReqTur > 0) {
-        const dTstRUnc = dMeasUnc * dTUR / dReqTur;
-        dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel, dAvg,dTolLow,dTolUp,dMeasUnc);
+        const dTstRUnc = (dMeasUnc * dTUR) / dReqTur;
+        dObsRel = ObsRel(
+          sRiskType,
+          dTstRUnc,
+          dMeasRel,
+          dAvg,
+          dTolLow,
+          dTolUp,
+          dMeasUnc
+        );
       } else {
         dObsRel = dMeasRel;
       }
 
-      let [dPFA] = PFAIter(sRiskType, dObsRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+      let [dPFA] = PFAIter(sRiskType, dObsRel, dAvg, dTolLow, dTolUp, dMeasUnc);
       if (dPFA === -1) return "";
 
       if (dPFA <= dReqPFA) {
-        return Math.log(dReqRel) / Math.log(dObsRel) * dInt;
+        return (Math.log(dReqRel) / Math.log(dObsRel)) * dInt;
       }
 
       let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
-      [dPFA] = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+      [dPFA] = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
 
-      let dChg = dPFA < dReqPFA
-        ? -Math.abs(dPredRel - dObsRel)
-        : Math.abs(dPredRel - dObsRel);
+      let dChg =
+        dPFA < dReqPFA
+          ? -Math.abs(dPredRel - dObsRel)
+          : Math.abs(dPredRel - dObsRel);
 
       let lIter = 1;
       while (Math.abs(dPFA - dReqPFA) >= 0.00001 && lIter < 20) {
         dChg = dPFA < dReqPFA ? -Math.abs(dChg) / 2 : Math.abs(dChg) / 2;
         dPredRel += dChg;
-        [dPFA] = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+        [dPFA] = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
         lIter++;
       }
 
       if (dPredRel < dReqRel) {
         dPredRel = dReqRel;
-        [dPFA] = PFAIter(sRiskType, dPredRel,dAvg,dTolLow,dTolUp,dMeasUnc);
+        [dPFA] = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
       }
 
-      return dPFA === -1 ? "" : Math.log(dPredRel) / Math.log(dObsRel) * dInt;
-    };
+      return dPFA === -1 ? "" : (Math.log(dPredRel) / Math.log(dObsRel)) * dInt;
+    }
 
     function CalRelMgr(
       rngNominal,
@@ -4837,8 +5483,17 @@ function Analysis({
       rngInt,
       rngReqPFA
     ) {
-
-      const [sRiskType,dNominal,dAvg,dTolLow,dTolUp,dMeasUnc,dMeasRel,dGBLow,dGBUp] = getRiskInfo(
+      const [
+        sRiskType,
+        dNominal,
+        dAvg,
+        dTolLow,
+        dTolUp,
+        dMeasUnc,
+        dMeasRel,
+        dGBLow,
+        dGBUp,
+      ] = getRiskInfo(
         rngNominal,
         rngAvg,
         rngTolLow,
@@ -4855,8 +5510,16 @@ function Analysis({
 
       let dObsRel;
       if (dReqTur > 0) {
-        const dTstRUnc = dMeasUnc * dTUR / dReqTur;
-        dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel, dAvg,dTolLow,dTolUp,dMeasUnc);
+        const dTstRUnc = (dMeasUnc * dTUR) / dReqTur;
+        dObsRel = ObsRel(
+          sRiskType,
+          dTstRUnc,
+          dMeasRel,
+          dAvg,
+          dTolLow,
+          dTolUp,
+          dMeasUnc
+        );
       } else {
         dObsRel = dMeasRel;
       }
@@ -4869,9 +5532,10 @@ function Analysis({
       let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
       [dPFA] = PFAIter(sRiskType, dPredRel);
 
-      let dChg = dPFA < dReqPFA
-        ? -Math.abs(dPredRel - dObsRel)
-        : Math.abs(dPredRel - dObsRel);
+      let dChg =
+        dPFA < dReqPFA
+          ? -Math.abs(dPredRel - dObsRel)
+          : Math.abs(dPredRel - dObsRel);
 
       let lIter = 1;
       while (Math.abs(dPFA - dReqPFA) >= 0.00001 && lIter < 20) {
@@ -4887,55 +5551,164 @@ function Analysis({
       }
 
       return dPFA === -1 ? "" : dPredRel;
-    };
+    }
 
-    let tarResult = calcTAR(uutNominal.value, 0, LLow, LUp, parseFloat(uutNominal.value) + tmdeToleranceLow_Native, parseFloat(uutNominal.value) + tmdeToleranceHigh_Native);
+    let tarResult = calcTAR(
+      uutNominal.value,
+      0,
+      LLow,
+      LUp,
+      parseFloat(uutNominal.value) + tmdeToleranceLow_Native,
+      parseFloat(uutNominal.value) + tmdeToleranceHigh_Native
+    );
     let turResult = calcTUR(uutNominal.value, 0, LLow, LUp, U_Native);
-    let [pfaResult, pfa_term1, pfa_term2, uUUT, uDev, cor] = PFAMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, turResult ,turNeeded);
-    let [pfrResult, pfr_term1, pfr_term2] = PFRMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, turResult ,turNeeded);
+    let [pfaResult, pfa_term1, pfa_term2, uUUT, uDev, cor] = PFAMgr(
+      uutNominal.value,
+      0,
+      LLow,
+      LUp,
+      uCal_Native,
+      reliability,
+      turResult,
+      turNeeded
+    );
+    let [pfrResult, pfr_term1, pfr_term2] = PFRMgr(
+      uutNominal.value,
+      0,
+      LLow,
+      LUp,
+      uCal_Native,
+      reliability,
+      turResult,
+      turNeeded
+    );
     // If user doesn't set measuring Resolution
     const resRaw = parseFloat(testPointData.uutTolerance.measuringResolution);
     const safeRes = isNaN(resRaw) ? 0 : resRaw;
-    let gbLow = resDwn(gbLowMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, uCal_Native, reliability), safeRes);
-    let gbHigh = resUp(gbUpMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, uCal_Native, reliability), safeRes);
-    let gbMult = GBMultMgr(pfaRequired, uutNominal.value, 0, LLow, LUp, gbLow, gbHigh);
-    let [gbPFA, gbPFAT1, gbPFAT2] = PFAwGBMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, gbLow, gbHigh);
-    let [gbPFR, gbPFRT1, gbPFRT2] = PFRwGBMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, gbLow, gbHigh);
-    let gbCalInt = CalIntwGBMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, measRelCalc, gbLow, gbHigh, turResult, turNeeded, calInt);
-    let nogbCalInt = CalIntMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
-    let nogbMeasRel = CalRelMgr(uutNominal.value, 0, LLow, LUp, uCal_Native, reliability, measRelCalc, turResult, turNeeded, calInt, pfaRequired);
-
-
-
+    let gbLow = resDwn(
+      gbLowMgr(
+        pfaRequired,
+        uutNominal.value,
+        0,
+        LLow,
+        LUp,
+        uCal_Native,
+        reliability
+      ),
+      safeRes
+    );
+    let gbHigh = resUp(
+      gbUpMgr(
+        pfaRequired,
+        uutNominal.value,
+        0,
+        LLow,
+        LUp,
+        uCal_Native,
+        reliability
+      ),
+      safeRes
+    );
+    let gbMult = GBMultMgr(
+      pfaRequired,
+      uutNominal.value,
+      0,
+      LLow,
+      LUp,
+      gbLow,
+      gbHigh
+    );
+    let [gbPFA, gbPFAT1, gbPFAT2] = PFAwGBMgr(
+      uutNominal.value,
+      0,
+      LLow,
+      LUp,
+      uCal_Native,
+      reliability,
+      gbLow,
+      gbHigh
+    );
+    let [gbPFR, gbPFRT1, gbPFRT2] = PFRwGBMgr(
+      uutNominal.value,
+      0,
+      LLow,
+      LUp,
+      uCal_Native,
+      reliability,
+      gbLow,
+      gbHigh
+    );
+    let gbCalInt = CalIntwGBMgr(
+      uutNominal.value,
+      0,
+      LLow,
+      LUp,
+      uCal_Native,
+      reliability,
+      measRelCalc,
+      gbLow,
+      gbHigh,
+      turResult,
+      turNeeded,
+      calInt
+    );
+    let nogbCalInt = CalIntMgr(
+      uutNominal.value,
+      0,
+      LLow,
+      LUp,
+      uCal_Native,
+      reliability,
+      measRelCalc,
+      turResult,
+      turNeeded,
+      calInt,
+      pfaRequired
+    );
+    let nogbMeasRel = CalRelMgr(
+      uutNominal.value,
+      0,
+      LLow,
+      LUp,
+      uCal_Native,
+      reliability,
+      measRelCalc,
+      turResult,
+      turNeeded,
+      calInt,
+      pfaRequired
+    );
 
     let gbInputs = {
-      nominal:parseFloat(uutNominal.value),
-      uutLower:LLow,
-      uutUpper:LUp,
-      tmdeLower:parseFloat(uutNominal.value) + tmdeToleranceLow_Native,
-      tmdeUpper:parseFloat(uutNominal.value) + tmdeToleranceHigh_Native,
-      combUnc:calcResults.combined_uncertainty_absolute_base,
-      turVal:turResult,
-      measRelTarget:reliability,
-      calibrationInt:calInt,
-      measrelCalcAssumed:measRelCalc,
-      reqTUR:turNeeded,
-      reqPFA:pfaRequired,
-      nominalUnit: nominalUnit  
+      nominal: parseFloat(uutNominal.value),
+      uutLower: LLow,
+      uutUpper: LUp,
+      tmdeLower: parseFloat(uutNominal.value) + tmdeToleranceLow_Native,
+      tmdeUpper: parseFloat(uutNominal.value) + tmdeToleranceHigh_Native,
+      combUnc: calcResults.combined_uncertainty_absolute_base,
+      turVal: turResult,
+      measRelTarget: reliability,
+      calibrationInt: calInt,
+      measrelCalcAssumed: measRelCalc,
+      reqTUR: turNeeded,
+      reqPFA: pfaRequired,
+      nominalUnit: nominalUnit,
     };
 
-    let gbResults = {GBLOW: gbLow, 
-      GBUP: gbHigh, 
-      GBMULT: gbMult * 100, 
-      GBPFA: gbPFA * 100, 
-      GBPFAT1: gbPFAT1 * 100, 
-      GBPFAT2: gbPFAT2 * 100, 
-      GBPFR: gbPFR * 100, 
-      GBPFRT1: gbPFRT1 * 100, 
-      GBPFRT2: gbPFRT2 * 100, 
-      GBCALINT: gbCalInt, 
-      NOGBCALINT: nogbCalInt, 
-      NOGBMEASREL: nogbMeasRel * 100};
+    let gbResults = {
+      GBLOW: gbLow,
+      GBUP: gbHigh,
+      GBMULT: gbMult * 100,
+      GBPFA: gbPFA * 100,
+      GBPFAT1: gbPFAT1 * 100,
+      GBPFAT2: gbPFAT2 * 100,
+      GBPFR: gbPFR * 100,
+      GBPFRT1: gbPFRT1 * 100,
+      GBPFRT2: gbPFRT2 * 100,
+      GBCALINT: gbCalInt,
+      NOGBCALINT: nogbCalInt,
+      NOGBMEASREL: nogbMeasRel * 100,
+    };
 
     const newRiskMetrics = {
       LLow: LLow,
@@ -4962,13 +5735,12 @@ function Analysis({
       tmdeBreakdownForTar: tmdeBreakdownForTar,
       nativeUnit: nominalUnit,
       gbInputs: gbInputs,
-      gbResults: gbResults
+      gbResults: gbResults,
     };
 
     setRiskResults(newRiskMetrics);
     onDataSave({ riskMetrics: newRiskMetrics });
-
-    }, [
+  }, [
     riskInputs.LLow,
     riskInputs.LUp,
     sessionData,
@@ -4978,36 +5750,39 @@ function Analysis({
     tmdeTolerancesData,
     setNotification,
     onDataSave,
-    setRiskResults
+    setRiskResults,
   ]);
 
   useEffect(() => {
-  const shouldCalculate = (analysisMode === "risk" || analysisMode === "uncertaintyTool" || analysisMode === "riskmitigation");
+    const shouldCalculate =
+      analysisMode === "risk" ||
+      analysisMode === "uncertaintyTool" ||
+      analysisMode === "riskmitigation";
 
-  if (shouldCalculate && calcResults) {
-    calculateRiskMetrics();
-  }
+    if (shouldCalculate && calcResults) {
+      calculateRiskMetrics();
+    }
 
-  // If we are NOT on a tab that shows risk, clear the results
-  if (!shouldCalculate) {
-    setRiskResults(prevResults => {
-      if (prevResults !== null) {
-        onDataSave({ riskMetrics: null }); 
-        return null;
-      }
-      return prevResults;
-    });
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [
-  // This hook should ONLY depend on the data that triggers a new calculation
-  analysisMode, 
-  calcResults, 
-  sessionData.uncReq.reliability, 
-  sessionData.uncReq.guardBandMultiplier,
-  riskInputs.LLow, // This was missing but is a key input
-  riskInputs.LUp   // This was missing but is a key input
-]);
+    // If we are NOT on a tab that shows risk, clear the results
+    if (!shouldCalculate) {
+      setRiskResults((prevResults) => {
+        if (prevResults !== null) {
+          onDataSave({ riskMetrics: null });
+          return null;
+        }
+        return prevResults;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    // This hook should ONLY depend on the data that triggers a new calculation
+    analysisMode,
+    calcResults,
+    sessionData.uncReq.reliability,
+    sessionData.uncReq.guardBandMultiplier,
+    riskInputs.LLow, // This was missing but is a key input
+    riskInputs.LUp, // This was missing but is a key input
+  ]);
 
   // Effect to update risk input tolerances when UUT tolerance changes
   useEffect(() => {
@@ -5020,11 +5795,12 @@ function Analysis({
       uutToleranceData,
       uutNominal
     );
-    
+
     const nominalValue = parseFloat(uutNominal.value);
-    
+
     const specComponents = breakdown.filter(
-      (comp) => comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
+      (comp) =>
+        comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
     );
 
     if (specComponents.length === 0) {
@@ -5035,11 +5811,11 @@ function Analysis({
     const totalHighDeviation = specComponents.reduce((sum, comp) => {
       return sum + (comp.absoluteHigh - nominalValue);
     }, 0);
-  
+
     const totalLowDeviation = specComponents.reduce((sum, comp) => {
       return sum + (comp.absoluteLow - nominalValue);
     }, 0);
-  
+
     const finalHighLimit = nominalValue + totalHighDeviation;
     const finalLowLimit = nominalValue + totalLowDeviation;
 
@@ -5048,7 +5824,6 @@ function Analysis({
       LLow: finalLowLimit,
       LUp: finalHighLimit,
     }));
-
   }, [uutToleranceData, uutNominal]);
 
   useEffect(() => {
@@ -5129,7 +5904,6 @@ function Analysis({
         derivedUcInputs_Native = combinedUncertaintyNative;
         derivedUcInputs_Base = derivedUcInputs_Native * targetUnitInfo.to_si;
 
-
         calculatedNominalResult = nominalResult;
         let totalVariance_Native = derivedUcInputs_Native ** 2; // Start with variance from inputs
 
@@ -5166,7 +5940,7 @@ function Analysis({
             isCore: true,
             distribution: distributionLabel,
             sourcePointLabel: `${item.nominal} ${item.unit || ""}`,
-            quantity: totalQuantity
+            quantity: totalQuantity,
           });
         });
 
@@ -5207,7 +5981,7 @@ function Analysis({
               isCore: true,
               distribution: "Rectangular",
               sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`,
-              quantity: 1
+              quantity: 1,
             });
           } else {
             console.warn(
@@ -5260,8 +6034,8 @@ function Analysis({
           totalVariancePPM += comp.value ** 2;
           componentsForBudgetTable.push(comp);
         });
-        
-        tmdeTolerancesData.forEach(tmde => {
+
+        tmdeTolerancesData.forEach((tmde) => {
           if (tmde.measurementPoint && tmde.measurementPoint.value) {
             const quantity = tmde.quantity || 1;
             const components = getBudgetComponentsFromTolerance(
@@ -5270,13 +6044,13 @@ function Analysis({
             ).map((c) => ({
               ...c,
               sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`,
-              quantity: quantity
+              quantity: quantity,
             }));
 
             componentsForBudgetTable.push(...components);
-            
-            components.forEach(comp => {
-              totalVariancePPM += (comp.value ** 2) * quantity;
+
+            components.forEach((comp) => {
+              totalVariancePPM += comp.value ** 2 * quantity;
             });
           }
         });
@@ -5499,7 +6273,7 @@ function Analysis({
       updatedTolerances = [...tmdeTolerancesData, tmdeToSave];
     }
     onDataSave({ tmdeTolerances: updatedTolerances });
-    
+
     if (andClose) {
       setAddTmdeModalOpen(false);
     }
@@ -5948,7 +6722,9 @@ function Analysis({
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
             reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
+            guardBandMultiplier: parseFloat(
+              sessionData.uncReq.guardBandMultiplier
+            ),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -5960,7 +6736,9 @@ function Analysis({
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
             reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
+            guardBandMultiplier: parseFloat(
+              sessionData.uncReq.guardBandMultiplier
+            ),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -5972,7 +6750,9 @@ function Analysis({
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
             reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
+            guardBandMultiplier: parseFloat(
+              sessionData.uncReq.guardBandMultiplier
+            ),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -5984,7 +6764,9 @@ function Analysis({
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
             reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
+            guardBandMultiplier: parseFloat(
+              sessionData.uncReq.guardBandMultiplier
+            ),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -5996,7 +6778,9 @@ function Analysis({
             LLow: parseFloat(riskInputs.LLow),
             LUp: parseFloat(riskInputs.LUp),
             reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
+            guardBandMultiplier: parseFloat(
+              sessionData.uncReq.guardBandMultiplier
+            ),
           }}
           onClose={() => setLocalBreakdownModal(null)}
         />
@@ -6194,11 +6978,11 @@ function Analysis({
             <h4 className="analyzed-components-title">
               Test Measurement Device Equipment
             </h4>
-            
+
             <div className="analyzed-components-container">
               {tmdeTolerancesData.flatMap((tmde, index) => {
                 const quantity = tmde.quantity || 1;
-                
+
                 return Array.from({ length: quantity }, (_, i) => {
                   const referencePoint = tmde.measurementPoint;
                   if (!referencePoint?.value || !referencePoint?.unit) {
@@ -6262,10 +7046,14 @@ function Analysis({
                           },
                           {
                             label: `Edit "${tmde.name}" (All ${quantity})`,
-                            action: () => handleOpenSessionEditor("tmdes", { tmde, testPoint: testPointData }),
+                            action: () =>
+                              handleOpenSessionEditor("tmdes", {
+                                tmde,
+                                testPoint: testPointData,
+                              }),
                             icon: faPencilAlt,
                           },
-                          { type: "divider" }
+                          { type: "divider" },
                         ];
 
                         if (quantity > 1) {
@@ -6276,7 +7064,7 @@ function Analysis({
                             className: "destructive",
                           });
                         }
-                        
+
                         menuItems.push({
                           label: `Delete All "${tmde.name}"`,
                           action: () => onDeleteTmdeDefinition(tmde.id),
@@ -6294,13 +7082,13 @@ function Analysis({
                       <div className="uut-seal-content">
                         <span className="seal-label">TMDE</span>
                         <h4 className="seal-title">{tmde.name || "TMDE"}</h4>
-                        
+
                         {quantity > 1 && (
                           <span className="seal-label seal-instance-label">
                             (Device {i + 1} of {quantity})
                           </span>
                         )}
-                        
+
                         {testPointData.measurementType === "derived" &&
                           tmde.variableType && (
                             <div className="seal-info-item">
@@ -6332,7 +7120,9 @@ function Analysis({
                           </strong>
                         </div>
                         <div className="seal-info-item">
-                          <span>Std. Unc (u<sub>i</sub>)</span>
+                          <span>
+                            Std. Unc (u<sub>i</sub>)
+                          </span>
                           <strong>
                             {(() => {
                               const { standardUncertainty: uPpm } =
@@ -6346,7 +7136,9 @@ function Analysis({
                                 referencePoint
                               );
                               return typeof uAbs === "number"
-                                ? `${uAbs.toPrecision(3)} ${referencePoint.unit}`
+                                ? `${uAbs.toPrecision(3)} ${
+                                    referencePoint.unit
+                                  }`
                                 : uAbs;
                             })()}
                           </strong>
@@ -6370,7 +7162,7 @@ function Analysis({
                   );
                 });
               })}
-              
+
               <div className="add-tmde-card">
                 <button
                   className="add-tmde-button"
@@ -6381,40 +7173,61 @@ function Analysis({
                 </button>
               </div>
             </div>
-            {/* <Accordion title="Uncertainty Budget" startOpen={true}> */}
             <>
               {calculationError ? (
-              <div className="form-section-warning">
-                <p><strong>Calculation Error:</strong> {calculationError}</p>
-                <p style={{ marginTop: '5px', fontSize: '0.9rem', color: 'var(--text-color-muted)'}}>
-                  Please ensure all required fields are set (e.g., UUT nominal, equation, and all mapped TMDEs).
-                </p>
-              </div>
-            ) : (
-              <>
-                <UncertaintyBudgetTable
-                  components={calcResults?.calculatedBudgetComponents || []}
-                  onRemove={handleRemoveComponent}
-                  calcResults={calcResults}
-                  referencePoint={uutNominal}
-                  uncertaintyConfidence={sessionData.uncReq.uncertaintyConfidence}
-                  onRowContextMenu={handleBudgetRowContextMenu}
-                  equationString={testPointData.equationString}
-                  measurementType={testPointData.measurementType}
-                  riskResults={riskResults}
-                  onShowDerivedBreakdown={handleShowDerivedBreakdown}
-                  onShowRiskBreakdown={(modalType) =>
-                    setLocalBreakdownModal(modalType)
-                }
-                />
-                {calcResults?.calculatedBudgetComponents && tmdeTolerancesData[0] && (
-                  <PercentageBarGraph type = {testPointData.measurementType === "derived"} data={Object.fromEntries([...calcResults.calculatedBudgetComponents.map(item => [item.name, item.value_native || item.value]),[tmdeTolerancesData[0].measurementPoint.name, calcResults.combined_uncertainty_inputs_native
-]])} />
-                )}
+                <div className="form-section-warning">
+                  <p>
+                    <strong>Calculation Error:</strong> {calculationError}
+                  </p>
+                  <p
+                    style={{
+                      marginTop: "5px",
+                      fontSize: "0.9rem",
+                      color: "var(--text-color-muted)",
+                    }}
+                  >
+                    Please ensure all required fields are set (e.g., UUT
+                    nominal, equation, and all mapped TMDEs).
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <UncertaintyBudgetTable
+                    components={calcResults?.calculatedBudgetComponents || []}
+                    onRemove={handleRemoveComponent}
+                    calcResults={calcResults}
+                    referencePoint={uutNominal}
+                    uncertaintyConfidence={sessionData.uncReq.uncertaintyConfidence}
+                    onRowContextMenu={handleBudgetRowContextMenu}
+                    equationString={testPointData.equationString}
+                    measurementType={testPointData.measurementType}
+                    riskResults={riskResults}
+                    onShowDerivedBreakdown={handleShowDerivedBreakdown}
+                    onShowRiskBreakdown={(modalType) => setLocalBreakdownModal(modalType)}
+                    showContribution={showContribution}
+                    setShowContribution={setShowContribution}
+                  />
+                  {showContribution && calcResults?.calculatedBudgetComponents && calcResults.calculatedBudgetComponents.length > 0 && (
+                    <PercentageBarGraph 
+                      type={testPointData.measurementType === "derived"} 
+                      unit={uutNominal?.unit || "Units"} 
+                      data={Object.fromEntries(
+                        calcResults.calculatedBudgetComponents.map(item => {
+                          const value = testPointData.measurementType === "derived" 
+                            ? (item.contribution || 0)
+                            : (item.value_native || item.value || 0);
 
+                          const label = item.name.startsWith("Input: ") 
+                            ? item.name.substring(7) 
+                            : item.name;
 
-              </>
-            )}
+                          return [label, value];
+                        })
+                      )} 
+                    />
+                  )}
+                </>
+              )}
             </>
             {/* </Accordion> */}
           </div>
@@ -6422,71 +7235,75 @@ function Analysis({
       )}
       {analysisMode === "risk" && (
         <div>
-    {/* <Accordion title="Risk & Conformance Analysis" startOpen={true}> */}
-      <>
-      {!calcResults ? (
-        <div className="form-section-warning">
-          <p>Uncertainty budget must be calculated first.</p>
+          {/* <Accordion title="Risk & Conformance Analysis" startOpen={true}> */}
+          <>
+            {!calcResults ? (
+              <div className="form-section-warning">
+                <p>Uncertainty budget must be calculated first.</p>
+              </div>
+            ) : (
+              <>
+                {riskResults ? (
+                  <>
+                    <RiskAnalysisDashboard
+                      results={riskResults}
+                      onShowBreakdown={(modalType) =>
+                        setLocalBreakdownModal(modalType)
+                      }
+                    />
+                    {/* --- ADD THIS COMPONENT --- */}
+                    <RiskScatterplot
+                      results={riskResults}
+                      inputs={{
+                        LLow: parseFloat(riskInputs.LLow),
+                        LUp: parseFloat(riskInputs.LUp),
+                      }}
+                    />
+                  </>
+                ) : (
+                  <div
+                    className="placeholder-content"
+                    style={{ minHeight: "200px" }}
+                  >
+                    <p>Calculating risk...</p>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+          {/* </Accordion> */}
         </div>
-      ) : (
-        <>         
-          {riskResults ? (
+      )}
+      {analysisMode === "riskmitigation" && (
+        <>
+          {!calcResults ? (
+            <div className="form-section-warning">
+              <p>Uncertainty budget must be calculated first.</p>
+            </div>
+          ) : (
             <>
-              <RiskAnalysisDashboard
-                results={riskResults}
-                onShowBreakdown={(modalType) =>
-                  setLocalBreakdownModal(modalType)
-                }
-              />
-              {/* --- ADD THIS COMPONENT --- */}
-              <RiskScatterplot
-                results={riskResults}
-                inputs={{
-                  LLow: parseFloat(riskInputs.LLow),
-                  LUp: parseFloat(riskInputs.LUp),
-                }}
-              />
+              {riskResults ? (
+                <RiskMitigationDashboard
+                  results={riskResults}
+                  onShowBreakdown={(modalType) =>
+                    setLocalBreakdownModal(modalType)
+                  }
+                />
+              ) : (
+                <div
+                  className="placeholder-content"
+                  style={{ minHeight: "200px" }}
+                >
+                  <p>Calculating risk...</p>
+                </div>
+              )}
             </>
-          ) : (
-            <div className="placeholder-content" style={{ minHeight: "200px" }}>
-              <p>Calculating risk...</p>
-            </div>
           )}
         </>
       )}
-      </>
-    {/* </Accordion> */}
-    </div>
-  )}
-  {analysisMode === "riskmitigation" && (
-    <>
-      {!calcResults ? (
-        <div className="form-section-warning">
-          <p>Uncertainty budget must be calculated first.</p>
-        </div>
-      ) : (
-        <>         
-          {riskResults ? (
-            <RiskMitigationDashboard
-              results={riskResults}
-              onShowBreakdown={(modalType) =>
-                setLocalBreakdownModal(modalType)
-              }
-            />
-          ) : (
-            <div className="placeholder-content" style={{ minHeight: "200px" }}>
-              <p>Calculating risk...</p>
-            </div>
-          )}
-        </>
-      )}
-    </>
-  )}
       {analysisMode === "spec" && (
         // <Accordion title="Specification Comparison Analysis (Not Fully Implemented)" startOpen={true}>
-        <>
-        {renderSpecComparison()}
-        </>
+        <>{renderSpecComparison()}</>
         // </Accordion>
       )}
     </div>
@@ -6531,13 +7348,13 @@ function App() {
       testPoints: [],
       uncReq: {
         uncertaintyConfidence: 95,
-        reliability:  85,
+        reliability: 85,
         calInt: 12,
         measRelCalcAssumed: 85,
         neededTUR: 4,
         reqPFA: 2,
-        guardBandMultiplier: 1
-      }
+        guardBandMultiplier: 1,
+      },
     }),
     []
   );
@@ -6559,7 +7376,7 @@ function App() {
   const [appNotification, setAppNotification] = useState(null);
   const [sessionImageCache, setSessionImageCache] = useState(new Map());
   const [confirmationModal, setConfirmationModal] = useState(null);
-  const closeConfirmation = () => setConfirmationModal(null)
+  const closeConfirmation = () => setConfirmationModal(null);
 
   const handleOpenSessionEditor = (
     initialTab = "details",
@@ -6579,7 +7396,7 @@ function App() {
       if (savedSessions) {
         const parsed = JSON.parse(savedSessions);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const migratedSessions = parsed.map(session => ({
+          const migratedSessions = parsed.map((session) => ({
             ...defaultSession,
             ...session,
             id: session.id,
@@ -6588,7 +7405,9 @@ function App() {
 
           setSessions(migratedSessions);
           setSelectedSessionId(migratedSessions[0].id);
-          setSelectedTestPointId(migratedSessions[0].testPoints?.[0]?.id || null);
+          setSelectedTestPointId(
+            migratedSessions[0].testPoints?.[0]?.id || null
+          );
           loadedData = true;
         }
       }
@@ -6622,10 +7441,10 @@ function App() {
     }
     if (window.require) {
       try {
-        const { ipcRenderer } = window.require('electron');
-        ipcRenderer.send('set-theme', isDarkMode ? 'dark' : 'light');
+        const { ipcRenderer } = window.require("electron");
+        ipcRenderer.send("set-theme", isDarkMode ? "dark" : "light");
       } catch (error) {
-        console.warn('Could not connect to Electron IPC', error);
+        console.warn("Could not connect to Electron IPC", error);
       }
     }
   }, [isDarkMode]);
@@ -6666,10 +7485,12 @@ function App() {
 
   const executeDeleteTestPoint = (idToDelete) => {
     let nextSelectedTestPointId = selectedTestPointId;
-    
+
     const updatedSessions = sessions.map((session) => {
       if (session.id === selectedSessionId) {
-        const filteredTestPoints = session.testPoints.filter((tp) => tp.id !== idToDelete);
+        const filteredTestPoints = session.testPoints.filter(
+          (tp) => tp.id !== idToDelete
+        );
         if (selectedTestPointId === idToDelete) {
           nextSelectedTestPointId = filteredTestPoints[0]?.id || null;
         }
@@ -6686,13 +7507,14 @@ function App() {
   const handleDeleteSession = (sessionId) => {
     setConfirmationModal({
       title: "Delete Session",
-      message: "Are you sure you want to delete this session and all its measurement points?",
-      onConfirm: () => executeDeleteSession(sessionId)
+      message:
+        "Are you sure you want to delete this session and all its measurement points?",
+      onConfirm: () => executeDeleteSession(sessionId),
     });
-  }
+  };
 
   const handleSessionChange = (updatedSession, newImageFiles = []) => {
-    setSessions((prevSessions) => 
+    setSessions((prevSessions) =>
       prevSessions.map((s) => (s.id === updatedSession.id ? updatedSession : s))
     );
 
@@ -6720,7 +7542,9 @@ function App() {
         if (session.id !== selectedSessionId) return session;
         const updatedTestPoints = session.testPoints.map((tp) => {
           if (tp.id !== selectedTestPointId) return tp;
-          const newTolerances = tp.tmdeTolerances.filter((t) => t.id !== tmdeId);
+          const newTolerances = tp.tmdeTolerances.filter(
+            (t) => t.id !== tmdeId
+          );
           return { ...tp, tmdeTolerances: newTolerances };
         });
         return { ...session, testPoints: updatedTestPoints };
@@ -6732,8 +7556,9 @@ function App() {
   const handleDeleteTmdeDefinition = (tmdeId) => {
     setConfirmationModal({
       title: "Delete TMDE",
-      message: "Are you sure you want to delete this entire TMDE definition (all instances)?",
-      onConfirm: () => executeDeleteTmdeDefinition(tmdeId)
+      message:
+        "Are you sure you want to delete this entire TMDE definition (all instances)?",
+      onConfirm: () => executeDeleteTmdeDefinition(tmdeId),
     });
   };
 
@@ -6743,15 +7568,17 @@ function App() {
         if (session.id !== selectedSessionId) return session;
         const updatedTestPoints = session.testPoints.map((tp) => {
           if (tp.id !== selectedTestPointId) return tp;
-          
-          const newTolerances = tp.tmdeTolerances.map(t => {
-            if (t.id === tmdeId) {
-              const newQuantity = (t.quantity || 1) - 1;
-              return { ...t, quantity: newQuantity };
-            }
-            return t;
-          }).filter(t => t.quantity > 0); // Filter out if quantity becomes 0
-          
+
+          const newTolerances = tp.tmdeTolerances
+            .map((t) => {
+              if (t.id === tmdeId) {
+                const newQuantity = (t.quantity || 1) - 1;
+                return { ...t, quantity: newQuantity };
+              }
+              return t;
+            })
+            .filter((t) => t.quantity > 0); // Filter out if quantity becomes 0
+
           return { ...tp, tmdeTolerances: newTolerances };
         });
         return { ...session, testPoints: updatedTestPoints };
@@ -6759,17 +7586,15 @@ function App() {
     );
   };
 
-
-
   const textEncoder = new TextEncoder();
   const handleSaveToFile = async () => {
     let now = new Date();
 
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
+    const month = (now.getMonth() + 1).toString().padStart(2, "0");
+    const day = now.getDate().toString().padStart(2, "0");
     const year = now.getFullYear();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const hours = now.getHours().toString().padStart(2, "0");
+    const minutes = now.getMinutes().toString().padStart(2, "0");
 
     const currentSession = sessions.find((s) => s.id === selectedSessionId);
     if (!currentSession) return;
@@ -6778,58 +7603,62 @@ function App() {
     const imagesToSave = [];
     const sessionCache = sessionImageCache.get(currentSession.id);
     if (sessionCache && currentSession.noteImages) {
-      currentSession.noteImages.forEach(imageRef => {
+      currentSession.noteImages.forEach((imageRef) => {
         if (sessionCache.has(imageRef.id)) {
           imagesToSave.push({
             fileName: imageRef.fileName,
-            fileObject: sessionCache.get(imageRef.id) // This is the File object
+            fileObject: sessionCache.get(imageRef.id), // This is the File object
           });
         }
       });
     }
 
-    const fileName = `MUA_${currentSession.uutDescription || "Session"}_${year}${month}${day}_${hours}${minutes}.pdf`;
+    const fileName = `MUA_${
+      currentSession.uutDescription || "Session"
+    }_${year}${month}${day}_${hours}${minutes}.pdf`;
 
     // 1. Prepare JSON Data for attachment
     const jsonData = JSON.stringify(currentSession, null, 2);
     const jsonDataBytes = textEncoder.encode(jsonData);
-    
+
     // 2. Initialize PDF Document
     const pdfDoc = await PDFDocument.create();
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const helveticaBoldFont = await pdfDoc.embedFont(
+      StandardFonts.HelveticaBold
+    );
     const fonts = { regular: helveticaFont, bold: helveticaBoldFont };
 
     // 3. Set Standard PDF Document Metadata
     pdfDoc.setTitle(fileName);
-    pdfDoc.setSubject('MUA Session Data and Overview');
-    pdfDoc.setKeywords(['MUA', 'Session', 'JSON', 'Overview']);
-    pdfDoc.setProducer('MUA Tool');
-    pdfDoc.setCreator('MUA Tool');
+    pdfDoc.setSubject("MUA Session Data and Overview");
+    pdfDoc.setKeywords(["MUA", "Session", "JSON", "Overview"]);
+    pdfDoc.setProducer("MUA Tool");
+    pdfDoc.setCreator("MUA Tool");
     pdfDoc.setCreationDate(now);
     pdfDoc.setModificationDate(now);
-    
+
     // 4. Generate the new Overview Pages
     try {
       const helpers = {
         getToleranceSummary,
         calculateUncertaintyFromToleranceObject,
         convertPpmToUnit,
-        getAbsoluteLimits
+        getAbsoluteLimits,
       };
       await generateOverviewReport(pdfDoc, currentSession, fonts, helpers);
     } catch (error) {
       console.error("Failed to generate PDF overview report:", error);
       setAppNotification({
         title: "PDF Error",
-        message: `Failed to generate PDF overview: ${error.message}`
+        message: `Failed to generate PDF overview: ${error.message}`,
       });
     }
 
     // 5. ATTACH THE JSON DATA
-    await pdfDoc.attach(jsonDataBytes, 'sessionData.json', {
-        mimeType: 'application/json',
-        description: 'Full MUA session data',
+    await pdfDoc.attach(jsonDataBytes, "sessionData.json", {
+      mimeType: "application/json",
+      description: "Full MUA session data",
     });
 
     // 6. ATTACH ALL IMAGES
@@ -6838,7 +7667,7 @@ function App() {
         const imageBytes = await image.fileObject.arrayBuffer();
         await pdfDoc.attach(imageBytes, image.fileName, {
           mimeType: image.fileObject.type,
-          description: 'User-uploaded note image',
+          description: "User-uploaded note image",
         });
       } catch (err) {
         console.error(`Failed to attach image ${image.fileName}:`, err);
@@ -6849,7 +7678,7 @@ function App() {
     // 7. Finalize and Save
     const pdfBytes = await pdfDoc.save();
 
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const blob = new Blob([pdfBytes], { type: "application/pdf" });
     const href = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = href;
@@ -6875,65 +7704,76 @@ function App() {
         try {
           pdfDoc = await PDFDocument.load(arrayBuffer);
         } catch (loadError) {
-          console.error('PDF Load Error:', loadError);
-          throw new Error('Failed to load: This does not appear to be a valid PDF file.');
+          console.error("PDF Load Error:", loadError);
+          throw new Error(
+            "Failed to load: This does not appear to be a valid PDF file."
+          );
         }
 
         // 2. Use the new helper function to get ALL attachments (including mimeType)
         const attachments = extractAttachments(pdfDoc);
 
         if (attachments.length === 0) {
-          throw new Error('Error: This PDF does not contain any session data attachments.');
+          throw new Error(
+            "Error: This PDF does not contain any session data attachments."
+          );
         }
 
         // 3. Find the 'sessionData.json' attachment
         const sessionAttachment = attachments.find(
-          (a) => a.name === 'sessionData.json'
+          (a) => a.name === "sessionData.json"
         );
 
         if (!sessionAttachment) {
-          throw new Error('Error: Could not find the required "sessionData.json" attachment in this PDF.');
+          throw new Error(
+            'Error: Could not find the required "sessionData.json" attachment in this PDF.'
+          );
         }
 
         // 4. Decode and Parse the JSON
         let jsonData;
         try {
-          const textDecoder = new TextDecoder(); 
+          const textDecoder = new TextDecoder();
           jsonData = textDecoder.decode(sessionAttachment.data);
         } catch (decodeError) {
-          console.error('Text Decode Error:', decodeError);
-          throw new Error('Failed to decode session data. The attachment may be corrupt.');
+          console.error("Text Decode Error:", decodeError);
+          throw new Error(
+            "Failed to decode session data. The attachment may be corrupt."
+          );
         }
 
         let loadedSession;
         try {
           loadedSession = JSON.parse(jsonData);
         } catch (parseError) {
-          console.error('JSON Parse Error:', parseError);
-          console.log('--- Corrupted JSON String ---', jsonData);
-          throw new Error('Failed to parse session data. The JSON data inside the file is corrupt.');
+          console.error("JSON Parse Error:", parseError);
+          console.log("--- Corrupted JSON String ---", jsonData);
+          throw new Error(
+            "Failed to parse session data. The JSON data inside the file is corrupt."
+          );
         }
 
         if (!loadedSession || !loadedSession.id) {
-           throw new Error('Error: Attached data is not a valid session object.');
+          throw new Error(
+            "Error: Attached data is not a valid session object."
+          );
         }
 
         // 5. FIND AND LOAD IMAGE DATA
         // This will hold the loaded images for the cache
         const newSessionImageCache = new Map();
         if (loadedSession.noteImages && loadedSession.noteImages.length > 0) {
-          loadedSession.noteImages.forEach(imageRef => {
+          loadedSession.noteImages.forEach((imageRef) => {
             const imageAttachment = attachments.find(
               (a) => a.name === imageRef.fileName
             );
-            
+
             if (imageAttachment) {
               // Create a Blob from the raw data, which can be used to create an object URL
-              const imageBlob = new Blob(
-                [imageAttachment.data], 
-                { type: imageAttachment.mimeType }
-              );
-              
+              const imageBlob = new Blob([imageAttachment.data], {
+                type: imageAttachment.mimeType,
+              });
+
               newSessionImageCache.set(imageRef.id, imageBlob);
             }
           });
@@ -6966,18 +7806,17 @@ function App() {
         // 8. Set the UI to view the newly loaded session
         setSelectedSessionId(loadedSession.id);
         setSelectedTestPointId(loadedSession.testPoints?.[0]?.id || null);
-        setEditingSession(loadedSession); 
+        setEditingSession(loadedSession);
 
         // 9. Use the notification modal
         setAppNotification({
-          title: 'Success',
+          title: "Success",
           message: `Session "${loadedSession.name}" loaded successfully.`,
         });
-
       } catch (err) {
-        console.error('Failed to load session from PDF:', err);
+        console.error("Failed to load session from PDF:", err);
         setAppNotification({
-          title: 'Load Failed',
+          title: "Load Failed",
           message: err.message,
         });
       }
@@ -7065,7 +7904,7 @@ function App() {
     setConfirmationModal({
       title: "Delete Measurement Point",
       message: "Are you sure you want to delete this measurement point?",
-      onConfirm: () => executeDeleteTestPoint(idToDelete)
+      onConfirm: () => executeDeleteTestPoint(idToDelete),
     });
   };
 
@@ -7129,32 +7968,38 @@ function App() {
           message={appNotification?.message}
         />
         {/* --- Confirmation Modal --- */}
-      {confirmationModal && (
-        <div className="modal-overlay" style={{ zIndex: 2001 }}>
-          <div className="modal-content">
-            <button onClick={closeConfirmation} className="modal-close-button">
-              &times;
-            </button>
-            <h3>{confirmationModal.title}</h3>
-            <p>{confirmationModal.message}</p>
-            <div className="modal-actions" style={{ justifyContent: "center", gap: "15px" }}>
-              <button 
-                className="button button-secondary" 
+        {confirmationModal && (
+          <div className="modal-overlay" style={{ zIndex: 2001 }}>
+            <div className="modal-content">
+              <button
                 onClick={closeConfirmation}
+                className="modal-close-button"
               >
-                Cancel
+                &times;
               </button>
-              <button 
-                className="button" 
-                style={{ backgroundColor: 'var(--status-bad)' }} // Red color for danger
-                onClick={confirmationModal.onConfirm}
+              <h3>{confirmationModal.title}</h3>
+              <p>{confirmationModal.message}</p>
+              <div
+                className="modal-actions"
+                style={{ justifyContent: "center", gap: "15px" }}
               >
-                Delete
-              </button>
+                <button
+                  className="button button-secondary"
+                  onClick={closeConfirmation}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="button"
+                  style={{ backgroundColor: "var(--status-bad)" }} // Red color for danger
+                  onClick={confirmationModal.onConfirm}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
         <AddTestPointModal
           isOpen={isAddModalOpen || !!editingTestPoint}
           onClose={() => {
