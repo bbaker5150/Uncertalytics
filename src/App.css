@@ -267,33 +267,33 @@ body.theme-stranger {
   --border-radius: 4px;
   --modal-radius: 4px;
   --seal-radius: 2px;
-  --border-width: 2px; /* Thick, printed borders */
+  --border-width: 2px;
   
-  --backdrop-filter: sepia(20%); /* Slight vintage photo feel */
+  --backdrop-filter: sepia(20%);
   --sidebar-backdrop-filter: none;
   
-  /* PALETTE: Vintage Parchment & Retro Stripes */
-  --background-color: #f0e6d2; /* Aged Paper */
+  /* PALETTE: Vintage Parchment */
+  --background-color: #f0e6d2;
   background-image: linear-gradient(0deg, transparent 24%, rgba(0, 0, 0, .05) 25%, rgba(0, 0, 0, .05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, .05) 75%, rgba(0, 0, 0, .05) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 0, 0, .05) 25%, rgba(0, 0, 0, .05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, .05) 75%, rgba(0, 0, 0, .05) 76%, transparent 77%, transparent);
-  background-size: 50px 50px; /* Graph paper subtle texture */
+  background-size: 50px 50px;
 
-  --primary-color: #c92a2a;    /* Retro Red (Bike) */
-  --primary-color-dark: #8c1c1c;
-  --primary-color-light: #e6c8a0; /* Faded Parchment Accent */
+  /* CORE REDS */
+  --primary-color: #d80000;      /* Vibrant Blood Red */
+  --primary-color-dark: #8a0000; /* Dark Dried Blood (Text) */
+  --primary-color-light: rgba(216, 0, 0, 0.15); /* Faint Red Wash for Active Sidebar */
   
-  --text-color: #2a2118;       /* Faded Ink */
-  --text-color-muted: #786452; /* Old pencil */
+  --text-color: #2a2118;
+  --text-color-muted: #786452;
   
   /* Surfaces */
   --header-background: #e6d8c0;
-  --content-background: #fdfbf7; /* Cleaner paper for content */
-  --sidebar-background: #e6d8c0;
+  --content-background: #fdfbf7;
+  --sidebar-background: transparent;
   --input-background: #ffffff;
   
   --component-bg: #f5f0e6;
   --component-header-bg: #e6d8c0;
   
-  /* Borders: Double lines common in 80s layout */
   --border-color: #5c4b37;
   
   /* Toggles */
@@ -301,31 +301,32 @@ body.theme-stranger {
   --toggle-knob: #5c4b37;
 
   /* Buttons */
-  --button-primary-bg: #c92a2a;
-  --button-primary-hover: #a61e1e;
+  --button-primary-bg: #d80000;
+  --button-primary-hover: #b30000;
   --button-secondary-bg: #5c4b37;
   --button-secondary-hover: #3e3224;
   
   /* Status */
-  --status-good: #2e7c31;      /* Forest Green */
-  --status-warning: #d97706;   /* Amber */
-  --status-bad: #c62828;       /* Blood Red */
+  --status-good: #2e7c31;
+  --status-warning: #d97706;
+  --status-bad: #d80000;
   --status-good-bg: #dcedc8;
   --status-warning-bg: #ffe0b2;
   --status-bad-bg: #ffcdd2;
   
-  --seal-background-color: #c92a2a;
-  --seal-background-color-derived: #3f51b5; /* Indigo */
-  --seal-tmde-background-color: #5d4037;
+  /* SEALS: Uniform Blood Red */
+  --seal-background-color: #d80000;
+  --seal-background-color-derived: #d80000;
+  --seal-tmde-background-color: #d80000;
   
   --scrollbar-track: #e6d8c0;
   --scrollbar-thumb: #5c4b37;
-  --scrollbar-thumb-hover: #c92a2a;
+  --scrollbar-thumb-hover: #d80000;
   
   /* Effects */
   --border-gradient: none;
-  --box-shadow-glow: 4px 4px 0px rgba(92, 75, 55, 0.2); /* Hard shadow, no blur */
-  --box-shadow-glow-hover: 6px 6px 0px rgba(201, 42, 42, 0.4);
+  --box-shadow-glow: 4px 4px 0px rgba(92, 75, 55, 0.2);
+  --box-shadow-glow-hover: 6px 6px 0px rgba(216, 0, 0, 0.4);
   
   --modal-overlay-color: rgba(42, 33, 24, 0.6);
   --table-header-bg: #dccbb1;
@@ -336,26 +337,27 @@ body.theme-stranger {
 
 /* --- DARK MODE: "The Upside Down" --- */
 body.theme-stranger.dark-mode {
-  /* Typography: Title Card + Terminal */
+  /* Typography */
   --main-font: 'ITC Benguiat', 'Georgia', serif;
   
-  /* The Void Palette */
-  --background-color: #030002; /* Almost Pitch Black */
+  /* The Void */
+  --background-color: #030002;
   
-  /* Atmospheric: Spores in the air */
+  /* Spores & Scanlines */
   background-image: 
     radial-gradient(circle at 20% 30%, rgba(30, 0, 0, 0.4) 0%, transparent 40%),
     radial-gradient(circle at 80% 80%, rgba(10, 10, 30, 0.3) 0%, transparent 40%),
-    repeating-linear-gradient(0deg, transparent, transparent 2px, #110000 3px, transparent 4px); /* Scanlines */
+    repeating-linear-gradient(0deg, transparent, transparent 2px, #110000 3px, transparent 4px);
   background-size: cover;
   background-attachment: fixed;
   
-  --primary-color: #ff0000;    /* Neon Title Red */
-  --primary-color-dark: #8a0000;
-  --primary-color-light: #220000;
+  /* CORE NEONS */
+  --primary-color: #ff0000;      /* Super Neon Red */
+  --primary-color-dark: #ff0000; /* Neon Red Text (for Active Sidebar) */
+  --primary-color-light: #440000; /* Dark Red Background (for Active Sidebar) */
   
-  --text-color: #e0e0e0;       /* Silver */
-  --text-color-muted: #888888; /* Ash */
+  --text-color: #e0e0e0;
+  --text-color-muted: #888888;
   
   --header-background: #0a0a0a;
   --content-background: rgba(13, 13, 13, 0.95);
@@ -363,9 +365,8 @@ body.theme-stranger.dark-mode {
   --input-background: #000000;
   
   --component-bg: #111111;
-  --component-header-bg: #1a0505; /* Deep dark red tint */
+  --component-header-bg: #1a0505;
   
-  /* Borders: Glowing Veins */
   --border-color: #500000;
   
   --toggle-bg-off: #333;
@@ -374,25 +375,24 @@ body.theme-stranger.dark-mode {
   --button-primary-bg: #cc0000;
   --button-primary-hover: #ff0000;
   
-  --status-good: #00ff66;      /* Toxic Green */
-  --status-warning: #ffaa00;   /* Sodium Light Orange */
-  --status-bad: #ff0000;       /* Alert Red */
+  --status-good: #00ff66;
+  --status-warning: #ffaa00;
+  --status-bad: #ff0000;
   --status-good-bg: #002200;
   --status-warning-bg: #221100;
   --status-bad-bg: #220000;
   
+  /* SEALS: Uniform Super Neon Red */
   --seal-background-color: #ff0000;
-  --seal-background-color-derived: #aa00ff; /* Void Purple */
-  --seal-tmde-background-color: #444444;
+  --seal-background-color-derived: #ff0000;
+  --seal-tmde-background-color: #ff0000;
   
-  /* Effects: Neon Bleed & Flicker */
+  /* Effects */
   --scrollbar-track: #000000;
   --scrollbar-thumb: #8a0000;
   --scrollbar-thumb-hover: #ff0000;
   
   --border-gradient: linear-gradient(180deg, #ff0000, transparent);
-  
-  /* The "Rift" Glow */
   --box-shadow-glow: 0 0 15px rgba(255, 0, 0, 0.2), 0 0 5px rgba(255, 0, 0, 0.3);
   --box-shadow-glow-hover: 0 0 25px rgba(255, 0, 0, 0.5), 0 0 10px rgba(255, 0, 0, 0.8);
   
