@@ -1,10 +1,10 @@
 /* =================================================================== */
 /*
- * APP.CSS - Main Stylesheet (THEME-READY FULL VERSION)
+ * APP.CSS - Main Stylesheet
  *
  * ORGANIZATION:
  *
- * 1.  :ROOT & THEME VARIABLES (Updated with Theme Logic)
+ * 1.  :ROOT & THEME VARIABLES
  * 2.  BASE STYLES
  * 3.  APP LAYOUT & GLOBAL COMPONENTS
  * 4.  MODALS & OVERLAYS
@@ -12,11 +12,10 @@
  * 6.  UNCERTAINTY ANALYSIS
  * 7.  RISK ANALYSIS & DASHBOARD
  * 8.  SPECIFICATION COMPARISON
- * 9.  DARK MODE OVERRIDES (Legacy/Fallback)
+ * 9.  DARK MODE OVERRIDES
  * 10. MEDIA QUERIES
  * 11. CONTEXT MENU
  * 12. MISCELLANEOUS
- * 13. SESSION IMAGES
  *
  */
 /* =================================================================== */
@@ -25,382 +24,237 @@
 /* =================================================================== */
 /* 1. :ROOT & THEME VARIABLES                                          */
 /* =================================================================== */
-
-/* --- 1A. BASE LIGHT THEME (Default) --- */
 :root {
-  /* Typography: Modern, clean, high-readability */
-  --main-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --heading-font-weight: 700;
-  --letter-spacing: normal;
-
-  /* Core Colors */
   --background-color: #f8f9fa;
-  --primary-color: #007bff;
   --primary-color-dark: #2c5282;
-  --primary-color-light: #e7f1ff;
-  
   --text-color: #212529;
   --text-color-muted: #6c757d;
-  
-  /* Surfaces */
   --header-background: #ffffff;
   --content-background: #ffffff;
-  --input-background: #ffffff;
-  --sidebar-background: transparent;
-  --component-bg: #ffffff;
-  --component-header-bg: #f1f3f5;
-  
-  /* UI Elements */
   --border-color: #dee2e6;
-  --border-width: 1px;
-  --border-radius: 6px;
-  --modal-radius: 16px;
-  --seal-radius: 30px;
-  
-  /* Toggles */
-  --toggle-bg-off: #dee2e6;
-  --toggle-knob: #ffffff;
-
-  /* Buttons */
+  --input-background: #ffffff;
   --button-primary-bg: #007bff;
   --button-primary-hover: #0069d9;
-  
-  /* Status */
-  --status-good: #198754;
-  --status-warning: #ffc107;
-  --status-bad: #dc3545;
+  --primary-color: #007bff;
+  --primary-color-light: #e7f1ff;
   --status-good-bg: #d1e7dd;
   --status-warning-bg: #fff3cd;
   --status-bad-bg: #f8d7da;
-  
-  /* Risk Colors */
+  --status-good: #198754;
+  --status-warning: #ffc107;
+  --status-bad: #dc3545;
   --risk-pfa-good-color: #198754;
   --risk-pfa-warning-color: #ffc107;
   --risk-pfa-bad-color: #dc3545;
-
-  /* Seals */
   --seal-background-color: #007bff;
   --seal-background-color-derived: #8a4caf;
   --seal-tmde-background-color: #6c757d;
-
-  /* Effects */
   --scrollbar-track: #f1f1f1;
   --scrollbar-thumb: #c1c1c1;
-  --scrollbar-thumb-hover: #a8a8a8;
+  --scrollbar-thumb-hover: #a8a8a;
   --border-gradient: linear-gradient(135deg, rgba(0, 123, 255, 0.5), rgba(138, 76, 175, 0.5));
   --box-shadow-glow: 0 10px 40px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 123, 255, 0.05);
   --box-shadow-glow-hover: 0 15px 40px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 123, 255, 0.2);
-  
-  /* Glass Control */
-  --backdrop-filter: none;
-  --sidebar-backdrop-filter: none;
-
-  /* Semantic Vars */
-  --button-secondary-bg: #6c757d;
-  --button-secondary-hover: #5a6268;
-  --modal-overlay-color: rgba(0, 0, 0, 0.6);
-  --table-header-bg: #f8f9fa;
-  --table-header-text: #495057;
-  --shadow-color: rgba(0, 0, 0, 0.1);
-  --heading-color: #2c3e50;
 }
 
-/* --- 1B. BASE DARK MODE --- */
 body.dark-mode {
-  --background-color: #121212;
-  --primary-color: #3b82f6;
   --primary-color-dark: #63b3ed;
-  --primary-color-light: #2a3a5a;
-  
+  --background-color: #121212;
   --text-color: #e0e0e0;
   --text-color-muted: #a0a0a0;
-  
   --header-background: #1e1e1e;
   --content-background: #1e1e1e;
-  --input-background: #2c2c2c;
-  --sidebar-background: transparent;
-  --component-bg: #1e1e1e;
-  --component-header-bg: #2d3748;
-  
   --border-color: #424242;
-  --toggle-bg-off: #4a5568;
-  --toggle-knob: #e2e8f0;
-  
+  --input-background: #2c2c2c;
   --button-primary-bg: #0d6efd;
   --button-primary-hover: #3b82f6;
-  
-  --status-good: #28a745;
-  --status-warning: #ffc107;
-  --status-bad: #dc3545;
+  --primary-color: #3b82f6;
+  --primary-color-light: #2a3a5a;
   --status-good-bg: #142e22;
   --status-warning-bg: #33270b;
   --status-bad-bg: #2f1b20;
-  
+  --status-good: #28a745;
+  --status-warning: #ffc107;
+  --status-bad: #dc3545;
   --risk-pfa-good-color: #28a745;
   --risk-pfa-warning-color: #ffc107;
   --risk-pfa-bad-color: #dc3545;
-
   --seal-background-color: #007bff;
   --seal-background-color-derived: #b794d1;
   --seal-tmde-background-color: #a0aec0;
-  
   --scrollbar-track: #121212;
   --scrollbar-thumb: #424242;
   --scrollbar-thumb-hover: #686868;
-
   --border-gradient: linear-gradient(135deg, #00d2ff, #3a7bd5);
   --box-shadow-glow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 210, 255, 0.15);
   --box-shadow-glow-hover: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 210, 255, 0.3);
-
-  --button-secondary-bg: #4a5568;
-  --button-secondary-hover: #2d3748;
-  --modal-overlay-color: rgba(0, 0, 0, 0.8);
-  --table-header-bg: #2d3748;
-  --table-header-text: #e2e8f0;
-  --shadow-color: rgba(0, 0, 0, 0.5);
-  --heading-color: #ffffff;
 }
 
-/* --- 1C. THEME: AERO GLASS --- */
+/* =================================================================== */
+/* THEME: CYBERPUNK (High Contrast Neon)                               */
+/* Add class="theme-cyberpunk" to your <body> tag                      */
+/* =================================================================== */
+
+body.theme-cyberpunk {
+  /* Enforce Dark Mode Only aesthetic usually, but here is a mix */
+  --background-color: #000000;
+  --content-background: #121212;
+  --header-background: #1a1a1a;
+  
+  --text-color: #e0e0e0;
+  --text-color-muted: #888888;
+  
+  /* Cyber Yellow & Neon Pink */
+  --primary-color: #fcee0a; 
+  --primary-color-dark: #c5b800;
+  --primary-color-light: #3a3800;
+  --button-primary-bg: #fcee0a;
+  --button-primary-hover: #e6d800;
+  
+  /* Overriding text color on primary buttons because yellow is bright */
+  --button-text-color: #000000; 
+
+  --border-color: #333333;
+  --input-background: #000000;
+  
+  /* Hard, sharp borders */
+  --border-gradient: linear-gradient(90deg, #fcee0a, #ff003c);
+  --box-shadow-glow: 5px 5px 0px rgba(252, 238, 10, 0.4); /* Hard shadow */
+  
+  --status-good: #00ff9f;
+  --status-warning: #fcee0a;
+  --status-bad: #ff003c;
+}
+
+/* Cyberpunk Specific Overrides */
+body.theme-cyberpunk .button,
+body.theme-cyberpunk .content-area,
+body.theme-cyberpunk .modal-content,
+body.theme-cyberpunk input {
+  border-radius: 0px; /* Remove curves for industrial look */
+}
+
+body.theme-cyberpunk .button {
+  color: black; 
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* =================================================================== */
+/* THEME: AERO GLASS (Futuristic Glassmorphism)                        */
+/* Add class="theme-glass" to your <body> tag                          */
+/* =================================================================== */
+
+/* --- Light Mode --- */
 body.theme-glass {
-  /* Classic Windows Aero Font: Segoe UI first, then glossy fallbacks */
-  --main-font: 'Segoe UI', 'Helvetica Neue', 'Trebuchet MS', sans-serif;
-  
-  --backdrop-filter: blur(20px);
-  --sidebar-backdrop-filter: none;
-  --modal-overlay-color: rgba(255, 255, 255, 0.1);
-  --table-header-bg: rgba(255,255,255, 0.3);
-  
-  /* Mesh Gradient */
-  background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,0.15) 0, transparent 50%), 
-                    radial-gradient(at 50% 0%, hsla(225,39%,30%,0.15) 0, transparent 50%), 
-                    radial-gradient(at 100% 0%, hsla(339,49%,30%,0.15) 0, transparent 50%);
+  /* Complex mesh gradient background */
+  --background-color: #e0eafc; /* Fallback */
+  background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                    radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                    radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
   background-attachment: fixed;
   background-size: cover;
-}
 
-/* Glass Light */
-body.theme-glass {
-  --background-color: #e0eafc;
-  --content-background: rgba(255, 255, 255, 0.65);
-  --sidebar-background: transparent;
-  --header-background: rgba(255, 255, 255, 0.4);
+  --content-background: rgba(255, 255, 255, 0.65); /* Semi-transparent */
+  --header-background: rgba(255, 255, 255, 0.65);
   --input-background: rgba(255, 255, 255, 0.5);
-  --component-bg: rgba(255, 255, 255, 0.4);
-  --component-header-bg: rgba(255, 255, 255, 0.6);
-  --border-color: rgba(255, 255, 255, 0.6);
-  --toggle-bg-off: rgba(0, 0, 0, 0.1);
+  
+  --primary-color: #3b82f6;
+  --primary-color-light: rgba(59, 130, 246, 0.15);
+  --border-color: rgba(255, 255, 255, 0.4);
+  
+  --border-gradient: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.1));
+  --box-shadow-glow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
 }
 
-/* Glass Dark */
+/* --- Dark Mode --- */
 body.theme-glass.dark-mode {
-  --background-color: #0f172a;
+  --background-color: #0f172a; /* Fallback */
   background-image: radial-gradient(at 40% 20%, hsla(266,50%,28%,1) 0px, transparent 50%),
                     radial-gradient(at 80% 0%, hsla(189,100%,36%,1) 0px, transparent 50%),
                     radial-gradient(at 0% 50%, hsla(340,100%,26%,1) 0px, transparent 50%);
   
   --content-background: rgba(20, 25, 40, 0.6);
-  --sidebar-background: transparent;
-  --header-background: rgba(20, 25, 40, 0.4);
+  --header-background: rgba(20, 25, 40, 0.6);
   --input-background: rgba(0, 0, 0, 0.3);
-  --component-bg: rgba(255, 255, 255, 0.06);
-  --component-header-bg: rgba(255, 255, 255, 0.08);
   
   --text-color: #ffffff;
-  --text-color-muted: #cbd5e1;
-  --border-color: rgba(255, 255, 255, 0.15);
-  --primary-color: #00f2ff;
+  --text-color-muted: #94a3b8;
+  --primary-color: #00f2ff; /* Neon Cyan */
   --primary-color-dark: #00b8c2;
+  --primary-color-light: rgba(0, 242, 255, 0.1);
+  
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-gradient: linear-gradient(135deg, rgba(0, 242, 255, 0.5), rgba(147, 51, 234, 0.5));
   --box-shadow-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-  --toggle-bg-off: rgba(255, 255, 255, 0.1);
+  
+  --seal-background-color: rgba(0, 242, 255, 0.1);
 }
 
-/* --- 1D. THEME: CYBERPUNK --- */
-body.theme-cyberpunk {
-  /* Coding/Terminal Font */
-  --main-font: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
-  --heading-font-weight: 800;
-  --letter-spacing: 0.5px;
-  
-  --border-radius: 0px;
-  --modal-radius: 0px;
-  --seal-radius: 0px;
-  --border-width: 2px;
-  --backdrop-filter: none;
-  --sidebar-backdrop-filter: none;
-  
-  --background-color: #f0f0f0;
-  --primary-color: #d600c0;
+/* --- Essential Glass CSS --- */
+/* This enables the blur effect on your specific containers */
+body.theme-glass .content-area,
+body.theme-glass .modal-content,
+body.theme-glass .risk-card,
+body.theme-glass .metric-pod,
+body.theme-glass .analysis-session-header,
+body.theme-glass .tmde-test-point-group {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+}
+
+/* =================================================================== */
+/* THEME: BOTANICAL (Nature & Calm)                                    */
+/* Add class="theme-nature" to your <body> tag                         */
+/* =================================================================== */
+
+/* Light Mode */
+body.theme-nature {
+  --background-color: #f1f3f0;
   --content-background: #ffffff;
-  --sidebar-background: transparent;
-  --border-color: #000000;
-  --component-bg: #ffffff;
-  --component-header-bg: #d600c0;
-  --border-gradient: linear-gradient(90deg, #d600c0, #00eaff);
-  --box-shadow-glow: 5px 5px 0px rgba(0,0,0,1);
-  --toggle-bg-off: #999;
+  --header-background: #e8ede9;
+  
+  --primary-color: #4a7c59; /* Forest Green */
+  --primary-color-dark: #355e3b;
+  --primary-color-light: #e0ebe3;
+  
+  --text-color: #2d3831;
+  --text-color-muted: #6b7c70;
+  
+  --border-color: #d8e2dc;
+  --input-background: #f8faf9;
+  
+  --button-primary-bg: #4a7c59;
+  --button-primary-hover: #3a6345;
+  
+  --border-gradient: linear-gradient(135deg, #4a7c59, #8da399);
+  --box-shadow-glow: 0 10px 30px rgba(74, 124, 89, 0.15);
+  
+  --status-good: #4a7c59;
+  --status-warning: #d4a373; /* Wood tone */
+  --status-bad: #bc4749; /* Muted red */
 }
 
-body.theme-cyberpunk.dark-mode {
-  --background-color: #050505;
-  --content-background: #121212;
-  --sidebar-background: transparent;
-  --input-background: #000000;
-  --component-bg: #000000;
-  --component-header-bg: #333;
+/* Dark Mode */
+body.theme-nature.dark-mode {
+  --background-color: #1b2420;
+  --content-background: #242e29;
+  --header-background: #2d3831;
   
-  --primary-color: #fcee0a;
-  --primary-color-dark: #c5b800;
-  --border-color: #333333;
-  --box-shadow-glow: 3px 3px 0px rgba(252, 238, 10, 0.6);
-}
-
-/* --- 1E. THEME: STRANGER THINGS (The Upside Down) --- */
-/* --- LIGHT MODE: "The Party / 1983 D&D Manual" --- */
-body.theme-stranger {
-  /* Typography: Stephen King Book Cover / D&D Manual */
-  --main-font: 'ITC Benguiat', 'Bookman Old Style', 'Georgia', serif;
-  --heading-font-weight: 900;
-  --letter-spacing: 0.5px;
+  --primary-color: #8fb39c; /* Sage */
+  --primary-color-dark: #4a7c59;
+  --primary-color-light: #2d3831;
   
-  /* Layout: Vintage Paper Feel */
-  --border-radius: 4px;
-  --modal-radius: 4px;
-  --seal-radius: 2px;
-  --border-width: 2px; /* Thick, printed borders */
+  --text-color: #e8ede9;
+  --text-color-muted: #a3b5aa;
   
-  --backdrop-filter: sepia(20%); /* Slight vintage photo feel */
-  --sidebar-backdrop-filter: none;
+  --border-color: #35453b;
+  --input-background: #1b2420;
   
-  /* PALETTE: Vintage Parchment & Retro Stripes */
-  --background-color: #f0e6d2; /* Aged Paper */
-  background-image: linear-gradient(0deg, transparent 24%, rgba(0, 0, 0, .05) 25%, rgba(0, 0, 0, .05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, .05) 75%, rgba(0, 0, 0, .05) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 0, 0, .05) 25%, rgba(0, 0, 0, .05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, .05) 75%, rgba(0, 0, 0, .05) 76%, transparent 77%, transparent);
-  background-size: 50px 50px; /* Graph paper subtle texture */
-
-  --primary-color: #c92a2a;    /* Retro Red (Bike) */
-  --primary-color-dark: #8c1c1c;
-  --primary-color-light: #e6c8a0; /* Faded Parchment Accent */
-  
-  --text-color: #2a2118;       /* Faded Ink */
-  --text-color-muted: #786452; /* Old pencil */
-  
-  /* Surfaces */
-  --header-background: #e6d8c0;
-  --content-background: #fdfbf7; /* Cleaner paper for content */
-  --sidebar-background: #e6d8c0;
-  --input-background: #ffffff;
-  
-  --component-bg: #f5f0e6;
-  --component-header-bg: #e6d8c0;
-  
-  /* Borders: Double lines common in 80s layout */
-  --border-color: #5c4b37;
-  
-  /* Toggles */
-  --toggle-bg-off: #bcaaa4;
-  --toggle-knob: #5c4b37;
-
-  /* Buttons */
-  --button-primary-bg: #c92a2a;
-  --button-primary-hover: #a61e1e;
-  --button-secondary-bg: #5c4b37;
-  --button-secondary-hover: #3e3224;
-  
-  /* Status */
-  --status-good: #2e7c31;      /* Forest Green */
-  --status-warning: #d97706;   /* Amber */
-  --status-bad: #c62828;       /* Blood Red */
-  --status-good-bg: #dcedc8;
-  --status-warning-bg: #ffe0b2;
-  --status-bad-bg: #ffcdd2;
-  
-  --seal-background-color: #c92a2a;
-  --seal-background-color-derived: #3f51b5; /* Indigo */
-  --seal-tmde-background-color: #5d4037;
-  
-  --scrollbar-track: #e6d8c0;
-  --scrollbar-thumb: #5c4b37;
-  --scrollbar-thumb-hover: #c92a2a;
-  
-  /* Effects */
-  --border-gradient: none;
-  --box-shadow-glow: 4px 4px 0px rgba(92, 75, 55, 0.2); /* Hard shadow, no blur */
-  --box-shadow-glow-hover: 6px 6px 0px rgba(201, 42, 42, 0.4);
-  
-  --modal-overlay-color: rgba(42, 33, 24, 0.6);
-  --table-header-bg: #dccbb1;
-  --table-header-text: #2a2118;
-  --shadow-color: rgba(92, 75, 55, 0.3);
-  --heading-color: #2a2118;
-}
-
-/* --- DARK MODE: "The Upside Down" --- */
-body.theme-stranger.dark-mode {
-  /* Typography: Title Card + Terminal */
-  --main-font: 'ITC Benguiat', 'Georgia', serif;
-  
-  /* The Void Palette */
-  --background-color: #030002; /* Almost Pitch Black */
-  
-  /* Atmospheric: Spores in the air */
-  background-image: 
-    radial-gradient(circle at 20% 30%, rgba(30, 0, 0, 0.4) 0%, transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(10, 10, 30, 0.3) 0%, transparent 40%),
-    repeating-linear-gradient(0deg, transparent, transparent 2px, #110000 3px, transparent 4px); /* Scanlines */
-  background-size: cover;
-  background-attachment: fixed;
-  
-  --primary-color: #ff0000;    /* Neon Title Red */
-  --primary-color-dark: #8a0000;
-  --primary-color-light: #220000;
-  
-  --text-color: #e0e0e0;       /* Silver */
-  --text-color-muted: #888888; /* Ash */
-  
-  --header-background: #0a0a0a;
-  --content-background: rgba(13, 13, 13, 0.95);
-  --sidebar-background: #050505;
-  --input-background: #000000;
-  
-  --component-bg: #111111;
-  --component-header-bg: #1a0505; /* Deep dark red tint */
-  
-  /* Borders: Glowing Veins */
-  --border-color: #500000;
-  
-  --toggle-bg-off: #333;
-  --toggle-knob: #999;
-  
-  --button-primary-bg: #cc0000;
-  --button-primary-hover: #ff0000;
-  
-  --status-good: #00ff66;      /* Toxic Green */
-  --status-warning: #ffaa00;   /* Sodium Light Orange */
-  --status-bad: #ff0000;       /* Alert Red */
-  --status-good-bg: #002200;
-  --status-warning-bg: #221100;
-  --status-bad-bg: #220000;
-  
-  --seal-background-color: #ff0000;
-  --seal-background-color-derived: #aa00ff; /* Void Purple */
-  --seal-tmde-background-color: #444444;
-  
-  /* Effects: Neon Bleed & Flicker */
-  --scrollbar-track: #000000;
-  --scrollbar-thumb: #8a0000;
-  --scrollbar-thumb-hover: #ff0000;
-  
-  --border-gradient: linear-gradient(180deg, #ff0000, transparent);
-  
-  /* The "Rift" Glow */
-  --box-shadow-glow: 0 0 15px rgba(255, 0, 0, 0.2), 0 0 5px rgba(255, 0, 0, 0.3);
-  --box-shadow-glow-hover: 0 0 25px rgba(255, 0, 0, 0.5), 0 0 10px rgba(255, 0, 0, 0.8);
-  
-  --modal-overlay-color: rgba(0, 0, 0, 0.95);
-  --table-header-bg: #1a0000;
-  --table-header-text: #ff0000;
-  --shadow-color: rgba(0, 0, 0, 1);
-  --heading-color: #ff0000;
+  --button-primary-bg: #5f8c6d;
+  --border-gradient: linear-gradient(135deg, #5f8c6d, #35453b);
 }
 
 /* =================================================================== */
@@ -408,31 +262,15 @@ body.theme-stranger.dark-mode {
 /* =================================================================== */
 body {
   margin: 0;
-  /* UPDATED: Uses variable to switch based on theme */
-  font-family: var(--main-font);
-  letter-spacing: var(--letter-spacing);
-  
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--background-color);
   color: var(--text-color);
   line-height: 1.6;
-  transition: background-color 0.3s ease, color 0.3s ease, background-image 0.3s ease, font-family 0.3s ease;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-weight: var(--heading-font-weight);
-}
-
-/* Ensure inputs inherit the theme font (especially important for monospace) */
-input[type="text"],
-input[type="number"],
-input[type="date"],
-textarea,
-select,
-button,
-.button {
-  font-family: inherit; /* Inherits from body (variable) */
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 input[type="text"],
@@ -441,8 +279,8 @@ input[type="date"],
 textarea,
 select {
   padding: 10px;
-  border: var(--border-width) solid var(--border-color);
-  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
   box-sizing: border-box;
   font-size: 1rem;
   width: 100%;
@@ -458,8 +296,18 @@ textarea:focus,
 select:focus {
   border-color: var(--button-primary-bg);
   outline: none;
-  box-shadow: var(--box-shadow-glow);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
 }
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  /* Add Glow on Focus */
+  box-shadow: var(--box-shadow-glow);
+} */
 
 /* --- Buttons --- */
 .button {
@@ -473,40 +321,33 @@ select:focus {
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
-  border-radius: var(--border-radius);
+  border-radius: 6px;
   transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
-  box-shadow: 0 1px 3px var(--shadow-color); /* Updated to use var */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .button:hover {
   background-color: var(--button-primary-hover);
-  box-shadow: 0 4px 6px var(--shadow-color), 0 1px 3px var(--shadow-color); /* Updated to use var */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .button:active {
   transform: translateY(1px);
 }
 
-/* Cyberpunk specific button overrides */
-body.theme-cyberpunk .button {
-  color: #000;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px; /* Extra tech feel */
-}
-
 .button-secondary {
-  background-color: var(--button-secondary-bg);
+  background-color: #6c757d;
 }
 
 .button-secondary:hover {
-  background-color: var(--button-secondary-hover);
+  background-color: #5a6268;
 }
 
 .button-small {
   padding: 8px 12px;
   font-size: 0.9rem;
 }
+
 
 /* =================================================================== */
 /* 3. APP LAYOUT & GLOBAL COMPONENTS                                   */
@@ -523,6 +364,16 @@ body.theme-cyberpunk .button {
   align-items: flex-start; /* Aligns card to top (use 'center' to vertically center) */
   box-sizing: border-box;
 }
+
+/* .content-area {
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
+  text-align: left;
+} */
 
 .content-area {
   /* This is now your main "Application Window" */
@@ -550,10 +401,6 @@ body.theme-cyberpunk .button {
   
   /* Smooth transition for resizing/theme changes */
   transition: all 0.3s ease-in-out;
-
-  /* GLASSMORPHISM SUPPORT */
-  -webkit-backdrop-filter: var(--backdrop-filter);
-  backdrop-filter: var(--backdrop-filter);
 }
 
 
@@ -571,21 +418,9 @@ body.theme-cyberpunk .button {
 
 .results-sidebar {
   flex: 0 0 350px;
+  /* A bit wider for measurement points */
   display: flex;
   flex-direction: column;
-  
-  /* Themed Background */
-  background-color: var(--sidebar-background);
-  
-  /* Borders */
-  border-right: 1px solid var(--border-color);
-  padding-right: 20px;
-  
-  /* Glass support specifically for sidebar if needed */
-  -webkit-backdrop-filter: var(--sidebar-backdrop-filter);
-  backdrop-filter: var(--sidebar-backdrop-filter);
-  
-  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .sidebar-header {
@@ -642,7 +477,7 @@ body.theme-cyberpunk .button {
   color: var(--text-color-muted);
   background-color: var(--background-color);
   border: 2px dashed var(--border-color);
-  border-radius: var(--border-radius);
+  border-radius: 8px;
   padding: 2rem;
 }
 
@@ -668,7 +503,7 @@ body.theme-cyberpunk .button {
   width: 100%;
   text-align: left;
   padding: 12px 15px;
-  border-radius: var(--border-radius);
+  border-radius: 8px;
   border: 1px solid transparent;
   background-color: transparent;
   color: var(--text-color);
@@ -692,8 +527,7 @@ body.theme-cyberpunk .button {
 
 
 .measurement-point-item:hover {
-  background-color: var(--primary-color-light); /* Better contrast than plain grey */
-  color: var(--primary-color-dark);
+  background-color: var(--background-color);
 }
 
 .measurement-point-item {
@@ -707,16 +541,15 @@ body.theme-cyberpunk .button {
 
 @keyframes listActiveGlow {
   from {
-    /* Use the variable instead of the hex */
     box-shadow: 
-      inset 4px 0 0 var(--primary-color), 
-      0 2px 4px var(--primary-color-light);   
+      inset 4px 0 0 var(--primary-color), /* The solid left bar */
+      0 2px 4px rgba(0, 123, 255, 0.1);   /* Subtle outer shadow */
   }
   to {
     box-shadow: 
-      inset 4px 0 0 var(--primary-color), 
-      0 4px 15px var(--primary-color), /* You might need an opacity variable here */
-      inset 0 0 20px var(--primary-color-light);
+      inset 4px 0 0 var(--primary-color), /* The solid left bar stays */
+      0 4px 15px rgba(0, 123, 255, 0.4),  /* The outer glow expands */
+      inset 0 0 20px rgba(0, 123, 255, 0.1); /* Inner glow breathing */
   }
 }
 
@@ -820,12 +653,12 @@ body.theme-cyberpunk .button {
   display: block;
   margin-bottom: 6px;
   font-weight: 600;
-  color: var(--text-color);
+  color: #495057;
   font-size: 0.9rem;
 }
 
 .form-section input[type="date"]:hover {
-  background-color: var(--primary-color-light);
+  background-color: #f0f8ff;
   border-color:var(--primary-color);
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
   cursor: pointer;
@@ -836,24 +669,24 @@ body.theme-cyberpunk .button {
   display: inline-block;
   width: 50px;
   height: 28px;
-  flex-shrink: 0;
-  vertical-align: middle;
 }
 
-.dark-mode-toggle input { 
-  opacity: 0; 
-  width: 0; 
-  height: 0; 
+.dark-mode-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 .dark-mode-toggle .slider {
   position: absolute;
   cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: var(--toggle-bg-off);
-  border: 1px solid var(--border-color);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-color);
+  transition: .4s;
   border-radius: 28px;
-  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
 }
 
 .dark-mode-toggle .slider:before {
@@ -861,20 +694,19 @@ body.theme-cyberpunk .button {
   content: "";
   height: 22px;
   width: 22px;
-  left: 2px;
-  bottom: 2px;
-  background-color: var(--toggle-knob);
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
   border-radius: 50%;
-  transition: transform 0.2s ease-in-out;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.dark-mode-toggle input:checked + .slider {
+.dark-mode-toggle input:checked+.slider {
   background-color: var(--primary-color);
-  border-color: var(--primary-color);
 }
 
-.dark-mode-toggle input:checked + .slider:before {
+.dark-mode-toggle input:checked+.slider:before {
   transform: translateX(22px);
 }
 
@@ -887,20 +719,21 @@ body.theme-cyberpunk .button {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--modal-overlay-color);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  -webkit-backdrop-filter: blur(8px);
+  /* Glassmorphism blur for the backdrop */
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .modal-content {
   background-color: var(--content-background);
   padding: 30px;
   /* Increased radius for a smoother, modern look */
-  border-radius: var(--modal-radius);
+  border-radius: 16px;
   max-width: 450px;
   width: 90%;
   text-align: center;
@@ -927,15 +760,11 @@ body.theme-cyberpunk .button {
     0 0 15px rgba(0, 123, 255, 0.2); /* Subtle colored glow */
     
   transition: box-shadow 0.3s ease, transform 0.3s ease;
-
-  /* GLASSMORPHISM SUPPORT */
-  -webkit-backdrop-filter: var(--backdrop-filter);
-  backdrop-filter: var(--backdrop-filter);
 }
 
 .modal-content h3 {
   margin-top: 0;
-  color: var(--heading-color);
+  color: #2c3e50;
   font-size: 1.5rem;
   margin-bottom: 20px;
 }
@@ -1056,47 +885,41 @@ body.theme-cyberpunk .button {
   font-size: 0.9rem;
 }
 
-.toggle-switch-checkbox { 
-  display: none; 
+.toggle-switch-checkbox {
+  display: none;
 }
 
 .toggle-switch-label {
-  display: block; 
+  display: block;
   position: relative;
-  width: 50px; 
+  width: 50px;
   height: 28px;
-  background-color: var(--toggle-bg-off);
-  border: 1px solid var(--border-color); /* Added border for definition */
+  background-color: var(--border-color);
   border-radius: 28px;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out;
   flex-shrink: 0;
 }
 
 .toggle-switch-switch {
-  display: block; 
+  display: block;
   position: absolute;
-  width: 22px; 
+  width: 22px;
   height: 22px;
   border-radius: 50%;
-  background-color: var(--toggle-knob);
-  
-  /* Exact alignment with Dark Mode toggle */
-  top: 2px; 
-  left: 2px;
-  
+  background-color: #fff;
+  top: 3px;
+  left: 3px;
   transition: transform 0.2s ease-in-out;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-/* Checked State */
-.toggle-switch-checkbox:checked + .toggle-switch-label { 
-  background-color: var(--primary-color); 
-  border-color: var(--primary-color);
+.toggle-switch-checkbox:checked + .toggle-switch-label {
+  background-color: var(--primary-color);
 }
 
-.toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-switch { 
-  transform: translateX(22px); 
+.toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-switch {
+  transform: translateX(22px);
 }
 
 .manual-input-container {
@@ -1170,7 +993,7 @@ body.theme-cyberpunk .button {
     min-width: 360px;
     max-width: 400px;
     height: 380px;
-    border-radius: var(--seal-radius);
+    border-radius: 30px;
     background-color: var(--background-color);
     border: 4px solid var(--seal-background-color);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
@@ -1183,10 +1006,6 @@ body.theme-cyberpunk .button {
     transition: background-color 0.3s, border-color 0.3s;
     animation: seal-glow 3s infinite alternate;
     cursor: pointer;
-
-    /* GLASSMORPHISM SUPPORT */
-    -webkit-backdrop-filter: var(--backdrop-filter);
-    backdrop-filter: var(--backdrop-filter);
 }
 
 .uut-seal.derived-point {
@@ -1309,7 +1128,7 @@ body.theme-cyberpunk .button {
     max-width: 350px;
     height: auto;
     min-height: 325px;
-    border-radius: var(--seal-radius);
+    border-radius: 30px;
     background-color: var(--background-color);
     border: 4px solid var(--seal-tmde-background-color);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.04);
@@ -1321,10 +1140,6 @@ body.theme-cyberpunk .button {
     transition: all 0.3s ease;
     cursor: pointer;
     animation: tmdeFuturisticGlow 3s infinite alternate;
-
-    /* GLASSMORPHISM SUPPORT */
-    backdrop-filter: var(--backdrop-filter);
-    -webkit-backdrop-filter: var(--backdrop-filter);
 }
 
 @keyframes tmdeFuturisticGlow {
@@ -1359,11 +1174,6 @@ body.theme-cyberpunk .button {
   display: flex;
   flex-direction: column;
   gap: 20px;
-
-  /* GLASSMORPHISM SUPPORT */
-  
-  -webkit-backdrop-filter: var(--backdrop-filter);
-  backdrop-filter: var(--backdrop-filter);
 }
 
 .tmde-test-point-group:last-child {
@@ -1373,7 +1183,7 @@ body.theme-cyberpunk .button {
 
 
 body.dark-mode .tmde-test-point-group {
-  background-color: var(--content-background);
+  background-color: var(--background-color);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
@@ -1500,7 +1310,7 @@ body.dark-mode .tp-value {
   min-height: 200px;
   padding: 20px 15px;
   align-items: flex-start;
-  border-radius: var(--seal-radius);
+  border-radius: 30px;
   border: 4px solid var(--seal-tmde-background-color);
   animation: tmdeFuturisticGlow 3s infinite alternate;
 }
@@ -1560,7 +1370,7 @@ body.dark-mode .tp-value {
 .add-tmde-card-small {
   width: 200px;
   min-height: 200px; /* <-- CHANGED from height: 200px */
-  border-radius: var(--seal-radius);
+  border-radius: 30px;
   border: 2px dashed var(--border-color);
   display: flex;
   align-items: center;
@@ -1755,11 +1565,9 @@ body.dark-mode .tp-value {
 
 .component-card {
   border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  background-color: var(--component-background); /* Use specific variable */
+  border-radius: 8px;
+  background-color: var(--background-color);
   overflow: hidden;
-  /* Ensure it doesn't double-blur if inside a glass modal */
-  backdrop-filter: none; 
 }
 
 .component-header {
@@ -1767,7 +1575,7 @@ body.dark-mode .tp-value {
   justify-content: space-between;
   align-items: center;
   padding: 12px 15px;
-  background-color: var(--component-header-bg); /* Distinct color */
+  background-color: var(--content-background);
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -2189,10 +1997,6 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   background-origin: border-box;
   background-clip: padding-box, border-box;
   box-shadow: var(--box-shadow-glow);
-
-  /* GLASSMORPHISM SUPPORT */
-  -webkit-backdrop-filter: var(--backdrop-filter);
-  backdrop-filter: var(--backdrop-filter);
 }
 
 .session-info-item {
@@ -2307,10 +2111,10 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 }
 
 .uncertainty-budget-table thead th {
+  background-color: #f8f9fa; /* Keeps this light grey for the main header */
   font-weight: 600;
+  color: #495057;
   border-top: 1px solid var(--border-color);
-  background-color: var(--table-header-bg);
-  color: var(--table-header-text);
   font-size: 0.9rem;
 }
 
@@ -2349,7 +2153,7 @@ body.dark-mode .symbol-popout .symbol-button:hover {
     width: 325px;
     min-height: 325px;
     height: 100%;
-    border-radius: var(--seal-radius);
+    border-radius: 30px;
     background-color: transparent;
     border: 2px dashed var(--border-color);
     box-shadow: none;
@@ -2413,10 +2217,6 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   min-height: 180px; /* Adjusted card height */
-
-  /* GLASSMORPHISM SUPPORT */
-  backdrop-filter: var(--backdrop-filter);
-  -webkit-backdrop-filter: var(--backdrop-filter);
 }
 
 .risk-card:hover {
@@ -2532,7 +2332,7 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 .gbcalint-card .risk-value,
 .calint-card .risk-value,
 .measrel-card .risk-value {
-  color: var(--status-good);
+  color: #198754;
 }
 
 /* =================================================================== */
@@ -2570,10 +2370,6 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   flex-direction: column;
   justify-content: center;
   box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-
-  /* GLASSMORPHISM SUPPORT */
-  backdrop-filter: var(--backdrop-filter);
-  -webkit-backdrop-filter: var(--backdrop-filter);
 }
 
 .metric-pod.clickable {
@@ -2788,7 +2584,7 @@ body.dark-mode .scatterplot-container {
   gap: 10px;
   
   /* Glassmorphism Effect */
-  background-color: var(--header-background);
+  background-color: rgba(255, 255, 255, 0.85);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   padding: 6px 14px;
@@ -2858,79 +2654,124 @@ body.dark-mode .plot-floating-control input {
   color: var(--primary-color-dark);
 }
 
-.bargraph-container, .scatterplot-container {
+.bargraph-container {
   width: 100%;
   height: 500px;
   margin-top: 2rem;
   border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
+  border-radius: 8px;
   overflow: hidden;
-  
-  /* Fix for Glass Theme Graphs */
-  background-color: var(--component-bg); /* Semi-transparent in Glass */
-  backdrop-filter: none; /* Avoid visual artifacts */
-  
+  background-color: var(--content-background);
   transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+body.dark-mode .bargraph-container {
+  background-color: var(--background-color);
 }
 
 /* --- Edit Session Modal - Overview Text Row --- */
 
 /* =================================================================== */
-/* 9. DARK MODE OVERRIDES (Refactored to use Variables)                */
+/* 8. SPECIFICATION COMPARISON                                         */
 /* =================================================================== */
 
-/* Modal Content: Use variables so Glass themes pass through */
+/* =================================================================== */
+/* 9. DARK MODE OVERRIDES                                              */
+/* =================================================================== */
 body.dark-mode .modal-content {
+  /* Dark Mode specific gradient (Cyan to Deep Blue) */
   background-image: 
     linear-gradient(var(--content-background), var(--content-background)), 
-    var(--border-gradient);
-  box-shadow: var(--box-shadow-glow);
-  border-color: var(--border-color);
+    linear-gradient(135deg, #00d2ff, #3a7bd5);
+    
+  /* Stronger, neon-like glow in dark mode */
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.5), 
+    0 0 25px rgba(0, 210, 255, 0.25);
 }
 
-/* Ensure Text Contrast in Modals */
-body.dark-mode .modal-content h3,
+body.dark-mode .modal-content h3 {
+  color: var(--text-color);
+}
+
 body.dark-mode .modal-content p {
   color: var(--text-color);
 }
 
-/* Session Header: Match background variable */
 body.dark-mode .analysis-session-header {
-  background-color: var(--background-color);
-  border-color: var(--border-color);
+  background-color: #1A202C;
+  border-color: #4A5568;
 }
 
-/* Form Labels */
+body.dark-mode .modal-content h3 {
+  color: var(--text-color);
+}
+
 body.dark-mode .form-section label {
+  color: #cbd5e0;
+}
+
+body.dark-mode .form-section-warning {
+  background-color: #4a3a19;
+  border-color: #9c6b0a;
+  color: #f6e05e;
+}
+
+body.dark-mode .placeholder-content {
+  background-color: transparent;
   color: var(--text-color-muted);
 }
 
-/* Sidebar Hover: Use variable for transparency support */
+
 body.dark-mode .measurement-point-item:hover {
-  background-color: var(--primary-color-light); 
-  color: var(--primary-color);
+  background-color: #2a2a2a;
 }
 
-/* Sidebar Active: Gradient based on primary color var */
+@keyframes listActiveGlowDark {
+  from {
+    box-shadow: 
+      inset 4px 0 0 var(--primary-color), 
+      0 2px 4px rgba(0, 0, 0, 0.2); 
+  }
+  to {
+    box-shadow: 
+      inset 4px 0 0 var(--primary-color), 
+      0 0 15px rgba(59, 130, 246, 0.5), /* Brighter glow for dark background */
+      inset 0 0 20px rgba(59, 130, 246, 0.2); 
+  }
+}
+
+
 body.dark-mode .measurement-point-item.active {
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.25) 0%, transparent 100%);
-  color: var(--primary-color);
+  /* Darker gradient for dark mode */
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.25) 0%, rgba(30, 30, 30, 0) 100%);
+  color: #63b3ed; /* Lighter blue text for contrast */
+  
+  /* Adjust animation colors for dark mode visibility */
+  animation: listActiveGlowDark 2s infinite alternate ease-in-out;
 }
 
-/* --- Tables --- */
 body.dark-mode .uncertainty-budget-table {
-  border-color: var(--border-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px; /* Adds rounded corners */
+  overflow: hidden; /* Clips the child elements (headers/footers) to the rounded corners */
+  margin-top: 15px; /* Ensures it's not touching the accordion top */
+  border-collapse: separate; /* Keep this as it's needed for border-spacing */
+  border-spacing: 0;
 }
 
 body.dark-mode .uncertainty-budget-table thead th {
-  background-color: var(--component-header-bg);
+  background-color: #2d3748; /* Keeps the distinct header */
   color: var(--text-color);
   border-color: var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  /* No top border needed, table has it */
 }
 
 body.dark-mode .uncertainty-budget-table .category-header td {
-  background-color: var(--background-color);
+  background-color: #1A202C; /* Darker, consistent background */
   color: var(--primary-color-dark);
+  font-weight: 600;
 }
 
 body.dark-mode .uncertainty-budget-table tbody tr:hover {
@@ -2941,60 +2782,200 @@ body.dark-mode .uncertainty-budget-table tfoot tr {
   background-color: transparent;
 }
 
+/* Make footer border use dark mode primary color, and ignore the final row */
 body.dark-mode .uncertainty-budget-table tfoot tr:first-child:not(.final-uncertainty-row) {
   border-top: 2px solid var(--primary-color-dark);
 }
 
+/* Mute the footer labels */
+
+/* Make the footer values pop */
 body.dark-mode .uncertainty-budget-table tfoot td:not([colspan]) {
   color: var(--primary-color-dark);
 }
 
-/* --- Results & Components --- */
 body.dark-mode .final-result-display {
-  background-color: var(--background-color);
-  border-top: 1px solid var(--border-color);
+  background-color: #1A202C; /* Keep this distinct background */
+  border-top: 1px solid var(--border-color); /* Add a separator line */
+}
+
+body.dark-mode .final-result-label,
+body.dark-mode .final-result-confidence-note {
+  color: var(--text-color-muted); /* Softer color for secondary text */
 }
 
 body.dark-mode .final-result-value,
 body.dark-mode .final-result-unit {
-  color: var(--primary-color-dark);
+  color: var(--primary-color-dark); /* Bright blue for the final value */
 }
 
-/* Component Cards (Fixes visibility in Glass Mode) */
+body.dark-mode .final-result-confidence-note strong {
+    color: #e0e0e0; /* Make the bolded k-value and % stand out */
+}
+
+body.dark-mode .pfr-card .risk-value {
+  color: #a0aec0;
+}
+
+body.dark-mode .conversion-info {
+  color: var(--text-color-muted);
+  background-color: #1A202C;
+}
+
+body.dark-mode .conversion-warning {
+  color: var(--status-bad);
+  background-color: var(--status-bad-bg);
+}
+
 body.dark-mode .component-card {
-  background-color: var(--component-bg);
-  border-color: var(--border-color);
+  background-color: #1A202C;
+  border-color: #4A5568;
 }
 
 body.dark-mode .component-header {
-  background-color: var(--component-header-bg);
-  border-color: var(--border-color);
+  background-color: #2D3748;
+  border-color: #4A5568;
+}
+
+/* --- Dark Mode: Modals & Overlays --- */
+body.dark-mode .modal-close-button:hover {
+    color: var(--text-color);
+}
+
+body.dark-mode .modal-icon-button.secondary:hover {
+    background-color: var(--text-color-muted);
+    border-color: var(--text-color-muted);
+    color: var(--content-background);
+}
+
+body.dark-mode .modal-icon-button.primary {
+    color: var(--primary-color-dark);
+    border-color: var(--primary-color-dark);
+}
+
+body.dark-mode .modal-icon-button.primary:hover {
+    background-color: var(--primary-color-dark);
+    color: var(--background-color);
+}
+
+body.dark-mode .modal-tabs {
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .modal-tab {
+    color: var(--text-color-muted);
+}
+
+body.dark-mode .modal-tab:hover {
+    color: var(--primary-color-dark);
+}
+
+body.dark-mode .modal-tab.active {
+    color: var(--primary-color-dark);
+    border-bottom-color: var(--primary-color-dark);
+}
+
+body.dark-mode .uut-seal,
+body.dark-mode .tmde-seal {
+  background-color: #1A202C;
+}
+
+body.dark-mode .tmde-seal-clickable {
+    background-color: var(--background-color);
+    border-color: var(--seal-tmde-background-color);
+}
+
+body.dark-mode .tmde-seal-clickable:hover {
+    border-color: var(--primary-color-dark);
+}
+
+body.dark-mode .tmde-seal-clickable .seal-title {
+    color: var(--text-color);
+}
+
+body.dark-mode .add-tmde-card-small {
+    border-color: var(--border-color);
+}
+
+body.dark-mode .add-tmde-card-small:hover {
+    border-color: var(--primary-color-dark);
+    background-color: var(--primary-color-light);
+}
+
+body.dark-mode .add-tmde-button-small {
+    color: var(--text-color-muted);
+}
+
+body.dark-mode .add-tmde-card-small:hover .add-tmde-button-small {
+    color: var(--primary-color-dark);
+}
+
+
+/* --- Dark Mode: Add TMDE & Tolerance Modals --- */
+body.dark-mode .tmde-header {
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .reference-point-control {
+    background-color: var(--background-color);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .toggle-option-label,
+body.dark-mode .toggle-option-label .uut-point-display {
+    color: var(--text-color);
+}
+
+body.dark-mode .toggle-switch-checkbox:checked + .toggle-switch-label {
+    background-color: var(--primary-color-dark);
+}
+
+/* Styles for the shared ToleranceForm component */
+body.dark-mode .component-card {
+    background-color: var(--background-color);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .component-header {
+    background-color: var(--content-background);
+    border-bottom-color: var(--border-color);
 }
 
 body.dark-mode .component-header h5 {
-  color: var(--primary-color);
+    color: var(--primary-color-dark);
 }
 
-/* Warnings */
-body.dark-mode .form-section-warning {
-  background-color: rgba(66, 50, 10, 0.6); 
-  border-color: var(--status-warning);
-  color: #f6e05e;
+body.dark-mode .remove-component-btn {
+    color: var(--status-bad);
+    border-color: var(--border-color);
 }
 
-/* Placeholders */
-body.dark-mode .placeholder-content {
-  background-color: transparent;
-  color: var(--text-color-muted);
+body.dark-mode .remove-component-btn:hover {
+    background-color: var(--status-bad);
+    color: white;
+    border-color: var(--status-bad);
 }
 
-/* Add TMDE Cards */
-body.dark-mode .add-tmde-card-small {
-  border-color: var(--border-color);
+body.dark-mode .add-component-button {
+    border-color: var(--border-color);
+    color: var(--text-color-muted);
 }
-body.dark-mode .add-tmde-card-small:hover {
-  border-color: var(--primary-color);
-  background-color: var(--primary-color-light);
+
+body.dark-mode .add-component-button:hover {
+    border-color: var(--primary-color-dark);
+    background-color: var(--primary-color-light);
+    color: var(--primary-color-dark);
+}
+
+body.dark-mode .add-component-dropdown {
+    background-color: var(--content-background);
+    border-color: var(--border-color);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+body.dark-mode .add-component-dropdown li:hover {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color-dark);
 }
 
 /* =================================================================== */
@@ -3393,21 +3374,21 @@ body.dark-mode .final-result-display {
 }
 
 /* =================================================================== */
-/* 14. REACT SELECT OVERRIDES (Theme Compatible)                       */
+/* 14. REACT-SELECT OVERRIDES (THEME COMPATIBILITY)                    */
 /* =================================================================== */
 
 .react-select-container {
   width: 100%;
 }
 
+/* 1. The Main Control (The input box) */
 .react-select__control {
   background-color: var(--input-background) !important;
   border-color: var(--border-color) !important;
-  color: var(--text-color) !important;
   border-radius: var(--border-radius) !important;
-  box-shadow: none !important;
-  min-height: 42px;
-  transition: border-color 0.2s ease;
+  min-height: 38px !important;
+  box-shadow: none !important; /* Reset default blue shadow */
+  transition: all 0.2s ease !important;
 }
 
 .react-select__control:hover {
@@ -3420,38 +3401,17 @@ body.dark-mode .final-result-display {
   box-shadow: 0 0 0 1px var(--primary-color) !important;
 }
 
-.react-select__menu {
-  background-color: var(--content-background) !important;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius) !important;
-  z-index: 9999 !important;
-  box-shadow: var(--box-shadow-glow);
-  -webkit-backdrop-filter: var(--backdrop-filter);
-  backdrop-filter: var(--backdrop-filter);
-}
-
-.react-select__option {
-  background-color: transparent !important;
-  color: var(--text-color) !important;
-  cursor: pointer;
-}
-
-.react-select__option--is-focused {
-  background-color: var(--primary-color-light) !important;
-  color: var(--text-color) !important;
-}
-
-.react-select__option--is-selected {
-  background-color: var(--primary-color) !important;
-  color: #ffffff !important;
-}
-
+/* 2. Text Colors inside Control */
 .react-select__single-value {
   color: var(--text-color) !important;
 }
 
 .react-select__input-container {
   color: var(--text-color) !important;
+}
+
+.react-select__placeholder {
+  color: var(--text-color-muted) !important;
 }
 
 .react-select__indicator-separator {
@@ -3462,115 +3422,61 @@ body.dark-mode .final-result-display {
   color: var(--text-color-muted) !important;
 }
 
-/* Ensure menu is visible in Dark Mode */
+.react-select__dropdown-indicator:hover {
+  color: var(--text-color) !important;
+}
+
+/* 3. The Menu (Dropdown List) */
+.react-select__menu {
+  background-color: var(--content-background) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--border-radius) !important;
+  z-index: 99999 !important; /* Critical for Modals */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+  
+  /* Glassmorphism support for menu */
+  backdrop-filter: var(--backdrop-filter) !important;
+  -webkit-backdrop-filter: var(--backdrop-filter) !important;
+  
+  /* Ensure menu portal isn't transparent in Dark Glass mode */
+  /* If content-bg is very transparent, we need a fallback */
+}
+
+/* 4. Options in the List */
+.react-select__option {
+  color: var(--text-color) !important;
+  background-color: transparent !important;
+  cursor: pointer !important;
+}
+
+.react-select__option:hover,
+.react-select__option--is-focused {
+  background-color: var(--primary-color-light) !important;
+  color: var(--primary-color-dark) !important;
+}
+
+.react-select__option--is-selected {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+}
+
+.react-select__group-heading {
+  color: var(--text-color-muted) !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px;
+}
+
+/* --- Dark Mode Specific Fixes (Extra insurance) --- */
 body.dark-mode .react-select__menu {
-  background-color: #1e1e1e !important;
+  /* Ensure dropdown isn't too transparent in dark mode */
+  background-color: #1e1e1e !important; 
   border-color: #424242 !important;
 }
 
 body.dark-mode .react-select__option:hover,
 body.dark-mode .react-select__option--is-focused {
   background-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-/* Cyberpunk Edges */
-body.theme-cyberpunk .react-select__control,
-body.theme-cyberpunk .react-select__menu {
-  border-radius: 0 !important;
-  border-width: 2px !important;
-}
-
-body.theme-stranger .content-area {
-  /* Vintage book binding shadow */
-  box-shadow: 
-    inset 0 0 60px rgba(92, 75, 55, 0.15), 
-    5px 5px 15px rgba(0,0,0,0.2); 
-  border: 1px solid #5c4b37;
-}
-
-body.theme-stranger .modal-content {
-  /* Physical paper card look */
-  background-image: none;
-  border: 2px solid var(--border-color);
-  box-shadow: 8px 8px 0px rgba(92, 75, 55, 0.3);
-}
-
-body.theme-stranger h1, 
-body.theme-stranger h2, 
-body.theme-stranger h3 {
-  text-transform: uppercase;
-  text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
-  border-bottom: 3px double var(--primary-color);
-  padding-bottom: 5px;
-  display: inline-block;
-  margin-bottom: 20px;
-}
-
-/* --- 2. DARK MODE: "The Upside Down" --- */
-
-/* Keyframes for the "Christmas Light" Flicker */
-@keyframes strangerFlicker {
-  0%   { opacity: 1; text-shadow: 0 0 10px #ff0000; }
-  3%   { opacity: 0.4; text-shadow: none; }
-  6%   { opacity: 1; text-shadow: 0 0 10px #ff0000; }
-  7%   { opacity: 0.4; text-shadow: none; }
-  8%   { opacity: 1; text-shadow: 0 0 10px #ff0000; }
-  9%   { opacity: 1; text-shadow: 0 0 15px #ff0000; }
-  100% { opacity: 1; text-shadow: 0 0 10px #ff0000; }
-}
-
-@keyframes slowPulse {
-  0% { box-shadow: 0 0 10px rgba(255, 0, 0, 0.1); }
-  50% { box-shadow: 0 0 25px rgba(255, 0, 0, 0.3); }
-  100% { box-shadow: 0 0 10px rgba(255, 0, 0, 0.1); }
-}
-
-/* Apply Flicker to Headers */
-body.theme-stranger.dark-mode h1,
-body.theme-stranger.dark-mode h2,
-body.theme-stranger.dark-mode .seal-title {
-  color: #ff0000;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  animation: strangerFlicker 6s infinite alternate; /* Slow random flicker */
-  border: none; /* Remove light mode border */
-}
-
-/* Force Monospace "Terminal" font for data in Dark Mode */
-body.theme-stranger.dark-mode input,
-body.theme-stranger.dark-mode select,
-body.theme-stranger.dark-mode textarea,
-body.theme-stranger.dark-mode .metric-pod-value,
-body.theme-stranger.dark-mode .calculated-limit {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
-  border: 1px solid #500000;
-  background-color: #000000;
-  color: #ff0000; /* Green or Red terminal text? Let's go Red for Stranger Things */
-}
-
-/* Terminal Focus State */
-body.theme-stranger.dark-mode input:focus,
-body.theme-stranger.dark-mode select:focus,
-body.theme-stranger.dark-mode textarea:focus {
-  border-color: #ff0000;
-  box-shadow: 0 0 15px #ff0000;
-  outline: none;
-}
-
-/* Breathing Cards */
-body.theme-stranger.dark-mode .component-card,
-body.theme-stranger.dark-mode .results-sidebar,
-body.theme-stranger.dark-mode .modal-content {
-  border: 1px solid #400000;
-  background-image: none; /* Remove gradient hacks */
-  animation: slowPulse 5s infinite;
-}
-
-/* Red Scrollbars for that "Vein" look */
-body.theme-stranger.dark-mode ::-webkit-scrollbar-thumb {
-  background-color: #8a0000;
-  border-radius: 0;
-}
-body.theme-stranger.dark-mode ::-webkit-scrollbar-track {
-  background-color: #050505;
+  color: var(--primary-color) !important;
 }
