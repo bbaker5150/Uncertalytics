@@ -239,6 +239,7 @@ body.theme-cyberpunk {
   --border-gradient: linear-gradient(90deg, #d600c0, #00eaff);
   --box-shadow-glow: 5px 5px 0px rgba(0,0,0,1);
   --toggle-bg-off: #999;
+  --risk-value-color: #00eaff;
 }
 
 body.theme-cyberpunk.dark-mode {
@@ -253,8 +254,6 @@ body.theme-cyberpunk.dark-mode {
   --primary-color-dark: #c5b800;
   --border-color: #333333;
   --box-shadow-glow: 3px 3px 0px rgba(252, 238, 10, 0.6);
-
-  --risk-value-color: #00eaff;
   
 }
 
