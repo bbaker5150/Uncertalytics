@@ -69,8 +69,8 @@ function App() {
   const [contextMenu, setContextMenu] = useState(null);
   
   // --- Theme & Dark Mode State ---
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState("default");
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [currentTheme, setCurrentTheme] = useState("theme-cyberpunk");
 
   const [initialSessionTab, setInitialSessionTab] = useState("details");
   const [initialTmdeToEdit, setInitialTmdeToEdit] = useState(null);
