@@ -1,7 +1,7 @@
 import * as math from 'mathjs';
 import React, { useMemo } from 'react';
 import Latex from "./Latex";
-import { unitSystem, calculateUncertaintyFromToleranceObject } from '../App';
+import { unitSystem, calculateUncertaintyFromToleranceObject } from '../utils/uncertaintyMath';
 
 // Helper to format numbers for LaTeX display
 const formatNumberForLatex = (num, precision = 4) => {

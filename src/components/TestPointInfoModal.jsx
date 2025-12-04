@@ -1,5 +1,5 @@
 import React from "react";
-import { getToleranceSummary } from "../App";
+import { getToleranceSummary } from "../utils/uncertaintyMath";
 
 const TestPointInfoModal = ({ isOpen, onClose, testPoint }) => {
   if (!isOpen || !testPoint) return null;
@@ -24,7 +24,7 @@ const TestPointInfoModal = ({ isOpen, onClose, testPoint }) => {
           </p>
         </div>
         <div className="breakdown-step">
-          <h5>Tolerance Expressions</h5>
+          <h5>Tolerances</h5>
           <p>
             <strong>UUT Tolerance:</strong> {uutToleranceDisplay}
           </p>

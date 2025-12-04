@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import ToleranceForm from "./ToleranceForm";
-import { unitSystem } from "../App";
+import { unitSystem } from "../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faTimes, faPlus } from "@fortawesome/free-solid-svg-icons";
-
 
 const AddTmdeModal = ({
   isOpen,
@@ -140,7 +139,9 @@ const AddTmdeModal = ({
       <button onClick={onClose} className="modal-close-button">
         &times;
       </button>
-      <h3>{initialTmdeData ? "Edit TMDE" : "Add New TMDE"}</h3>
+      
+      {/* UPDATED HEADER: Shows Name if editing, otherwise "Add New TMDE" */}
+      <h3>{initialTmdeData ? (tmde.name || "Edit TMDE") : "Add New TMDE"}</h3>
 
       <div className="modal-body-scrollable">
         <div className="tmde-header">
@@ -273,16 +274,8 @@ const AddTmdeModal = ({
 
       <div
         className="modal-actions"
-        style={{ justifyContent: "space-between", alignItems: "center" }}
+        style={{ justifyContent: "flex-end", alignItems: "center" }}
       >
-        <button
-          className="modal-icon-button secondary"
-          onClick={onClose}
-          title="Cancel"
-        >
-          <FontAwesomeIcon icon={faTimes} />
-        </button>
-
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           {!initialTmdeData && (
             <button

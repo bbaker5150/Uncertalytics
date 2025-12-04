@@ -2,8 +2,8 @@ import * as math from 'mathjs';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
-import { unitSystem } from '../App';
-import { NotificationModal } from '../App';
+import { unitSystem } from '../utils/uncertaintyMath';
+import NotificationModal from './NotificationModal';
 
 const SymbolButton = ({ onSymbolClick, symbol, title }) => (
     <button
@@ -198,7 +198,8 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
             });
 
         } catch (error) {
-            console.error("Error parsing equation expression:", error);
+            // FIX: Suppress console error while typing incomplete equations
+            // console.error("Error parsing equation expression:", error);
             setEquationVariables([]);
             setFormData(prev => ({ ...prev, variableMappings: {} }));
         }
@@ -470,7 +471,12 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                                     </button>
                                     
                                     {isSymbolMenuOpen && (
-                                        <div className="symbol-popout" ref={symbolMenuRef}>
+                                        <div 
+                                            className="symbol-popout" 
+                                            ref={symbolMenuRef} 
+                                            // FIX: Added maxHeight and overflowY for scrolling
+                                            style={{ maxHeight: '300px', overflowY: 'auto' }}
+                                        >
                                             {Object.entries(symbolCategories).map(([category, symbols]) => (
                                                 <div key={category} className="symbol-category">
                                                     <h5 className="symbol-category-title">{category}</h5>

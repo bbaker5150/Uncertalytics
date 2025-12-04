@@ -4,7 +4,7 @@ import {
   calculateUncertaintyFromToleranceObject,
   unitSystem,
   convertPpmToUnit,
-} from "../App";
+} from "../utils/uncertaintyMath";
 
 const BreakdownItem = ({ comp, nominal }) => {
   const [displayUnit, setDisplayUnit] = useState(nominal?.unit || "ppm");
