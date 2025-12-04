@@ -649,7 +649,10 @@ function Analysis({
       nativeUnit: nominalUnit,
       gbInputs: gbInputs,
       gbResults: gbResults,
+      uutResolution: testPointData.uutTolerance.measuringResolution.length
     };
+
+    console.log(testPointData.uutTolerance.measuringResolution.length)
 
     setRiskResults(newRiskMetrics);
     onDataSave({ riskMetrics: newRiskMetrics });
