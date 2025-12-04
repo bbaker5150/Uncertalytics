@@ -14,6 +14,7 @@ const EditSessionModal = ({
   onClose,
   sessionData,
   onSave,
+  onRemoveImageFile, // <--- NEW PROP for deleting from disk
   initialSection,
   sessionImageCache, 
   onImageCacheChange,
@@ -25,7 +26,7 @@ const EditSessionModal = ({
   const [imageSrcCache, setImageSrcCache] = useState(new Map());
   const [viewingImageSrc, setViewingImageSrc] = useState(null);
 
-  // Gets the URL for an image
+  // Gets the URL/Base64 for an image
   const getImageSrc = (imageRef) => {
     const src = imageSrcCache.get(imageRef.id);
     return src || null;
@@ -61,6 +62,7 @@ const EditSessionModal = ({
   const handleRemoveImage = (e, imageIdToRemove) => {
     e.stopPropagation(); 
 
+    // 1. Remove from UI state
     setFormData((prev) => ({
       ...prev,
       noteImages: prev.noteImages.filter((img) => img.id !== imageIdToRemove),
@@ -70,6 +72,7 @@ const EditSessionModal = ({
       prev.filter((img) => img.id !== imageIdToRemove)
     );
 
+    // 2. Remove from Local Cache
     if (sessionImageCache && sessionData && sessionImageCache.has(sessionData.id)) {
         const currentSessionCache = sessionImageCache.get(sessionData.id);
         if (currentSessionCache && currentSessionCache.has(imageIdToRemove)) {
@@ -80,8 +83,14 @@ const EditSessionModal = ({
             onImageCacheChange(newGlobalCache);
         }
     }
+
+    // 3. Trigger Disk Deletion (Backend)
+    if (onRemoveImageFile && sessionData && sessionData.id) {
+        onRemoveImageFile(sessionData.id, imageIdToRemove);
+    }
   };
 
+  // Sync cache when session changes
   useEffect(() => {
     const newImageSrcCache = new Map();
     if (sessionImageCache && sessionData && sessionData.id) {
@@ -92,6 +101,7 @@ const EditSessionModal = ({
             });
         }
     }
+    // Also include newly added (unsaved) images
     newlyAddedFiles.forEach((file) => {
       newImageSrcCache.set(file.id, file.fileObject);
     });
@@ -185,7 +195,6 @@ const EditSessionModal = ({
     )}
 
       <div className="modal-content edit-session-modal">
-        {/* CHANGED: Swapped FontAwesomeIcon back to &times; for consistency */}
         <button onClick={onClose} className="modal-close-button">
           &times;
         </button>

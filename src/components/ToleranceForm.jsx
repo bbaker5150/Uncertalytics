@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useState, useRef } from "react";
-import Select from "react-select"; 
+import Select from "react-select";
 import {
   unitSystem,
   errorDistributions,
@@ -17,7 +17,7 @@ const unitCategories = {
   Inductance: ["H", "mH", "uH"],
   Frequency: ["Hz", "kHz", "MHz", "GHz", "THz"],
   Time: ["s", "ms", "us", "ns", "ps", "min", "hr", "day"],
-  Temperature: ["Cel", "degF", "K"],
+  Temperature: ["Cel", "degF", "degC", "K"],
   Pressure: ["Pa", "kPa", "MPa", "psi", "bar", "mbar", "torr", "inHg"],
   Length: ["m", "cm", "mm", "um", "nm", "km", "in", "ft", "yd", "mi"],
   Mass: ["kg", "g", "mg", "ug", "lb", "oz"],
@@ -38,7 +38,7 @@ const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
         break;
       }
     }
-    
+
     const categoryUnits = unitCategories[refCategory] || [referenceUnit];
     const prioritizedOptions = categoryUnits
       .filter((u) => allUnits.includes(u))
@@ -52,7 +52,7 @@ const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
 
   // 2. Add remaining categories
   Object.entries(unitCategories).forEach(([label, units]) => {
-    if (options.some(opt => opt.label === label)) return;
+    if (options.some((opt) => opt.label === label)) return;
 
     const groupOptions = units
       .filter((u) => allUnits.includes(u) && !usedUnits.has(u))
@@ -68,7 +68,7 @@ const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
 
   // 3. Catch-all for leftovers
   const leftovers = allUnits
-    .filter((u) => !usedUnits.has(u) && !["%", "ppm", "dB"].includes(u))
+    .filter((u) => !usedUnits.has(u) && !["%", "ppm", "dB", "ppb"].includes(u))
     .map((u) => ({ value: u, label: u }));
 
   if (leftovers.length > 0) {
@@ -79,18 +79,15 @@ const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
 };
 
 // --- FIX: Restore minimal JS styles for Portal Z-Index ---
-// We use this IN ADDITION to the CSS classes. 
-// The CSS handles colors/fonts (Theming), this handles layout mechanics.
 const portalStyle = {
-    menuPortal: (base) => ({ 
-        ...base, 
-        zIndex: 99999 // Must be higher than Modal's 1000
-    }),
-    // We also set the menu z-index just to be safe
-    menu: (base) => ({
-        ...base,
-        zIndex: 99999 
-    })
+  menuPortal: (base) => ({
+    ...base,
+    zIndex: 99999,
+  }),
+  menu: (base) => ({
+    ...base,
+    zIndex: 99999,
+  }),
 };
 
 // --- Definitions ---
@@ -148,21 +145,28 @@ const ToleranceForm = ({
 }) => {
   const [isAddComponentVisible, setAddComponentVisible] = useState(false);
   const addComponentRef = useRef(null);
-  
+
   const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
 
   const physicalUnitOptions = useMemo(() => {
     return getCategorizedUnitOptions(allUnits, referencePoint?.unit);
   }, [allUnits, referencePoint]);
 
+  // UPDATED: Explicitly include PPB in the ratio options
   const ratioUnitOptions = useMemo(() => {
-    const raw = getToleranceUnitOptions(referencePoint?.unit);
-    return raw.map(u => ({ value: u, label: u }));
-  }, [referencePoint]);
+    return [
+      { value: "%", label: "%" },
+      { value: "ppm", label: "ppm" },
+      { value: "ppb", label: "ppb" },
+    ];
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (addComponentRef.current && !addComponentRef.current.contains(event.target)) {
+      if (
+        addComponentRef.current &&
+        !addComponentRef.current.contains(event.target)
+      ) {
         setAddComponentVisible(false);
       }
     };
@@ -189,7 +193,13 @@ const ToleranceForm = ({
 
       return updated ? next : prev;
     });
-  }, [referencePoint, isUUT, setTolerance, tolerance.floor, tolerance.measuringResolutionUnit]);
+  }, [
+    referencePoint,
+    isUUT,
+    setTolerance,
+    tolerance.floor,
+    tolerance.measuringResolutionUnit,
+  ]);
 
   const handleChange = (e) => {
     const { name, value, checked, dataset } = e.target;
@@ -228,21 +238,26 @@ const ToleranceForm = ({
     });
   };
 
-  const handleSelectChange = (selectedOption, field, componentKey, isMisc = false) => {
+  const handleSelectChange = (
+    selectedOption,
+    field,
+    componentKey,
+    isMisc = false
+  ) => {
     const value = selectedOption ? selectedOption.value : "";
-    
+
     const fakeEvent = {
       target: {
         name: isMisc ? field : undefined,
         value: value,
         dataset: {
-            type: isMisc ? "misc" : undefined,
-            field: field,
-            componentKey: componentKey
-        }
-      }
+          type: isMisc ? "misc" : undefined,
+          field: field,
+          componentKey: componentKey,
+        },
+      },
     };
-    
+
     handleChange(fakeEvent);
   };
 
@@ -254,7 +269,9 @@ const ToleranceForm = ({
         if (referencePoint?.unit) {
           newState.unit = referencePoint.unit;
         } else if (componentKey === "floor") {
-          const validUnits = allUnits.filter((u) => !["%", "ppm", "dB"].includes(u));
+          const validUnits = allUnits.filter(
+            (u) => !["%", "ppm", "dB", "ppb"].includes(u)
+          );
           if (validUnits.length > 0) {
             newState.unit = validUnits[0];
           }
@@ -351,7 +368,8 @@ const ToleranceForm = ({
         >
           {distributionOptions.map((dist) => (
             <option key={dist.value} value={dist.value}>
-              {dist.label}
+              {/* UPDATED: Append k-value to label */}
+              {dist.label} (k={dist.value})
             </option>
           ))}
         </select>
@@ -359,24 +377,25 @@ const ToleranceForm = ({
     ) : null;
 
     const renderUnitSelect = (options) => {
-        const flatOptions = options.flatMap(o => o.options ? o.options : o);
-        const selectedValue = flatOptions.find(opt => opt.value === componentData.unit);
-        
-        return (
-            <Select 
-                value={selectedValue || null}
-                onChange={(opt) => handleSelectChange(opt, 'unit', key)}
-                options={options}
-                className="react-select-container"
-                classNamePrefix="react-select"
-                placeholder="Select..."
-                isSearchable={true}
-                menuPortalTarget={document.body}
-                menuPosition="fixed"
-                // --- FIX: Apply JS styles for Z-Index here ---
-                styles={portalStyle} 
-            />
-        );
+      const flatOptions = options.flatMap((o) => (o.options ? o.options : o));
+      const selectedValue = flatOptions.find(
+        (opt) => opt.value === componentData.unit
+      );
+
+      return (
+        <Select
+          value={selectedValue || null}
+          onChange={(opt) => handleSelectChange(opt, "unit", key)}
+          options={options}
+          className="react-select-container"
+          classNamePrefix="react-select"
+          placeholder="Select..."
+          isSearchable={true}
+          menuPortalTarget={document.body}
+          menuPosition="fixed"
+          styles={portalStyle}
+        />
+      );
     };
 
     switch (key) {
@@ -528,7 +547,14 @@ const ToleranceForm = ({
           }}
         >
           <label>Measuring Resolution (Least Significant Digit)</label>
-          <div className="input-with-unit" style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '10px' }}>
+          <div
+            className="input-with-unit"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 120px",
+              gap: "10px",
+            }}
+          >
             <input
               type="number"
               step="any"
@@ -537,21 +563,29 @@ const ToleranceForm = ({
               value={tolerance.measuringResolution || ""}
               onChange={handleChange}
               placeholder="e.g., 1"
-              style={{ width: '100%' }}
+              style={{ width: "100%" }}
             />
-            
+
             {/* Resolution Unit Selector */}
-            <Select 
-                value={physicalUnitOptions.flatMap(g => g.options ? g.options : g).find(opt => opt.value === tolerance.measuringResolutionUnit) || null}
-                onChange={(opt) => handleSelectChange(opt, 'measuringResolutionUnit', null, true)}
-                options={physicalUnitOptions}
-                className="react-select-container"
-                classNamePrefix="react-select"
-                placeholder="Unit"
-                isSearchable={true}
-                menuPortalTarget={document.body}
-                menuPosition="fixed"
-                styles={portalStyle}
+            <Select
+              value={
+                physicalUnitOptions
+                  .flatMap((g) => (g.options ? g.options : g))
+                  .find(
+                    (opt) => opt.value === tolerance.measuringResolutionUnit
+                  ) || null
+              }
+              onChange={(opt) =>
+                handleSelectChange(opt, "measuringResolutionUnit", null, true)
+              }
+              options={physicalUnitOptions}
+              className="react-select-container"
+              classNamePrefix="react-select"
+              placeholder="Unit"
+              isSearchable={true}
+              menuPortalTarget={document.body}
+              menuPosition="fixed"
+              styles={portalStyle}
             />
           </div>
         </div>

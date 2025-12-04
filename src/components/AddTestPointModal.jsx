@@ -498,7 +498,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                                 
                                 {equationVariables.length > 0 && (
                                     <div style={{marginTop: '15px', paddingLeft: '10px', borderLeft: '3px solid var(--border-color)'}}>
-                                        <label style={{fontSize: '0.9em', color: 'var(--text-color-muted)', marginBottom: '5px'}}>Map Variables (*required):</label>
+                                        <label style={{fontSize: '0.9em', color: 'var(--text-color-muted)', marginBottom: '5px'}}>Map Variables (*Case Sensitive):</label>
                                         {equationVariables.map(variable => (
                                             <div key={variable} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
                                                 <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{variable} =</span>

@@ -18,6 +18,7 @@ import { saveSessionToPdf, parseSessionPdf } from "./utils/fileIo";
 import "./App.css";
 
 // --- Icons ---
+import appLogo from './assets/icon.svg';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faInfoCircle,
@@ -28,6 +29,10 @@ import {
   faSlidersH,
   faSave,
   faFolderOpen,
+  faLink,
+  faUnlink,
+  faDatabase,
+  faPalette
 } from "@fortawesome/free-solid-svg-icons";
 
 // --- Contexts ---
@@ -54,6 +59,13 @@ function App() {
     deleteTmdeDefinition,
     decrementTmdeQuantity,
     setSessions,
+    dbPath,
+    selectDatabaseFolder,
+    disconnectDatabase,
+    migrateToDisk,
+    saveSessionImage,
+    loadSessionImages,
+    deleteSessionImage
   } = useSessionManager();
 
   // --- UI State ---
@@ -71,32 +83,66 @@ function App() {
   // --- Theme & Dark Mode State ---
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("default");
+  // Easter egg state to hide/show the theme selector
+  const [showThemeSelector, setShowThemeSelector] = useState(false);
 
   const [initialSessionTab, setInitialSessionTab] = useState("details");
   const [initialTmdeToEdit, setInitialTmdeToEdit] = useState(null);
   const [sessionImageCache, setSessionImageCache] = useState(new Map());
   const [riskResults, setRiskResults] = useState(null);
 
+  // --- Hotkey Listener for Migration (Ctrl + Shift + M) ---
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'M') {
+        e.preventDefault();
+        console.log("Migration Hotkey Triggered");
+        migrateToDisk();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [migrateToDisk]);
+
+  // --- Hotkey Listener for Theme Easter Egg (Ctrl + Shift + T) ---
+  useEffect(() => {
+    const handleThemeKey = (e) => {
+      // Check for Ctrl + Shift + T (case insensitive)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        console.log("Theme Easter Egg Triggered");
+        setShowThemeSelector(prev => !prev);
+        
+        // Optional: Notify user
+        if (!showThemeSelector) {
+           // We can't access state inside effect easily without deps, 
+           // but logically if we are toggling, we can infer.
+           // Leaving notification out to keep it "stealthy" or add below if desired:
+           // setAppNotification({ title: "Easter Egg", message: "Theme Selector Unlocked!" }); 
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleThemeKey);
+    return () => window.removeEventListener('keydown', handleThemeKey);
+  }, []);
+
   // --- Theme Effect ---
   useEffect(() => {
     const body = document.body;
-    
-    // 1. Reset: Remove all specific theme classes
     body.classList.remove("theme-glass", "theme-cyberpunk", "theme-stranger");
 
-    // 2. Apply the selected theme (if not default)
     if (currentTheme !== "default") {
       body.classList.add(currentTheme);
     }
 
-    // 3. Apply Dark Mode (works on top of themes)
     if (isDarkMode) {
       body.classList.add("dark-mode");
     } else {
       body.classList.remove("dark-mode");
     }
 
-    // 4. Electron Integration (Optional)
     if (window.require) {
       try {
         const { ipcRenderer } = window.require("electron");
@@ -123,8 +169,8 @@ function App() {
     });
   };
 
-  const handleSessionChange = (updatedSession, newImageFiles = []) => {
-    updateSession(updatedSession);
+  const handleSessionChange = async (updatedSession, newImageFiles = []) => {
+    updateSession(updatedSession, newImageFiles);
     if (newImageFiles.length > 0) {
       setSessionImageCache((prevCache) => {
         const newCache = new Map(prevCache);
@@ -137,10 +183,30 @@ function App() {
     setEditingSession(null);
   };
 
-  const handleOpenSessionEditor = (initialTab = "details", tmdeToEdit = null) => {
+  const handleOpenSessionEditor = async (initialTab = "details", tmdeToEdit = null) => {
     setInitialSessionTab(initialTab);
     setInitialTmdeToEdit(tmdeToEdit);
-    setEditingSession(currentSessionData);
+    
+    if (currentSessionData) {
+        setEditingSession(currentSessionData);
+        const cachedMap = sessionImageCache.get(currentSessionData.id);
+        if (!cachedMap || cachedMap.size === 0) {
+            try {
+                const imagesFromDb = await loadSessionImages(currentSessionData.id);
+                if (imagesFromDb && imagesFromDb.length > 0) {
+                    setSessionImageCache(prev => {
+                        const newCache = new Map(prev);
+                        const sessionMap = new Map();
+                        imagesFromDb.forEach(img => sessionMap.set(img.id, img.data));
+                        newCache.set(currentSessionData.id, sessionMap);
+                        return newCache;
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to load images", e);
+            }
+        }
+    }
   };
 
   const handleSaveTestPoint = (formData) => {
@@ -235,33 +301,60 @@ function App() {
           title={appNotification?.title}
           message={appNotification?.message}
         />
-        
         {confirmationModal && (
           <div className="modal-overlay" style={{ zIndex: 2001 }}>
             <div className="modal-content">
-              <button onClick={() => setConfirmationModal(null)} className="modal-close-button">&times;</button>
+              <button
+                onClick={() => setConfirmationModal(null)}
+                className="modal-close-button"
+              >
+                &times;
+              </button>
               <h3>{confirmationModal.title}</h3>
               <p>{confirmationModal.message}</p>
-              <div className="modal-actions" style={{ justifyContent: "center", gap: "15px" }}>
-                <button className="button button-secondary" onClick={() => setConfirmationModal(null)}>Cancel</button>
-                <button className="button" style={{ backgroundColor: "var(--status-bad)" }} onClick={confirmationModal.onConfirm}>Delete</button>
+              <div
+                className="modal-actions"
+                style={{ justifyContent: "center", gap: "15px" }}
+              >
+                <button
+                  className="button button-secondary"
+                  onClick={() => setConfirmationModal(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="button"
+                  style={{ backgroundColor: "var(--status-bad)" }}
+                  onClick={confirmationModal.onConfirm}
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>
         )}
-
         <AddTestPointModal
           isOpen={isAddModalOpen || !!editingTestPoint}
-          onClose={() => { setIsAddModalOpen(false); setEditingTestPoint(null); }}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setEditingTestPoint(null);
+          }}
           onSave={handleSaveTestPoint}
           initialData={editingTestPoint}
           hasExistingPoints={currentTestPoints.length > 0}
-          previousTestPointData={currentTestPoints.length > 0 ? currentTestPoints[currentTestPoints.length - 1] : null}
+          previousTestPointData={
+            currentTestPoints.length > 0
+              ? currentTestPoints[currentTestPoints.length - 1]
+              : null
+          }
         />
-
         <EditSessionModal
           isOpen={!!editingSession}
-          onClose={() => { setEditingSession(null); setInitialTmdeToEdit(null); setInitialSessionTab("details"); }}
+          onClose={() => {
+            setEditingSession(null);
+            setInitialTmdeToEdit(null);
+            setInitialSessionTab("details");
+          }}
           sessionData={editingSession}
           onSave={handleSessionChange}
           onSaveToFile={handleSaveToFile}
@@ -269,8 +362,8 @@ function App() {
           initialSection={initialSessionTab}
           sessionImageCache={sessionImageCache}
           onImageCacheChange={setSessionImageCache}
+          onRemoveImageFile={deleteSessionImage}
         />
-
         <OverviewModal
           isOpen={isOverviewOpen}
           onClose={() => setIsOverviewOpen(false)}
@@ -279,7 +372,6 @@ function App() {
           onDeleteTmdeDefinition={deleteTmdeDefinition}
           onDecrementTmdeQuantity={decrementTmdeQuantity}
         />
-
         {testPointData && (
           <ToleranceToolModal
             isOpen={isToleranceModalOpen}
@@ -287,62 +379,151 @@ function App() {
             onSave={(data) => {
               const { uutTolerance, ...testPointSpecificData } = data;
               if (uutTolerance) {
-                setSessions((prev) => prev.map((s) => s.id === selectedSessionId ? { ...s, uutTolerance } : s));
+                setSessions((prev) =>
+                  prev.map((s) =>
+                    s.id === selectedSessionId ? { ...s, uutTolerance } : s
+                  )
+                );
               }
               updateTestPointData(testPointSpecificData);
             }}
             testPointData={testPointData}
           />
         )}
-
-        <FullBreakdownModal isOpen={!!breakdownPoint} breakdownData={breakdownPoint} onClose={() => setBreakdownPoint(null)} />
-        <TestPointInfoModal isOpen={!!infoModalPoint} testPoint={infoModalPoint} onClose={() => setInfoModalPoint(null)} />
-        
-        {contextMenu && <ContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />}
+        <FullBreakdownModal
+          isOpen={!!breakdownPoint}
+          breakdownData={breakdownPoint}
+          onClose={() => setBreakdownPoint(null)}
+        />
+        <TestPointInfoModal
+          isOpen={!!infoModalPoint}
+          testPoint={infoModalPoint}
+          onClose={() => setInfoModalPoint(null)}
+        />
+        {contextMenu && (
+          <ContextMenu
+            menu={contextMenu}
+            onClose={() => setContextMenu(null)}
+          />
+        )}
 
         <div className="content-area uncertainty-analysis-page">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <h2>Uncertainty Analysis</h2>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              
-              {/* --- Theme Selector Dropdown --- */}
-              <select 
-                value={currentTheme} 
-                onChange={(e) => setCurrentTheme(e.target.value)}
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: "6px",
-                  border: "1px solid var(--border-color)",
-                  backgroundColor: "var(--input-background)", 
-                  color: "var(--text-color)",                
-                  fontSize: "0.9rem",
-                  cursor: "pointer",
-                  outline: "none",
-                  marginRight: "5px"
-                }}
-              >
-                <option value="default">Default Theme</option>
-                <option value="theme-cyberpunk">Cyberpunk</option>
-                <option value="theme-stranger">Stranger Things</option>
-              </select>
+          {/* ======================================================= */}
+          {/* PROFESSIONAL HEADER BAR                                 */}
+          {/* ======================================================= */}
+          <div className="app-pro-header">
+            {/* 1. LEFT: IDENTITY */}
+            <div className="header-identity">
+              <div className="app-logo-mark custom-logo full-bleed">
+                <img src={appLogo} alt="App Logo" />
+              </div>
+              <div className="app-title-group">
+                <h2>Uncertalytics</h2>
+                <div className="app-subtitle-row">
+                  <span className="app-subtitle">Risk Analysis Tool</span>
+                  <span className="app-version">v1.0.0</span>
+                </div>
+              </div>
+            </div>
 
-              <button className="sidebar-action-button" onClick={handleSaveToFile} title="Save Session to File (.pdf)">
-                <FontAwesomeIcon icon={faSave} />
+            {/* 2. RIGHT: ACTION RIBBON */}
+            <div className="header-actions">
+              {/* STATUS INDICATOR (Primary Context) */}
+              <button
+                className={`status-pill ${
+                  dbPath ? "connected" : "disconnected"
+                }`}
+                onClick={dbPath ? disconnectDatabase : selectDatabaseFolder}
+                title={dbPath ? `Connected: ${dbPath}` : "Connect to Database"}
+              >
+                <span className="status-dot"></span>
+                <span className="status-text">
+                  {dbPath ? "Database Connected" : "Local Mode"}
+                </span>
               </button>
-              <label className="sidebar-action-button" htmlFor="load-session-pdf-main" title="Load Session from File (.pdf)" style={{ cursor: "pointer", margin: "0" }}>
-                <FontAwesomeIcon icon={faFolderOpen} />
-              </label>
-              <input type="file" id="load-session-pdf-main" accept=".pdf" style={{ display: "none" }} onChange={handleLoadFromFile} />
-              <label className="dark-mode-toggle">
-                <input type="checkbox" checked={isDarkMode} onChange={() => setIsDarkMode(!isDarkMode)} />
-                <span className="slider"></span>
-              </label>
+
+              <div className="header-divider"></div>
+
+              {/* FILE ACTIONS */}
+              <div className="action-group">
+                <button
+                  className="icon-action-btn"
+                  onClick={handleSaveToFile}
+                  title="Export to PDF"
+                >
+                  <FontAwesomeIcon icon={faSave} />
+                </button>
+
+                <label
+                  className="icon-action-btn"
+                  htmlFor="load-session-pdf-main"
+                  title="Import PDF"
+                >
+                  <FontAwesomeIcon icon={faFolderOpen} />
+                </label>
+                <input
+                  type="file"
+                  id="load-session-pdf-main"
+                  accept=".pdf"
+                  style={{ display: "none" }}
+                  onChange={handleLoadFromFile}
+                />
+              </div>
+
+              <div className="header-divider"></div>
+
+              {/* SETTINGS GROUP */}
+              <div className="action-group">
+                {/* --- THEME SELECTOR (HIDDEN BY DEFAULT - Ctrl+Shift+T) --- */}
+                {showThemeSelector && (
+                  <div className="theme-selector-minimal">
+                    <FontAwesomeIcon icon={faPalette} className="theme-icon" />
+                    <select 
+                      value={currentTheme} 
+                      onChange={(e) => setCurrentTheme(e.target.value)}
+                      className="theme-select-input"
+                      title="Change Theme"
+                    >
+                      <option value="default">Default</option>
+                      <option value="theme-cyberpunk">Cyberpunk</option>
+                      <option value="theme-stranger">Stranger Things</option>
+                      <option value="theme-glass">Aero Glass</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* --- DARK MODE TOGGLE LOGIC --- */}
+                {currentTheme === 'theme-stranger' && !isDarkMode ? (
+                  /* CASE 1: Stranger Things Light Mode -> Show EASTER EGG ONLY */
+                  <div 
+                    className="stranger-hint" 
+                    onClick={() => setIsDarkMode(true)}
+                    title="Enter the Upside Down"
+                  >
+                    <span>ENTER THE UPSIDE DOWN</span>
+                  </div>
+                ) : (
+                  /* CASE 2: All Other Modes -> Show Standard Toggle */
+                  <button 
+                    className={`icon-action-btn ${isDarkMode ? "active" : ""}`}
+                    onClick={() => setIsDarkMode(!isDarkMode)}
+                    title="Toggle Dark Mode"
+                  >
+                    <div className={`moon-toggle ${isDarkMode ? "is-dark" : ""}`}></div>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+          {/* ======================================================= */}
 
           <div className="results-workflow-container">
             <aside className="results-sidebar">
-              <div className="sidebar-header" style={{ alignItems: "flex-end" }}>
+              {/* ... Sidebar Content ... */}
+              <div
+                className="sidebar-header"
+                style={{ alignItems: "flex-end" }}
+              >
                 <div className="session-controls">
                   <label htmlFor="session-select">Analysis Session</label>
                   <select
@@ -352,24 +533,52 @@ function App() {
                     onChange={(e) => {
                       const newId = Number(e.target.value);
                       setSelectedSessionId(newId);
-                      const sess = sessions.find(s => s.id === newId);
+                      const sess = sessions.find((s) => s.id === newId);
                       setSelectedTestPointId(sess?.testPoints?.[0]?.id || null);
                     }}
                   >
-                    {sessions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {sessions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="session-actions">
-                  <button onClick={handleAddNewSession} title="Add New Session" className="sidebar-action-button"><FontAwesomeIcon icon={faPlus} /></button>
-                  <button onClick={() => setEditingSession(currentSessionData)} title="Edit Session" className="sidebar-action-button"><FontAwesomeIcon icon={faEdit} /></button>
-                  <button onClick={() => handleDeleteSession(selectedSessionId)} title="Delete Session" className="sidebar-action-button delete"><FontAwesomeIcon icon={faTrashAlt} /></button>
+                  <button
+                    onClick={handleAddNewSession}
+                    title="Add New Session"
+                    className="sidebar-action-button"
+                  >
+                    <FontAwesomeIcon icon={faPlus} />
+                  </button>
+                  <button
+                    onClick={() => handleOpenSessionEditor("details")}
+                    title="Edit Session"
+                    className="sidebar-action-button"
+                  >
+                    <FontAwesomeIcon icon={faEdit} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSession(selectedSessionId)}
+                    title="Delete Session"
+                    className="sidebar-action-button delete"
+                  >
+                    <FontAwesomeIcon icon={faTrashAlt} />
+                  </button>
                 </div>
               </div>
 
               <div className="sidebar-header">
                 <h4 style={{ margin: "0" }}>Measurement Points</h4>
                 <div className="add-point-controls">
-                  <button className="add-point-button" onClick={() => setIsAddModalOpen(true)} title="Add New Measurement Point"><FontAwesomeIcon icon={faPlus} /></button>
+                  <button
+                    className="add-point-button"
+                    onClick={() => setIsAddModalOpen(true)}
+                    title="Add New Measurement Point"
+                  >
+                    <FontAwesomeIcon icon={faPlus} />
+                  </button>
                 </div>
               </div>
 
@@ -378,8 +587,9 @@ function App() {
                   <button
                     key={tp.id}
                     onClick={() => setSelectedTestPointId(tp.id)}
-                    className={`measurement-point-item ${selectedTestPointId === tp.id ? "active" : ""}`}
-                    // --- CHANGED: Added onDoubleClick handler ---
+                    className={`measurement-point-item ${
+                      selectedTestPointId === tp.id ? "active" : ""
+                    }`}
                     onDoubleClick={() => setEditingTestPoint(tp)}
                     onContextMenu={(e) => {
                       e.preventDefault();
@@ -387,19 +597,54 @@ function App() {
                         x: e.pageX,
                         y: e.pageY,
                         items: [
-                          { label: "Edit Details", action: () => setEditingTestPoint(tp), icon: faPencilAlt },
-                          { label: "Edit Tolerances", action: () => { setSelectedTestPointId(tp.id); setIsToleranceModalOpen(true); }, icon: faSlidersH },
+                          {
+                            label: "Edit Details",
+                            action: () => setEditingTestPoint(tp),
+                            icon: faPencilAlt,
+                          },
+                          {
+                            label: "Edit Tolerances",
+                            action: () => {
+                              setSelectedTestPointId(tp.id);
+                              setIsToleranceModalOpen(true);
+                            },
+                            icon: faSlidersH,
+                          },
                           { type: "divider" },
-                          { label: "View Details", action: () => setInfoModalPoint({ ...tp, uutTolerance: currentSessionData.uutTolerance, uutDescription: currentSessionData.uutDescription }), icon: faInfoCircle },
+                          {
+                            label: "View Details",
+                            action: () =>
+                              setInfoModalPoint({
+                                ...tp,
+                                uutTolerance: currentSessionData.uutTolerance,
+                                uutDescription:
+                                  currentSessionData.uutDescription,
+                              }),
+                            icon: faInfoCircle,
+                          },
                           { type: "divider" },
-                          { label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" },
+                          {
+                            label: "Delete Point",
+                            action: () => handleDeleteTestPoint(tp.id),
+                            icon: faTrashAlt,
+                            className: "destructive",
+                          },
                         ],
                       });
                     }}
                   >
                     <span className="measurement-point-content">
-                      <span className="point-main">{tp.testPointInfo.parameter.name}: {tp.testPointInfo.parameter.value} {tp.testPointInfo.parameter.unit}</span>
-                      {tp.testPointInfo.qualifier?.value && <span className="point-qualifier">@{tp.testPointInfo.qualifier.value}{tp.testPointInfo.qualifier.unit}</span>}
+                      <span className="point-main">
+                        {tp.testPointInfo.parameter.name}:{" "}
+                        {tp.testPointInfo.parameter.value}{" "}
+                        {tp.testPointInfo.parameter.unit}
+                      </span>
+                      {tp.testPointInfo.qualifier?.value && (
+                        <span className="point-qualifier">
+                          @{tp.testPointInfo.qualifier.value}
+                          {tp.testPointInfo.qualifier.unit}
+                        </span>
+                      )}
                     </span>
                   </button>
                 ))}
@@ -408,7 +653,10 @@ function App() {
 
             <main className="results-content">
               {testPointData ? (
-                <TestPointDetailView key={selectedTestPointId} testPointData={testPointData}>
+                <TestPointDetailView
+                  key={selectedTestPointId}
+                  testPointData={testPointData}
+                >
                   <Analysis
                     sessionData={currentSessionData}
                     testPointData={testPointData}
@@ -429,9 +677,15 @@ function App() {
                   {currentSessionData && currentTestPoints.length > 0 ? (
                     <h3>Select a measurement point to see details.</h3>
                   ) : currentSessionData ? (
-                    <><h3>This session has no measurement points.</h3><p>Click the '+' button in the sidebar to add one.</p></>
+                    <>
+                      <h3>This session has no measurement points.</h3>
+                      <p>Click the '+' button in the sidebar to add one.</p>
+                    </>
                   ) : (
-                    <><h3>No Session Available</h3><p>Create a new session to begin your analysis.</p></>
+                    <>
+                      <h3>No Session Available</h3>
+                      <p>Create a new session to begin your analysis.</p>
+                    </>
                   )}
                 </div>
               )}

@@ -122,14 +122,20 @@ const getBudgetComponentsFromTolerance = (
       const unit = tolComp.unit;
       let valueInNominalUnits;
 
-      if (unit === "%" || unit === "ppm") {
-        valueInNominalUnits =
-          halfSpan * unitSystem.units[unit].to_si * baseValueForRelative;
+      // UPDATED LOGIC FOR RATIO UNITS (%, ppm, ppb)
+      if (["%", "ppm", "ppb"].includes(unit)) {
+        let multiplier = 0;
+        if (unit === "%") multiplier = 0.01;
+        else if (unit === "ppm") multiplier = 1e-6;
+        else if (unit === "ppb") multiplier = 1e-9;
+
+        valueInNominalUnits = halfSpan * multiplier * baseValueForRelative;
       } else {
         const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
         const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
         valueInNominalUnits = valueInBase / nominalUnitInBase;
       }
+
       halfSpanPPM = convertToPPM(
         valueInNominalUnits,
         nominalUnit,
@@ -1304,9 +1310,9 @@ function Analysis({
 
   const unitOptions = useMemo(() => {
     const nominalUnit = uutNominal?.unit;
-    if (!nominalUnit) return ["ppm"];
+    if (!nominalUnit) return ["ppm", "ppb"];
     const relevant = unitSystem.getRelevantUnits(nominalUnit);
-    return ["ppm", ...relevant.filter((u) => u !== "ppm" && u !== "dB")];
+    return ["ppm", "ppb", ...relevant.filter((u) => u !== "ppm" && u !== "ppb" && u !== "dB")];
   }, [uutNominal]);
 
   const renderAddComponentModal = () => {
@@ -1562,7 +1568,7 @@ function Analysis({
           className={analysisMode === "uncertaintyTool" ? "active" : ""}
           onClick={() => setAnalysisMode("uncertaintyTool")}
         >
-          Uncertainty Tool
+          Uncertainty Analysis
         </button>
         <button
           className={analysisMode === "risk" ? "active" : ""}

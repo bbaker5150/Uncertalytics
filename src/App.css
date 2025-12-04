@@ -255,152 +255,413 @@ body.theme-cyberpunk.dark-mode {
   --box-shadow-glow: 3px 3px 0px rgba(252, 238, 10, 0.6);
 }
 
-/* --- 1E. THEME: STRANGER THINGS (The Upside Down) --- */
-/* --- LIGHT MODE: "The Party / 1983 D&D Manual" --- */
-body.theme-stranger {
-  /* Typography: Stephen King Book Cover / D&D Manual */
-  --main-font: 'ITC Benguiat', 'Bookman Old Style', 'Georgia', serif;
-  --heading-font-weight: 900;
-  --letter-spacing: 0.5px;
-  
-  /* Layout: Vintage Paper Feel */
-  --border-radius: 4px;
-  --modal-radius: 4px;
-  --seal-radius: 2px;
-  --border-width: 2px;
-  
-  --backdrop-filter: sepia(20%);
-  --sidebar-backdrop-filter: none;
-  
-  /* PALETTE: Vintage Parchment */
-  --background-color: #f0e6d2;
-  background-image: linear-gradient(0deg, transparent 24%, rgba(0, 0, 0, .05) 25%, rgba(0, 0, 0, .05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, .05) 75%, rgba(0, 0, 0, .05) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 0, 0, .05) 25%, rgba(0, 0, 0, .05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, .05) 75%, rgba(0, 0, 0, .05) 76%, transparent 77%, transparent);
-  background-size: 50px 50px;
+/* =================================================================== */
+/* 1E. THEME: STRANGER THINGS (THE "UPSIDE DOWN" FINAL)                */
+/* =================================================================== */
 
-  /* CORE REDS */
-  --primary-color: #d80000;      /* Vibrant Blood Red */
-  --primary-color-dark: #8a0000; /* Dark Dried Blood (Text) */
-  --primary-color-light: rgba(216, 0, 0, 0.15); /* Faint Red Wash for Active Sidebar */
-  
-  --text-color: #2a2118;
-  --text-color-muted: #786452;
-  
-  /* Surfaces */
-  --header-background: #e6d8c0;
-  --content-background: #fdfbf7;
-  --sidebar-background: transparent;
-  --input-background: #ffffff;
-  
-  --component-bg: #f5f0e6;
-  --component-header-bg: #e6d8c0;
-  
-  --border-color: #5c4b37;
-  
-  /* Toggles */
-  --toggle-bg-off: #bcaaa4;
-  --toggle-knob: #5c4b37;
+/* =================================================================== */
+/* STRANGER THINGS EASTER EGG (Light Mode Only)                        */
+/* =================================================================== */
 
-  /* Buttons */
-  --button-primary-bg: #d80000;
-  --button-primary-hover: #b30000;
-  --button-secondary-bg: #5c4b37;
-  --button-secondary-hover: #3e3224;
+.stranger-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 5px;
+  cursor: pointer;
   
-  /* Status */
-  --status-good: #2e7c31;
-  --status-warning: #d97706;
-  --status-bad: #d80000;
-  --status-good-bg: #dcedc8;
-  --status-warning-bg: #ffe0b2;
-  --status-bad-bg: #ffcdd2;
+  /* The Look */
+  font-family: 'ITC Benguiat', 'Georgia', serif;
+  font-weight: 900;
+  font-size: 0.75rem;
+  color: #cf0000; /* Blood Red */
+  letter-spacing: 1px;
   
-  /* SEALS: Uniform Blood Red */
-  --seal-background-color: #d80000;
-  --seal-background-color-derived: #d80000;
-  --seal-tmde-background-color: #d80000;
+  /* The "Upside Down" Effect: Flip Text Vertically */
+  transform: scaleY(-1); 
   
-  --scrollbar-track: #e6d8c0;
-  --scrollbar-thumb: #5c4b37;
-  --scrollbar-thumb-hover: #d80000;
+  /* Animation */
+  animation: 
+    strangerHoverFloat 3s ease-in-out infinite alternate,
+    badWiring 4s infinite; /* Re-using your flicker animation */
   
-  /* Effects */
-  --border-gradient: none;
-  --box-shadow-glow: 4px 4px 0px rgba(92, 75, 55, 0.2);
-  --box-shadow-glow-hover: 6px 6px 0px rgba(216, 0, 0, 0.4);
-  
-  --modal-overlay-color: rgba(42, 33, 24, 0.6);
-  --table-header-bg: #dccbb1;
-  --table-header-text: #2a2118;
-  --shadow-color: rgba(92, 75, 55, 0.3);
-  --heading-color: #2a2118;
+  transition: all 0.3s ease;
 }
 
-/* --- DARK MODE: "The Upside Down" --- */
+.stranger-hint span {
+  /* Ensure text renders sharply when flipped */
+  -webkit-font-smoothing: antialiased;
+}
+
+.stranger-hint .hint-arrow {
+  font-size: 0.9rem;
+  transform: rotate(90deg); /* Pointing at the toggle */
+}
+
+/* Hover Interaction */
+.stranger-hint:hover {
+  text-shadow: 0 0 8px rgba(207, 0, 0, 0.6);
+  color: #ff0000;
+  /* Shake when hovering like it's unstable */
+  animation: strangerShake 0.5s cubic-bezier(.36,.07,.19,.97) both infinite;
+}
+
+/* Animations specific to the egg */
+@keyframes strangerHoverFloat {
+  from { transform: scaleY(-1) translateY(0px); }
+  to { transform: scaleY(-1) translateY(3px); }
+}
+
+@keyframes strangerShake {
+  10%, 90% { transform: scaleY(-1) translate3d(-1px, 0, 0); }
+  20%, 80% { transform: scaleY(-1) translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: scaleY(-1) translate3d(-2px, 0, 0); }
+  40%, 60% { transform: scaleY(-1) translate3d(2px, 0, 0); }
+}
+
+/* --- SHARED ANIMATIONS --- */
+
+@keyframes strangerNeonPulse {
+  0% { box-shadow: inset 0 0 5px #300000, 0 0 5px #ff0000, 0 0 10px #ff0000; border-color: #ff3333; }
+  50% { box-shadow: inset 0 0 10px #500000, 0 0 20px #ff0000, 0 0 40px #ff0000; border-color: #ff6666; }
+  100% { box-shadow: inset 0 0 5px #300000, 0 0 5px #ff0000, 0 0 10px #ff0000; border-color: #ff3333; }
+}
+
+@keyframes badWiring {
+  0%, 100% { opacity: 1; }
+  32% { opacity: 1; } 33% { opacity: 0.8; } 34% { opacity: 1; } 35% { opacity: 1; } 
+  36% { opacity: 0.3; } 37% { opacity: 1; } 80% { opacity: 1; } 81% { opacity: 0.9; } 82% { opacity: 1; }
+}
+
+@keyframes upsideDownDrift {
+  0% { background-position: 0% 0%; } 50% { background-position: 20% 50%; } 100% { background-position: 0% 0%; }
+}
+
+/* --- LIGHT MODE: "1983 CAMPAIGN MANUAL" --- */
+body.theme-stranger {
+  --main-font: 'ITC Benguiat', 'Bookman Old Style', 'Georgia', serif;
+  --heading-font-weight: 900;
+  --letter-spacing: 0px;
+  --border-radius: 2px;
+  --modal-radius: 4px;
+  --seal-radius: 4px;
+  --border-width: 3px;
+  
+  --backdrop-filter: sepia(30%);
+  --sidebar-backdrop-filter: none;
+  
+  --background-color: #f4e4bc;
+  --header-background: #e6d2a0;
+  --content-background: #fdfbf7;
+  --sidebar-background: transparent;
+  --input-background: #fffef8;
+  
+  --primary-color: #cf0000;      
+  --primary-color-dark: #8a0000; 
+  --primary-color-light: rgba(207, 0, 0, 0.1); 
+  
+  --text-color: #2b1d0e;         
+  --text-color-muted: #6e5b4b;   
+  --border-color: #5c4b37;       
+  
+  --status-good: #386641;
+  --status-warning: #bc6c25;
+  --status-bad: #9e2a2b;
+  --status-good-bg: #e2e8ce;
+  
+  --seal-background-color: #cf0000;
+  --seal-background-color-derived: #cf0000;
+  --seal-tmde-background-color: #5c4b37;
+  
+  --scrollbar-track: #e6d2a0;
+  --scrollbar-thumb: #5c4b37;
+  --scrollbar-thumb-hover: #cf0000;
+  
+  --border-gradient: none;
+  --box-shadow-glow: 4px 4px 0px rgba(92, 75, 55, 0.2); 
+  --box-shadow-glow-hover: 6px 6px 0px rgba(207, 0, 0, 0.4);
+  
+  --modal-overlay-color: rgba(43, 29, 14, 0.7);
+  --table-header-bg: #dccbb1;
+  --table-header-text: #2b1d0e;
+  --shadow-color: rgba(92, 75, 55, 0.3);
+  --heading-color: #2b1d0e;
+}
+
+body.theme-stranger {
+  background-image: linear-gradient(rgba(255,255,255,0.5), rgba(255,255,255,0.5)), url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7z' fill='%239C92AC' fill-opacity='0.08' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+/* 1. UUT, TMDE, and DERIVED Seals - Unified Blood Glow */
+body.theme-stranger .uut-seal,
+body.theme-stranger .tmde-seal,
+body.theme-stranger .tmde-seal-clickable,
+body.theme-stranger .uut-seal.derived-point { /* Explicitly target derived to override purple */
+  border-width: 3px;
+  border-style: double; /* Classic RPG Manual style */
+  border-color: #cf0000 !important; /* Fresh Blood Red */
+  background-color: #fffef8; /* Parchment Paper */
+  
+  /* The "Throbbing" Blood Shadow */
+  box-shadow: 
+    0 4px 12px rgba(138, 0, 0, 0.3), 
+    inset 0 0 10px rgba(207, 0, 0, 0.1);
+    
+  /* Re-use the neon pulse, but slightly more subtle for light mode */
+  animation: strangerNeonPulse 4s infinite ease-in-out;
+}
+
+/* 2. Text Color Inside Seals */
+body.theme-stranger .seal-title,
+body.theme-stranger .uut-seal.derived-point .seal-title {
+  color: #8a0000 !important; /* Dried Blood (Darker for readability) */
+  font-weight: 800;
+  text-shadow: 1px 1px 0px rgba(0,0,0,0.1);
+}
+
+/* 3. Ensure the Pulse Animation is Red in Light Mode */
+@keyframes strangerNeonPulse {
+  0% { box-shadow: 0 0 5px rgba(207, 0, 0, 0.4); border-color: #cf0000; }
+  50% { box-shadow: 0 0 20px rgba(207, 0, 0, 0.6); border-color: #ff0000; }
+  100% { box-shadow: 0 0 5px rgba(207, 0, 0, 0.4); border-color: #cf0000; }
+}
+
+/* --- DARK MODE: "THE UPSIDE DOWN" (FULL IMMERSION) --- */
 body.theme-stranger.dark-mode {
-  /* Typography */
   --main-font: 'ITC Benguiat', 'Georgia', serif;
   
   /* The Void */
-  --background-color: #030002;
-  
-  /* Spores & Scanlines */
-  background-image: 
-    radial-gradient(circle at 20% 30%, rgba(30, 0, 0, 0.4) 0%, transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(10, 10, 30, 0.3) 0%, transparent 40%),
-    repeating-linear-gradient(0deg, transparent, transparent 2px, #110000 3px, transparent 4px);
-  background-size: cover;
-  background-attachment: fixed;
-  
-  /* CORE NEONS */
-  --primary-color: #ff0000;      /* Super Neon Red */
-  --primary-color-dark: #ff0000; /* Neon Red Text (for Active Sidebar) */
-  --primary-color-light: #440000; /* Dark Red Background (for Active Sidebar) */
-  
-  --text-color: #e0e0e0;
-  --text-color-muted: #888888;
-  
-  --header-background: #0a0a0a;
-  --content-background: rgba(13, 13, 13, 0.95);
-  --sidebar-background: #050505;
+  --background-color: #080202;
+  --header-background: rgba(10, 0, 0, 0.8);
+  --content-background: rgba(15, 5, 5, 0.85);
+  --sidebar-background: rgba(0,0,0,0.6);
   --input-background: #000000;
   
-  --component-bg: #111111;
-  --component-header-bg: #1a0505;
+  /* NEON BLOOD RED */
+  --primary-color: #ff0000;      
+  --primary-color-dark: #ff3333; 
+  --primary-color-light: #440000; 
   
-  --border-color: #500000;
+  --text-color: #ffd6d6;         /* Pale Flesh */
+  --text-color-muted: #a36666;   /* Dried Blood */
   
-  --toggle-bg-off: #333;
-  --toggle-knob: #999;
+  --border-color: #660000;       
   
-  --button-primary-bg: #cc0000;
+  --toggle-bg-off: #2a2a2a;
+  --toggle-knob: #990000;
+  
+  --button-primary-bg: #aa0000;
   --button-primary-hover: #ff0000;
   
-  --status-good: #00ff66;
+  /* Overrides for Status to fit Theme (Used by buttons, etc) */
+  /* Metric Pods override this specifically below */
+  --status-good: #00ff66; 
   --status-warning: #ffaa00;
   --status-bad: #ff0000;
-  --status-good-bg: #002200;
-  --status-warning-bg: #221100;
-  --status-bad-bg: #220000;
+  --status-good-bg: #220000;
   
-  /* SEALS: Uniform Super Neon Red */
   --seal-background-color: #ff0000;
   --seal-background-color-derived: #ff0000;
   --seal-tmde-background-color: #ff0000;
   
-  /* Effects */
   --scrollbar-track: #000000;
   --scrollbar-thumb: #8a0000;
   --scrollbar-thumb-hover: #ff0000;
   
-  --border-gradient: linear-gradient(180deg, #ff0000, transparent);
-  --box-shadow-glow: 0 0 15px rgba(255, 0, 0, 0.2), 0 0 5px rgba(255, 0, 0, 0.3);
-  --box-shadow-glow-hover: 0 0 25px rgba(255, 0, 0, 0.5), 0 0 10px rgba(255, 0, 0, 0.8);
+  --border-gradient: linear-gradient(180deg, #ff0000 0%, transparent 100%);
+  --box-shadow-glow: 0 0 20px rgba(255, 0, 0, 0.4);
+  --box-shadow-glow-hover: 0 0 30px rgba(255, 0, 0, 0.6);
   
   --modal-overlay-color: rgba(0, 0, 0, 0.95);
-  --table-header-bg: #1a0000;
+  --table-header-bg: #220000;
   --table-header-text: #ff0000;
-  --shadow-color: rgba(0, 0, 0, 1);
+  --shadow-color: rgba(0,0,0,1);
   --heading-color: #ff0000;
+}
+
+body.theme-stranger.dark-mode {
+  position: relative;
+  background-image: 
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.15) 1px, transparent 1px, transparent 2px),
+    radial-gradient(circle at 20% 30%, rgba(100, 0, 0, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(60, 0, 0, 0.15) 0%, transparent 50%);
+  background-attachment: fixed;
+  animation: upsideDownDrift 30s infinite ease-in-out alternate;
+}
+
+/* === 1. TABLES (Uncertainty Budget) === */
+body.theme-stranger.dark-mode .uncertainty-budget-table {
+  border: 2px solid #520000;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+body.theme-stranger.dark-mode .uncertainty-budget-table thead th {
+  background-color: #1a0000;
+  color: #ff0000;
+  font-family: 'ITC Benguiat', serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 2px solid #ff0000;
+  border-top: none;
+}
+
+body.theme-stranger.dark-mode .uncertainty-budget-table td {
+  border-bottom: 1px solid #330000;
+  color: #ffcccc;
+  font-family: 'Consolas', monospace; /* Data looks technological */
+}
+
+body.theme-stranger.dark-mode .uncertainty-budget-table tbody tr:hover {
+  background-color: rgba(255, 0, 0, 0.15);
+  box-shadow: inset 0 0 10px #ff0000;
+}
+
+/* === 2. CHARTS (Contribution & Scatter) === */
+body.theme-stranger.dark-mode .bargraph-container,
+body.theme-stranger.dark-mode .scatterplot-container {
+  border: 2px solid #520000;
+  background-color: rgba(0, 0, 0, 0.9);
+  box-shadow: inset 0 0 50px rgba(0,0,0,1);
+}
+
+/* SVG Overrides: Force Chart Text to Red */
+body.theme-stranger.dark-mode .bargraph-container text,
+body.theme-stranger.dark-mode .scatterplot-container text {
+  fill: #ff0000 !important;
+  font-family: 'Consolas', monospace !important;
+  font-size: 12px !important;
+  text-shadow: 0 0 2px #ff0000;
+}
+
+/* Force Chart Lines/Grid to Dark Red */
+body.theme-stranger.dark-mode .recharts-cartesian-grid-horizontal line,
+body.theme-stranger.dark-mode .recharts-cartesian-grid-vertical line {
+  stroke: #330000 !important;
+}
+
+/* Force Bars to Neon Red */
+body.theme-stranger.dark-mode .recharts-bar-rectangle path {
+  fill: #ff0000 !important;
+  filter: drop-shadow(0 0 5px #ff0000);
+}
+
+/* === 3. "DATABASE CONNECTED" BUTTON === */
+/* Style it like a hazardous system indicator */
+body.theme-stranger.dark-mode .status-pill.connected {
+  background-color: rgba(30, 0, 0, 0.8);
+  border: 1px solid #ff0000;
+  color: #ff0000;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+  font-family: 'Consolas', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  animation: strangerNeonPulse 3s infinite; /* Subtle breathing */
+}
+
+body.theme-stranger.dark-mode .status-pill.connected .status-dot {
+  background-color: #ff0000;
+  box-shadow: 0 0 8px #ff0000, 0 0 15px #ff0000; /* White-hot core look */
+}
+
+/* === 4. SEALS & HEADERS === */
+body.theme-stranger.dark-mode .uut-seal,
+body.theme-stranger.dark-mode .tmde-seal,
+body.theme-stranger.dark-mode .tmde-seal-clickable {
+  background-color: rgba(0, 0, 0, 0.85);
+  border-width: 2px;
+  border-style: solid;
+  border-color: #ff3333;
+  /* Multi-layered Neon Bloom */
+  box-shadow: inset 0 0 20px #300000, 0 0 15px #ff0000, 0 0 30px #ff0000;
+  animation: strangerNeonPulse 4s infinite ease-in-out, badWiring 12s infinite;
+}
+
+body.theme-stranger.dark-mode h2,
+body.theme-stranger.dark-mode .seal-title {
+  color: #ff0000;
+  text-shadow: 0 0 5px #ff0000, 0 0 10px #8a0000;
+  animation: badWiring 8s infinite;
+}
+
+/* === 5. METRIC PODS (NEON 80s STATUS) === */
+/* Base Pod Style */
+body.theme-stranger.dark-mode .metric-pod {
+  background-color: rgba(10, 10, 10, 0.9);
+  border: 1px solid #333;
+  box-shadow: inset 0 0 20px rgba(0,0,0,1);
+}
+
+/* Pass (Neon Green) */
+body.theme-stranger.dark-mode .metric-pod.status-good,
+body.theme-stranger.dark-mode .metric-pod.gblow,
+body.theme-stranger.dark-mode .metric-pod.gbhigh,
+body.theme-stranger.dark-mode .metric-pod.gbpfa,
+body.theme-stranger.dark-mode .metric-pod.gbcalint {
+  border-color: #00ff66;
+  box-shadow: 0 0 10px rgba(0, 255, 102, 0.2), inset 0 0 10px rgba(0, 255, 102, 0.1);
+  animation: none; /* Stabilize it */
+}
+body.theme-stranger.dark-mode .metric-pod.status-good .metric-pod-value,
+body.theme-stranger.dark-mode .metric-pod.gblow .metric-pod-value {
+  color: #00ff66;
+  text-shadow: 0 0 5px #00ff66, 0 0 10px #00ff66;
+  font-family: 'Consolas', monospace;
+}
+
+/* Warn (Neon Amber) */
+body.theme-stranger.dark-mode .metric-pod.status-warning {
+  border-color: #ffaa00;
+  box-shadow: 0 0 10px rgba(255, 170, 0, 0.2), inset 0 0 10px rgba(255, 170, 0, 0.1);
+}
+body.theme-stranger.dark-mode .metric-pod.status-warning .metric-pod-value {
+  color: #ffaa00;
+  text-shadow: 0 0 5px #ffaa00;
+  font-family: 'Consolas', monospace;
+}
+
+/* Fail (Neon Red) */
+body.theme-stranger.dark-mode .metric-pod.status-bad {
+  border-color: #ff0000;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2);
+}
+body.theme-stranger.dark-mode .metric-pod.status-bad .metric-pod-value {
+  color: #ff0000;
+  text-shadow: 0 0 5px #ff0000, 0 0 15px #ff0000;
+  font-family: 'Consolas', monospace;
+  animation: badWiring 5s infinite;
+}
+
+/* TUR/TAR (Neon Blue) */
+body.theme-stranger.dark-mode .metric-pod.tur,
+body.theme-stranger.dark-mode .metric-pod.tar {
+  border-color: #00eaff; 
+  box-shadow: 0 0 10px rgba(0, 234, 255, 0.2);
+}
+body.theme-stranger.dark-mode .metric-pod.tur .metric-pod-value,
+body.theme-stranger.dark-mode .metric-pod.tar .metric-pod-value {
+  color: #00eaff;
+  text-shadow: 0 0 5px #00eaff;
+}
+
+/* === 6. LITTLE EXTRAS === */
+
+/* Text Selection: High contrast Neon */
+body.theme-stranger.dark-mode ::selection {
+  background: #ff0000;
+  color: #000000;
+  text-shadow: none;
+}
+
+/* Input Focus: Glowing Terminal */
+body.theme-stranger.dark-mode input:focus,
+body.theme-stranger.dark-mode select:focus,
+body.theme-stranger.dark-mode textarea:focus {
+  border-color: #ff0000 !important;
+  background-color: #000000 !important;
+  box-shadow: 0 0 15px #ff0000, inset 0 0 10px #ff0000;
+  color: #ff0000 !important;
+  outline: none;
 }
 
 /* =================================================================== */
@@ -3573,4 +3834,266 @@ body.theme-stranger.dark-mode ::-webkit-scrollbar-thumb {
 }
 body.theme-stranger.dark-mode ::-webkit-scrollbar-track {
   background-color: #050505;
+}
+
+/* =================================================================== */
+/* 15. PROFESSIONAL APP HEADER (Redesigned)                            */
+/* =================================================================== */
+
+.app-pro-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* --- LEFT: IDENTITY --- */
+.header-identity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Logo Container */
+.app-logo-mark {
+  width: 40px;
+  height: 40px;
+  /* Default background for transparent icons */
+  background: var(--primary-color); 
+  color: white;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  overflow: hidden; 
+  flex-shrink: 0;
+}
+
+/* Standard Icon Sizing */
+.app-logo-mark img {
+  width: 24px; 
+  height: 24px;
+  object-fit: contain;
+}
+
+/* Full Bleed Variant (For App Icons/Complex SVGs) */
+.app-logo-mark.full-bleed {
+  background: transparent; 
+  box-shadow: none;
+}
+
+.app-logo-mark.full-bleed img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* Titles */
+.app-title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-title-group h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.1;
+  color: var(--text-color);
+}
+
+/* Subtitle & Version Row */
+.app-subtitle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-color-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.app-version {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background-color: var(--input-background);
+  border: 1px solid var(--border-color);
+  color: var(--text-color-muted);
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.header-identity:hover .app-version {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* --- RIGHT: ACTIONS --- */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Groups for Buttons (File Ops, Settings) */
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--border-color);
+  margin: 0 5px;
+}
+
+/* Status Pill (Database) */
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--input-background);
+  color: var(--text-color-muted);
+  white-space: nowrap;
+}
+
+.status-pill:hover {
+  background-color: var(--background-color);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-color-muted);
+}
+
+.status-pill.connected {
+  background-color: var(--status-good-bg);
+  color: var(--status-good);
+  border-color: var(--status-good);
+}
+
+.status-pill.connected .status-dot {
+  background-color: var(--status-good);
+  box-shadow: 0 0 8px var(--status-good);
+}
+
+/* Icon Buttons (Ghost Style) */
+.icon-action-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-color-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-action-btn:hover {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+}
+
+/* Theme Selector (Minimal) */
+.theme-selector-minimal {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.theme-icon {
+  position: absolute;
+  left: 10px;
+  font-size: 0.9rem;
+  color: var(--text-color-muted);
+  pointer-events: none;
+}
+
+.theme-select-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: var(--text-color);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 6px 10px 6px 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.theme-select-input:hover {
+  background-color: var(--input-background);
+}
+
+.theme-select-input option {
+  background-color: var(--content-background);
+  color: var(--text-color);
+}
+
+/* Simple Dark Mode Dot */
+.moon-toggle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--text-color);
+  box-shadow: inset -3px -3px 0 0 var(--background-color);
+  transition: all 0.3s ease;
+}
+
+.icon-action-btn:hover .moon-toggle {
+  background-color: var(--primary-color);
+  box-shadow: inset -3px -3px 0 0 var(--primary-color-light);
+}
+
+/* Dark Mode Logic */
+body.dark-mode .moon-toggle {
+  background-color: transparent;
+  box-shadow: inset -4px -4px 0 0 var(--text-color);
+  transform: rotate(-45deg);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .app-pro-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
 }

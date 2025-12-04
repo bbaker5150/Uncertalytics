@@ -38,7 +38,7 @@
   },
   "build": {
     "appId": "com.uncertainty.tool",
-    "productName": "Uncertainty Tool",
+    "productName": "Uncertalytics",
     "files": [
       "dist/**/*",
       "electron/**/*"

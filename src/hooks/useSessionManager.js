@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 
 const useSessionManager = () => {
-  // --- Constants (Moved from App.jsx) ---
+  const ipcRenderer = window.require ? window.require("electron").ipcRenderer : null;
+
+  // --- Constants ---
   const defaultTestPoint = useMemo(
     () => ({
       section: "",
@@ -34,7 +36,7 @@ const useSessionManager = () => {
       document: "",
       documentDate: "",
       notes: "",
-      noteImages: [],
+      noteImages: [], // Contains { id, fileName, fileObject (optional) }
       uutTolerance: {},
       testPoints: [],
       uncReq: {
@@ -54,78 +56,256 @@ const useSessionManager = () => {
   const [sessions, setSessions] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [selectedTestPointId, setSelectedTestPointId] = useState(null);
-  
-  // --- Initialization & Persistence ---
-  useEffect(() => {
-    let loadedData = false;
-    const defaultSession = createNewSession();
+  const [dbPath, setDbPath] = useState(null);
 
-    try {
-      const savedSessions = localStorage.getItem("uncertaintySessions");
-      if (savedSessions) {
-        const parsed = JSON.parse(savedSessions);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const migratedSessions = parsed.map((session) => ({
-            ...defaultSession,
-            ...session,
-            id: session.id,
-            name: session.name || defaultSession.name,
-          }));
+  // --- 1. Load Data ---
+  const loadData = useCallback(async () => {
+    let loadedFromDb = false;
 
-          setSessions(migratedSessions);
-          setSelectedSessionId(migratedSessions[0].id);
-          setSelectedTestPointId(migratedSessions[0].testPoints?.[0]?.id || null);
-          loadedData = true;
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load data from localStorage", error);
-    }
-
-    if (!loadedData) {
-      setSessions([defaultSession]);
-      setSelectedSessionId(defaultSession.id);
-    }
-  }, [createNewSession]);
-
-  useEffect(() => {
-    if (sessions.length > 0) {
+    if (ipcRenderer) {
       try {
-        localStorage.setItem("uncertaintySessions", JSON.stringify(sessions));
-      } catch (error) {
-        console.error("Failed to save data to localStorage", error);
+        const currentPath = await ipcRenderer.invoke('get-db-path');
+        setDbPath(currentPath);
+
+        if (currentPath) {
+          const loadedSessions = await ipcRenderer.invoke('load-sessions');
+          
+          if (loadedSessions && loadedSessions.length > 0) {
+            setSessions(loadedSessions);
+            loadedFromDb = true;
+
+            if (!selectedSessionId) {
+                const mostRecent = loadedSessions[0];
+                setSelectedSessionId(mostRecent.id);
+                setSelectedTestPointId(mostRecent.testPoints?.[0]?.id || null);
+            }
+          } else {
+             console.log("Connected DB is empty. Falling back to Local Storage...");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load sessions via IPC", err);
       }
     }
-  }, [sessions]);
 
-  // --- Helpers ---
-  const currentSessionData = useMemo(
-    () => sessions.find((s) => s.id === selectedSessionId),
-    [sessions, selectedSessionId]
-  );
+    // Fallback: Load from LocalStorage
+    if (!loadedFromDb) {
+        try {
+            const savedSessions = localStorage.getItem("uncertaintySessions");
+            if (savedSessions) {
+                const parsed = JSON.parse(savedSessions);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    console.log(`Loaded ${parsed.length} sessions from LocalStorage.`);
+                    setSessions(parsed);
+                    if (!selectedSessionId || !parsed.find(s => s.id === selectedSessionId)) {
+                        setSelectedSessionId(parsed[0].id);
+                        setSelectedTestPointId(parsed[0].testPoints?.[0]?.id || null);
+                    }
+                } else {
+                    setSessions([]);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to load from LocalStorage", error);
+        }
+    }
+  }, [ipcRenderer, selectedSessionId]);
 
-  const currentTestPoints = useMemo(
-    () => currentSessionData?.testPoints || [],
-    [currentSessionData]
-  );
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  // --- CRUD Operations ---
+
+  // --- 2. Persistence Logic (The Fix) ---
+  
+  const persistSession = async (sessionToSave, newImages = []) => {
+    // 1. DATABASE MODE
+    if (ipcRenderer && dbPath) {
+        try {
+            // Save JSON (We keep it clean/lightweight)
+            await ipcRenderer.invoke('save-session', sessionToSave);
+            
+            // Save Images as Files
+            for (const img of newImages) {
+                if (img.fileObject) {
+                    await ipcRenderer.invoke('save-image', { 
+                        sessionId: sessionToSave.id, 
+                        imageId: img.id, 
+                        dataBase64: img.fileObject 
+                    });
+                }
+            }
+        } catch (err) {
+            console.error("Failed to save to disk", err);
+        }
+    } 
+    
+    // 2. LOCAL STORAGE MODE (Always backup here, but embed images)
+    setSessions(prev => {
+        // Create a copy of the session
+        const sessionForLs = { ...sessionToSave };
+
+        // If we have new images, we MUST embed them into the JSON for LocalStorage
+        // because we can't save separate files.
+        if (newImages.length > 0) {
+            const updatedNoteImages = (sessionForLs.noteImages || []).map(imgRef => {
+                const newImg = newImages.find(ni => ni.id === imgRef.id);
+                if (newImg) {
+                    // Embed the data
+                    return { ...imgRef, fileObject: newImg.fileObject };
+                }
+                // If it already has data (from previous load), keep it
+                return imgRef;
+            });
+            sessionForLs.noteImages = updatedNoteImages;
+        }
+
+        const updatedList = prev.map(s => s.id === sessionForLs.id ? sessionForLs : s);
+        if (!prev.find(s => s.id === sessionForLs.id)) {
+            updatedList.unshift(sessionForLs);
+        }
+        
+        try {
+            localStorage.setItem("uncertaintySessions", JSON.stringify(updatedList));
+        } catch (e) {
+            console.warn("LocalStorage Quota Exceeded (Images might be too big)", e);
+        }
+        
+        return prev; 
+    });
+  };
+
+  // --- 3. Image Actions (Updated) ---
+
+  const loadSessionImages = async (sessionId) => {
+    // A. DB Mode: Load from files
+    if (ipcRenderer && dbPath) {
+      return await ipcRenderer.invoke('load-session-images', sessionId);
+    } 
+    
+    // B. Local Mode: Extract from Session State
+    // We look at the session currently in memory
+    const session = sessions.find(s => s.id === sessionId);
+    if (session && session.noteImages) {
+        // Return array of { id, data } objects
+        return session.noteImages
+            .filter(img => img.fileObject) // Only if data exists
+            .map(img => ({ id: img.id, data: img.fileObject }));
+    }
+    return [];
+  };
+
+  const saveSessionImage = async (sessionId, imageId, dataBase64) => {
+    // Only needed for DB Mode separate calls
+    if (ipcRenderer && dbPath) {
+      await ipcRenderer.invoke('save-image', { sessionId, imageId, dataBase64 });
+    }
+  };
+
+  const deleteSessionImage = async (sessionId, imageId) => {
+    // DB Mode
+    if (ipcRenderer && dbPath) {
+      await ipcRenderer.invoke('delete-image', { sessionId, imageId });
+    }
+    
+    // Local Mode cleanup
+    setSessions(prev => {
+        const session = prev.find(s => s.id === sessionId);
+        if (!session) return prev;
+
+        const updatedImages = (session.noteImages || []).filter(img => img.id !== imageId);
+        const updatedSession = { ...session, noteImages: updatedImages };
+        
+        const updatedList = prev.map(s => s.id === sessionId ? updatedSession : s);
+        localStorage.setItem("uncertaintySessions", JSON.stringify(updatedList));
+        return updatedList;
+    });
+  };
+
+  const deleteSessionFromDisk = async (sessionId) => {
+    if (ipcRenderer && dbPath) {
+        await ipcRenderer.invoke('delete-session', sessionId);
+    }
+    // Also remove from LocalStorage
+    setSessions(prev => {
+        const updated = prev.filter(s => s.id !== sessionId);
+        localStorage.setItem("uncertaintySessions", JSON.stringify(updated));
+        return updated;
+    });
+  };
+
+  // --- 4. Database Actions ---
+
+  const selectDatabaseFolder = async () => {
+      if(ipcRenderer) {
+          const path = await ipcRenderer.invoke('select-db-folder');
+          if (path) {
+              setDbPath(path);
+              loadData(); 
+          }
+      }
+  };
+
+  const disconnectDatabase = async () => {
+      if(ipcRenderer) {
+          await ipcRenderer.invoke('disconnect-db');
+          setDbPath(null);
+          loadData(); 
+      }
+  };
+
+  const migrateToDisk = async () => {
+      if (!ipcRenderer || !dbPath) {
+          alert("Please connect a database folder first.");
+          return;
+      }
+      if (sessions.length === 0) {
+          alert("No sessions to migrate.");
+          return;
+      }
+
+      if (window.confirm(`Migrate ${sessions.length} sessions to ${dbPath}?`)) {
+          let count = 0;
+          for (const session of sessions) {
+              // Extract images if they are embedded
+              const imagesToSave = (session.noteImages || [])
+                .filter(img => img.fileObject)
+                .map(img => ({ id: img.id, fileObject: img.fileObject }));
+
+              await persistSession(session, imagesToSave);
+              count++;
+          }
+          alert(`Successfully saved ${count} sessions to disk!`);
+          loadData(); 
+      }
+  };
+
+  // --- 5. CRUD Operations ---
+
+  // UPDATED: Now accepts newImages to handle the hybrid logic
+  const updateSession = (updatedSession, newImages = []) => {
+    setSessions((prevSessions) =>
+      prevSessions.map((s) => (s.id === updatedSession.id ? updatedSession : s))
+    );
+    persistSession(updatedSession, newImages);
+  };
 
   const addSession = () => {
     const newSession = createNewSession();
-    setSessions((prev) => [...prev, newSession]);
+    setSessions((prev) => [newSession, ...prev]);
     setSelectedSessionId(newSession.id);
     setSelectedTestPointId(null);
+    persistSession(newSession);
     return newSession;
   };
 
   const deleteSession = (sessionId) => {
     const newSessions = sessions.filter((s) => s.id !== sessionId);
+    deleteSessionFromDisk(sessionId); 
 
     if (newSessions.length === 0) {
-      const firstSession = createNewSession();
-      setSessions([firstSession]);
-      setSelectedSessionId(firstSession.id);
+      setSessions([]);
+      setSelectedSessionId(null);
       setSelectedTestPointId(null);
     } else {
       if (selectedSessionId === sessionId) {
@@ -138,61 +318,53 @@ const useSessionManager = () => {
     }
   };
 
-  const updateSession = (updatedSession) => {
-    setSessions((prevSessions) =>
-      prevSessions.map((s) => (s.id === updatedSession.id ? updatedSession : s))
-    );
-  };
-
   const importSession = (loadedSession) => {
-    setSessions((prevSessions) => {
-      const sessionExists = prevSessions.some((s) => s.id === loadedSession.id);
-      if (sessionExists) {
-        return prevSessions.map((s) =>
-          s.id === loadedSession.id ? loadedSession : s
-        );
-      }
-      return [...prevSessions, loadedSession];
+    setSessions((prev) => {
+        const exists = prev.some(s => s.id === loadedSession.id);
+        if (exists) {
+            return prev.map(s => s.id === loadedSession.id ? loadedSession : s);
+        }
+        return [loadedSession, ...prev];
     });
     setSelectedSessionId(loadedSession.id);
     setSelectedTestPointId(loadedSession.testPoints?.[0]?.id || null);
+    
+    // Check if import has embedded images we need to save
+    const imagesToSave = (loadedSession.noteImages || [])
+        .filter(img => img.fileObject)
+        .map(img => ({ id: img.id, fileObject: img.fileObject }));
+
+    persistSession(loadedSession, imagesToSave);
   };
 
+  // --- Sub-Update Wrappers ---
+
   const saveTestPoint = (formData) => {
-    setSessions((prev) =>
-      prev.map((session) => {
-        if (session.id !== selectedSessionId) return session;
-
-        // Update existing
-        if (formData.id) {
-          const updatedTestPoints = session.testPoints.map((tp) => {
-            if (tp.id === formData.id) {
-              return {
-                ...tp,
-                section: formData.section,
-                testPointInfo: { ...formData.testPointInfo },
-                measurementType: formData.measurementType,
-                equationString: formData.equationString,
-                variableMappings: formData.variableMappings,
-              };
-            }
-            return tp;
-          });
-          return { ...session, testPoints: updatedTestPoints };
+    const session = sessions.find(s => s.id === selectedSessionId);
+    if(!session) return;
+    let updatedSession;
+    if (formData.id) {
+        const updatedTestPoints = session.testPoints.map((tp) => {
+        if (tp.id === formData.id) {
+            return {
+            ...tp,
+            section: formData.section,
+            testPointInfo: { ...formData.testPointInfo },
+            measurementType: formData.measurementType,
+            equationString: formData.equationString,
+            variableMappings: formData.variableMappings,
+            };
         }
-
-        // Add New
-        else {
-          const lastTestPoint = session.testPoints.find(
-            (tp) => tp.id === selectedTestPointId
-          );
-          let copiedTmdes = [];
-          const newTestPointParameter = formData.testPointInfo.parameter;
-
-          if (formData.copyTmdes && lastTestPoint) {
+        return tp;
+        });
+        updatedSession = { ...session, testPoints: updatedTestPoints };
+    } else {
+        const lastTestPoint = session.testPoints.find((tp) => tp.id === selectedTestPointId);
+        let copiedTmdes = [];
+        if (formData.copyTmdes && lastTestPoint) {
             copiedTmdes = JSON.parse(JSON.stringify(lastTestPoint.tmdeTolerances || []));
             const originalTestPointParameter = lastTestPoint.testPointInfo.parameter;
-
+            const newTestPointParameter = formData.testPointInfo.parameter;
             copiedTmdes.forEach((tmde) => {
               const wasUsingUutRef =
                 tmde.measurementPoint?.value === originalTestPointParameter.value &&
@@ -201,9 +373,8 @@ const useSessionManager = () => {
                 tmde.measurementPoint = { ...newTestPointParameter };
               }
             });
-          }
-
-          const newTestPoint = {
+        }
+        const newTestPoint = {
             id: Date.now(),
             ...defaultTestPoint,
             section: formData.section,
@@ -212,80 +383,72 @@ const useSessionManager = () => {
             measurementType: formData.measurementType,
             equationString: formData.equationString,
             variableMappings: formData.variableMappings,
-          };
-          setSelectedTestPointId(newTestPoint.id);
-          return { ...session, testPoints: [...session.testPoints, newTestPoint] };
-        }
-      })
-    );
+        };
+        setSelectedTestPointId(newTestPoint.id);
+        updatedSession = { ...session, testPoints: [...session.testPoints, newTestPoint] };
+    }
+    updateSession(updatedSession);
   };
 
   const deleteTestPoint = (idToDelete) => {
+    const session = sessions.find(s => s.id === selectedSessionId);
+    if(!session) return;
     let nextSelectedTestPointId = selectedTestPointId;
-    const updatedSessions = sessions.map((session) => {
-      if (session.id === selectedSessionId) {
-        const filteredTestPoints = session.testPoints.filter((tp) => tp.id !== idToDelete);
-        if (selectedTestPointId === idToDelete) {
-          nextSelectedTestPointId = filteredTestPoints[0]?.id || null;
-        }
-        return { ...session, testPoints: filteredTestPoints };
-      }
-      return session;
-    });
-
-    setSessions(updatedSessions);
+    const filteredTestPoints = session.testPoints.filter((tp) => tp.id !== idToDelete);
+    if (selectedTestPointId === idToDelete) {
+        nextSelectedTestPointId = filteredTestPoints[0]?.id || null;
+    }
+    const updatedSession = { ...session, testPoints: filteredTestPoints };
     setSelectedTestPointId(nextSelectedTestPointId);
+    updateSession(updatedSession);
   };
 
   const updateTestPointData = useCallback((updatedData) => {
-    setSessions((prevSessions) =>
-      prevSessions.map((session) => {
-        if (session.id === selectedSessionId) {
-          const updatedTestPoints = session.testPoints.map((tp) =>
+    setSessions(prevSessions => {
+        const session = prevSessions.find(s => s.id === selectedSessionId);
+        if(!session) return prevSessions;
+        const updatedTestPoints = session.testPoints.map((tp) =>
             tp.id === selectedTestPointId ? { ...tp, ...updatedData } : tp
-          );
-          return { ...session, testPoints: updatedTestPoints };
-        }
-        return session;
-      })
-    );
-  }, [selectedSessionId, selectedTestPointId]);
+        );
+        const updatedSession = { ...session, testPoints: updatedTestPoints };
+        persistSession(updatedSession);
+        return prevSessions.map(s => s.id === selectedSessionId ? updatedSession : s);
+    });
+  }, [selectedSessionId, selectedTestPointId]); 
 
   const deleteTmdeDefinition = (tmdeId) => {
-    setSessions((prev) =>
-      prev.map((session) => {
-        if (session.id !== selectedSessionId) return session;
-        const updatedTestPoints = session.testPoints.map((tp) => {
-          if (tp.id !== selectedTestPointId) return tp;
-          const newTolerances = tp.tmdeTolerances.filter((t) => t.id !== tmdeId);
-          return { ...tp, tmdeTolerances: newTolerances };
-        });
-        return { ...session, testPoints: updatedTestPoints };
-      })
-    );
+    const session = sessions.find(s => s.id === selectedSessionId);
+    if(!session) return;
+    const updatedTestPoints = session.testPoints.map((tp) => {
+        if (tp.id !== selectedTestPointId) return tp;
+        const newTolerances = tp.tmdeTolerances.filter((t) => t.id !== tmdeId);
+        return { ...tp, tmdeTolerances: newTolerances };
+    });
+    const updatedSession = { ...session, testPoints: updatedTestPoints };
+    updateSession(updatedSession);
   };
 
   const decrementTmdeQuantity = (tmdeId) => {
-    setSessions((prev) =>
-      prev.map((session) => {
-        if (session.id !== selectedSessionId) return session;
-        const updatedTestPoints = session.testPoints.map((tp) => {
-          if (tp.id !== selectedTestPointId) return tp;
-          const newTolerances = tp.tmdeTolerances
-            .map((t) => {
-              if (t.id === tmdeId) {
-                const newQuantity = (t.quantity || 1) - 1;
-                return { ...t, quantity: newQuantity };
-              }
-              return t;
-            })
-            .filter((t) => t.quantity > 0);
-          return { ...tp, tmdeTolerances: newTolerances };
-        });
-        return { ...session, testPoints: updatedTestPoints };
-      })
-    );
+     const session = sessions.find(s => s.id === selectedSessionId);
+     if(!session) return;
+     const updatedTestPoints = session.testPoints.map((tp) => {
+        if (tp.id !== selectedTestPointId) return tp;
+        const newTolerances = tp.tmdeTolerances.map((t) => {
+            if (t.id === tmdeId) {
+            const newQuantity = (t.quantity || 1) - 1;
+            return { ...t, quantity: newQuantity };
+            }
+            return t;
+        }).filter((t) => t.quantity > 0);
+        return { ...tp, tmdeTolerances: newTolerances };
+    });
+    const updatedSession = { ...session, testPoints: updatedTestPoints };
+    updateSession(updatedSession);
   };
+
+  // --- HELPERS ---
+  const currentSessionData = sessions.find((s) => s.id === selectedSessionId);
+  const currentTestPoints = currentSessionData?.testPoints || [];
 
   return {
     sessions,
@@ -297,7 +460,13 @@ const useSessionManager = () => {
     currentTestPoints,
     defaultTestPoint,
     createNewSession,
-    // Actions
+    dbPath,
+    selectDatabaseFolder,
+    disconnectDatabase,
+    migrateToDisk,
+    saveSessionImage,
+    loadSessionImages,
+    deleteSessionImage,
     addSession,
     deleteSession,
     updateSession,
@@ -307,7 +476,7 @@ const useSessionManager = () => {
     updateTestPointData,
     deleteTmdeDefinition,
     decrementTmdeQuantity,
-    setSessions // Exposed for edge cases if needed
+    setSessions
   };
 };
 

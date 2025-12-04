@@ -684,7 +684,7 @@ const CommonGBInputDisplay = ({ inputs }) => (
     <div className="breakdown-step">
       <h5>Uncertainty Requirements</h5>
       <p>
-        These values are uncertainty requirements set on the Uncertainty Tool.
+        These values are uncertainty requirements set on the Uncertalytics.
       </p>
       <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
         inputs.measRelTarget * 100
