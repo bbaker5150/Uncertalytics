@@ -417,7 +417,7 @@ const UncertaintyBudgetTable = ({
                             >
                               <span className="metric-pod-label">GB LOW</span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBLOW.toFixed(4)}
+                                {riskResults.gbResults.GBLOW.toFixed(riskResults.uutResolution+1)}
                               </span>
                             </div>
                             <div
@@ -426,7 +426,7 @@ const UncertaintyBudgetTable = ({
                             >
                               <span className="metric-pod-label">GB HIGH</span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBUP.toFixed(4)}
+                                {riskResults.gbResults.GBUP.toFixed(riskResults.uutResolution+1)}
                               </span>
                             </div>
                             <div
