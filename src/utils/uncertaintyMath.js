@@ -379,6 +379,7 @@ export const getToleranceSummary = (toleranceData) => {
   
     const parts = [];
     if (toleranceData.reading) parts.push(formatPart(toleranceData.reading));
+    if (toleranceData.readings_iv) parts.push(formatPart(toleranceData.readings_iv));
     if (toleranceData.range)
       parts.push(`${formatPart(toleranceData.range)} of FS`);
     if (toleranceData.floor) parts.push(formatPart(toleranceData.floor));
@@ -483,6 +484,8 @@ export const calculateUncertaintyFromToleranceObject = (
     };
   
     addComponent(toleranceObject.reading, "Reading", nominalValue);
+    addComponent(toleranceObject.readings_iv, "Reading (IV)", nominalValue);
+
     addComponent(
       toleranceObject.range,
       "Range",

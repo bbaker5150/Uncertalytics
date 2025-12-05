@@ -1,12 +1,13 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import Latex from "./Latex"; // Assuming Latex.jsx is in the components folder
 import { unitSystem } from "../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCalculator } from "@fortawesome/free-solid-svg-icons";
+import { faCalculator, faCog, faPlus, faPencilAlt } from "@fortawesome/free-solid-svg-icons"; // Added faPencilAlt
 
 const UncertaintyBudgetTable = ({
   components,
   onRemove,
+  onEdit,
   calcResults,
   referencePoint,
   uncertaintyConfidence,
@@ -18,6 +19,8 @@ const UncertaintyBudgetTable = ({
   onShowRiskBreakdown,
   showContribution,
   setShowContribution,
+  hasTmde,
+  onAddManualComponent,
 }) => {
   const confidencePercent = parseFloat(uncertaintyConfidence) || 95;
   const derivedUnit = referencePoint?.unit || "Units";
@@ -28,6 +31,26 @@ const UncertaintyBudgetTable = ({
   const finalColSpan = isDirect ? 3 : 5;
 
   const [showGuardband, setShowGuardband] = useState(false);
+
+  // --- Settings State ---
+  const [uiSigFigs, setUiSigFigs] = useState(4);
+  const [expandedSigFigs, setExpandedSigFigs] = useState(5);
+  const [riskSigFigs, setRiskSigFigs] = useState(4);
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef(null);
+
+  // Close settings menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+        setShowSettings(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [settingsRef]);
 
   const getPfaClass = (pfa) => {
     if (pfa > 5) return "status-bad";
@@ -71,6 +94,22 @@ const UncertaintyBudgetTable = ({
     expandedUncertaintyInDerivedUnit = calcResults.expanded_uncertainty;
   }
 
+  // --- EMPTY STATE CHECK ---
+  if (!hasTmde) {
+    return (
+      <div
+        className="placeholder-content"
+        style={{ marginTop: "20px", minHeight: "150px" }}
+      >
+        <h3 style={{ marginBottom: "10px" }}>No TMDE Selected</h3>
+        <p>
+          Add a Test Measurement Device (TMDE) to begin the uncertainty budget
+          calculation.
+        </p>
+      </div>
+    );
+  }
+
   const inputComponents = components.filter((c) => c.name.startsWith("Input:"));
   const directComponents = components.filter(
     (c) => !c.name.startsWith("Input:")
@@ -94,19 +133,19 @@ const UncertaintyBudgetTable = ({
             quantity > 1 ? `${c.name} (Qty: ${quantity})` : c.name;
 
           if (c.value_native !== undefined && c.unit_native) {
-            formattedValueUi = c.value_native.toPrecision(4);
+            formattedValueUi = c.value_native.toPrecision(uiSigFigs);
             displayValueUnitUi = c.unit_native;
           } else if (c.isBaseUnitValue && !isNaN(c.value) && c.unit) {
             const inputUnitInfo = unitSystem.units[c.unit];
             if (inputUnitInfo?.to_si) {
               const valueInOriginalUnit = c.value / inputUnitInfo.to_si;
-              formattedValueUi = valueInOriginalUnit.toPrecision(4);
+              formattedValueUi = valueInOriginalUnit.toPrecision(uiSigFigs);
               displayValueUnitUi = c.unit;
             } else {
               formattedValueUi = "Conv Err";
             }
           } else if (!c.isBaseUnitValue && !isNaN(c.value)) {
-            formattedValueUi = c.value.toPrecision(4);
+            formattedValueUi = c.value.toPrecision(uiSigFigs);
             displayValueUnitUi = "ppm";
           }
 
@@ -118,7 +157,7 @@ const UncertaintyBudgetTable = ({
               : "N/A";
 
           if (typeof c.contribution === "number" && !isNaN(c.contribution)) {
-            formattedContribution = c.contribution.toPrecision(4);
+            formattedContribution = c.contribution.toPrecision(uiSigFigs);
 
             if (isDirect) {
               displayContributionUnit = displayValueUnitUi;
@@ -152,13 +191,25 @@ const UncertaintyBudgetTable = ({
 
               <td className="action-cell">
                 {!c.isCore && (
-                  <span
-                    onClick={() => onRemove(c.id)}
-                    className="delete-action"
-                    title="Remove Component"
-                  >
-                    ×
-                  </span>
+                  <div style={{display: 'flex', gap: '8px', justifyContent: 'flex-end'}}>
+                    {/* NEW: Edit Button */}
+                    <span
+                        onClick={() => onEdit(c)}
+                        className="action-icon"
+                        title="Edit Component"
+                        style={{ cursor: "pointer", color: "var(--primary-color)", fontSize: "0.9rem" }}
+                    >
+                        <FontAwesomeIcon icon={faPencilAlt} />
+                    </span>
+                    <span
+                        onClick={() => onRemove(c.id)}
+                        className="delete-action"
+                        title="Remove Component"
+                        style={{fontSize: '1.2rem', lineHeight: '0.8'}}
+                    >
+                        ×
+                    </span>
+                  </div>
                 )}
               </td>
             </tr>
@@ -186,7 +237,186 @@ const UncertaintyBudgetTable = ({
 
           <th>Distribution</th>
 
-          <th style={{ width: "60px" }}></th>
+          {/* --- Settings Header Column with Add Button --- */}
+          <th style={{ width: "90px", position: "relative" }}>
+             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
+                <span
+                  onClick={onAddManualComponent}
+                  className="action-icon"
+                  title="Add Manual Component"
+                  style={{
+                    cursor: "pointer",
+                    color: "var(--text-color-muted)",
+                    display: "flex",
+                    justifyContent: "center",
+                    transition: "color 0.2s ease",
+                  }}
+                   onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "var(--primary-color)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "var(--text-color-muted)")
+                  }
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </span>
+
+                <div ref={settingsRef} style={{position: 'relative'}}>
+                    <span
+                    onClick={() => setShowSettings(!showSettings)}
+                    className="action-icon"
+                    title="Table Settings"
+                    style={{
+                        cursor: "pointer",
+                        color: "var(--text-color-muted)",
+                        display: "flex",
+                        justifyContent: "center",
+                        transition: "color 0.2s ease",
+                    }}
+                    onMouseEnter={(e) =>
+                        (e.currentTarget.style.color = "var(--primary-color)")
+                    }
+                    onMouseLeave={(e) =>
+                        (e.currentTarget.style.color = "var(--text-color-muted)")
+                    }
+                    >
+                    <FontAwesomeIcon icon={faCog} />
+                    </span>
+
+                    {/* --- Settings Dropdown --- */}
+                    {showSettings && (
+                    <div
+                        style={{
+                        position: "absolute",
+                        top: "100%",
+                        right: "0",
+                        zIndex: 1010,
+                        backgroundColor: "var(--content-background)",
+                        border: "1px solid var(--border-color)",
+                        borderRadius: "8px",
+                        boxShadow: "var(--box-shadow-glow)",
+                        padding: "15px",
+                        minWidth: "220px",
+                        marginTop: "8px",
+                        textAlign: "left",
+                        animation: "context-menu-fade-in 0.1s ease-out",
+                        }}
+                    >
+                        <h5
+                        style={{
+                            margin: "0 0 10px 0",
+                            fontSize: "0.75rem",
+                            color: "var(--text-color-muted)",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            borderBottom: "1px solid var(--border-color)",
+                            paddingBottom: "8px",
+                        }}
+                        >
+                        Precision Settings
+                        </h5>
+                        <div style={{ marginBottom: "15px" }}>
+                        <label
+                            style={{
+                            display: "block",
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                            marginBottom: "6px",
+                            color: "var(--text-color)",
+                            }}
+                        >
+                            uᵢ Sig Figs
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={uiSigFigs}
+                            onChange={(e) =>
+                            setUiSigFigs(Math.max(1, parseInt(e.target.value) || 2))
+                            }
+                            style={{
+                            width: "100%",
+                            padding: "8px",
+                            fontSize: "0.9rem",
+                            border: "1px solid var(--border-color)",
+                            borderRadius: "6px",
+                            backgroundColor: "var(--input-background)",
+                            color: "var(--text-color)",
+                            }}
+                        />
+                        </div>
+                        <div style={{ marginBottom: "15px" }}>
+                        <label
+                            style={{
+                            display: "block",
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                            marginBottom: "6px",
+                            color: "var(--text-color)",
+                            }}
+                        >
+                            Expanded Unc (U) Sig Figs
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={expandedSigFigs}
+                            onChange={(e) =>
+                            setExpandedSigFigs(
+                                Math.max(1, parseInt(e.target.value) || 2)
+                            )
+                            }
+                            style={{
+                            width: "100%",
+                            padding: "8px",
+                            fontSize: "0.9rem",
+                            border: "1px solid var(--border-color)",
+                            borderRadius: "6px",
+                            backgroundColor: "var(--input-background)",
+                            color: "var(--text-color)",
+                            }}
+                        />
+                        </div>
+                        <div>
+                        <label
+                            style={{
+                            display: "block",
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                            marginBottom: "6px",
+                            color: "var(--text-color)",
+                            }}
+                        >
+                            Risk (PFA/PFR) Sig Figs
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={riskSigFigs}
+                            onChange={(e) =>
+                            setRiskSigFigs(
+                                Math.max(1, parseInt(e.target.value) || 2)
+                            )
+                            }
+                            style={{
+                            width: "100%",
+                            padding: "8px",
+                            fontSize: "0.9rem",
+                            border: "1px solid var(--border-color)",
+                            borderRadius: "6px",
+                            backgroundColor: "var(--input-background)",
+                            color: "var(--text-color)",
+                            }}
+                        />
+                        </div>
+                    </div>
+                    )}
+                </div>
+             </div>
+          </th>
         </tr>
       </thead>
 
@@ -216,14 +446,18 @@ const UncertaintyBudgetTable = ({
             <td>(From Inputs)</td>
             <td>B</td>
             <td>
-              {calcResults.combined_uncertainty_inputs_native.toPrecision(4)}{" "}
+              {calcResults.combined_uncertainty_inputs_native.toPrecision(
+                uiSigFigs
+              )}{" "}
               {derivedUnit}
             </td>
 
             {!isDirect && <td>1.000</td>}
             {!isDirect && (
               <td>
-                {calcResults.combined_uncertainty_inputs_native.toPrecision(4)}{" "}
+                {calcResults.combined_uncertainty_inputs_native.toPrecision(
+                  uiSigFigs
+                )}{" "}
                 {derivedUnit}
               </td>
             )}
@@ -247,26 +481,28 @@ const UncertaintyBudgetTable = ({
       </tbody>
 
       <tfoot>
+        {/* Footer content remains unchanged */}
         <tr>
           <td colSpan={finalColSpan}>{"Combined Standard Uncertainty (uₑ)"}</td>
           <td>
             {!isNaN(combinedUncertaintyInDerivedUnit)
               ? `${combinedUncertaintyInDerivedUnit.toPrecision(
-                  4
+                  uiSigFigs
                 )} ${derivedUnit}`
               : "N/A"}
           </td>
           <td colSpan="2"></td>
         </tr>
         {calcResults && (
-          <>
+            <>
             <tr className="final-uncertainty-row">
               <td colSpan={headerColSpan}>
                 <div
                   className="final-result-display"
                   style={{ position: "relative" }}
                 >
-                  {/* Absolute Toggle Switch */}
+                  {/* ... [Existing Footer Logic for Toggle Switches, Expanded Unc, and Risk Dashboard] ... */}
+                   {/* Absolute Toggle Switch */}
                   <div
                     style={{
                       position: "absolute",
@@ -334,7 +570,9 @@ const UncertaintyBudgetTable = ({
                   <div className="final-result-value">
                     ±{" "}
                     {!isNaN(expandedUncertaintyInDerivedUnit)
-                      ? expandedUncertaintyInDerivedUnit.toPrecision(5)
+                      ? expandedUncertaintyInDerivedUnit.toPrecision(
+                          expandedSigFigs
+                        )
                       : "N/A"}
                     <span className="final-result-unit">{derivedUnit}</span>
                   </div>
@@ -343,7 +581,7 @@ const UncertaintyBudgetTable = ({
                     {calcResults.k_value.toFixed(3)}... {confidencePercent}%.
                   </span>
 
-                  {/* Cleaned Up Metric Pods */}
+                  {/* Risk Metrics Dashboard */}
                   {riskResults && (
                     <div className="budget-risk-metrics">
                       {/* Row 1: Core Risk Metrics */}
@@ -359,7 +597,7 @@ const UncertaintyBudgetTable = ({
                         >
                           <span className="metric-pod-label">PFA</span>
                           <span className="metric-pod-value">
-                            {riskResults.pfa.toFixed(4)} %
+                            {riskResults.pfa.toPrecision(riskSigFigs)} %
                           </span>
                         </div>
                         <div
@@ -371,7 +609,7 @@ const UncertaintyBudgetTable = ({
                         >
                           <span className="metric-pod-label">PFR</span>
                           <span className="metric-pod-value">
-                            {riskResults.pfr.toFixed(4)} %
+                            {riskResults.pfr.toPrecision(riskSigFigs)} %
                           </span>
                         </div>
                         <div
@@ -417,7 +655,9 @@ const UncertaintyBudgetTable = ({
                             >
                               <span className="metric-pod-label">GB LOW</span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBLOW.toFixed(riskResults.uutResolution+1)}
+                                {riskResults.gbResults.GBLOW.toFixed(
+                                  riskResults.uutResolution + 1
+                                )}
                               </span>
                             </div>
                             <div
@@ -426,7 +666,9 @@ const UncertaintyBudgetTable = ({
                             >
                               <span className="metric-pod-label">GB HIGH</span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBUP.toFixed(riskResults.uutResolution+1)}
+                                {riskResults.gbResults.GBUP.toFixed(
+                                  riskResults.uutResolution + 1
+                                )}
                               </span>
                             </div>
                             <div
@@ -452,7 +694,7 @@ const UncertaintyBudgetTable = ({
                                 PFA w/ GB
                               </span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBPFA.toFixed(4)} %
+                                {riskResults.gbResults.GBPFA.toPrecision(riskSigFigs)} %
                               </span>
                             </div>
                             <div
@@ -463,7 +705,7 @@ const UncertaintyBudgetTable = ({
                                 PFR w/ GB
                               </span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBPFR.toFixed(4)} %
+                                {riskResults.gbResults.GBPFR.toPrecision(riskSigFigs)} %
                               </span>
                             </div>
                           </div>
@@ -511,7 +753,7 @@ const UncertaintyBudgetTable = ({
                 </div>
               </td>
             </tr>
-          </>
+            </>
         )}
       </tfoot>
     </table>

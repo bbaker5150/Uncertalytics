@@ -3,7 +3,6 @@ import Select from "react-select";
 import {
   unitSystem,
   errorDistributions,
-  getToleranceUnitOptions,
 } from "../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrashAlt, faPlus } from "@fortawesome/free-solid-svg-icons";
@@ -102,6 +101,16 @@ const componentDefinitions = {
       symmetric: true,
     },
   },
+  readings_iv: {
+    label: "Reading (IV)",
+    defaultState: {
+      high: "",
+      low: "",
+      unit: "", // Logic will auto-populate this from UUT
+      distribution: "1.960",
+      symmetric: true,
+    },
+  },
   range: {
     label: "Range (e.g., % of Full Scale)",
     defaultState: {
@@ -174,6 +183,7 @@ const ToleranceForm = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // --- Auto-Update Units Hook ---
   useEffect(() => {
     if (!referencePoint?.unit) return;
 
@@ -181,8 +191,15 @@ const ToleranceForm = ({
       let updated = false;
       const next = { ...prev };
 
+      // Update Floor Units
       if (next.floor && !next.floor.unit) {
         next.floor = { ...next.floor, unit: referencePoint.unit };
+        updated = true;
+      }
+
+      // Update Reading (IV) Units (NEW LOGIC)
+      if (next.readings_iv && !next.readings_iv.unit) {
+        next.readings_iv = { ...next.readings_iv, unit: referencePoint.unit };
         updated = true;
       }
 
@@ -198,6 +215,7 @@ const ToleranceForm = ({
     isUUT,
     setTolerance,
     tolerance.floor,
+    tolerance.readings_iv, // Add dependency
     tolerance.measuringResolutionUnit,
   ]);
 
@@ -268,7 +286,8 @@ const ToleranceForm = ({
       if (!newState.unit) {
         if (referencePoint?.unit) {
           newState.unit = referencePoint.unit;
-        } else if (componentKey === "floor") {
+        } else if (componentKey === "floor" || componentKey === "readings_iv") {
+          // Fallback if no reference point exists (grab first non-ratio unit)
           const validUnits = allUnits.filter(
             (u) => !["%", "ppm", "dB", "ppb"].includes(u)
           );
@@ -368,7 +387,6 @@ const ToleranceForm = ({
         >
           {distributionOptions.map((dist) => (
             <option key={dist.value} value={dist.value}>
-              {/* UPDATED: Append k-value to label */}
               {dist.label} (k={dist.value})
             </option>
           ))}
@@ -405,6 +423,17 @@ const ToleranceForm = ({
             {commonFields}
             <label>Units</label>
             {renderUnitSelect(ratioUnitOptions)}
+            {distributionSelect}
+          </div>
+        );
+        break;
+      case "readings_iv":
+        // Behaves exactly like Floor: Physical Units, No Value input
+        content = (
+          <div className="config-stack">
+            {commonFields}
+            <label>Units</label>
+            {renderUnitSelect(physicalUnitOptions)}
             {distributionSelect}
           </div>
         );

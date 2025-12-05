@@ -30,6 +30,14 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
         };
       }
 
+      // Ensure readings_iv has unit if needed (optional but good for consistency)
+      if (initialUut.readings_iv && !initialUut.readings_iv.unit && testPointData.testPointInfo?.parameter?.unit) {
+        initialUut = {
+            ...initialUut,
+            readings_iv: { ...initialUut.readings_iv, unit: testPointData.testPointInfo.parameter.unit }
+        };
+      }
+
       setUutTolerance(initialUut);
       setTmdeTolerances((testPointData.tmdeTolerances || []).map(t => cleanObject(t)));
       setActiveTab("UUT");
@@ -50,12 +58,17 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
   const handleSave = () => {
     const cleanupTolerance = (tol, isUut = false) => {
       const cleaned = { ...tol };
-      const componentKeys = ["reading", "range", "floor", "db"];
+      
+      // UPDATED: Added "readings_iv" to the list of keys to check/cleanup
+      const componentKeys = ["reading", "readings_iv", "range", "floor", "db"];
+      
       componentKeys.forEach((key) => {
+        // If high limit is empty or not a number, remove the component entirely
         if (cleaned[key] && (cleaned[key].high === "" || isNaN(parseFloat(cleaned[key].high)))) {
           delete cleaned[key];
         }
       });
+
       if (isUut) {
         if (!parseFloat(cleaned.measuringResolution)) {
           delete cleaned.measuringResolution;
@@ -64,6 +77,7 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
       }
       return cleaned;
     };
+
     onSave({
       uutTolerance: cleanupTolerance(uutTolerance, true),
       tmdeTolerances: tmdeTolerances.map((t) => cleanupTolerance(t)),
@@ -98,7 +112,6 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
               {tmde.name}
             </button>
           ))}
-          {/* The "+" button to add a TMDE from here has been removed */}
         </div>
 
         <div className="modal-body-scrollable">
