@@ -679,8 +679,9 @@ export const PfrBreakdown = ({ results, inputs }) => {
 // ==========================================
 // 6. GUARDBAND BREAKDOWNS (Individual Exports)
 // ==========================================
-const CommonGBInputDisplay = ({ inputs }) => (
-  <>
+export const GBInputsBreakdown = ({ inputs }) => (
+  <div className="modal-body-scrollable">
+    <>
     <div className="breakdown-step">
       <h5>Uncertainty Requirements</h5>
       <p>
@@ -766,58 +767,255 @@ const CommonGBInputDisplay = ({ inputs }) => (
       </Latex>
     </div>
   </>
-);
-
-export const GBInputsBreakdown = ({ inputs }) => (
-  <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
   </div>
 );
 
-export const GBLowBreakdown = ({ inputs }) => (
+export const GBLowBreakdown = ({ inputs, results }) => (
   <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
+    <div className="breakdown-step">
+        <h5>Step 1: Formula</h5>
+        <p>
+          The Lower Guardband Tolerance (GB Low) is the product of the UUT Lower Tolerance times the Gaurdband Multiplier. Acceptance Tolerance are lowered to meet the required PFA in the cases that the PFA is above the {(inputs.reqPFA ?? 0) * 100}% PFA threshold.
+        </p>
+        <Latex>{"$$ GB_{LOW} = L_{Lower} * GB_{MULTIPLIER} $$"}</Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 2: Key Statistical Inputs</h5>
+        <p>These values are derived from your budget and reliability settings.</p>
+        <ul>
+          <li>
+            True UUT Error (σ<sub>uut</sub>):{" "}
+            <strong>
+              {/* {results.uUUT.toPrecision(4)} {safeNativeUnit} */}
+            </strong>
+            <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
+          </li>
+          <li>
+            Observed Error (σ<sub>obs</sub>):{" "}
+            {/* <strong>
+              {results.uDev.toPrecision(4)} {safeNativeUnit}
+            </strong> */}
+            <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
+          </li>
+          <li>
+            Correlation (ρ):{" "}
+            {/* <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.uUUT.toPrecision(
+              4
+            )}}{${results.uDev.toPrecision(
+              4
+            )}} = \\mathbf{${results.correlation.toFixed(4)}} $$`}</Latex> */}
+          </li>
+        </ul>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 3: Normalized Limits (Z-Scores)</h5>
+        <p>
+          The limits are normalized by their respective standard deviations. (L
+          = UUT Tolerance, A = Acceptance Limit)
+        </p>
+        <ul>
+          <li>
+            z<sub>x_low</sub> (True Error):{" "}
+            {/* <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
+              4
+            )}}{${results.uUUT.toPrecision(
+              4
+            )}} = \\mathbf{${z_x_low.toFixed(4)}} $$`}</Latex> */}
+          </li>
+          <li>
+            z<sub>x_high</sub> (True Error):{" "}
+            {/* <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
+              4
+            )}}{${results.uUUT.toPrecision(
+              4
+            )}} = \\mathbf{${z_x_high.toFixed(4)}} $$`}</Latex> */}
+          </li>
+          <li>
+            z<sub>y_low</sub> (Measured Error):{" "}
+            {/* <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
+              4
+            )}}{${results.uDev.toPrecision(
+              4
+            )}} = \\mathbf{${z_y_low.toFixed(4)}} $$`}</Latex> */}
+          </li>
+          <li>
+            z<sub>y_high</sub> (Measured Error):{" "}
+            {/* <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
+              4
+            )}}{${results.uDev.toPrecision(
+              4
+            )}} = \\mathbf{${z_y_high.toFixed(4)}} $$`}</Latex> */}
+          </li>
+        </ul>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 4: Bivariate Calculation</h5>
+        <p>The probability for each tail (region) is calculated separately.</p>
+        <p>
+          <strong>Lower Tail Risk (PFA_Lower):</strong>
+        </p>
+        <Latex>
+          {
+            "$$ P(z_x < z_{x\\_low} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+          }
+        </Latex>
+        <Latex>{`$$ = \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
+        {/* <Latex>{`$$ = \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_high.toFixed(
+          2
+        )}, ${results.correlation.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
+          2
+        )}, ${z_y_low.toFixed(2)}, ${results.correlation.toFixed(
+          2
+        )}) $$`}</Latex> */}
+        {/* <Latex>{`$$ = \\mathbf{${(results.pfa_term1 / 100).toExponential(
+          4
+        )}} $$`}</Latex> */}
+        <p>
+          <strong>Upper Tail Risk (PFA_Upper):</strong>
+        </p>
+        <Latex>
+          {
+            "$$ P(z_x > z_{x\\_high} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+          }
+        </Latex>
+        <p>
+          Calculated using symmetry:{" "}
+          <Latex>{`$$ = P(z_x < -z_{x\\_high} \\text{ and } -z_{y\\_high} < z_y < -z_{y\\_low}) $$`}</Latex>
+        </p>
+        <Latex>{`$$ = \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
+        {/* <Latex>{`$$ = \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_low.toFixed(
+          2
+        )}, ${results.correlation.toFixed(
+          2
+        )}) - \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_high.toFixed(
+          2
+        )}, ${results.correlation.toFixed(2)}) $$`}</Latex> */}
+        {/* <Latex>{`$$ = \\mathbf{${(results.pfa_term2 / 100).toExponential(
+          4
+        )}} $$`}</Latex> */}
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 5: Final PFA</h5>
+        <Latex>{`$$ PFA = PFA_{Lower} + PFA_{Upper} $$`}</Latex>
+        {/* <Latex>{`$$ = ${(results.pfa_term1 / 100).toExponential(4)} + ${(
+          results.pfa_term2 / 100
+        ).toExponential(4)} = \\mathbf{${(results.pfa / 100).toExponential(
+          4
+        )}} $$`}</Latex> */}
+        {/* <Latex>{`$$ \\text{Total PFA} = \\mathbf{${results.pfa.toFixed(
+          4
+        )}\\%} $$`}</Latex> */}
+      </div>
   </div>
 );
 
 export const GBHighBreakdown = ({ inputs }) => (
   <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
+    <Latex>
+        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+          6
+        )}} \\text{ ${inputs.nominalUnit}} $$`}
+      </Latex>
   </div>
 );
 
 export const GBPFABreakdown = ({ inputs }) => (
   <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
+    <Latex>
+        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+          6
+        )}} \\text{ ${inputs.nominalUnit}} $$`}
+      </Latex>
   </div>
 );
 
 export const GBPFRBreakdown = ({ inputs }) => (
   <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
+    <Latex>
+        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+          6
+        )}} \\text{ ${inputs.nominalUnit}} $$`}
+      </Latex>
   </div>
 );
 
-export const GBMultBreakdown = ({ inputs }) => (
-  <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
-  </div>
-);
+export const GBMultBreakdown = ({ inputs, results }) => {
+  const uutToleranceSpan = inputs.LUp - inputs.LLow;
+  const safeNativeUnit = results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
+  const gbSpan = results.gbResults.GBUP - results.gbResults.GBLOW;
+  console.log(results)
+  return (
+    <div className="modal-body-scrollable">
+      <div className="breakdown-step">
+        <h5>Step 1: Formula</h5>
+        <p>
+          The Guardband Multiplier is the ratio of the UUT tolerance span to
+          the Guardbanded tolerance span. Calculated by adjusting acceptance limits until required PFA is met.
+        </p>
+        <Latex>
+          {
+            "$$ \\text{Guardband Multiplier} = \\frac{\\text{UUT Tolerance Span}}{\\text{Guardband Tolerance Span}} = \\frac{L_{Upper} - L_{Lower}}{GB_{Upper} - GB_{Lower}} $$"
+          }
+        </Latex>
+        <div className="breakdown-step">
+          <h5>Step 2: Inputs</h5>
+          <ul>
+            <li>
+              Tolerance Span :{" "}
+              <Latex>{`$$ L_{Upper} - L_{Lower} = ${inputs.LUp.toPrecision(
+                6
+              )} - (${inputs.LLow.toPrecision(
+                6
+              )}) = ${uutToleranceSpan.toPrecision(
+                4
+              )} \\text{ ${safeNativeUnit}} $$`}</Latex>
+            </li>
+            <li>
+              Guardband Tolerance Span :{" "}
+              <Latex>{`$$ GB_{Upper} - GB_{Lower} = ${results.gbResults.GBUP.toPrecision(4)} - ${results.gbResults.GBLOW.toPrecision(4)} 
+              = \\mathbf{${gbSpan.toPrecision(4)}} \\text{ ${safeNativeUnit}} $$`}</Latex>
+            </li>
+          </ul>
+        </div>
+        <div className="breakdown-step">
+          <h5>Step 3: Final Calculation</h5>
+          <Latex>{`$$ GB Multiplier = \\frac{${gbSpan.toPrecision(
+            4
+          )}}{${uutToleranceSpan.toPrecision(
+            4
+          )}} = \\mathbf{${results.gbResults.GBMULT.toFixed(4)}} $$`}</Latex>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export const GBCalIntBreakdown = ({ inputs }) => (
   <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
+    <Latex>
+        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+          6
+        )}} \\text{ ${inputs.nominalUnit}} $$`}
+      </Latex>
   </div>
 );
 
 export const NoGBCalIntBreakdown = ({ inputs }) => (
   <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
+    <Latex>
+        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+          6
+        )}} \\text{ ${inputs.nominalUnit}} $$`}
+      </Latex>
   </div>
 );
 
 export const NoGBMeasRelBreakdown = ({ inputs }) => (
   <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
+    <Latex>
+        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+          6
+        )}} \\text{ ${inputs.nominalUnit}} $$`}
+      </Latex>
   </div>
 );

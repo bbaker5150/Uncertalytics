@@ -652,8 +652,6 @@ function Analysis({
       uutResolution: testPointData.uutTolerance.measuringResolution.length
     };
 
-    console.log(testPointData.uutTolerance.measuringResolution.length)
-
     setRiskResults(newRiskMetrics);
     onDataSave({ riskMetrics: newRiskMetrics });
   }, [
