@@ -919,25 +919,336 @@ export const GBHighBreakdown = ({ inputs }) => (
   </div>
 );
 
-export const GBPFABreakdown = ({ inputs }) => (
-  <div className="modal-body-scrollable">
-    <Latex>
-        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
-          6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
-      </Latex>
-  </div>
-);
+export const GBPFABreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
 
-export const GBPFRBreakdown = ({ inputs }) => (
-  <div className="modal-body-scrollable">
-    <Latex>
-        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
-          6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
-      </Latex>
-  </div>
-);
+  const mid = (inputs.LUp + inputs.LLow) / 2;
+  const LLow_norm = inputs.LLow - mid;
+  const LUp_norm = inputs.LUp - mid;
+  const ALow_norm = results.gbResults.GBLOW - mid;
+  const AUp_norm = results.gbResults.GBUP - mid;
+
+  const z_x_low = LLow_norm / results.uUUT;
+  const z_x_high = LUp_norm / results.uUUT; // The "true" positive Z-score for LUp
+  const z_y_low = ALow_norm / results.uDev;
+  const z_y_high = AUp_norm / results.uDev;
+
+  const safeNativeUnit =
+    results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
+  return (
+    <div className="modal-body-scrollable">
+      <div className="breakdown-step">
+        <h5>Step 1: Formula</h5>
+        <p>
+          The Probability of False Accept (PFA) is the sum of the probabilities
+          in the two "False Accept" regions of the risk scatterplot. This is
+          calculated using the Bivariate Normal Cumulative Distribution Function
+          (Φ₂).
+        </p>
+        <Latex>{"$$ PFA = PFA_{Lower} + PFA_{Upper} $$"}</Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 2: Key Statistical Inputs</h5>
+        <p>These values are derived from your budget and reliability settings.</p>
+        <ul>
+          <li>
+            True UUT Error (σ<sub>uut</sub>):{" "}
+            <strong>
+              {results.uUUT.toPrecision(4)} {safeNativeUnit}
+            </strong>
+            <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
+          </li>
+          <li>
+            Observed Error (σ<sub>obs</sub>):{" "}
+            <strong>
+              {results.uDev.toPrecision(4)} {safeNativeUnit}
+            </strong>
+            <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
+          </li>
+          <li>
+            Correlation (ρ):{" "}
+            <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.uUUT.toPrecision(
+              4
+            )}}{${results.uDev.toPrecision(
+              4
+            )}} = \\mathbf{${results.correlation.toFixed(4)}} $$`}</Latex>
+          </li>
+        </ul>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 3: Normalized Limits (Z-Scores)</h5>
+        <p>
+          The limits are normalized by their respective standard deviations. (L
+          = UUT Tolerance, A = Acceptance Limit)
+        </p>
+        <ul>
+          <li>
+            z<sub>x_low</sub> (True Error):{" "}
+            <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
+              4
+            )}}{${results.uUUT.toPrecision(
+              4
+            )}} = \\mathbf{${z_x_low.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>x_high</sub> (True Error):{" "}
+            <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
+              4
+            )}}{${results.uUUT.toPrecision(
+              4
+            )}} = \\mathbf{${z_x_high.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>y_low</sub> (Measured Error):{" "}
+            <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
+              4
+            )}}{${results.uDev.toPrecision(
+              4
+            )}} = \\mathbf{${z_y_low.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>y_high</sub> (Measured Error):{" "}
+            <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
+              4
+            )}}{${results.uDev.toPrecision(
+              4
+            )}} = \\mathbf{${z_y_high.toFixed(4)}} $$`}</Latex>
+          </li>
+        </ul>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 4: Bivariate Calculation</h5>
+        <p>The probability for each tail (region) is calculated separately.</p>
+        <p>
+          <strong>Lower Tail Risk (PFA_Lower):</strong>
+        </p>
+        <Latex>
+          {
+            "$$ P(z_x < z_{x\\_low} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+          }
+        </Latex>
+        <Latex>{`$$ = \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
+        <Latex>{`$$ = \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_high.toFixed(
+          2
+        )}, ${results.correlation.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
+          2
+        )}, ${z_y_low.toFixed(2)}, ${results.correlation.toFixed(
+          2
+        )}) $$`}</Latex>
+        <Latex>{`$$ = \\mathbf{${(results.pfa_term1 / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+        <p>
+          <strong>Upper Tail Risk (PFA_Upper):</strong>
+        </p>
+        <Latex>
+          {
+            "$$ P(z_x > z_{x\\_high} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+          }
+        </Latex>
+        <p>
+          Calculated using symmetry:{" "}
+          <Latex>{`$$ = P(z_x < -z_{x\\_high} \\text{ and } -z_{y\\_high} < z_y < -z_{y\\_low}) $$`}</Latex>
+        </p>
+        <Latex>{`$$ = \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
+        <Latex>{`$$ = \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_low.toFixed(
+          2
+        )}, ${results.correlation.toFixed(
+          2
+        )}) - \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_high.toFixed(
+          2
+        )}, ${results.correlation.toFixed(2)}) $$`}</Latex>
+        <Latex>{`$$ = \\mathbf{${(results.gbResults.GBPFAT2 / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 5: Final PFA</h5>
+        <Latex>{`$$ PFA = PFA_{Lower} + PFA_{Upper} $$`}</Latex>
+        <Latex>{`$$ = ${(results.gbResults.GBPFAT1 / 100).toExponential(4)} + ${(
+          results.gbResults.GBPFAT2 / 100
+        ).toExponential(4)} = \\mathbf{${(results.gbResults.GBPFA / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+        <Latex>{`$$ \\text{Total PFA} = \\mathbf{${results.gbResults.GBPFA.toFixed(
+          4
+        )}\\%} $$`}</Latex>
+      </div>
+    </div>
+  );
+
+};
+
+export const GBPFRBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+
+  const mid = (inputs.LUp + inputs.LLow) / 2;
+  const LLow_norm = inputs.LLow - mid;
+  const LUp_norm = inputs.LUp - mid;
+  const ALow_norm = results.ALow - mid;
+  const AUp_norm = results.AUp - mid;
+
+  // Z-Scores (Normalized Limits)
+  const z_x_low = LLow_norm / results.uUUT;
+  const z_x_high = LUp_norm / results.uUUT;
+  const z_y_low = ALow_norm / results.uDev;
+  const z_y_high = AUp_norm / results.uDev;
+
+  const safeNativeUnit =
+    results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
+
+  return (
+    <div className="modal-body-scrollable">
+      <div className="breakdown-step">
+        <h5>Step 1: Formula</h5>
+        <p>
+          The Probability of False Reject (PFR) is the sum of the probabilities
+          in the two "False Reject" regions of the risk scatterplot. This is
+          calculated using the Bivariate Normal Cumulative Distribution Function
+          (Φ₂).
+        </p>
+        <Latex>{"$$ PFR = PFR_{Lower} + PFR_{Upper} $$"}</Latex>
+        <Latex>
+          {
+            "$$ PFR_{Lower} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} < A_{Low}) $$"
+          }
+        </Latex>
+        <Latex>
+          {
+            "$$ PFR_{Upper} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} > A_{Up}) $$"
+          }
+        </Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 2: Key Statistical Inputs</h5>
+        <p>These values are derived from your budget and reliability settings.</p>
+        <ul>
+          <li>
+            True UUT Error (σ<sub>uut</sub>):{" "}
+            <strong>
+              {results.uUUT.toPrecision(4)} {safeNativeUnit}
+            </strong>
+            <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
+          </li>
+          <li>
+            Observed Error (σ<sub>obs</sub>):{" "}
+            <strong>
+              {results.uDev.toPrecision(4)} {safeNativeUnit}
+            </strong>
+            <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
+          </li>
+          <li>
+            Correlation (ρ):{" "}
+            <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.uUUT.toPrecision(
+              4
+            )}}{${results.uDev.toPrecision(
+              4
+            )}} = \\mathbf{${results.correlation.toFixed(4)}} $$`}</Latex>
+          </li>
+        </ul>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 3: Normalized Limits (Z-Scores)</h5>
+        <p>
+          The limits are normalized by their respective standard deviations. (L
+          = UUT Tolerance, A = Acceptance Limit)
+        </p>
+        <ul>
+          <li>
+            z<sub>x_low</sub> (True Error):{" "}
+            <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
+              4
+            )}}{${results.uUUT.toPrecision(
+              4
+            )}} = \\mathbf{${z_x_low.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>x_high</sub> (True Error):{" "}
+            <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
+              4
+            )}}{${results.uUUT.toPrecision(
+              4
+            )}} = \\mathbf{${z_x_high.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>y_low</sub> (Measured Error):{" "}
+            <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
+              4
+            )}}{${results.uDev.toPrecision(
+              4
+            )}} = \\mathbf{${z_y_low.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>y_high</sub> (Measured Error):{" "}
+            <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
+              4
+            )}}{${results.uDev.toPrecision(
+              4
+            )}} = \\mathbf{${z_y_high.toFixed(4)}} $$`}</Latex>
+          </li>
+        </ul>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 4: Bivariate Calculation</h5>
+        <p>The probability for each side (region) is calculated separately.</p>
+        <p>
+          <strong>Lower Side Risk (PFR_Lower):</strong>
+        </p>
+        <Latex>
+          {
+            "$$ P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y < z_{y\\_low}) $$"
+          }
+        </Latex>
+        <Latex>{`$$ = \\Phi_2(z_{x\\_high}, z_{y\\_low}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
+        <Latex>{`$$ = \\Phi_2(${z_x_high.toFixed(2)}, ${z_y_low.toFixed(
+          2
+        )}, ${results.correlation.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
+          2
+        )}, ${z_y_low.toFixed(2)}, ${results.correlation.toFixed(
+          2
+        )}) $$`}</Latex>
+        <Latex>{`$$ = \\mathbf{${(results.pfr_term1 / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+        <p>
+          <strong>Upper Side Risk (PFR_Upper):</strong>
+        </p>
+        <Latex>
+          {
+            "$$ P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y > z_{y\\_high}) $$"
+          }
+        </Latex>
+        <p>
+          Calculated using symmetry:{" "}
+          <Latex>{`$$ = P(-z_{x\\_high} < z_x < -z_{x\\_low} \\text{ and } z_y < -z_{y\\_high}) $$`}</Latex>
+        </p>
+        <Latex>{`$$ = \\Phi_2(-z_{x\\_low}, -z_{y\\_high}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
+        <Latex>{`$$ = \\Phi_2(${-z_x_low.toFixed(2)}, ${-z_y_high.toFixed(
+          2
+        )}, ${results.correlation.toFixed(
+          2
+        )}) - \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_high.toFixed(
+          2
+        )}, ${results.correlation.toFixed(2)}) $$`}</Latex>
+        <Latex>{`$$ = \\mathbf{${(results.pfr_term2 / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 5: Final PFR</h5>
+        <Latex>{`$$ PFR = PFR_{Lower} + PFR_{Upper} $$`}</Latex>
+        <Latex>{`$$ = ${(results.pfr_term1 / 100).toExponential(4)} + ${(
+          results.pfr_term2 / 100
+        ).toExponential(4)} = \\mathbf{${(results.pfr / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+        <Latex>{`$$ \\text{Total PFR} = \\mathbf{${results.pfr.toFixed(
+          4
+        )}\\%} $$`}</Latex>
+      </div>
+    </div>
+  );
+};
 
 export const GBMultBreakdown = ({ inputs, results }) => {
 
@@ -967,6 +1278,7 @@ export const GBMultBreakdown = ({ inputs, results }) => {
             "$$ \\text{Guardband Multiplier} = \\frac{\\text{UUT Upper Tolerance}}{\\text{Guardband Upper Tolerance}} = \\frac{L_{Upper} - Nominal}{GB_{Upper} - Nominal} $$"
           }
         </Latex>
+        </div>
         <div className="breakdown-step">
           <h5>Step 2: Inputs</h5>
           <ul>
@@ -993,22 +1305,83 @@ export const GBMultBreakdown = ({ inputs, results }) => {
             precise
           )}}{${uutToleranceUpper.toPrecision(
             precise
-          )}} = \\mathbf{${gbMult.toFixed(precise)}} $$`}</Latex>
+          )}} = \\mathbf{${gbMult.toFixed(precise)}} \\% $$`}</Latex>
         </div>
-      </div>
     </div>
   );
 }
 
-export const GBCalIntBreakdown = ({ inputs }) => (
+export const GBCalIntBreakdown = ({ inputs, results }) => {
+  const interval = inputs.guardBandInputs.calibrationInt ?? 0;
+
+  return (
   <div className="modal-body-scrollable">
-    <Latex>
-        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
-          6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+    <div className="breakdown-step">
+      <h5>Step 1: Formula</h5>
+      <p>
+        The Guardband Calibration Interval is calculated by the ratio of log of predicted reliability and log of observed reliability times the calibration interval. Predicted reliablity is calculated using guardband limits and observed uses UUT tolerance limits.
+      </p>
+      <Latex>
+      {`$\\text{GB Calibration Interval} = \\frac{\log{\\text{(Predicted Reliability)}}}{\log{\\text{(Observed Reliability)}}} \\cdot \\text{Calibration Interval}$`}
+    </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Inputs</h5>
+      <Latex>
+        {`$\\text{Calibration Interval} = ${interval} \\\\
+        \\text{L}_{UP} = 0 \\\\
+        \\text{L}_{LOW} = 0 \\\\
+        \\text{GB}_{UP} = 0 \\\\
+        \\text{GB}_{LOW} = 0 \\\\ $`}
       </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Observed Reliability</h5>
+      <Latex>
+        {`$
+        \\text{Measurement Uncertainty} = 0 \\\\
+        \\text{Measurement Reliability} = 0 \\\\
+        $`}
+      </Latex>
+      <Latex>
+        {`$$\\text{Biased Uncertainty} = \\sqrt{\\left(\\frac{L_{Up} - L_{Low}}{2 \\cdot \\Phi^{-1}\\!\\left(\\tfrac{1+r}{2}\\right)}\\right)^{2} - u_{Cal}^{2}}$$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Deviation Uncertainty} = \\sqrt{MeasUnc^{2} + BiasUnc^{2}}$$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$ObsRel = \\Phi\\left(\\frac{L_{Up}}{DevUnc}\\right) - \\Phi\\left(\\frac{L_{Low}}{DevUnc}\\right)$$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Predicted Reliability</h5>
+      <Latex>
+        {`$
+        \\text{Measurement Uncertainty} = 0 \\\\
+        \\text{Measurement Reliability} = 0 \\\\
+        $`}
+      </Latex>
+      <Latex>
+        {`$$\\text{Biased Uncertainty} = \\sqrt{\\left(\\frac{GB_{Up} - GB_{Low}}{2 \\cdot \\Phi^{-1}\\!\\left(\\tfrac{1+r}{2}\\right)}\\right)^{2} - u_{Cal}^{2}}$$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Deviation Uncertainty} = \\sqrt{MeasUnc^{2} + BiasUnc^{2}}$$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$PredRel = \\Phi\\left(\\frac{GB_{Up}}{DevUnc}\\right) - \\Phi\\left(\\frac{GB_{Low}}{DevUnc}\\right)$$`}
+      </Latex>
+    </div>
   </div>
-);
+)
+};
 
 export const NoGBCalIntBreakdown = ({ inputs }) => (
   <div className="modal-body-scrollable">

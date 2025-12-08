@@ -550,7 +550,7 @@ function Analysis({
       gbLow,
       gbHigh
     );
-    let gbCalInt = CalIntwGBMgr(
+    let [gbCalInt,gbCalIntObs,gbCalIntPred] = CalIntwGBMgr(
       uutNominal.value,
       0,
       LLow,
@@ -564,7 +564,7 @@ function Analysis({
       turNeeded,
       calInt
     );
-    let nogbCalInt = CalIntMgr(
+    let [nogbCalInt,nogbCalIntObs,nogbCalIntPred] = CalIntMgr(
       uutNominal.value,
       0,
       LLow,
@@ -577,7 +577,7 @@ function Analysis({
       calInt,
       pfaRequired
     );
-    let nogbMeasRel = CalRelMgr(
+    let [nogbMeasRel,nogbMeasRelOBS] = CalRelMgr(
       uutNominal.value,
       0,
       LLow,
@@ -619,8 +619,13 @@ function Analysis({
       GBPFRT1: gbPFRT1 * 100,
       GBPFRT2: gbPFRT2 * 100,
       GBCALINT: gbCalInt,
+      GBCALINTOBS: gbCalIntObs,
+      GBCALINTPRED: gbCalIntPred,
       NOGBCALINT: nogbCalInt,
+      NOGBCALINTOBS: nogbCalIntObs,
+      NOGBCALINTPRED: nogbCalIntPred,
       NOGBMEASREL: nogbMeasRel * 100,
+      NOGBMEASRELOBS: nogbMeasRelOBS * 100,
     };
 
     const newRiskMetrics = {
@@ -1552,7 +1557,7 @@ function Analysis({
                 guardBandMultiplier: parseFloat(
                   sessionData.uncReq.guardBandMultiplier
                 ),
-                ...riskResults.gbInputs,
+                guardBandInputs: riskResults.gbInputs,
               }
             : null,
         }}

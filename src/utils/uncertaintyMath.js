@@ -1856,7 +1856,7 @@ export function CalIntwGBMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc
 
     const dPredRel = PredRel(sRiskType, dMeasUnc, dReqRel, dAvg, dTolLow, dTolUp, dMeasUnc, dGBLow, dGBUp);
     const dPredInt = (Math.log(dPredRel) / Math.log(dObsRel)) * dInt;
-    return dPredInt > 0 ? dPredInt : "";
+    return dPredInt > 0 ? [dPredInt,dObsRel,dPredRel] : "";
 }
 
 export function CalIntMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngReqRel, rngMeasRel, rngTUR, rngReqTUR, rngInt, rngReqPFA) {
@@ -1878,16 +1878,16 @@ export function CalIntMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, r
     }
 
     let result = PFAIter(sRiskType, dObsRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-    if (result === -1) return "";
+    if (result === -1) return ["","",""];
     let dPFA = result;
 
     if (dPFA <= dReqPFA) {
-        return (Math.log(dReqRel) / Math.log(dObsRel)) * dInt;
+        return [(Math.log(dReqRel) / Math.log(dObsRel)) * dInt,dObsRel,dReqRel];
     }
 
     let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
     result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-    if (result === -1) return "";
+    if (result === -1) return ["","",""];
     dPFA = result;
 
     let dChg = dPFA < dReqPFA ? -Math.abs(dPredRel - dObsRel) : Math.abs(dPredRel - dObsRel);
@@ -1906,7 +1906,7 @@ export function CalIntMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, r
         if (result !== -1) dPFA = result;
     }
 
-    return dPFA === -1 ? "" : (Math.log(dPredRel) / Math.log(dObsRel)) * dInt;
+    return dPFA === -1 ? ["","",""] : [(Math.log(dPredRel) / Math.log(dObsRel)) * dInt,dObsRel,dPredRel];
 }
 
 export function CalRelMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngReqRel, rngMeasRel, rngTUR, rngReqTUR, rngInt, rngReqPFA) {
@@ -1931,7 +1931,7 @@ export function CalRelMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, r
     if (result === -1) return "";
     let dPFA = result;
 
-    if (dPFA <= dReqPFA) return dReqRel;
+    if (dPFA <= dReqPFA) return [dReqRel, dObsRel];
 
     let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
     result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
@@ -1954,5 +1954,5 @@ export function CalRelMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, r
         if (result !== -1) dPFA = result;
     }
 
-    return dPFA === -1 ? "" : dPredRel;
+    return dPFA === -1 ? "" : [dPredRel, dObsRel];
 }
