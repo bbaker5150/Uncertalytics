@@ -11,6 +11,11 @@ import OverviewModal from "./components/OverviewModal";
 import ContextMenu from "./components/ContextMenu";
 import FullBreakdownModal from "./components/FullBreakdownModal";
 import TestPointInfoModal from "./components/TestPointInfoModal";
+import InstrumentBuilderModal from "./components/InstrumentBuilderModal";
+
+// --- Floating Tools ---
+import FloatingNotepad from "./components/FloatingNotepad";
+import UnitConverter from "./components/UnitConverter";
 
 // --- Utils & Hooks ---
 import useSessionManager from "./hooks/useSessionManager";
@@ -29,10 +34,10 @@ import {
   faSlidersH,
   faSave,
   faFolderOpen,
-  faLink,
-  faUnlink,
-  faDatabase,
-  faPalette
+  faPalette,
+  faStickyNote,
+  faRightLeft,
+  faRadio,
 } from "@fortawesome/free-solid-svg-icons";
 
 // --- Contexts ---
@@ -42,6 +47,9 @@ export const useTheme = () => React.useContext(ThemeContext);
 function App() {
   const {
     sessions,
+    instruments, // <--- Access instruments
+    saveInstrument,
+    deleteInstrument,
     selectedSessionId,
     setSelectedSessionId,
     selectedTestPointId,
@@ -80,6 +88,11 @@ function App() {
   const [appNotification, setAppNotification] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   
+  // --- Floating Tools State ---
+  const [isNotepadOpen, setIsNotepadOpen] = useState(false);
+  const [isConverterOpen, setIsConverterOpen] = useState(false);
+  const [isInstrumentBuilderOpen, setIsInstrumentBuilderOpen] = useState(false);
+
   // --- Theme & Dark Mode State ---
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("default");
@@ -113,14 +126,6 @@ function App() {
         e.preventDefault();
         console.log("Theme Easter Egg Triggered");
         setShowThemeSelector(prev => !prev);
-        
-        // Optional: Notify user
-        if (!showThemeSelector) {
-           // We can't access state inside effect easily without deps, 
-           // but logically if we are toggling, we can infer.
-           // Leaving notification out to keep it "stealthy" or add below if desired:
-           // setAppNotification({ title: "Easter Egg", message: "Theme Selector Unlocked!" }); 
-        }
       }
     };
 
@@ -153,6 +158,8 @@ function App() {
     }
   }, [isDarkMode, currentTheme]);
 
+  // --- Handlers ---
+
   const handleAddNewSession = () => {
     const newSession = addSession();
     setEditingSession(newSession);
@@ -181,6 +188,20 @@ function App() {
       });
     }
     setEditingSession(null);
+  };
+
+  // --- Sync Notepad to Session Data ---
+  const handleUpdateNotes = (newNotes) => {
+    if (!currentSessionData) return;
+    const updatedSession = { ...currentSessionData, notes: newNotes };
+    updateSession(updatedSession);
+  };
+
+  // --- Instrument Saver ---
+  const handleSaveInstrument = (instrument) => {
+      saveInstrument(instrument);
+      setIsInstrumentBuilderOpen(false);
+      setAppNotification({ title: "Success", message: `Instrument "${instrument.model}" saved.` });
   };
 
   const handleOpenSessionEditor = async (initialTab = "details", tmdeToEdit = null) => {
@@ -301,6 +322,32 @@ function App() {
           title={appNotification?.title}
           message={appNotification?.message}
         />
+
+        {/* --- FLOATING TOOLS --- */}
+        {currentSessionData && (
+          <>
+            <FloatingNotepad 
+              isOpen={isNotepadOpen}
+              onClose={() => setIsNotepadOpen(false)}
+              notes={currentSessionData.notes || ""}
+              onSave={handleUpdateNotes}
+            />
+            <UnitConverter 
+                isOpen={isConverterOpen} 
+                onClose={() => setIsConverterOpen(false)} 
+            />
+          </>
+        )}
+
+        {/* --- INSTRUMENT BUILDER MODAL --- */}
+        <InstrumentBuilderModal 
+            isOpen={isInstrumentBuilderOpen}
+            onClose={() => setIsInstrumentBuilderOpen(false)}
+            onSave={handleSaveInstrument}
+            onDelete={deleteInstrument}
+            instruments={instruments} 
+        />
+
         {confirmationModal && (
           <div className="modal-overlay" style={{ zIndex: 2001 }}>
             <div className="modal-content">
@@ -316,12 +363,6 @@ function App() {
                 className="modal-actions"
                 style={{ justifyContent: "center", gap: "15px" }}
               >
-                <button
-                  className="button button-secondary"
-                  onClick={() => setConfirmationModal(null)}
-                >
-                  Cancel
-                </button>
                 <button
                   className="button"
                   style={{ backgroundColor: "var(--status-bad)" }}
@@ -363,6 +404,7 @@ function App() {
           sessionImageCache={sessionImageCache}
           onImageCacheChange={setSessionImageCache}
           onRemoveImageFile={deleteSessionImage}
+          instruments={instruments} // <--- Pass Instruments Here
         />
         <OverviewModal
           isOpen={isOverviewOpen}
@@ -441,6 +483,36 @@ function App() {
                   {dbPath ? "Database Connected" : "Local Mode"}
                 </span>
               </button>
+
+              <div className="header-divider"></div>
+
+              {/* FLOATING TOOLS ACTIONS */}
+              <div className="action-group">
+                <button
+                  className={`icon-action-btn ${isNotepadOpen ? "active" : ""}`}
+                  onClick={() => setIsNotepadOpen(!isNotepadOpen)}
+                  title="Session Notes"
+                >
+                  <FontAwesomeIcon icon={faStickyNote} />
+                </button>
+
+                <button
+                  className={`icon-action-btn ${isConverterOpen ? "active" : ""}`}
+                  onClick={() => setIsConverterOpen(!isConverterOpen)}
+                  title="Unit Converter"
+                >
+                  <FontAwesomeIcon icon={faRightLeft} />
+                </button>
+
+                {/* --- INSTRUMENT BUILDER --- */}
+                <button
+                  className={`icon-action-btn ${isInstrumentBuilderOpen ? "active" : ""}`}
+                  onClick={() => setIsInstrumentBuilderOpen(true)}
+                  title="Instrument Builder"
+                >
+                  <FontAwesomeIcon icon={faRadio} />
+                </button>
+              </div>
 
               <div className="header-divider"></div>
 
@@ -670,6 +742,7 @@ function App() {
                     onDeleteTmdeDefinition={handleDeleteTmdeDefinition}
                     onDecrementTmdeQuantity={decrementTmdeQuantity}
                     onOpenOverview={() => setIsOverviewOpen(true)}
+                    instruments={instruments} // <--- Pass Instruments Here
                   />
                 </TestPointDetailView>
               ) : (

@@ -4,6 +4,67 @@ import path from 'path';
 
 const isRunningInDev = !app.isPackaged;
 
+// --- FILE SYSTEM HELPERS (Multi-User / Network Drive Safe) ---
+
+/**
+ * atomicWrite: Writes data to a temp file first, then renames it.
+ * This prevents file corruption and handles EBUSY errors common on network drives.
+ */
+async function safeWriteFile(filePath, data) {
+  const tempPath = filePath + '.tmp_' + Date.now(); // Unique temp name
+  
+  try {
+    // 1. Write to a unique temp file (unlikely to be locked)
+    fs.writeFileSync(tempPath, data);
+    
+    // 2. Retry renaming if target is busy
+    let retries = 5;
+    while (retries > 0) {
+      try {
+        // Atomic replace: this operation is very fast
+        fs.renameSync(tempPath, filePath);
+        return true;
+      } catch (err) {
+        // If resource is busy (locked by another user), wait and retry
+        if (err.code === 'EBUSY' || err.code === 'EPERM') {
+          retries--;
+          await new Promise(r => setTimeout(r, 200)); // Wait 200ms
+        } else {
+          throw err;
+        }
+      }
+    }
+    // Final attempt failed
+    throw new Error(`Could not write to ${filePath} after multiple retries (Resource Busy).`);
+  } catch (err) {
+    // Cleanup temp file if it exists
+    if (fs.existsSync(tempPath)) {
+      try { fs.unlinkSync(tempPath); } catch (e) {}
+    }
+    throw err;
+  }
+}
+
+/**
+ * safeReadFile: Retries reading if the file is momentarily locked by another writer.
+ */
+async function safeReadFile(filePath) {
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      return fs.readFileSync(filePath, 'utf8');
+    } catch (err) {
+      if (err.code === 'EBUSY' || err.code === 'EPERM') {
+        retries--;
+        await new Promise(r => setTimeout(r, 200));
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw new Error(`Could not read ${filePath} (Resource Busy).`);
+}
+
 // --- CONFIGURATION HANDLER ---
 function getAppConfig() {
   const configPath = path.join(app.getPath('userData'), 'app-config.json');
@@ -27,7 +88,6 @@ function createWindow() {
     width: 1200,
     height: 800,
     show: false,
-    // Start with white to prevent flash, theme handler will update it shortly after
     backgroundColor: '#ffffff', 
     webPreferences: {
       nodeIntegration: true,
@@ -65,9 +125,9 @@ function createWindow() {
 ipcMain.handle('select-db-folder', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory', 'createDirectory'],
-    title: 'Select Session Data Folder',
-    buttonLabel: 'Select Database Folder',
-    message: 'Select the folder containing your session files. (Note: Individual files are hidden in this view)'
+    title: 'Select Shared Database Folder',
+    buttonLabel: 'Select Folder',
+    message: 'Select the network folder containing shared session files.'
   });
   
   if (!result.canceled && result.filePaths.length > 0) {
@@ -95,44 +155,46 @@ ipcMain.handle('load-sessions', async () => {
   if (!dbPath || !fs.existsSync(dbPath)) return []; 
 
   try {
-    const files = fs.readdirSync(dbPath).filter(file => file.endsWith('.json'));
-    const sessions = files.map(file => {
+    // Filter out instruments.json so it doesn't appear as a session
+    const files = fs.readdirSync(dbPath).filter(file => file.endsWith('.json') && file !== 'instruments.json');
+    
+    // We use Promise.all to load files in parallel, but handle individual errors gracefully
+    const sessions = await Promise.all(files.map(async (file) => {
       try {
-        const raw = fs.readFileSync(path.join(dbPath, file), 'utf8');
+        const raw = await safeReadFile(path.join(dbPath, file));
         const data = JSON.parse(raw);
-        // Basic validation: must have ID and Name
         if (data.id && data.name) return data;
         return null;
       } catch (err) {
+        // If a single file is corrupted or locked, skip it rather than crashing app
+        console.warn(`Skipping file ${file}:`, err.message);
         return null;
       }
-    }).filter(s => s !== null);
+    }));
     
-    // Sort by ID (created timestamp) descending
-    return sessions.sort((a, b) => b.id - a.id);
+    return sessions.filter(s => s !== null).sort((a, b) => b.id - a.id);
   } catch (error) {
     console.error("DB Load Error:", error);
     return [];
   }
 });
 
-// 5. SAVE SESSION (Dynamic Naming + Cleanup)
+// 5. SAVE SESSION (Safe Atomic Write)
 ipcMain.handle('save-session', async (event, sessionData) => {
   const { dbPath } = getAppConfig();
   if (!dbPath) throw new Error("Database path not set");
 
-  // Sanitize filename
   const safeName = (sessionData.name || "Untitled")
-    .replace(/[^a-z0-9 \-_]/gi, '') // Remove special chars, keep spaces
+    .replace(/[^a-z0-9 \-_]/gi, '')
     .trim();
 
   let newFileName = `${safeName}.json`;
   let newFilePath = path.join(dbPath, newFileName);
 
-  // Handle Collisions (Same name, different ID)
+  // Check for collision with OTHER users' files (same name, different ID)
   if (fs.existsSync(newFilePath)) {
     try {
-      const existingRaw = fs.readFileSync(newFilePath, 'utf8');
+      const existingRaw = await safeReadFile(newFilePath);
       const existingJson = JSON.parse(existingRaw);
       if (existingJson.id !== sessionData.id) {
         // Name collision! Append ID to make unique
@@ -140,30 +202,31 @@ ipcMain.handle('save-session', async (event, sessionData) => {
         newFilePath = path.join(dbPath, newFileName);
       }
     } catch (e) {
+      // If we can't read the colliding file, play it safe and use unique name
       newFileName = `${safeName}_${sessionData.id}.json`;
       newFilePath = path.join(dbPath, newFileName);
     }
   }
 
-  // Cleanup: Delete any OLD files for this specific session ID (renaming support)
+  // Cleanup: Delete old files with DIFFERENT names but SAME ID (Renaming logic)
   try {
-    const files = fs.readdirSync(dbPath).filter(f => f.endsWith('.json'));
+    const files = fs.readdirSync(dbPath).filter(f => f.endsWith('.json') && f !== 'instruments.json');
     for (const file of files) {
-      if (file === newFileName) continue; // Don't delete what we are about to write
+      if (file === newFileName) continue; // Don't delete target
       
       const currentPath = path.join(dbPath, file);
       try {
-        const raw = fs.readFileSync(currentPath, 'utf8');
+        const raw = fs.readFileSync(currentPath, 'utf8'); // Sync read is okay for cleanup check
         const data = JSON.parse(raw);
         if (data.id === sessionData.id) {
-          fs.unlinkSync(currentPath); // Found an old version, delete it
+          fs.unlinkSync(currentPath); // Delete old version
         }
       } catch (e) {}
     }
   } catch (e) {}
   
-  // Write the file
-  fs.writeFileSync(newFilePath, JSON.stringify(sessionData, null, 2));
+  // Perform Atomic Write
+  await safeWriteFile(newFilePath, JSON.stringify(sessionData, null, 2));
   return true;
 });
 
@@ -172,25 +235,23 @@ ipcMain.handle('delete-session', async (event, sessionId) => {
   const { dbPath } = getAppConfig();
   if (!dbPath) return;
 
-  // A. Delete the JSON file
   try {
     const files = fs.readdirSync(dbPath).filter(f => f.endsWith('.json'));
-    // We have to inspect contents to find the right ID since filename might vary
-    const targetFile = files.find(f => {
-      try {
-        const raw = fs.readFileSync(path.join(dbPath, f), 'utf8');
-        return JSON.parse(raw).id === sessionId;
-      } catch { return false; }
-    });
-
-    if (targetFile) {
-      fs.unlinkSync(path.join(dbPath, targetFile));
+    // Find file by ID content
+    for (const f of files) {
+        try {
+            const raw = fs.readFileSync(path.join(dbPath, f), 'utf8');
+            if (JSON.parse(raw).id === sessionId) {
+                fs.unlinkSync(path.join(dbPath, f));
+                break; // Found and deleted
+            }
+        } catch {}
     }
   } catch (e) {
     console.error("Error deleting session JSON:", e);
   }
 
-  // B. Delete associated Images
+  // Delete associated Images
   try {
     const imagesPath = path.join(dbPath, 'images');
     if (fs.existsSync(imagesPath)) {
@@ -205,10 +266,68 @@ ipcMain.handle('delete-session', async (event, sessionId) => {
 });
 
 // ==========================================
+// INSTRUMENT LIBRARY HANDLERS (SHARED DB)
+// ==========================================
+
+// 7. SAVE INSTRUMENT (Multi-User Safe)
+ipcMain.handle('save-instrument', async (event, instrument) => {
+  const { dbPath } = getAppConfig();
+  if (!dbPath) throw new Error("Database path not set");
+  
+  const instPath = path.join(dbPath, 'instruments.json');
+  let instruments = [];
+  
+  // Always READ fresh from disk before writing to minimize overwriting others
+  if (fs.existsSync(instPath)) {
+    try {
+      const raw = await safeReadFile(instPath);
+      instruments = JSON.parse(raw);
+      if (!Array.isArray(instruments)) instruments = [];
+    } catch(e) { 
+      console.error("Error reading instruments DB:", e);
+      // If file is corrupted, we might start fresh or throw. 
+      // Safe option: Initialize empty array but log error.
+      instruments = [];
+    }
+  }
+  
+  // Update existing or Append new
+  const idx = instruments.findIndex(i => i.id === instrument.id);
+  if (idx > -1) {
+    instruments[idx] = instrument;
+  } else {
+    instruments.push(instrument);
+  }
+  
+  // Atomic Write
+  await safeWriteFile(instPath, JSON.stringify(instruments, null, 2));
+  return true;
+});
+
+// 8. LOAD INSTRUMENTS
+ipcMain.handle('load-instruments', async () => {
+  const { dbPath } = getAppConfig();
+  if (!dbPath) return [];
+  
+  const instPath = path.join(dbPath, 'instruments.json');
+  if (fs.existsSync(instPath)) {
+    try {
+      const data = await safeReadFile(instPath);
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch(e) { 
+      console.error("Failed to load instruments:", e);
+      return []; 
+    }
+  }
+  return [];
+});
+
+// ==========================================
 // IMAGE IPC HANDLERS
 // ==========================================
 
-// 7. SAVE IMAGE
+// 9. SAVE IMAGE
 ipcMain.handle('save-image', async (event, { sessionId, imageId, dataBase64 }) => {
   const { dbPath } = getAppConfig();
   if (!dbPath) return false;
@@ -217,11 +336,11 @@ ipcMain.handle('save-image', async (event, { sessionId, imageId, dataBase64 }) =
   if (!fs.existsSync(imagesPath)) fs.mkdirSync(imagesPath);
 
   const filePath = path.join(imagesPath, `img_${sessionId}_${imageId}.txt`);
-  fs.writeFileSync(filePath, dataBase64);
+  await safeWriteFile(filePath, dataBase64);
   return true;
 });
 
-// 8. LOAD IMAGES
+// 10. LOAD IMAGES
 ipcMain.handle('load-session-images', async (event, sessionId) => {
   const { dbPath } = getAppConfig();
   if (!dbPath) return [];
@@ -231,36 +350,56 @@ ipcMain.handle('load-session-images', async (event, sessionId) => {
 
   try {
     const files = fs.readdirSync(imagesPath).filter(f => f.startsWith(`img_${sessionId}_`));
-    const images = files.map(file => {
+    
+    const images = await Promise.all(files.map(async (file) => {
       try {
-        // Filename format: img_{sessionId}_{imageId}.txt
-        // We split by '_' and grab the 3rd part (index 2)
-        const parts = file.split('_'); 
-        // Handles cases where image ID might contain underscores? Better to rely on suffix.
-        // Let's assume standard format: img_SESSIONID_IMAGEID.txt
-        // Just reading the content is what matters most.
         const imageId = file.replace(`img_${sessionId}_`, '').replace('.txt', '');
-        
-        const data = fs.readFileSync(path.join(imagesPath, file), 'utf8');
+        const data = await safeReadFile(path.join(imagesPath, file));
         return { id: imageId, data: data };
       } catch (e) {
         return null;
       }
-    }).filter(i => i !== null);
+    }));
     
-    return images;
+    return images.filter(i => i !== null);
   } catch (e) {
     console.error("Image Load Error", e);
     return [];
   }
 });
 
-// 9. DELETE IMAGE
+// 11. DELETE IMAGE
 ipcMain.handle('delete-image', async (event, { sessionId, imageId }) => {
   const { dbPath } = getAppConfig();
   if (!dbPath) return;
   const filePath = path.join(dbPath, 'images', `img_${sessionId}_${imageId}.txt`);
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+});
+
+// main.js - Add this new handler
+
+// 12. DELETE INSTRUMENT
+ipcMain.handle('delete-instrument', async (event, instrumentId) => {
+  const { dbPath } = getAppConfig();
+  if (!dbPath) return false;
+  
+  const instPath = path.join(dbPath, 'instruments.json');
+  if (fs.existsSync(instPath)) {
+    try {
+      const raw = await safeReadFile(instPath);
+      let instruments = JSON.parse(raw);
+      if (!Array.isArray(instruments)) return false;
+      
+      const newInstruments = instruments.filter(i => i.id !== instrumentId);
+      
+      await safeWriteFile(instPath, JSON.stringify(newInstruments, null, 2));
+      return true;
+    } catch(e) {
+      console.error("Failed to delete instrument:", e);
+      return false;
+    }
+  }
+  return false;
 });
 
 // --- THEME HANDLER ---

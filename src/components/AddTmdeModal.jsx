@@ -1,8 +1,92 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Select from "react-select"; 
 import ToleranceForm from "./ToleranceForm";
-import { unitSystem } from "../utils/uncertaintyMath";
+import { unitSystem, findInstrumentTolerance } from "../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faTimes, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faPlus, faBookOpen } from "@fortawesome/free-solid-svg-icons";
+import InstrumentLookupModal from "./InstrumentLookupModal";
+
+// --- Configuration for Unit Grouping (Copied from ToleranceForm) ---
+const unitCategories = {
+  Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
+  Current: ["A", "mA", "uA", "nA", "pA", "kA"],
+  Resistance: ["Ohm", "kOhm", "MOhm", "mOhm", "GOhm", "TOhm"],
+  Capacitance: ["F", "uF", "nF", "pF", "mF"],
+  Inductance: ["H", "mH", "uH"],
+  Frequency: ["Hz", "kHz", "MHz", "GHz", "THz"],
+  Time: ["s", "ms", "us", "ns", "ps", "min", "hr", "day"],
+  Temperature: ["Cel", "degF", "degC", "K"],
+  Pressure: ["Pa", "kPa", "MPa", "psi", "bar", "mbar", "torr", "inHg"],
+  Length: ["m", "cm", "mm", "um", "nm", "km", "in", "ft", "yd", "mi"],
+  Mass: ["kg", "g", "mg", "ug", "lb", "oz"],
+  Power: ["W", "mW", "kW", "MW", "dBm"],
+};
+
+// Helper to transform flat unit list into React-Select Grouped Options
+const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
+  const options = [];
+  const usedUnits = new Set();
+
+  // 1. Prioritize Reference Unit (Smart Context)
+  if (referenceUnit && allUnits.includes(referenceUnit)) {
+    let refCategory = "Suggested";
+    for (const [cat, units] of Object.entries(unitCategories)) {
+      if (units.includes(referenceUnit)) {
+        refCategory = cat;
+        break;
+      }
+    }
+
+    const categoryUnits = unitCategories[refCategory] || [referenceUnit];
+    const prioritizedOptions = categoryUnits
+      .filter((u) => allUnits.includes(u))
+      .map((u) => {
+        usedUnits.add(u);
+        return { value: u, label: u };
+      });
+
+    options.push({ label: refCategory, options: prioritizedOptions });
+  }
+
+  // 2. Add remaining categories
+  Object.entries(unitCategories).forEach(([label, units]) => {
+    if (options.some((opt) => opt.label === label)) return;
+
+    const groupOptions = units
+      .filter((u) => allUnits.includes(u) && !usedUnits.has(u))
+      .map((u) => {
+        usedUnits.add(u);
+        return { value: u, label: u };
+      });
+
+    if (groupOptions.length > 0) {
+      options.push({ label, options: groupOptions });
+    }
+  });
+
+  // 3. Catch-all for leftovers
+  const leftovers = allUnits
+    .filter((u) => !usedUnits.has(u) && !["%", "ppm", "dB", "ppb"].includes(u))
+    .map((u) => ({ value: u, label: u }));
+
+  if (leftovers.length > 0) {
+    options.push({ label: "Other", options: leftovers });
+  }
+
+  return options;
+};
+
+// --- Style to ensure dropdown isn't clipped by modal ---
+const portalStyle = {
+  menuPortal: (base) => ({
+    ...base,
+    zIndex: 99999,
+  }),
+  menu: (base) => ({
+    ...base,
+    zIndex: 99999,
+  }),
+};
 
 const AddTmdeModal = ({
   isOpen,
@@ -11,7 +95,10 @@ const AddTmdeModal = ({
   testPointData,
   initialTmdeData = null,
   hasParentOverlay = false,
+  instruments = [] 
 }) => {
+  const [isLookupOpen, setIsLookupOpen] = useState(false);
+
   const uutMeasurementPoint = useMemo(
     () => testPointData?.testPointInfo?.parameter || { value: "", unit: "" },
     [testPointData?.testPointInfo?.parameter]
@@ -31,7 +118,7 @@ const AddTmdeModal = ({
     const defaultState = {
       id: Date.now(),
       name: "New TMDE",
-      measurementPoint: { ...uutMeasurementPoint },
+      measurementPoint: isDerived ? { value: "", unit: "" } : { ...uutMeasurementPoint },
       variableType:
         isDerived && availableTypes.length > 0 ? availableTypes[0] : "",
       quantity: 1,
@@ -40,7 +127,7 @@ const AddTmdeModal = ({
     if (initialTmdeData) {
       const existingData = JSON.parse(JSON.stringify(initialTmdeData));
       if (!existingData.measurementPoint) {
-        existingData.measurementPoint = { ...uutMeasurementPoint };
+        existingData.measurementPoint = isDerived ? { value: "", unit: "" } : { ...uutMeasurementPoint };
       }
       if (!existingData.hasOwnProperty("variableType")) {
         existingData.variableType =
@@ -55,53 +142,60 @@ const AddTmdeModal = ({
   }, [uutMeasurementPoint, initialTmdeData, isDerived, availableTypes]);
 
   const [tmde, setTmde] = useState(getInitialState());
-
-  const [useUutRef, setUseUutRef] = useState(() => {
-    if (!initialTmdeData || !initialTmdeData.measurementPoint) return true;
-    const tmdePoint = initialTmdeData.measurementPoint;
-    return (
-      uutMeasurementPoint.value === tmdePoint.value &&
-      uutMeasurementPoint.unit === tmdePoint.unit
-    );
-  });
+  const [useUutRef, setUseUutRef] = useState(!isDerived);
 
   const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
+  
+  const physicalUnitOptions = useMemo(() => {
+    return getCategorizedUnitOptions(allUnits, tmde.measurementPoint?.unit);
+  }, [allUnits, tmde.measurementPoint?.unit]);
 
   useEffect(() => {
     if (isOpen) {
       const initialState = getInitialState();
       setTmde(initialState);
-      if (initialTmdeData && initialTmdeData.measurementPoint) {
-        const tmdePoint = initialTmdeData.measurementPoint;
-        const refsMatch =
-          uutMeasurementPoint.value === tmdePoint.value &&
-          uutMeasurementPoint.unit === tmdePoint.unit;
-        setUseUutRef(refsMatch);
-      } else {
-        setUseUutRef(true);
-      }
+      setUseUutRef(!isDerived); 
+      setIsLookupOpen(false);
     }
-  }, [isOpen, getInitialState, initialTmdeData, uutMeasurementPoint]);
+  }, [isOpen, getInitialState, isDerived]);
 
   useEffect(() => {
-    if (!isDerived && useUutRef && uutMeasurementPoint) {
+    if (!isDerived && uutMeasurementPoint) {
       setTmde((prev) => ({
         ...prev,
         measurementPoint: { ...uutMeasurementPoint },
       }));
-    } else if (!isDerived && !useUutRef && !initialTmdeData) {
-      setTmde((prev) => ({
-        ...prev,
-        measurementPoint: { ...(prev.measurementPoint || {}), value: "" },
-      }));
     }
-  }, [useUutRef, uutMeasurementPoint, initialTmdeData, isDerived]);
+  }, [uutMeasurementPoint, isDerived]);
 
-  // Updated handleSave to accept an 'andClose' flag ---
+  // Handle Import from Instrument Library
+  const handleInstrumentImport = (instrument) => {
+    const currentVal = tmde.measurementPoint?.value;
+    const currentUnit = tmde.measurementPoint?.unit;
+
+    if (!currentVal || !currentUnit) {
+      alert("Please ensure the Measurement Point has a value and unit before importing specifications.");
+      return;
+    }
+
+    const matchedData = findInstrumentTolerance(instrument, currentVal, currentUnit);
+
+    if (matchedData) {
+      setTmde(prev => ({
+        ...prev,
+        name: `${instrument.manufacturer} ${instrument.model}`, 
+        ...matchedData.tolerance,
+        measuringResolution: matchedData.resolution || prev.measuringResolution 
+      }));
+    } else {
+      alert(`Could not find a matching range in ${instrument.model} for ${currentVal} ${currentUnit}.`);
+    }
+  };
+
   const handleSave = (andClose = true) => {
     const cleanupTolerance = (tol) => {
       const cleaned = { ...tol };
-      const componentKeys = ["reading", "range", "floor", "db"];
+      const componentKeys = ["reading", "readings_iv", "range", "floor", "db"];
       componentKeys.forEach((key) => {
         if (
           cleaned[key] &&
@@ -121,39 +215,59 @@ const AddTmdeModal = ({
       quantity: parseInt(tmde.quantity, 10) || 1,
     };
 
-    // Pass the 'andClose' flag to the parent's save handler
     onSave(cleanupTolerance(finalTmde), andClose);
 
     if (!andClose) {
-      // If NOT closing, just reset the form for the next item
       setTmde(getInitialState());
-      setUseUutRef(true); // Also reset the toggle
+      setUseUutRef(!isDerived);
     }
-    // The parent will handle the actual closing if andClose is true
   };
 
   if (!isOpen) return null;
 
   const modalContent = (
     <div className="modal-content" style={{ maxWidth: "600px" }}>
+      
+      {/* Nested Lookup Modal */}
+      <InstrumentLookupModal 
+         isOpen={isLookupOpen} 
+         onClose={() => setIsLookupOpen(false)} 
+         instruments={instruments}
+         onSelect={handleInstrumentImport} 
+      />
+
       <button onClick={onClose} className="modal-close-button">
         &times;
       </button>
       
-      {/* UPDATED HEADER: Shows Name if editing, otherwise "Add New TMDE" */}
-      <h3>{initialTmdeData ? (tmde.name || "Edit TMDE") : "Add New TMDE"}</h3>
+      {/* Cleaned Header (Button Removed) */}
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+        <h3>{initialTmdeData ? (tmde.name || "Edit TMDE") : "Add New TMDE"}</h3>
+      </div>
 
       <div className="modal-body-scrollable">
         <div className="tmde-header">
           <div className="details-grid">
             <div className="form-section">
               <label>TMDE Name</label>
-              <input
-                type="text"
-                value={tmde.name || ""}
-                onChange={(e) => setTmde({ ...tmde, name: e.target.value })}
-                placeholder="e.g., Standard DMM"
-              />
+              {/* Flex Container for Input + Library Button */}
+              <div style={{display: 'flex', gap: '10px'}}>
+                  <input
+                    type="text"
+                    value={tmde.name || ""}
+                    onChange={(e) => setTmde({ ...tmde, name: e.target.value })}
+                    placeholder="e.g., Standard DMM"
+                    style={{flex: 1}}
+                  />
+                  <button 
+                      className="btn-icon-only" 
+                      onClick={() => setIsLookupOpen(true)}
+                      title="Import from Instrument Library"
+                      style={{ width: '42px', height: '42px', fontSize: '1rem', flexShrink: 0 }}
+                  >
+                      <FontAwesomeIcon icon={faBookOpen} />
+                  </button>
+              </div>
             </div>
 
             <div className="form-section">
@@ -191,77 +305,76 @@ const AddTmdeModal = ({
               </select>
             </div>
           )}
+
           <div className="form-section">
-            <label>Reference Measurement Point</label>
-            {!isDerived && (
-              <div className="reference-point-control">
-                <div className="toggle-switch-container">
-                  <input
-                    type="checkbox"
-                    id="useUutRef"
-                    className="toggle-switch-checkbox"
-                    checked={useUutRef}
-                    onChange={(e) => setUseUutRef(e.target.checked)}
-                  />
-                  <label className="toggle-switch-label" htmlFor="useUutRef">
-                    <span className="toggle-switch-switch" />
-                  </label>
-                  <label htmlFor="useUutRef" className="toggle-option-label">
-                    Use UUT Measurement Point
-                    {uutMeasurementPoint?.value &&
-                      uutMeasurementPoint?.unit && (
-                        <span className="uut-point-display">
-                          ({uutMeasurementPoint.value}{" "}
-                          {uutMeasurementPoint.unit})
-                        </span>
-                      )}
-                  </label>
+            <label>Measurement Point</label>
+            
+            {!isDerived ? (
+                <div style={{ 
+                    padding: '10px 12px', 
+                    backgroundColor: 'var(--primary-color-light)', 
+                    color: 'var(--primary-color-dark)',
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    {uutMeasurementPoint.value} {uutMeasurementPoint.unit}
                 </div>
-              </div>
+            ) : (
+                <div className="manual-input-container" style={{marginTop: '5px', borderTop: 'none', paddingTop: 0}}>
+                    <div 
+                        className="input-with-unit"
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 120px",
+                            gap: "10px",
+                        }}
+                    >
+                        <input
+                            type="text"
+                            placeholder="Value"
+                            value={tmde.measurementPoint?.value || ""}
+                            onChange={(e) =>
+                                setTmde({
+                                    ...tmde,
+                                    measurementPoint: {
+                                        ...(tmde.measurementPoint || {}),
+                                        value: e.target.value,
+                                    },
+                                })
+                            }
+                            style={{ width: '100%' }}
+                        />
+                        
+                        <Select
+                            value={
+                                physicalUnitOptions
+                                    .flatMap(g => g.options ? g.options : g)
+                                    .find(opt => opt.value === tmde.measurementPoint?.unit) || null
+                            }
+                            onChange={(option) =>
+                                setTmde({
+                                    ...tmde,
+                                    measurementPoint: {
+                                        ...(tmde.measurementPoint || {}),
+                                        unit: option ? option.value : "",
+                                    },
+                                })
+                            }
+                            options={physicalUnitOptions}
+                            className="react-select-container"
+                            classNamePrefix="react-select"
+                            placeholder="Unit"
+                            isSearchable={true}
+                            menuPortalTarget={document.body}
+                            menuPosition="fixed"
+                            styles={portalStyle}
+                        />
+                    </div>
+                </div>
             )}
-            <div
-              className={`manual-input-container ${
-                !isDerived && useUutRef ? "disabled" : ""
-              }`}
-            >
-              <div className="input-with-unit">
-                <input
-                  type="text"
-                  placeholder="Value"
-                  disabled={!isDerived && useUutRef}
-                  value={tmde.measurementPoint?.value || ""}
-                  onChange={(e) =>
-                    setTmde({
-                      ...tmde,
-                      measurementPoint: {
-                        ...(tmde.measurementPoint || {}),
-                        value: e.target.value,
-                      },
-                    })
-                  }
-                />
-                <select
-                  disabled={!isDerived && useUutRef}
-                  value={tmde.measurementPoint?.unit || ""}
-                  onChange={(e) =>
-                    setTmde({
-                      ...tmde,
-                      measurementPoint: {
-                        ...(tmde.measurementPoint || {}),
-                        unit: e.target.value,
-                      },
-                    })
-                  }
-                >
-                  <option value="">-- Unit --</option>
-                  {allUnits.map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
           </div>
         </div>
         <ToleranceForm
@@ -280,7 +393,7 @@ const AddTmdeModal = ({
           {!initialTmdeData && (
             <button
               className="modal-icon-button primary"
-              onClick={() => handleSave(false)} // Calls handleSave with andClose=false
+              onClick={() => handleSave(false)} 
               title="Save this TMDE and add another"
             >
               <FontAwesomeIcon icon={faPlus} />
@@ -289,7 +402,7 @@ const AddTmdeModal = ({
 
           <button
             className="modal-icon-button primary"
-            onClick={() => handleSave(true)} // Calls handleSave with andClose=true
+            onClick={() => handleSave(true)} 
             title={initialTmdeData ? "Save Changes" : "Save and Close"}
           >
             <FontAwesomeIcon icon={faCheck} />

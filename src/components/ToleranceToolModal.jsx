@@ -96,9 +96,26 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
       {contextMenu && (<ContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />)}
       <NotificationModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} title="Using the Tolerance Editor" message={infoMessage} />
       <div className="modal-content" style={{ maxWidth: "600px" }}>
-        <FontAwesomeIcon icon={faInfoCircle} className="info-icon-modal" onClick={() => setIsInfoModalOpen(true)} title="How to use this editor" />
-        <button onClick={onClose} className="modal-close-button">&times;</button>
-        <h3>Tolerance Editor</h3>
+        <div style={{ position: 'absolute', top: '15px', right: '15px', display: 'flex', gap: '10px' }}>
+            <FontAwesomeIcon 
+                icon={faInfoCircle} 
+                className="info-icon-modal" 
+                onClick={() => setIsInfoModalOpen(true)} 
+                title="How to use this editor" 
+                style={{ cursor: 'pointer', color: '#666' }}
+            />
+            {/* FIXED: Standard X icon button */}
+            <button 
+                onClick={onClose} 
+                className="modal-icon-button secondary" 
+                style={{ padding: '0 5px', height: 'auto', border: 'none', background: 'transparent' }}
+            >
+                <FontAwesomeIcon icon={faTimes} size="lg" />
+            </button>
+        </div>
+
+        <h3 style={{ marginTop: '0', paddingRight: '60px' }}>Tolerance Editor</h3>
+        
         <div className="modal-tabs">
           <button className={`modal-tab ${activeTab === "UUT" ? "active" : ""}`} onClick={() => setActiveTab("UUT")}>
             {testPointData.uutDescription || "UUT"}
@@ -124,8 +141,8 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
         </div>
 
         <div className="modal-actions">
-          <button className="modal-icon-button secondary" onClick={onClose} title="Cancel"><FontAwesomeIcon icon={faTimes} /></button>
-          <button className="modal-icon-button primary" onClick={handleSave} title="Store and Return"><FontAwesomeIcon icon={faCheck} /></button>
+          <button className="modal-icon-button secondary" onClick={onClose} title="Cancel">Cancel</button>
+          <button className="modal-icon-button primary" onClick={handleSave} title="Store and Return"><FontAwesomeIcon icon={faCheck} /> Save Changes</button>
         </div>
       </div>
     </div>

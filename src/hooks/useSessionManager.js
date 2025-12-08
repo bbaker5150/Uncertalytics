@@ -36,7 +36,7 @@ const useSessionManager = () => {
       document: "",
       documentDate: "",
       notes: "",
-      noteImages: [], // Contains { id, fileName, fileObject (optional) }
+      noteImages: [], 
       uutTolerance: {},
       testPoints: [],
       uncReq: {
@@ -54,11 +54,12 @@ const useSessionManager = () => {
 
   // --- State ---
   const [sessions, setSessions] = useState([]);
+  const [instruments, setInstruments] = useState([]); 
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [selectedTestPointId, setSelectedTestPointId] = useState(null);
   const [dbPath, setDbPath] = useState(null);
 
-  // --- 1. Load Data ---
+  // --- 1. Load Data (Sessions) ---
   const loadData = useCallback(async () => {
     let loadedFromDb = false;
 
@@ -79,8 +80,6 @@ const useSessionManager = () => {
                 setSelectedSessionId(mostRecent.id);
                 setSelectedTestPointId(mostRecent.testPoints?.[0]?.id || null);
             }
-          } else {
-             console.log("Connected DB is empty. Falling back to Local Storage...");
           }
         }
       } catch (err) {
@@ -88,14 +87,12 @@ const useSessionManager = () => {
       }
     }
 
-    // Fallback: Load from LocalStorage
     if (!loadedFromDb) {
         try {
             const savedSessions = localStorage.getItem("uncertaintySessions");
             if (savedSessions) {
                 const parsed = JSON.parse(savedSessions);
                 if (Array.isArray(parsed) && parsed.length > 0) {
-                    console.log(`Loaded ${parsed.length} sessions from LocalStorage.`);
                     setSessions(parsed);
                     if (!selectedSessionId || !parsed.find(s => s.id === selectedSessionId)) {
                         setSelectedSessionId(parsed[0].id);
@@ -115,17 +112,41 @@ const useSessionManager = () => {
     loadData();
   }, [loadData]);
 
-
-  // --- 2. Persistence Logic (The Fix) ---
-  
-  const persistSession = async (sessionToSave, newImages = []) => {
-    // 1. DATABASE MODE
+  // --- 1.1 Load Data (Instruments) ---
+  const loadInstruments = useCallback(async () => {
+    let loaded = false;
     if (ipcRenderer && dbPath) {
         try {
-            // Save JSON (We keep it clean/lightweight)
+            const dbInstruments = await ipcRenderer.invoke('load-instruments');
+            if (dbInstruments) {
+                setInstruments(dbInstruments);
+                loaded = true;
+            }
+        } catch (e) {
+            console.error("Failed to load instruments from DB", e);
+        }
+    }
+    
+    if (!loaded) {
+        const localInst = localStorage.getItem("uncertaintyInstruments");
+        if (localInst) {
+            try {
+                setInstruments(JSON.parse(localInst));
+            } catch (e) { console.error("Failed to load instruments from LS", e); }
+        }
+    }
+  }, [ipcRenderer, dbPath]);
+
+  useEffect(() => {
+    loadInstruments();
+  }, [loadInstruments]);
+
+
+  // --- 2. Persistence Logic ---
+  const persistSession = async (sessionToSave, newImages = []) => {
+    if (ipcRenderer && dbPath) {
+        try {
             await ipcRenderer.invoke('save-session', sessionToSave);
-            
-            // Save Images as Files
             for (const img of newImages) {
                 if (img.fileObject) {
                     await ipcRenderer.invoke('save-image', { 
@@ -140,21 +161,14 @@ const useSessionManager = () => {
         }
     } 
     
-    // 2. LOCAL STORAGE MODE (Always backup here, but embed images)
     setSessions(prev => {
-        // Create a copy of the session
         const sessionForLs = { ...sessionToSave };
-
-        // If we have new images, we MUST embed them into the JSON for LocalStorage
-        // because we can't save separate files.
         if (newImages.length > 0) {
             const updatedNoteImages = (sessionForLs.noteImages || []).map(imgRef => {
                 const newImg = newImages.find(ni => ni.id === imgRef.id);
                 if (newImg) {
-                    // Embed the data
                     return { ...imgRef, fileObject: newImg.fileObject };
                 }
-                // If it already has data (from previous load), keep it
                 return imgRef;
             });
             sessionForLs.noteImages = updatedNoteImages;
@@ -168,54 +182,91 @@ const useSessionManager = () => {
         try {
             localStorage.setItem("uncertaintySessions", JSON.stringify(updatedList));
         } catch (e) {
-            console.warn("LocalStorage Quota Exceeded (Images might be too big)", e);
+            console.warn("LocalStorage Quota Exceeded", e);
         }
         
         return prev; 
     });
   };
 
-  // --- 3. Image Actions (Updated) ---
+  // --- 2.1 Persist Instrument ---
+  const saveInstrument = async (instrument) => {
+    setInstruments(prev => {
+        const existingIdx = prev.findIndex(i => i.id === instrument.id);
+        let newInstruments;
+        if (existingIdx > -1) {
+            newInstruments = [...prev];
+            newInstruments[existingIdx] = instrument;
+        } else {
+            newInstruments = [...prev, instrument];
+        }
+        
+        try {
+            localStorage.setItem("uncertaintyInstruments", JSON.stringify(newInstruments));
+        } catch (e) { console.warn("LS Quota (Instruments)", e); }
+        return newInstruments;
+    });
 
+    if (ipcRenderer && dbPath) {
+        try {
+            await ipcRenderer.invoke('save-instrument', instrument);
+        } catch (e) {
+            console.error("Failed to save instrument to DB", e);
+        }
+    }
+  };
+
+  // --- 2.2 Delete Instrument (NEW) ---
+  const deleteInstrument = async (instrumentId) => {
+    // 1. Update State & LocalStorage
+    setInstruments(prev => {
+        const newInstruments = prev.filter(i => i.id !== instrumentId);
+        try {
+            localStorage.setItem("uncertaintyInstruments", JSON.stringify(newInstruments));
+        } catch (e) { console.warn("LS Quota (Instruments)", e); }
+        return newInstruments;
+    });
+
+    // 2. Update DB
+    if (ipcRenderer && dbPath) {
+        try {
+            await ipcRenderer.invoke('delete-instrument', instrumentId);
+        } catch (e) {
+            console.error("Failed to delete instrument from DB", e);
+        }
+    }
+  };
+
+  // --- 3. Image Actions ---
   const loadSessionImages = async (sessionId) => {
-    // A. DB Mode: Load from files
     if (ipcRenderer && dbPath) {
       return await ipcRenderer.invoke('load-session-images', sessionId);
     } 
-    
-    // B. Local Mode: Extract from Session State
-    // We look at the session currently in memory
     const session = sessions.find(s => s.id === sessionId);
     if (session && session.noteImages) {
-        // Return array of { id, data } objects
         return session.noteImages
-            .filter(img => img.fileObject) // Only if data exists
+            .filter(img => img.fileObject) 
             .map(img => ({ id: img.id, data: img.fileObject }));
     }
     return [];
   };
 
   const saveSessionImage = async (sessionId, imageId, dataBase64) => {
-    // Only needed for DB Mode separate calls
     if (ipcRenderer && dbPath) {
       await ipcRenderer.invoke('save-image', { sessionId, imageId, dataBase64 });
     }
   };
 
   const deleteSessionImage = async (sessionId, imageId) => {
-    // DB Mode
     if (ipcRenderer && dbPath) {
       await ipcRenderer.invoke('delete-image', { sessionId, imageId });
     }
     
-    // Local Mode cleanup
     setSessions(prev => {
         const session = prev.find(s => s.id === sessionId);
         if (!session) return prev;
-
         const updatedImages = (session.noteImages || []).filter(img => img.id !== imageId);
         const updatedSession = { ...session, noteImages: updatedImages };
-        
         const updatedList = prev.map(s => s.id === sessionId ? updatedSession : s);
         localStorage.setItem("uncertaintySessions", JSON.stringify(updatedList));
         return updatedList;
@@ -226,7 +277,6 @@ const useSessionManager = () => {
     if (ipcRenderer && dbPath) {
         await ipcRenderer.invoke('delete-session', sessionId);
     }
-    // Also remove from LocalStorage
     setSessions(prev => {
         const updated = prev.filter(s => s.id !== sessionId);
         localStorage.setItem("uncertaintySessions", JSON.stringify(updated));
@@ -235,13 +285,13 @@ const useSessionManager = () => {
   };
 
   // --- 4. Database Actions ---
-
   const selectDatabaseFolder = async () => {
       if(ipcRenderer) {
           const path = await ipcRenderer.invoke('select-db-folder');
           if (path) {
               setDbPath(path);
               loadData(); 
+              loadInstruments(); 
           }
       }
   };
@@ -251,6 +301,7 @@ const useSessionManager = () => {
           await ipcRenderer.invoke('disconnect-db');
           setDbPath(null);
           loadData(); 
+          loadInstruments(); 
       }
   };
 
@@ -259,30 +310,29 @@ const useSessionManager = () => {
           alert("Please connect a database folder first.");
           return;
       }
-      if (sessions.length === 0) {
-          alert("No sessions to migrate.");
-          return;
-      }
+      
+      if (sessions.length > 0) {
+        if (window.confirm(`Migrate ${sessions.length} sessions to ${dbPath}?`)) {
+            let count = 0;
+            for (const session of sessions) {
+                const imagesToSave = (session.noteImages || [])
+                    .filter(img => img.fileObject)
+                    .map(img => ({ id: img.id, fileObject: img.fileObject }));
 
-      if (window.confirm(`Migrate ${sessions.length} sessions to ${dbPath}?`)) {
-          let count = 0;
-          for (const session of sessions) {
-              // Extract images if they are embedded
-              const imagesToSave = (session.noteImages || [])
-                .filter(img => img.fileObject)
-                .map(img => ({ id: img.id, fileObject: img.fileObject }));
-
-              await persistSession(session, imagesToSave);
-              count++;
-          }
-          alert(`Successfully saved ${count} sessions to disk!`);
-          loadData(); 
+                await persistSession(session, imagesToSave);
+                count++;
+            }
+            for (const inst of instruments) {
+                await saveInstrument(inst);
+            }
+            alert(`Successfully saved ${count} sessions and ${instruments.length} instruments to disk!`);
+            loadData(); 
+            loadInstruments();
+        }
       }
   };
 
   // --- 5. CRUD Operations ---
-
-  // UPDATED: Now accepts newImages to handle the hybrid logic
   const updateSession = (updatedSession, newImages = []) => {
     setSessions((prevSessions) =>
       prevSessions.map((s) => (s.id === updatedSession.id ? updatedSession : s))
@@ -329,15 +379,12 @@ const useSessionManager = () => {
     setSelectedSessionId(loadedSession.id);
     setSelectedTestPointId(loadedSession.testPoints?.[0]?.id || null);
     
-    // Check if import has embedded images we need to save
     const imagesToSave = (loadedSession.noteImages || [])
         .filter(img => img.fileObject)
         .map(img => ({ id: img.id, fileObject: img.fileObject }));
 
     persistSession(loadedSession, imagesToSave);
   };
-
-  // --- Sub-Update Wrappers ---
 
   const saveTestPoint = (formData) => {
     const session = sessions.find(s => s.id === selectedSessionId);
@@ -452,6 +499,10 @@ const useSessionManager = () => {
 
   return {
     sessions,
+    instruments,
+    saveInstrument,
+    deleteInstrument, // <--- EXPORTED
+    loadInstruments,
     selectedSessionId,
     setSelectedSessionId,
     selectedTestPointId,

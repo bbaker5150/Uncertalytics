@@ -905,6 +905,60 @@ export const calculateDerivedUncertainty = (
     }
   };
 
+  /**
+ * Smart Lookup for Instrument Specs
+ * 1. Matches the Function based on unit (e.g. "V" matches "DC Voltage" if unit is V)
+ * 2. Normalizes measurement value to instrument base unit (mV -> V)
+ * 3. Finds the specific Range where value falls between Min/Max
+ * 4. Returns the tolerance object for that range
+ */
+export const findInstrumentTolerance = (instrument, value, unit) => {
+  if (!instrument || !value || !unit) return null;
+
+  const numValue = parseFloat(value);
+  if (isNaN(numValue)) return null;
+
+  // 1. Find Matching Function
+  // Simple heuristic: Look for unit match. In production, this might need more metadata.
+  const matchedFunction = instrument.functions.find(f => {
+      // Check exact match or if the instrument base unit is related (e.g. instrument is V, input is mV)
+      const funcUnit = unitSystem.units[f.unit];
+      const inputUnit = unitSystem.units[unit];
+      return funcUnit && inputUnit && funcUnit.quantity === inputUnit.quantity;
+  });
+
+  if (!matchedFunction) return null;
+
+  // 2. Convert Input Value to Function's Base Unit
+  // e.g. Input: 500 mV. Function Base: V.  500 * 1e-3 / 1 = 0.5 V
+  const inputToSi = unitSystem.units[unit].to_si;
+  const funcToSi = unitSystem.units[matchedFunction.unit].to_si;
+  const valueInBase = (numValue * inputToSi) / funcToSi;
+
+  // 3. Find Range
+  // Range is usually inclusive of max, exclusive of min, or vice versa depending on manufacturer.
+  // We'll use simple <= max logic here.
+  // We sort ranges to find the smallest range that fits the value (best practice for autoranging)
+  const sortedRanges = [...matchedFunction.ranges].sort((a, b) => parseFloat(a.max) - parseFloat(b.max));
+  
+  const matchedRange = sortedRanges.find(r => {
+      const min = parseFloat(r.min);
+      const max = parseFloat(r.max);
+      // Absolute value check handles negative readings (e.g. -5V fits in 10V range)
+      const absVal = Math.abs(valueInBase); 
+      return absVal >= min && absVal <= max;
+  });
+
+  if (!matchedRange) return null;
+
+  // 4. Return Tolerance & Resolution
+  return {
+      tolerance: matchedRange.tolerances,
+      resolution: matchedRange.resolution,
+      rangeInfo: `${matchedRange.min}-${matchedRange.max} ${matchedFunction.unit}`
+  };
+};
+
 // ==========================================
 // 4. Bivariate & Normal Distributions
 // ==========================================

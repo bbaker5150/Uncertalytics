@@ -6,18 +6,22 @@ import {
   faCheck,
   faPlus,
   faTimes,
+  faBookOpen
 } from "@fortawesome/free-solid-svg-icons";
 import NotificationModal from './NotificationModal';
+import InstrumentLookupModal from "./InstrumentLookupModal";
+import { findInstrumentTolerance } from "../utils/uncertaintyMath";
 
 const EditSessionModal = ({
   isOpen,
   onClose,
   sessionData,
   onSave,
-  onRemoveImageFile, // <--- NEW PROP for deleting from disk
+  onRemoveImageFile,
   initialSection,
   sessionImageCache, 
   onImageCacheChange,
+  instruments = []
 }) => {
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState("details");
@@ -25,6 +29,12 @@ const EditSessionModal = ({
   const [newlyAddedFiles, setNewlyAddedFiles] = useState([]);
   const [imageSrcCache, setImageSrcCache] = useState(new Map());
   const [viewingImageSrc, setViewingImageSrc] = useState(null);
+
+  // --- Lookup & Range Prompt State ---
+  const [isLookupOpen, setIsLookupOpen] = useState(false);
+  const [pendingInstrument, setPendingInstrument] = useState(null); 
+  const [showRangePrompt, setShowRangePrompt] = useState(false);
+  const [rangePromptData, setRangePromptData] = useState({ value: "", unit: "" });
 
   // Gets the URL/Base64 for an image
   const getImageSrc = (imageRef) => {
@@ -118,6 +128,46 @@ const EditSessionModal = ({
     }
   }, [isOpen, sessionData, initialSection]);
 
+  // --- Instrument Library Logic ---
+
+  const handleInstrumentSelect = (instrument) => {
+    // 1. Set the Name immediately
+    setFormData(prev => ({
+        ...prev,
+        uutDescription: `${instrument.manufacturer} ${instrument.model} ${instrument.description}`
+    }));
+    
+    // 2. Ask for a point to resolve tolerance
+    setPendingInstrument(instrument);
+    setRangePromptData({ value: "", unit: instrument.functions[0]?.unit || "V" });
+    setShowRangePrompt(true);
+  };
+
+  const confirmRangeSelection = () => {
+    if (!pendingInstrument) return;
+    
+    const matchedData = findInstrumentTolerance(
+        pendingInstrument, 
+        rangePromptData.value, 
+        rangePromptData.unit
+    );
+
+    if (matchedData) {
+        setFormData(prev => ({
+            ...prev,
+            uutTolerance: {
+                ...matchedData.tolerance,
+                measuringResolution: matchedData.resolution
+            }
+        }));
+        setShowRangePrompt(false);
+        setPendingInstrument(null);
+    } else {
+        alert("No matching range found for the values entered. Specs were not imported.");
+    }
+  };
+
+
   if (!isOpen) return null;
 
   const handleChange = (e) => {
@@ -193,6 +243,46 @@ const EditSessionModal = ({
         <img src={viewingImageSrc} alt="Full-size preview" onClick={(e) => e.stopPropagation()} />
       </div>
     )}
+
+      {/* --- Lookup Modal --- */}
+      <InstrumentLookupModal 
+         isOpen={isLookupOpen} 
+         onClose={() => setIsLookupOpen(false)} 
+         instruments={instruments} 
+         onSelect={handleInstrumentSelect}
+      />
+
+      {/* --- Range Prompt Modal --- */}
+      {showRangePrompt && (
+        <div className="modal-overlay" style={{zIndex: 2200, backgroundColor: 'rgba(0,0,0,0.7)'}}>
+            <div className="modal-content" style={{maxWidth: '400px'}}>
+                <h4 style={{marginTop: 0}}>Set Baseline Tolerance</h4>
+                <p style={{fontSize: '0.9rem', color: 'var(--text-color-muted)'}}>
+                    Please enter a representative measurement value (e.g., 10 V). 
+                    This is required to import the correct range specifications from the library for the Session Defaults.
+                </p>
+                <div className="input-group" style={{marginBottom: '20px'}}>
+                    <input 
+                        type="number" 
+                        placeholder="Value" 
+                        value={rangePromptData.value} 
+                        onChange={e => setRangePromptData({...rangePromptData, value: e.target.value})}
+                        autoFocus
+                    />
+                    <input 
+                        type="text" 
+                        placeholder="Unit" 
+                        value={rangePromptData.unit} 
+                        onChange={e => setRangePromptData({...rangePromptData, unit: e.target.value})}
+                    />
+                </div>
+                <div className="modal-actions">
+                    <button className="button button-secondary" onClick={() => { setShowRangePrompt(false); setPendingInstrument(null); }}>Skip Spec Import</button>
+                    <button className="button button-primary" onClick={confirmRangeSelection} disabled={!rangePromptData.value}>Import Specs</button>
+                </div>
+            </div>
+        </div>
+      )}
 
       <div className="modal-content edit-session-modal">
         <button onClick={onClose} className="modal-close-button">
@@ -333,13 +423,25 @@ const EditSessionModal = ({
             <>
               <div className="form-section">
                 <label>UUT Name / Model</label>
-                <input
-                  type="text"
-                  name="uutDescription"
-                  value={formData.uutDescription || ""}
-                  onChange={handleChange}
-                  placeholder="e.g., Fluke 8588A"
-                />
+                <div style={{display: 'flex', gap: '10px'}}>
+                    <input
+                      type="text"
+                      name="uutDescription"
+                      value={formData.uutDescription || ""}
+                      onChange={handleChange}
+                      placeholder="e.g., Fluke 8588A"
+                      style={{flex: 1}}
+                    />
+                    {/* Updated Button Style */}
+                    <button 
+                        className="btn-icon-only" 
+                        onClick={() => setIsLookupOpen(true)}
+                        title="Import from Instrument Library"
+                        style={{ width: '42px', height: '42px', fontSize: '1rem' }}
+                    >
+                        <FontAwesomeIcon icon={faBookOpen} />
+                    </button>
+                </div>
               </div>
               <ToleranceForm
                 tolerance={formData.uutTolerance || {}}

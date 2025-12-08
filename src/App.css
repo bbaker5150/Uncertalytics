@@ -1893,38 +1893,130 @@ body.dark-mode .tp-value {
   color: var(--primary-color);
 }
 
+/* =================================================================== */
+/* ADD TOLERANCE / CONTEXT MENUS (PORTAL FIXES)                        */
+/* =================================================================== */
+
 .add-component-dropdown {
-  position: absolute;
-  bottom: 100%; 
-  left: 0;
-  margin-bottom: 8px; 
-  background-color: var(--content-background);
+  /* Layout handled by inline JS styles (top/left), but we set defaults */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  
+  /* DEFAULT THEME (Light) - Force Solid Background */
+  background-color: #ffffff; 
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-  z-index: 1050; 
-  min-width: 200px;
+  border-radius: var(--border-radius);
+  color: var(--text-color);
+  
+  /* Depth */
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15), 0 0 0 1px var(--border-color);
+  z-index: 99999; /* Highest priority */
+  
+  /* Animation */
   animation: context-menu-fade-in 0.1s ease-out;
+  
+  /* Sizing */
+  min-width: 220px;
+  padding: 6px;
 }
 
 .add-component-dropdown ul {
   list-style: none;
-  padding: 6px;
+  padding: 0;
   margin: 0;
 }
 
 .add-component-dropdown li {
-  padding: 10px 12px;
+  padding: 10px 14px;
   font-size: 0.9rem;
   font-weight: 500;
-  border-radius: 6px;
+  color: var(--text-color);
+  border-radius: 4px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .add-component-dropdown li:hover {
-  background-color: var(--primary-color-light);
-  color: var(--primary-color);
+  background-color: var(--primary-color);
+  color: #ffffff;
+}
+
+/* --- DARK MODE OVERRIDES --- */
+body.dark-mode .add-component-dropdown {
+  background-color: #1e1e1e; /* Solid dark grey - NOT transparent */
+  border-color: #424242;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+body.dark-mode .add-component-dropdown li:hover {
+  background-color: var(--primary-color);
+  color: #ffffff;
+}
+
+/* --- GLASS THEME OVERRIDES --- */
+body.theme-glass .add-component-dropdown {
+  /* Very high opacity for readability on top of wallpapers */
+  background-color: rgba(255, 255, 255, 0.95); 
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+body.theme-glass.dark-mode .add-component-dropdown {
+  background-color: rgba(30, 30, 30, 0.95); /* Nearly solid black */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- CYBERPUNK THEME OVERRIDES (LIGHT MODE) --- */
+body.theme-cyberpunk .add-component-dropdown {
+  border-radius: 0;
+  border: 2px solid var(--primary-color); /* Neon border */
+  background-color: #ffffff; /* Solid White for Light Mode */
+  box-shadow: 6px 6px 0px rgba(0,0,0,1); /* Hard shadow */
+}
+
+body.theme-cyberpunk .add-component-dropdown li {
+  color: #000000; /* Black text for high contrast on white */
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+body.theme-cyberpunk .add-component-dropdown li:hover {
+  background-color: var(--primary-color); /* Neon Pink hover */
+  color: #ffffff; /* White text on hover */
+}
+
+/* --- CYBERPUNK THEME OVERRIDES (DARK MODE) --- */
+body.theme-cyberpunk.dark-mode .add-component-dropdown {
+  background-color: #000000; /* Pitch Black for Dark Mode */
+  border-color: var(--primary-color); /* Neon Yellow/Green usually */
+}
+
+body.theme-cyberpunk.dark-mode .add-component-dropdown li {
+  color: var(--primary-color); /* Neon text on black */
+}
+
+body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
+  background-color: var(--primary-color);
+  color: #000000; /* Black text on neon background */
+}
+
+/* --- STRANGER THINGS THEME OVERRIDES --- */
+body.theme-stranger .add-component-dropdown {
+  background-color: #fffef8; /* Solid parchment color */
+  border: 2px solid var(--primary-color-dark);
+  box-shadow: 0 0 15px rgba(207, 0, 0, 0.2);
+}
+
+body.theme-stranger.dark-mode .add-component-dropdown {
+  background-color: #000000; /* Solid void black */
+  border: 1px solid #ff0000;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
 }
 
 .breakdown-modal-content {
@@ -4096,4 +4188,367 @@ body.dark-mode .moon-toggle {
     width: 100%;
     justify-content: space-between;
   }
+}
+
+/* =================================================================== */
+/* FLOATING NOTEPAD                                                    */
+/* =================================================================== */
+
+.floating-notepad {
+  position: fixed;
+  z-index: 9000; /* High z-index to sit on top of everything */
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 200px;
+  min-height: 200px;
+  
+  /* Allow CSS resizing */
+  resize: both; 
+  overflow: auto;
+
+  /* Glassmorphism Support */
+  backdrop-filter: var(--backdrop-filter);
+  -webkit-backdrop-filter: var(--backdrop-filter);
+}
+
+.notepad-header {
+  background-color: var(--component-header-bg);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: move; /* Indicates drag capability */
+  border-bottom: 1px solid var(--border-color);
+  user-select: none;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary-color);
+}
+
+.notepad-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-color);
+}
+
+.notepad-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.notepad-controls button {
+  background: none;
+  border: none;
+  color: var(--text-color-muted);
+  cursor: pointer;
+  padding: 2px;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.notepad-controls button:hover {
+  color: var(--primary-color);
+}
+
+.notepad-body {
+  flex-grow: 1;
+  display: flex;
+  background-color: var(--input-background);
+}
+
+.notepad-body textarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  resize: none; /* We resize the container instead */
+  padding: 15px;
+  font-family: var(--main-font); /* Match app font */
+  font-size: 0.95rem;
+  background-color: transparent;
+  color: var(--text-color);
+  outline: none;
+  line-height: 1.5;
+}
+
+/* Scrollbar within notepad */
+.notepad-body textarea::-webkit-scrollbar {
+  width: 6px;
+}
+.notepad-body textarea::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 3px;
+}
+
+/* --- Minimized State --- */
+.notepad-minimized {
+  position: fixed;
+  z-index: 9000;
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-radius: 20px; /* Pill shape */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  padding: 8px 15px;
+  cursor: move;
+  width: auto;
+  min-width: 150px;
+  
+  /* Glass Support */
+  backdrop-filter: var(--backdrop-filter);
+}
+
+.notepad-header-min {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.notepad-header-min .notepad-title {
+  font-size: 0.85rem;
+  margin-right: auto;
+}
+
+.notepad-header-min .notepad-icon {
+  color: var(--primary-color);
+}
+
+/* --- Theme Specific Overrides (Optional polish) --- */
+body.theme-cyberpunk .floating-notepad {
+  border-width: 2px;
+  border-radius: 0;
+  box-shadow: 5px 5px 0px rgba(0,0,0,1);
+}
+
+body.theme-stranger.dark-mode .floating-notepad {
+  border-color: #500000;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.2);
+}
+
+/* =================================================================== */
+/* FLOATING TOOLS (Shared & Specific)                                  */
+/* =================================================================== */
+
+.floating-tool {
+  position: fixed;
+  z-index: 9000;
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-backdrop-filter: var(--backdrop-filter);
+  backdrop-filter: var(--backdrop-filter);
+}
+
+.tool-header {
+  background-color: var(--component-header-bg);
+  padding: 0 12px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: move;
+  border-bottom: 1px solid var(--border-color);
+  -webkit-user-select: none;
+  user-select: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tool-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.tool-controls button {
+  background: none;
+  border: none;
+  color: var(--text-color-muted);
+  cursor: pointer;
+  padding: 2px;
+  transition: color 0.2s;
+}
+
+.tool-controls button:hover {
+  color: var(--primary-color);
+}
+
+/* --- Minimized Pill --- */
+.floating-tool-min {
+  position: fixed;
+  z-index: 9000;
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  padding: 8px 15px;
+  cursor: move;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 140px;
+  color: var(--text-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* --- UNIT CONVERTER STYLES --- */
+.converter-window {
+  width: 320px;
+  height: auto;
+}
+
+.conv-body {
+  padding: 20px;
+  background-color: var(--content-background);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.full-width-select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-background);
+  color: var(--text-color);
+}
+
+.conv-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.conv-side label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-color-muted);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.conv-side input, .conv-side select, .result-display {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-background);
+  color: var(--text-color);
+  box-sizing: border-box;
+}
+
+.result-display {
+  background-color: var(--background-color);
+  font-family: 'Consolas', monospace;
+  font-weight: 700;
+  color: var(--primary-color);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.copy-btn-mini {
+  background: none;
+  border: none;
+  color: var(--text-color-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.copy-btn-mini:hover { color: var(--primary-color); }
+
+.conv-middle {
+  display: flex;
+  justify-content: center;
+}
+
+.icon-btn-round {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background-color: var(--background-color);
+  color: var(--text-color-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.icon-btn-round:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: rotate(180deg);
+}
+
+/* Theme overrides */
+body.theme-cyberpunk .floating-tool {
+  border-radius: 0;
+  border-width: 2px;
+}
+
+/* =================================================================== */
+/* 16. INSTRUMENT BUILDER & TOLERANCE FORM                             */
+/* =================================================================== */
+
+/* --- 1. Clean Icon-Only Buttons for Table Actions --- */
+.btn-icon-only {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  background-color: transparent;
+  color: var(--text-color-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-icon-only:hover {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.btn-icon-only.danger:hover {
+  background-color: var(--status-bad-bg);
+  color: var(--status-bad);
+  border-color: var(--status-bad);
+}
+
+/* --- 2. Base Unit Dropdown Fix (Inside Meta Grid) --- */
+.instrument-meta-grid .react-select__control {
+  background-color: var(--background-color) !important; /* Matches grid bg */
+  border-color: var(--border-color) !important;
+  min-height: 38px; /* Slightly compact */
 }

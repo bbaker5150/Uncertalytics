@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useState, useRef } from "react";
+import ReactDOM from "react-dom";
 import Select from "react-select";
 import {
   unitSystem,
@@ -28,7 +29,7 @@ const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
   const options = [];
   const usedUnits = new Set();
 
-  // 1. Prioritize Reference Unit (Smart Context)
+  // 1. Prioritize Reference Unit
   if (referenceUnit && allUnits.includes(referenceUnit)) {
     let refCategory = "Suggested";
     for (const [cat, units] of Object.entries(unitCategories)) {
@@ -65,7 +66,7 @@ const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
     }
   });
 
-  // 3. Catch-all for leftovers
+  // 3. Catch-all
   const leftovers = allUnits
     .filter((u) => !usedUnits.has(u) && !["%", "ppm", "dB", "ppb"].includes(u))
     .map((u) => ({ value: u, label: u }));
@@ -77,16 +78,10 @@ const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
   return options;
 };
 
-// --- FIX: Restore minimal JS styles for Portal Z-Index ---
+// --- Portal Style for Dropdowns ---
 const portalStyle = {
-  menuPortal: (base) => ({
-    ...base,
-    zIndex: 99999,
-  }),
-  menu: (base) => ({
-    ...base,
-    zIndex: 99999,
-  }),
+  menuPortal: (base) => ({ ...base, zIndex: 99999 }),
+  menu: (base) => ({ ...base, zIndex: 99999 }),
 };
 
 // --- Definitions ---
@@ -102,11 +97,11 @@ const componentDefinitions = {
     },
   },
   readings_iv: {
-    label: "Reading (IV)",
+    label: "Readings (IV)",
     defaultState: {
       high: "",
       low: "",
-      unit: "", // Logic will auto-populate this from UUT
+      unit: "", 
       distribution: "1.960",
       symmetric: true,
     },
@@ -153,7 +148,10 @@ const ToleranceForm = ({
   hideDistribution = false,
 }) => {
   const [isAddComponentVisible, setAddComponentVisible] = useState(false);
-  const addComponentRef = useRef(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  
+  const buttonRef = useRef(null);
+  const dropdownRef = useRef(null); // Ref for the portal content
 
   const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
 
@@ -161,7 +159,6 @@ const ToleranceForm = ({
     return getCategorizedUnitOptions(allUnits, referencePoint?.unit);
   }, [allUnits, referencePoint]);
 
-  // UPDATED: Explicitly include PPB in the ratio options
   const ratioUnitOptions = useMemo(() => {
     return [
       { value: "%", label: "%" },
@@ -170,18 +167,32 @@ const ToleranceForm = ({
     ];
   }, []);
 
+  // Handle click outside to close the portal
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        addComponentRef.current &&
-        !addComponentRef.current.contains(event.target)
-      ) {
-        setAddComponentVisible(false);
+      // Check if click is inside the button (toggle)
+      if (buttonRef.current && buttonRef.current.contains(event.target)) {
+        return;
       }
+      // Check if click is inside the dropdown (portal)
+      if (dropdownRef.current && dropdownRef.current.contains(event.target)) {
+        return;
+      }
+      
+      setAddComponentVisible(false);
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+
+    if (isAddComponentVisible) {
+        document.addEventListener("mousedown", handleClickOutside);
+        // Recalculate position on scroll to ensure it stays attached (simple version)
+        window.addEventListener("scroll", () => setAddComponentVisible(false), true);
+    }
+    
+    return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        window.removeEventListener("scroll", () => setAddComponentVisible(false), true);
+    };
+  }, [isAddComponentVisible]);
 
   // --- Auto-Update Units Hook ---
   useEffect(() => {
@@ -191,17 +202,15 @@ const ToleranceForm = ({
       let updated = false;
       const next = { ...prev };
 
-      // Update Floor Units
-      if (next.floor && !next.floor.unit) {
-        next.floor = { ...next.floor, unit: referencePoint.unit };
-        updated = true;
-      }
+      const checkAndSet = (key) => {
+        if (next[key] && !next[key].unit) {
+          next[key] = { ...next[key], unit: referencePoint.unit };
+          updated = true;
+        }
+      };
 
-      // Update Reading (IV) Units (NEW LOGIC)
-      if (next.readings_iv && !next.readings_iv.unit) {
-        next.readings_iv = { ...next.readings_iv, unit: referencePoint.unit };
-        updated = true;
-      }
+      checkAndSet("floor");
+      checkAndSet("readings_iv");
 
       if (isUUT && !next.measuringResolutionUnit) {
         next.measuringResolutionUnit = referencePoint.unit;
@@ -210,14 +219,7 @@ const ToleranceForm = ({
 
       return updated ? next : prev;
     });
-  }, [
-    referencePoint,
-    isUUT,
-    setTolerance,
-    tolerance.floor,
-    tolerance.readings_iv, // Add dependency
-    tolerance.measuringResolutionUnit,
-  ]);
+  }, [referencePoint?.unit, isUUT, setTolerance]); 
 
   const handleChange = (e) => {
     const { name, value, checked, dataset } = e.target;
@@ -279,6 +281,22 @@ const ToleranceForm = ({
     handleChange(fakeEvent);
   };
 
+  const handleToggleMenu = () => {
+      if (!isAddComponentVisible && buttonRef.current) {
+          const rect = buttonRef.current.getBoundingClientRect();
+          // Open upwards if near bottom of screen
+          const spaceBelow = window.innerHeight - rect.bottom;
+          const openUp = spaceBelow < 250; 
+          
+          setDropdownPosition({
+              left: rect.left,
+              top: openUp ? (rect.top - 8) : (rect.bottom + 8),
+              transform: openUp ? 'translateY(-100%)' : 'none'
+          });
+      }
+      setAddComponentVisible(!isAddComponentVisible);
+  };
+
   const handleAddComponent = (componentKey) => {
     if (componentKey && !tolerance[componentKey]) {
       const newState = { ...componentDefinitions[componentKey].defaultState };
@@ -287,7 +305,6 @@ const ToleranceForm = ({
         if (referencePoint?.unit) {
           newState.unit = referencePoint.unit;
         } else if (componentKey === "floor" || componentKey === "readings_iv") {
-          // Fallback if no reference point exists (grab first non-ratio unit)
           const validUnits = allUnits.filter(
             (u) => !["%", "ppm", "dB", "ppb"].includes(u)
           );
@@ -316,41 +333,42 @@ const ToleranceForm = ({
     const componentData = tolerance[key];
     if (!componentData) return null;
 
-    let content = null;
     const distributionOptions = errorDistributions.filter(
       (d) => d.label !== "Std. Uncertainty"
     );
 
-    const commonFields = (
-      <>
-        <div className="input-group-asymmetric">
-          <div>
-            <label>Lower Limit</label>
-            <input
-              type="number"
-              step="any"
-              data-component-key={key}
-              data-field="low"
-              value={componentData.low || ""}
-              onChange={handleChange}
-              disabled={componentData.symmetric}
-              placeholder="- value"
-            />
-          </div>
-          <div>
-            <label>Upper Limit</label>
-            <input
-              type="number"
-              step="any"
-              data-component-key={key}
-              data-field="high"
-              value={componentData.high || ""}
-              onChange={handleChange}
-              placeholder="+ value"
-            />
-          </div>
+    const limitsSection = (
+      <div className="input-group-asymmetric">
+        <div>
+          <label>Lower Limit</label>
+          <input
+            type="number"
+            step="any"
+            data-component-key={key}
+            data-field="low"
+            value={componentData.low || ""}
+            onChange={handleChange}
+            disabled={componentData.symmetric}
+            placeholder="- value"
+          />
         </div>
-        <div className="toggle-switch-container" style={{ margin: "15px 0" }}>
+        <div>
+          <label>Upper Limit</label>
+          <input
+            type="number"
+            step="any"
+            data-component-key={key}
+            data-field="high"
+            value={componentData.high || ""}
+            onChange={handleChange}
+            placeholder="+ value"
+          />
+        </div>
+      </div>
+    );
+
+    const symmetricToggle = (
+        <div className="toggle-switch-container" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '10px' }}>
           <input
             type="checkbox"
             id={`symmetric_${key}_${tolerance.id || "new"}`}
@@ -363,152 +381,157 @@ const ToleranceForm = ({
           <label
             className="toggle-switch-label"
             htmlFor={`symmetric_${key}_${tolerance.id || "new"}`}
+            style={{ transform: "scale(0.75)", margin: 0, border: '1px solid var(--border-color)' }}
           >
             <span className="toggle-switch-switch" />
           </label>
           <label
             htmlFor={`symmetric_${key}_${tolerance.id || "new"}`}
             className="toggle-option-label"
+            style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-color-muted)", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.5px" }}
           >
-            Symmetric Limits
+            Symmetric
           </label>
         </div>
-      </>
     );
 
-    const distributionSelect = !hideDistribution ? (
-      <>
-        <label>Distribution</label>
-        <select
-          data-component-key={key}
-          data-field="distribution"
-          value={componentData.distribution || "1.960"}
-          onChange={handleChange}
-        >
-          {distributionOptions.map((dist) => (
-            <option key={dist.value} value={dist.value}>
-              {dist.label} (k={dist.value})
-            </option>
-          ))}
-        </select>
-      </>
-    ) : null;
-
-    const renderUnitSelect = (options) => {
-      const flatOptions = options.flatMap((o) => (o.options ? o.options : o));
-      const selectedValue = flatOptions.find(
-        (opt) => opt.value === componentData.unit
-      );
-
-      return (
-        <Select
-          value={selectedValue || null}
-          onChange={(opt) => handleSelectChange(opt, "unit", key)}
-          options={options}
-          className="react-select-container"
-          classNamePrefix="react-select"
-          placeholder="Select..."
-          isSearchable={true}
-          menuPortalTarget={document.body}
-          menuPosition="fixed"
-          styles={portalStyle}
-        />
-      );
+    const renderUnitSection = (options) => {
+        const flatOptions = options.flatMap((o) => (o.options ? o.options : o));
+        const selectedValue = flatOptions.find(
+          (opt) => opt.value === componentData.unit
+        );
+        return (
+            <div>
+                <label>Units</label>
+                <Select
+                  value={selectedValue || null}
+                  onChange={(opt) => handleSelectChange(opt, "unit", key)}
+                  options={options}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  placeholder="Select..."
+                  isSearchable={true}
+                  menuPortalTarget={document.body}
+                  menuPosition="fixed"
+                  styles={portalStyle}
+                />
+            </div>
+        );
     };
 
-    switch (key) {
-      case "reading":
-        content = (
+    const distributionSection = !hideDistribution ? (
+        <div>
+          <label>Distribution</label>
+          <select
+            data-component-key={key}
+            data-field="distribution"
+            value={componentData.distribution || "1.960"}
+            onChange={handleChange}
+            style={{width: '100%'}}
+          >
+            {distributionOptions.map((dist) => (
+              <option key={dist.value} value={dist.value}>
+                {dist.label} (k={dist.value})
+              </option>
+            ))}
+          </select>
+        </div>
+    ) : null;
+
+    let content = null;
+
+    if (key === "range") {
+         content = (
           <div className="config-stack">
-            {commonFields}
-            <label>Units</label>
-            {renderUnitSelect(ratioUnitOptions)}
-            {distributionSelect}
+            <div>
+                <label>Range (FS) Value</label>
+                <input
+                type="number"
+                step="any"
+                data-component-key="range"
+                data-field="value"
+                value={componentData.value || ""}
+                onChange={handleChange}
+                placeholder="e.g., 100"
+                />
+            </div>
+            {limitsSection}
+            {hideDistribution ? (
+                 renderUnitSection(ratioUnitOptions)
+            ) : (
+                <div className="input-group-asymmetric">
+                    {renderUnitSection(ratioUnitOptions)}
+                    {distributionSection}
+                </div>
+            )}
           </div>
         );
-        break;
-      case "readings_iv":
-        // Behaves exactly like Floor: Physical Units, No Value input
+    } else if (key === "db") {
         content = (
           <div className="config-stack">
-            {commonFields}
-            <label>Units</label>
-            {renderUnitSelect(physicalUnitOptions)}
-            {distributionSelect}
+            {limitsSection}
+            <div className="input-group-asymmetric">
+                <div>
+                    <label>dB Equation Multiplier</label>
+                    <input
+                    type="number"
+                    step="any"
+                    data-component-key="db"
+                    data-field="multiplier"
+                    value={componentData.multiplier || 20}
+                    onChange={handleChange}
+                    />
+                </div>
+                <div>
+                    <label>dB Reference Value</label>
+                    <input
+                    type="number"
+                    step="any"
+                    data-component-key="db"
+                    data-field="ref"
+                    value={componentData.ref || 1}
+                    onChange={handleChange}
+                    />
+                </div>
+            </div>
+            {distributionSection}
           </div>
         );
-        break;
-      case "range":
+    } else {
+        const unitOptions = (key === 'reading') ? ratioUnitOptions : physicalUnitOptions;
         content = (
           <div className="config-stack">
-            <label>Range (FS) Value</label>
-            <input
-              type="number"
-              step="any"
-              data-component-key="range"
-              data-field="value"
-              value={componentData.value || ""}
-              onChange={handleChange}
-              placeholder="e.g., 100"
-            />
-            {commonFields}
-            <label>Units</label>
-            {renderUnitSelect(ratioUnitOptions)}
-            {distributionSelect}
+            {limitsSection}
+            {hideDistribution ? (
+                 renderUnitSection(unitOptions)
+            ) : (
+                <div className="input-group-asymmetric">
+                    {renderUnitSection(unitOptions)}
+                    {distributionSection}
+                </div>
+            )}
           </div>
         );
-        break;
-      case "floor":
-        content = (
-          <div className="config-stack">
-            {commonFields}
-            <label>Units</label>
-            {renderUnitSelect(physicalUnitOptions)}
-            {distributionSelect}
-          </div>
-        );
-        break;
-      case "db":
-        content = (
-          <div className="config-stack">
-            {commonFields}
-            <label>dB Equation Multiplier</label>
-            <input
-              type="number"
-              step="any"
-              data-component-key="db"
-              data-field="multiplier"
-              value={componentData.multiplier || 20}
-              onChange={handleChange}
-            />
-            <label>dB Reference Value</label>
-            <input
-              type="number"
-              step="any"
-              data-component-key="db"
-              data-field="ref"
-              value={componentData.ref || 1}
-              onChange={handleChange}
-            />
-            {distributionSelect}
-          </div>
-        );
-        break;
-      default:
-        return null;
     }
 
     return (
       <div className="component-card" key={key}>
         <div className="component-header">
           <h5>{componentDefinitions[key].label}</h5>
-          <button
-            onClick={() => handleRemoveComponent(key)}
-            className="remove-component-btn"
-            title="Remove component"
-          >
-            <FontAwesomeIcon icon={faTrashAlt} />
-          </button>
+          
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {symmetricToggle}
+            
+            <div style={{ width: '1px', height: '20px', backgroundColor: 'var(--border-color)', margin: '0 10px' }}></div>
+
+            <button
+              onClick={() => handleRemoveComponent(key)}
+              className="remove-component-btn"
+              title="Remove component"
+            >
+              <FontAwesomeIcon icon={faTrashAlt} />
+            </button>
+          </div>
         </div>
         <div className="component-body">{content}</div>
       </div>
@@ -541,28 +564,49 @@ const ToleranceForm = ({
         )}
       </div>
 
-      <div className="add-component-wrapper" ref={addComponentRef}>
+      <div className="add-component-wrapper"> 
         {availableComponents.length > 0 && (
           <button
+            ref={buttonRef}
             className="add-component-button"
-            onClick={() => setAddComponentVisible((prev) => !prev)}
+            onClick={handleToggleMenu}
             title="Add new tolerance component"
           >
             <FontAwesomeIcon icon={faPlus} />
-            <span>Add Component</span>
+            <span>Add Tolerance</span>
           </button>
         )}
 
-        {isAddComponentVisible && availableComponents.length > 0 && (
-          <div className="add-component-dropdown">
+        {/* PORTAL RENDER:
+            This renders the dropdown into the document.body, escaping 
+            any overflow:hidden containers in the Modal. 
+            It uses the styles you defined in App.css (.add-component-dropdown).
+        */}
+        {isAddComponentVisible && availableComponents.length > 0 && ReactDOM.createPortal(
+          <div 
+            ref={dropdownRef}
+            className="add-component-dropdown"
+            style={{
+                position: 'fixed',
+                top: dropdownPosition.top,
+                left: dropdownPosition.left,
+                transform: dropdownPosition.transform,
+                zIndex: 999999, // Ensure it's on top of everything
+                // Width can be auto, or match the button if you prefer
+            }}
+          >
             <ul>
               {availableComponents.map((key) => (
-                <li key={key} onClick={() => handleAddComponent(key)}>
+                <li 
+                    key={key} 
+                    onClick={() => handleAddComponent(key)}
+                >
                   {componentDefinitions[key].label}
                 </li>
               ))}
             </ul>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 

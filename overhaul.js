@@ -391,7 +391,7 @@ const calculateRiskMetrics = useCallback(() => {
     if (missingTmdeRef) {
       setNotification({
         title: "Missing Info",
-        message: "TMDE missing Reference Point for TAR calculation.",
+        message: "TMDE missing measurement point for TAR calculation.",
       });
     } else if (tmdeToleranceSpan_Native === 0 && LUp - LLow > 0) {
       if (riskInputs.LUp && riskInputs.LLow) {
