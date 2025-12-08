@@ -940,50 +940,60 @@ export const GBPFRBreakdown = ({ inputs }) => (
 );
 
 export const GBMultBreakdown = ({ inputs, results }) => {
-  const uutToleranceSpan = inputs.LUp - inputs.LLow;
-  const safeNativeUnit = results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
-  const gbSpan = results.gbResults.GBUP - results.gbResults.GBLOW;
-  console.log(results)
+
+  const safeNativeUnit =
+    results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
+  const uutToleranceUpper =
+    (inputs.LUp ?? 0) - (results.gbInputs.nominal ?? 0);
+  const gbUpper =
+    (results.gbResults.GBUP ?? 0) - (results.gbInputs.nominal ?? 0);
+  const reqPFA = results.gbInputs.reqPFA ?? 0;
+  const nominal = results.gbInputs.nominal ?? 0;
+  const gbUP = results.gbResults.GBUP ?? 0;
+  const gbMult = results.gbResults.GBMULT ?? 0;
+  const precise = 6;
+
+  
   return (
     <div className="modal-body-scrollable">
       <div className="breakdown-step">
         <h5>Step 1: Formula</h5>
         <p>
-          The Guardband Multiplier is the ratio of the UUT tolerance span to
-          the Guardbanded tolerance span. Calculated by adjusting acceptance limits until required PFA is met.
+          The Guardband Multiplier is the ratio of the UUT tolerance to
+          the Guardbanded tolerance. Calculated by adjusting acceptance limits until required {reqPFA * 100}% PFA is met.
         </p>
         <Latex>
           {
-            "$$ \\text{Guardband Multiplier} = \\frac{\\text{UUT Tolerance Span}}{\\text{Guardband Tolerance Span}} = \\frac{L_{Upper} - L_{Lower}}{GB_{Upper} - GB_{Lower}} $$"
+            "$$ \\text{Guardband Multiplier} = \\frac{\\text{UUT Upper Tolerance}}{\\text{Guardband Upper Tolerance}} = \\frac{L_{Upper} - Nominal}{GB_{Upper} - Nominal} $$"
           }
         </Latex>
         <div className="breakdown-step">
           <h5>Step 2: Inputs</h5>
           <ul>
             <li>
-              Tolerance Span :{" "}
-              <Latex>{`$$ L_{Upper} - L_{Lower} = ${inputs.LUp.toPrecision(
-                6
-              )} - (${inputs.LLow.toPrecision(
-                6
-              )}) = ${uutToleranceSpan.toPrecision(
-                4
+              Upper Tolerance :{" "}
+              <Latex>{`$$ L_{Upper} - Nominal = ${inputs.LUp.toPrecision(
+                precise
+              )} - (${nominal.toPrecision(
+                precise
+              )}) = ${uutToleranceUpper.toPrecision(
+                precise
               )} \\text{ ${safeNativeUnit}} $$`}</Latex>
             </li>
             <li>
-              Guardband Tolerance Span :{" "}
-              <Latex>{`$$ GB_{Upper} - GB_{Lower} = ${results.gbResults.GBUP.toPrecision(4)} - ${results.gbResults.GBLOW.toPrecision(4)} 
-              = \\mathbf{${gbSpan.toPrecision(4)}} \\text{ ${safeNativeUnit}} $$`}</Latex>
+              Guardband Upper Tolerance :{" "}
+              <Latex>{`$$ GB_{Upper} - Nominal = ${gbUP.toPrecision(4)} - ${nominal.toPrecision(precise)} 
+              = \\mathbf{${gbUpper.toPrecision(precise)}} \\text{ ${safeNativeUnit}} $$`}</Latex>
             </li>
           </ul>
         </div>
         <div className="breakdown-step">
           <h5>Step 3: Final Calculation</h5>
-          <Latex>{`$$ GB Multiplier = \\frac{${gbSpan.toPrecision(
-            4
-          )}}{${uutToleranceSpan.toPrecision(
-            4
-          )}} = \\mathbf{${results.gbResults.GBMULT.toFixed(4)}} $$`}</Latex>
+          <Latex>{`$$ GB Multiplier = \\frac{${gbUpper.toPrecision(
+            precise
+          )}}{${uutToleranceUpper.toPrecision(
+            precise
+          )}} = \\mathbf{${gbMult.toFixed(precise)}} $$`}</Latex>
         </div>
       </div>
     </div>
