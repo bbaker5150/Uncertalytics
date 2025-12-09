@@ -2,7 +2,13 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import Latex from "./Latex"; // Assuming Latex.jsx is in the components folder
 import { unitSystem } from "../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCalculator, faCog, faPlus, faPencilAlt } from "@fortawesome/free-solid-svg-icons"; // Added faPencilAlt
+import { 
+  faCalculator, 
+  faCog, 
+  faPlus, 
+  faPencilAlt, 
+  faRedo // <--- Added for Repeatability
+} from "@fortawesome/free-solid-svg-icons"; 
 
 const UncertaintyBudgetTable = ({
   components,
@@ -21,6 +27,7 @@ const UncertaintyBudgetTable = ({
   setShowContribution,
   hasTmde,
   onAddManualComponent,
+  onOpenRepeatability, // <--- New Prop
 }) => {
   const confidencePercent = parseFloat(uncertaintyConfidence) || 95;
   const derivedUnit = referencePoint?.unit || "Units";
@@ -237,9 +244,11 @@ const UncertaintyBudgetTable = ({
 
           <th>Distribution</th>
 
-          {/* --- Settings Header Column with Add Button --- */}
-          <th style={{ width: "90px", position: "relative" }}>
-             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
+          {/* --- Settings Header Column with Actions --- */}
+          <th style={{ width: "120px", position: "relative" }}>
+             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                
+                {/* 1. Add Manual Component */}
                 <span
                   onClick={onAddManualComponent}
                   className="action-icon"
@@ -250,6 +259,7 @@ const UncertaintyBudgetTable = ({
                     display: "flex",
                     justifyContent: "center",
                     transition: "color 0.2s ease",
+                    fontSize: '0.9rem'
                   }}
                    onMouseEnter={(e) =>
                     (e.currentTarget.style.color = "var(--primary-color)")
@@ -261,6 +271,30 @@ const UncertaintyBudgetTable = ({
                   <FontAwesomeIcon icon={faPlus} />
                 </span>
 
+                {/* 2. Add Repeatability (NEW) */}
+                <span
+                  onClick={onOpenRepeatability}
+                  className="action-icon"
+                  title="Repeatability Calculator"
+                  style={{
+                    cursor: "pointer",
+                    color: "var(--text-color-muted)",
+                    display: "flex",
+                    justifyContent: "center",
+                    transition: "color 0.2s ease",
+                    fontSize: '0.9rem'
+                  }}
+                   onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "var(--primary-color)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "var(--text-color-muted)")
+                  }
+                >
+                  <FontAwesomeIcon icon={faRedo} />
+                </span>
+
+                {/* 3. Settings Dropdown */}
                 <div ref={settingsRef} style={{position: 'relative'}}>
                     <span
                     onClick={() => setShowSettings(!showSettings)}
@@ -272,6 +306,7 @@ const UncertaintyBudgetTable = ({
                         display: "flex",
                         justifyContent: "center",
                         transition: "color 0.2s ease",
+                        fontSize: '0.9rem'
                     }}
                     onMouseEnter={(e) =>
                         (e.currentTarget.style.color = "var(--primary-color)")
@@ -283,7 +318,7 @@ const UncertaintyBudgetTable = ({
                     <FontAwesomeIcon icon={faCog} />
                     </span>
 
-                    {/* --- Settings Dropdown --- */}
+                    {/* --- Settings Dropdown Menu --- */}
                     {showSettings && (
                     <div
                         style={{

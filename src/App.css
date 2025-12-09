@@ -78,7 +78,7 @@
   --risk-pfa-warning-color: #ffc107;
   --risk-pfa-bad-color: #dc3545;
 
-  /* Seals */
+  /* Seals (Default Blue) */
   --seal-background-color: #007bff;
   --seal-background-color-derived: #8a4caf;
   --seal-tmde-background-color: #6c757d;
@@ -140,6 +140,7 @@ body.dark-mode {
   --risk-pfa-warning-color: #ffc107;
   --risk-pfa-bad-color: #dc3545;
 
+  /* Seals (Default Dark) */
   --seal-background-color: #007bff;
   --seal-background-color-derived: #b794d1;
   --seal-tmde-background-color: #a0aec0;
@@ -161,58 +162,350 @@ body.dark-mode {
   --heading-color: #ffffff;
 }
 
-/* --- 1C. THEME: AERO GLASS --- */
-body.theme-glass {
-  /* Classic Windows Aero Font: Segoe UI first, then glossy fallbacks */
-  --main-font: 'Segoe UI', 'Helvetica Neue', 'Trebuchet MS', sans-serif;
+/* =================================================================== */
+/* 1C. THEME: ORBITAL COMMAND (Solar & Deep Space)                     */
+/* =================================================================== */
+
+/* ------------------------------------------------------------------- */
+/* 1. VARIABLE DEFINITIONS                                             */
+/* ------------------------------------------------------------------- */
+
+/* --- SHARED GEOMETRY & FONTS (Both Modes) --- */
+body.theme-orbital {
+  /* Font: High-tech, legible sans-serif */
+  --main-font: 'Inter', 'Roboto', system-ui, sans-serif;
+  --heading-font-weight: 800;
+  --letter-spacing: 0.5px;
   
-  --backdrop-filter: blur(20px);
-  --sidebar-backdrop-filter: none;
-  --modal-overlay-color: rgba(255, 255, 255, 0.1);
-  --table-header-bg: rgba(255,255,255, 0.3);
-  
-  /* Mesh Gradient */
-  background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,0.15) 0, transparent 50%), 
-                    radial-gradient(at 50% 0%, hsla(225,39%,30%,0.15) 0, transparent 50%), 
-                    radial-gradient(at 100% 0%, hsla(339,49%,30%,0.15) 0, transparent 50%);
-  background-attachment: fixed;
-  background-size: cover;
+  /* Radii: Smooth, modern curves */
+  --border-radius: 6px;
+  --modal-radius: 12px;
+  --seal-radius: 4px;
+  --border-width: 1px;
 }
 
-/* Glass Light */
-body.theme-glass {
-  --background-color: #e0eafc;
-  --content-background: rgba(255, 255, 255, 0.65);
-  --sidebar-background: transparent;
-  --header-background: rgba(255, 255, 255, 0.4);
-  --input-background: rgba(255, 255, 255, 0.5);
-  --component-bg: rgba(255, 255, 255, 0.4);
-  --component-header-bg: rgba(255, 255, 255, 0.6);
-  --border-color: rgba(255, 255, 255, 0.6);
-  --toggle-bg-off: rgba(0, 0, 0, 0.1);
+/* --- LIGHT MODE PALETTE (Default: "Solar Command") --- */
+body.theme-orbital {
+  /* Core Colors */
+  --orbital-bg-base: #f8fafc;  /* Slate 50 */
+  --orbital-surface: #ffffff;
+  --orbital-text-main: #0f172a; /* Slate 900 */
+  --orbital-text-muted: #475569; /* Slate 600 */
+  
+  /* Accents */
+  --orbital-cyan: #0891b2;    /* Darker Cyan for Light Mode contrast */
+  --orbital-gold: #d97706;    
+  --orbital-crimson: #e11d48; 
+  --orbital-emerald: #059669; 
+  
+  /* Semantic Assignments */
+  --background-color: var(--orbital-bg-base);
+  --text-color: var(--orbital-text-main);
+  --text-color-muted: var(--orbital-text-muted);
+  
+  /* Glass Layers (Light) */
+  --header-background: rgba(255, 255, 255, 0.75);
+  --content-background: rgba(255, 255, 255, 0.65); 
+  --sidebar-background: rgba(241, 245, 249, 0.7);
+  --input-background: rgba(255, 255, 255, 0.8);
+  
+  --component-bg: rgba(255, 255, 255, 0.6);
+  --component-header-bg: rgba(248, 250, 252, 0.8);
+  
+  --border-color: rgba(15, 23, 42, 0.1); 
+  --primary-color: var(--orbital-cyan);
+  --primary-color-dark: #0e7490;
+  --primary-color-light: rgba(8, 145, 178, 0.1);
+  
+  /* Status */
+  --status-good: var(--orbital-emerald);
+  --status-warning: var(--orbital-gold);
+  --status-bad: var(--orbital-crimson);
+  
+  /* Seals */
+  --seal-background-color: var(--orbital-cyan);
+  --seal-background-color-derived: #7c3aed; 
+  --seal-tmde-background-color: #64748b;
+  
+  /* Effects */
+  --backdrop-filter: blur(12px) saturate(140%);
+  --sidebar-backdrop-filter: blur(20px) saturate(180%);
+  --box-shadow-glow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --border-gradient: linear-gradient(180deg, rgba(15,23,42,0.1) 0%, rgba(15,23,42,0.05) 100%);
+  
+  /* Toggle */
+  --toggle-bg-off: #cbd5e1;
+  --toggle-knob: #ffffff;
 }
 
-/* Glass Dark */
-body.theme-glass.dark-mode {
-  --background-color: #0f172a;
-  background-image: radial-gradient(at 40% 20%, hsla(266,50%,28%,1) 0px, transparent 50%),
-                    radial-gradient(at 80% 0%, hsla(189,100%,36%,1) 0px, transparent 50%),
-                    radial-gradient(at 0% 50%, hsla(340,100%,26%,1) 0px, transparent 50%);
+/* --- DARK MODE PALETTE (Override: "Deep Space") --- */
+body.theme-orbital.dark-mode {
+  /* Core Colors */
+  --orbital-bg-base: #050509; /* Deep Black/Blue */
+  --orbital-text-main: #e2e8f0;
+  --orbital-text-muted: #94a3b8;
   
-  --content-background: rgba(20, 25, 40, 0.6);
-  --sidebar-background: transparent;
-  --header-background: rgba(20, 25, 40, 0.4);
-  --input-background: rgba(0, 0, 0, 0.3);
-  --component-bg: rgba(255, 255, 255, 0.06);
-  --component-header-bg: rgba(255, 255, 255, 0.08);
+  /* Neon Accents */
+  --orbital-cyan: #06b6d4;   /* Brighter Cyan for Dark Mode */
+  --orbital-gold: #f59e0b;   
+  --orbital-crimson: #f43f5e;
+  --orbital-emerald: #10b981;
+
+  /* Semantic Assignments */
+  --background-color: var(--orbital-bg-base);
+  --text-color: var(--orbital-text-main);
+  --text-color-muted: var(--orbital-text-muted);
+
+  /* Dark Glass Layers */
+  --header-background: rgba(15, 23, 42, 0.7);
+  --content-background: rgba(15, 23, 42, 0.4); 
+  --sidebar-background: rgba(5, 5, 9, 0.6);
+  --input-background: rgba(0, 0, 0, 0.4);
   
-  --text-color: #ffffff;
-  --text-color-muted: #cbd5e1;
-  --border-color: rgba(255, 255, 255, 0.15);
-  --primary-color: #00f2ff;
-  --primary-color-dark: #00b8c2;
-  --box-shadow-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  --component-bg: rgba(30, 41, 59, 0.4);
+  --component-header-bg: rgba(51, 65, 85, 0.5);
+  
+  --border-color: rgba(148, 163, 184, 0.15);
+  --primary-color: var(--orbital-cyan);
+  --primary-color-light: rgba(6, 182, 212, 0.15);
+  
+  /* Effects */
+  --backdrop-filter: blur(20px) saturate(180%);
+  --sidebar-backdrop-filter: blur(30px) brightness(0.8);
+  --box-shadow-glow: 0 0 20px rgba(6, 182, 212, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --border-gradient: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+  
+  /* Toggle */
   --toggle-bg-off: rgba(255, 255, 255, 0.1);
+}
+
+/* ------------------------------------------------------------------- */
+/* 2. BACKGROUND ANIMATIONS                                            */
+/* ------------------------------------------------------------------- */
+
+/* Light Mode Background */
+body.theme-orbital {
+  background-color: var(--orbital-bg-base);
+  background-image: 
+    linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 50% 0%, rgba(8, 145, 178, 0.15), transparent 60%);
+  background-size: 40px 40px, 40px 40px, 100% 100%;
+  background-position: center top;
+  background-attachment: fixed;
+  animation: none;
+}
+
+/* Dark Mode Background */
+@keyframes deepSpaceDrift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+body.theme-orbital.dark-mode {
+  background-color: var(--orbital-bg-base);
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(59, 7, 100, 0.15), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(6, 182, 212, 0.1), transparent 25%),
+    radial-gradient(white 1px, transparent 1px),
+    radial-gradient(white 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 550px 550px, 350px 350px;
+  animation: deepSpaceDrift 120s linear infinite;
+}
+
+/* ------------------------------------------------------------------- */
+/* 3. COMPONENT STYLING                                                */
+/* ------------------------------------------------------------------- */
+
+/* Typography */
+body.theme-orbital h1, 
+body.theme-orbital h2, 
+body.theme-orbital h3, 
+body.theme-orbital h4 {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-color);
+  font-weight: 800;
+}
+
+/* Main Content Card (The HUD Frame) */
+body.theme-orbital .content-area {
+  border: 1px solid var(--border-color);
+  border-top: 2px solid var(--primary-color); 
+  background-image: none;
+  background-color: var(--content-background);
+  box-shadow: var(--box-shadow-glow);
+  backdrop-filter: var(--backdrop-filter);
+  -webkit-backdrop-filter: var(--backdrop-filter);
+}
+
+/* Inputs (Data Entry Fields) */
+body.theme-orbital input, 
+body.theme-orbital select, 
+body.theme-orbital textarea {
+  background-color: var(--input-background);
+  border: 1px solid var(--border-color);
+  border-left: 2px solid var(--border-color); /* Tech accent */
+  color: var(--primary-color);
+  font-family: 'Consolas', monospace;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+body.theme-orbital input:focus, 
+body.theme-orbital select:focus {
+  background-color: var(--primary-color-light);
+  border-color: var(--primary-color);
+  border-left-width: 4px; /* Expand accent on focus */
+  outline: none;
+  box-shadow: none;
+}
+
+/* Buttons (Tactile/Holographic) */
+body.theme-orbital .button,
+body.theme-orbital .sidebar-action-button {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+/* Button Hover State */
+body.theme-orbital .button:hover,
+body.theme-orbital .sidebar-action-button:hover {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #ffffff; /* Always white on hover */
+  box-shadow: 0 0 15px var(--primary-color-light);
+  transform: translateY(-1px);
+}
+
+/* Destructive Button Hover */
+body.theme-orbital .sidebar-action-button.delete:hover,
+body.theme-orbital .button[style*="status-bad"] {
+  border-color: var(--orbital-crimson);
+  background-color: var(--orbital-crimson);
+  box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);
+}
+
+/* Seals (Data Cards) */
+body.theme-orbital .uut-seal, 
+body.theme-orbital .tmde-seal {
+  background: var(--component-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 0px 8px 8px 8px; /* Dog-ear effect */
+  border-top: 3px solid var(--seal-background-color);
+  animation: none;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+body.theme-orbital .seal-title {
+  color: var(--text-color);
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.5px;
+}
+
+body.theme-orbital .calculated-limit {
+  font-family: 'Consolas', monospace;
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+/* Metric Pods (Readouts) */
+body.theme-orbital .metric-pod {
+  background: var(--component-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: none;
+  animation: none !important;
+}
+
+/* Scanline Effect */
+body.theme-orbital .metric-pod::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: var(--primary-color);
+  opacity: 0.1;
+  animation: orbitalScanline 4s linear infinite;
+  pointer-events: none;
+}
+
+body.theme-orbital.dark-mode .metric-pod::after {
+  opacity: 0.3;
+}
+
+@keyframes orbitalScanline {
+  0% { transform: translateY(-10px); opacity: 0; }
+  10% { opacity: 0.1; }
+  90% { opacity: 0.1; }
+  100% { transform: translateY(100px); opacity: 0; }
+}
+
+body.theme-orbital .metric-pod-value {
+  font-family: 'Consolas', monospace;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+/* Pod Text Colors */
+body.theme-orbital .metric-pod.status-good .metric-pod-value { color: var(--orbital-emerald); }
+body.theme-orbital .metric-pod.status-warning .metric-pod-value { color: var(--orbital-gold); }
+body.theme-orbital .metric-pod.status-bad .metric-pod-value { color: var(--orbital-crimson); }
+body.theme-orbital .metric-pod.tur .metric-pod-value { color: var(--orbital-cyan); }
+
+/* Sidebar (Navigation Deck) */
+body.theme-orbital .results-sidebar {
+  border-right: 1px solid var(--border-color);
+  background: var(--sidebar-background);
+  backdrop-filter: var(--sidebar-backdrop-filter);
+  -webkit-backdrop-filter: var(--sidebar-backdrop-filter);
+}
+
+body.theme-orbital .measurement-point-item.active {
+  background: linear-gradient(90deg, var(--primary-color-light) 0%, transparent 100%);
+  border-left: 3px solid var(--primary-color);
+  color: var(--primary-color);
+  font-weight: 700;
+  box-shadow: none;
+  animation: none;
+}
+
+/* Tables (Data Grids) */
+body.theme-orbital .uncertainty-budget-table {
+  border: 1px solid var(--border-color);
+}
+body.theme-orbital .uncertainty-budget-table thead th {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--primary-color);
+}
+body.theme-orbital .uncertainty-budget-table td {
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-color);
+  font-family: 'Consolas', monospace;
+}
+body.theme-orbital .uncertainty-budget-table tbody tr:hover {
+  background-color: var(--primary-color-light);
+}
+
+/* Modals */
+body.theme-orbital .modal-content {
+  background-image: none;
+  background-color: var(--header-background); /* Use header bg for opacity */
+  border: 1px solid var(--border-color);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
 }
 
 /* --- 1D. THEME: CYBERPUNK --- */
@@ -239,6 +532,11 @@ body.theme-cyberpunk {
   --border-gradient: linear-gradient(90deg, #d600c0, #00eaff);
   --box-shadow-glow: 5px 5px 0px rgba(0,0,0,1);
   --toggle-bg-off: #999;
+
+  /* UPDATE: Match Magenta/Cyan Theme */
+  --seal-background-color: #d600c0;         /* Magenta */
+  --seal-background-color-derived: #00eaff; /* Cyan */
+  --seal-tmde-background-color: #000000;    /* Black (Hard contrast) */
 }
 
 body.theme-cyberpunk.dark-mode {
@@ -253,6 +551,11 @@ body.theme-cyberpunk.dark-mode {
   --primary-color-dark: #c5b800;
   --border-color: #333333;
   --box-shadow-glow: 3px 3px 0px rgba(252, 238, 10, 0.6);
+
+  /* UPDATE: Match Yellow/Matrix Theme */
+  --seal-background-color: #fcee0a;         /* Neon Yellow */
+  --seal-background-color-derived: #00ff00; /* Matrix Green */
+  --seal-tmde-background-color: #fcee0a;    /* Yellow */
 }
 
 /* =================================================================== */
@@ -370,7 +673,8 @@ body.theme-stranger {
   --status-good-bg: #e2e8ce;
   
   --seal-background-color: #cf0000;
-  --seal-background-color-derived: #cf0000;
+  /* UPDATE: Ensure Derived doesn't default to purple */
+  --seal-background-color-derived: #8a0000; /* Dried Blood */
   --seal-tmde-background-color: #5c4b37;
   
   --scrollbar-track: #e6d2a0;
@@ -460,6 +764,7 @@ body.theme-stranger.dark-mode {
   --status-bad: #ff0000;
   --status-good-bg: #220000;
   
+  /* UPDATE: Ensure everything glows red */
   --seal-background-color: #ff0000;
   --seal-background-color-derived: #ff0000;
   --seal-tmde-background-color: #ff0000;
@@ -1457,27 +1762,33 @@ body.theme-cyberpunk .button {
 
 @keyframes seal-glow {
   from {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
-                inset 0 0 15px rgba(0, 0, 0, 0.05),
-                0 0 0px 0px rgba(14, 165, 233, 0); /* Glow starts invisible */
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.1), 
+      inset 0 0 15px rgba(0, 0, 0, 0.05),
+      0 0 0px 0px transparent;
   }
   to {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
-                inset 0 0 15px rgba(0, 0, 0, 0.05),
-                0 0 15px 7px rgba(14, 165, 233, 0.5); /* Glow is now visible */
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.1), 
+      inset 0 0 15px rgba(0, 0, 0, 0.05),
+      /* Dynamic Glow: Uses the theme's seal color with 50% opacity */
+      0 0 20px 5px color-mix(in srgb, var(--seal-background-color), transparent 50%);
   }
 }
 
 @keyframes seal-glow-derived {
   from {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
-                inset 0 0 15px rgba(0, 0, 0, 0.05),
-                0 0 0px 0px rgba(14, 165, 233, 0); 
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.1), 
+      inset 0 0 15px rgba(0, 0, 0, 0.05),
+      0 0 0px 0px transparent;
   }
   to {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
-                inset 0 0 15px rgba(0, 0, 0, 0.05),
-                0 0 15px 7px var(--seal-background-color-derived);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.1), 
+      inset 0 0 15px rgba(0, 0, 0, 0.05),
+      /* Dynamic Derived Glow: Uses the theme's derived color with 50% opacity */
+      0 0 20px 5px color-mix(in srgb, var(--seal-background-color-derived), transparent 50%);
   }
 }
 
@@ -1589,16 +1900,19 @@ body.theme-cyberpunk .button {
 }
 
 @keyframes tmdeFuturisticGlow {
-    from {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 
-                    inset 0 0 10px rgba(0, 0, 0, 0.04),
-                    0 0 0px 0px rgba(108, 117, 125, 0); /* <-- Matches UUT 'from' glow */
-    }
-    to {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 
-                    inset 0 0 10px rgba(0, 0, 0, 0.04),
-                    0 0 15px 7px rgba(108, 117, 125, 0.5); /* <-- Matches UUT 'to' glow */
-    }
+  from {
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.08), 
+      inset 0 0 10px rgba(0, 0, 0, 0.04),
+      0 0 0px 0px transparent;
+  }
+  to {
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.08), 
+      inset 0 0 10px rgba(0, 0, 0, 0.04),
+      /* Dynamic TMDE Glow: Uses the theme's TMDE color (usually grey/silver) with 40% opacity */
+      0 0 15px 5px color-mix(in srgb, var(--seal-tmde-background-color), transparent 60%);
+  }
 }
 
 .tmde-seal:hover {

@@ -136,7 +136,7 @@ function App() {
   // --- Theme Effect ---
   useEffect(() => {
     const body = document.body;
-    body.classList.remove("theme-glass", "theme-cyberpunk", "theme-stranger");
+    body.classList.remove("theme-orbital", "theme-cyberpunk", "theme-stranger");
 
     if (currentTheme !== "default") {
       body.classList.add(currentTheme);
@@ -559,7 +559,7 @@ function App() {
                       <option value="default">Default</option>
                       <option value="theme-cyberpunk">Cyberpunk</option>
                       <option value="theme-stranger">Stranger Things</option>
-                      <option value="theme-glass">Aero Glass</option>
+                      <option value="theme-orbital">Orbit</option>
                     </select>
                   </div>
                 )}
