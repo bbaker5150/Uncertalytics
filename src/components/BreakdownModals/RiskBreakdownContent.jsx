@@ -777,147 +777,38 @@ export const GBLowBreakdown = ({ inputs, results }) => (
     <div className="breakdown-step">
         <h5>Step 1: Formula</h5>
         <p>
-          The Lower Guardband Tolerance (GB Low) is the product of the UUT Lower Tolerance times the Gaurdband Multiplier. Acceptance Tolerance are lowered to meet the required PFA in the cases that the PFA is above the {(inputs.reqPFA ?? 0) * 100}% PFA threshold.
+          The Lower Guardband Tolerance (GB Low) is the product of the UUT Lower Tolerance times the Guardband Multiplier. Acceptance Tolerance are lowered to meet the required PFA in the cases that the PFA is above the {(inputs.reqPFA ?? 0) * 100}% PFA threshold.
         </p>
         <Latex>{"$$ GB_{LOW} = L_{Lower} * GB_{MULTIPLIER} $$"}</Latex>
       </div>
       <div className="breakdown-step">
-        <h5>Step 2: Key Statistical Inputs</h5>
-        <p>These values are derived from your budget and reliability settings.</p>
-        <ul>
-          <li>
-            True UUT Error (σ<sub>uut</sub>):{" "}
-            <strong>
-              {/* {results.uUUT.toPrecision(4)} {safeNativeUnit} */}
-            </strong>
-            <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
-          </li>
-          <li>
-            Observed Error (σ<sub>obs</sub>):{" "}
-            {/* <strong>
-              {results.uDev.toPrecision(4)} {safeNativeUnit}
-            </strong> */}
-            <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
-          </li>
-          <li>
-            Correlation (ρ):{" "}
-            {/* <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.uUUT.toPrecision(
-              4
-            )}}{${results.uDev.toPrecision(
-              4
-            )}} = \\mathbf{${results.correlation.toFixed(4)}} $$`}</Latex> */}
-          </li>
-        </ul>
+        <h5>Step 2: Guardband Multiplier Calculation</h5>
+        <p>Guardband Multiplier is calculated first to get our GB LOW and HIGH values. We recalculate the exact same PFA, but instead our acceptance limits are changed. GB Multiplier is initally 1 and decrements by 0.05 recalculating PFA each time until PFA is equal to the required {results.gbInputs.reqPFA*100}% PFA.</p>
       </div>
       <div className="breakdown-step">
-        <h5>Step 3: Normalized Limits (Z-Scores)</h5>
-        <p>
-          The limits are normalized by their respective standard deviations. (L
-          = UUT Tolerance, A = Acceptance Limit)
-        </p>
-        <ul>
-          <li>
-            z<sub>x_low</sub> (True Error):{" "}
-            {/* <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
-              4
-            )}}{${results.uUUT.toPrecision(
-              4
-            )}} = \\mathbf{${z_x_low.toFixed(4)}} $$`}</Latex> */}
-          </li>
-          <li>
-            z<sub>x_high</sub> (True Error):{" "}
-            {/* <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
-              4
-            )}}{${results.uUUT.toPrecision(
-              4
-            )}} = \\mathbf{${z_x_high.toFixed(4)}} $$`}</Latex> */}
-          </li>
-          <li>
-            z<sub>y_low</sub> (Measured Error):{" "}
-            {/* <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
-              4
-            )}}{${results.uDev.toPrecision(
-              4
-            )}} = \\mathbf{${z_y_low.toFixed(4)}} $$`}</Latex> */}
-          </li>
-          <li>
-            z<sub>y_high</sub> (Measured Error):{" "}
-            {/* <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
-              4
-            )}}{${results.uDev.toPrecision(
-              4
-            )}} = \\mathbf{${z_y_high.toFixed(4)}} $$`}</Latex> */}
-          </li>
-        </ul>
-      </div>
-      <div className="breakdown-step">
-        <h5>Step 4: Bivariate Calculation</h5>
-        <p>The probability for each tail (region) is calculated separately.</p>
-        <p>
-          <strong>Lower Tail Risk (PFA_Lower):</strong>
-        </p>
-        <Latex>
-          {
-            "$$ P(z_x < z_{x\\_low} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
-          }
-        </Latex>
-        <Latex>{`$$ = \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
-        {/* <Latex>{`$$ = \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_high.toFixed(
-          2
-        )}, ${results.correlation.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
-          2
-        )}, ${z_y_low.toFixed(2)}, ${results.correlation.toFixed(
-          2
-        )}) $$`}</Latex> */}
-        {/* <Latex>{`$$ = \\mathbf{${(results.pfa_term1 / 100).toExponential(
-          4
-        )}} $$`}</Latex> */}
-        <p>
-          <strong>Upper Tail Risk (PFA_Upper):</strong>
-        </p>
-        <Latex>
-          {
-            "$$ P(z_x > z_{x\\_high} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
-          }
-        </Latex>
-        <p>
-          Calculated using symmetry:{" "}
-          <Latex>{`$$ = P(z_x < -z_{x\\_high} \\text{ and } -z_{y\\_high} < z_y < -z_{y\\_low}) $$`}</Latex>
-        </p>
-        <Latex>{`$$ = \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
-        {/* <Latex>{`$$ = \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_low.toFixed(
-          2
-        )}, ${results.correlation.toFixed(
-          2
-        )}) - \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_high.toFixed(
-          2
-        )}, ${results.correlation.toFixed(2)}) $$`}</Latex> */}
-        {/* <Latex>{`$$ = \\mathbf{${(results.pfa_term2 / 100).toExponential(
-          4
-        )}} $$`}</Latex> */}
-      </div>
-      <div className="breakdown-step">
-        <h5>Step 5: Final PFA</h5>
-        <Latex>{`$$ PFA = PFA_{Lower} + PFA_{Upper} $$`}</Latex>
-        {/* <Latex>{`$$ = ${(results.pfa_term1 / 100).toExponential(4)} + ${(
-          results.pfa_term2 / 100
-        ).toExponential(4)} = \\mathbf{${(results.pfa / 100).toExponential(
-          4
-        )}} $$`}</Latex> */}
-        {/* <Latex>{`$$ \\text{Total PFA} = \\mathbf{${results.pfa.toFixed(
-          4
-        )}\\%} $$`}</Latex> */}
+        <h5>Step 3: Guardband Low Value</h5>
+        <Latex>{`$$\\text{Calculated Guardband Multiplier} = ${results.gbResults.GBLOWMULT}$$`}</Latex>  
       </div>
   </div>
 );
 
-export const GBHighBreakdown = ({ inputs }) => (
+export const GBHighBreakdown = ({ inputs, results }) => (
   <div className="modal-body-scrollable">
-    <Latex>
-        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
-          6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
-      </Latex>
+    <div className="breakdown-step">
+        <h5>Step 1: Formula</h5>
+        <p>
+          The Upper Guardband Tolerance (GB Up) is the product of the UUT Upper Tolerance times the Guardband Multiplier. Acceptance Tolerance are lowered to meet the required PFA in the cases that the PFA is above the {(inputs.reqPFA ?? 0) * 100}% PFA threshold.
+        </p>
+        <Latex>{"$$ GB_{Up} = L_{Up} * GB_{MULTIPLIER} $$"}</Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 2: Guardband Multiplier Calculation</h5>
+        <p>Guardband Multiplier is calculated first to get our GB LOW and HIGH values. We recalculate the exact same PFA, but instead our acceptance limits are changed. GB Multiplier is initally 1 and decrements by 0.05 recalculating PFA each time until PFA is equal to the required {results.gbInputs.reqPFA*100}% PFA.</p>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 3: Guardband Upper Value</h5>
+        <Latex>{`$$\\text{Calculated Guardband Multiplier} = ${results.gbResults.GBUPMULT}$$`}</Latex>  
+      </div>
   </div>
 );
 

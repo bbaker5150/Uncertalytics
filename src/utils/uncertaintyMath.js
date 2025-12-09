@@ -1215,9 +1215,6 @@ export function ObsRel(
   if (sRiskType === "NotThreshold") {
     dBiasUnc = uutUnc(dMeasRel, dCalUnc, dTolLow, dTolUp);
     dDevUnc = Math.sqrt(Math.pow(dMeasUnc, 2) + Math.pow(dBiasUnc, 2));
-
-    console.log("biasUnc: ",uutUnc(dMeasRel, dCalUnc, dTolLow, dTolUp),"DevUnc: ", dDevUnc , "OBS REL:", vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc))
-
     return vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc);
   }
 
@@ -1252,9 +1249,6 @@ export function PredRel(
   if (sRiskType === "NotThreshold") {
     dBiasUnc = uutUnc(dMeasRel, dCalUnc, dGBLow, dGBUp);
     dDevUnc = Math.sqrt(Math.pow(dMeasUnc, 2) + Math.pow(dBiasUnc, 2));
-    console.log("item1: ", dMeasRel ,"item2: ", dCalUnc , "item3: ",dMeasUnc)
-    console.log("biasUnc: ",uutUnc(dMeasRel, dCalUnc, dGBLow, dGBUp) , "DevUnc: ", dDevUnc , "Pred REL:", vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc))
-
     return vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc);
   }
 
@@ -1659,16 +1653,17 @@ export function gbLowMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngMea
 
     if (sRiskType === "NotThreshold") {
         dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-        if (dUUTUnc <= 0) return "";
+        if (dUUTUnc <= 0) return [];
         GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
-        return dNominal + dTolLow * GBMult;
+        console.log(GBMult);
+        return [dNominal + dTolLow * GBMult,GBMult];
     } else if (sRiskType === "LowThreshold") {
         dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
-        if (dUUTUnc <= 0) return "";
+        if (dUUTUnc <= 0) return [];
         GBMult = pfaLLGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolLow);
-        return dAvg - (dAvg - dTolLow) * GBMult;
+        return [dAvg - (dAvg - dTolLow) * GBMult,GBMult];
     } else if (sRiskType === "AltLowThreshold") {
-        return dTolLow - PHIDInv(dReq) * dMeasUnc;
+        return [dTolLow - PHIDInv(dReq) * dMeasUnc,GBMult];
     }
     return "";
 }
@@ -1743,16 +1738,16 @@ export function gbUpMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeas
 
     if (sRiskType === "NotThreshold") {
         dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-        if (dUUTUnc <= 0) return "";
+        if (dUUTUnc <= 0) return [];
         GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
-        return dTolUp * GBMult + dNominal;
+        return [dTolUp * GBMult + dNominal,GBMult];
     } else if (sRiskType === "UpThreshold") {
         dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
-        if (dUUTUnc <= 0) return "";
+        if (dUUTUnc <= 0) return [];
         GBMult = PFAULGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolUp);
-        return (dTolUp - dAvg) * GBMult + dAvg;
+        return [(dTolUp - dAvg) * GBMult + dAvg,GBMult];
     } else if (sRiskType === "AltUpThreshold") {
-        return dTolUp + PHIDInv(dReq) * dMeasUnc;
+        return [dTolUp + PHIDInv(dReq) * dMeasUnc,GBMult];
     }
     return "";
 }

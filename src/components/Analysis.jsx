@@ -506,9 +506,19 @@ function Analysis({
         LUp,
         uCal_Native,
         reliability
-      ),
+      )[0],
       safeRes
     );
+    let gbLowMult =
+      gbLowMgr(
+        pfaRequired,
+        uutNominal.value,
+        0,
+        LLow,
+        LUp,
+        uCal_Native,
+        reliability
+      )[1];
     let gbHigh = resUp(
       gbUpMgr(
         pfaRequired,
@@ -518,9 +528,19 @@ function Analysis({
         LUp,
         uCal_Native,
         reliability
-      ),
+      )[0],
       safeRes
     );
+    let gbHighMult =
+      gbUpMgr(
+        pfaRequired,
+        uutNominal.value,
+        0,
+        LLow,
+        LUp,
+        uCal_Native,
+        reliability
+      )[1];
     let gbMult = GBMultMgr(
       pfaRequired,
       uutNominal.value,
@@ -610,7 +630,9 @@ function Analysis({
 
     let gbResults = {
       GBLOW: gbLow,
+      GBLOWMULT: gbLowMult,
       GBUP: gbHigh,
+      GBUPMULT: gbHighMult,
       GBMULT: gbMult * 100,
       GBPFA: gbPFA * 100,
       GBPFAT1: gbPFAT1 * 100,
