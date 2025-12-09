@@ -598,7 +598,7 @@ function Analysis({
       uutUpper: LUp,
       tmdeLower: parseFloat(uutNominal.value) + tmdeToleranceLow_Native,
       tmdeUpper: parseFloat(uutNominal.value) + tmdeToleranceHigh_Native,
-      combUnc: calcResults.combined_uncertainty_absolute_base,
+      combUnc: uCal_Native,
       turVal: turResult,
       measRelTarget: reliability,
       calibrationInt: calInt,

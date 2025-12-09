@@ -1,5 +1,7 @@
 import React from "react";
 import Latex from "../Latex";
+import { InvNormalDistribution } from "../../utils/uncertaintyMath";
+import { vbNormSDist } from "../../utils/uncertaintyMath";
 
 // --- Helper to display safe units ---
 const SafeUnit = ({ unit }) => {
@@ -1251,7 +1253,7 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
 };
 
 export const GBMultBreakdown = ({ inputs, results }) => {
-
+  if (!results || !inputs) return null;
   const safeNativeUnit =
     results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
   const uutToleranceUpper =
@@ -1312,7 +1314,25 @@ export const GBMultBreakdown = ({ inputs, results }) => {
 }
 
 export const GBCalIntBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
   const interval = inputs.guardBandInputs.calibrationInt ?? 0;
+  const TstRUnc = (inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR) ?? 0;
+  const precise = 6;
+  const nominal = inputs.guardBandInputs.nominal;
+
+  const LUP = inputs.LUp;
+  const LLOW = inputs.LLow;
+  const biasUncObs = Math.sqrt((((LUP-LLOW)/(2*InvNormalDistribution((1 + inputs.guardBandInputs.measrelCalcAssumed) / 2))) ** 2) - ((TstRUnc)**2));
+  const devUncObs = Math.sqrt(inputs.guardBandInputs.combUnc ** 2 + biasUncObs ** 2);
+  const obsRel = vbNormSDist((LUP-nominal)/devUncObs) - vbNormSDist((LLOW-nominal)/devUncObs);
+  
+  const GBUP = results.gbResults.GBUP;
+  const GBLOW = results.gbResults.GBLOW;
+  const biasUncRel = Math.sqrt((((GBUP-GBLOW)/(2*InvNormalDistribution((1 + inputs.guardBandInputs.measRelTarget) / 2))) ** 2) - ((inputs.guardBandInputs.combUnc)**2));
+  const devUncRel = Math.sqrt(inputs.guardBandInputs.combUnc ** 2 + biasUncRel ** 2);
+  const predRel = vbNormSDist((LUP-nominal)/devUncRel) - vbNormSDist((LLOW-nominal)/devUncRel)
+
+  const calIntWGb = (Math.log(predRel) / Math.log(obsRel)) * (inputs.guardBandInputs.calibrationInt)
 
   return (
   <div className="modal-body-scrollable">
@@ -1328,62 +1348,102 @@ export const GBCalIntBreakdown = ({ inputs, results }) => {
     <div className="breakdown-step">
       <h5>Inputs</h5>
       <Latex>
-        {`$\\text{Calibration Interval} = ${interval} \\\\
-        \\text{L}_{UP} = 0 \\\\
-        \\text{L}_{LOW} = 0 \\\\
-        \\text{GB}_{UP} = 0 \\\\
-        \\text{GB}_{LOW} = 0 \\\\ $`}
+        {`$$\\text{Calibration Interval} = ${interval} \\\\
+        \\text{L}_{UP} = ${LUP} \\\\
+        \\text{L}_{LOW} = ${LLOW} \\\\
+        \\text{GB}_{UP} = ${GBUP} \\\\
+        \\text{GB}_{LOW} = ${GBLOW} \\\\ $$`}
       </Latex>
     </div>
     <div className="breakdown-step">
-      <h5>Observed Reliability</h5>
+      <h5>Step 2: Key Inputs and Calculations<br></br>
+        Observed Reliability</h5>
+      <Latex>
+        {`$$
+        \\text{Calibration Uncertainty} = \\frac{MeasUnc \\cdot TUR}{ReqTUR} = u_{Cal} = \\frac{${inputs.guardBandInputs.combUnc.toFixed(6)} \\cdot ${inputs.guardBandInputs.turVal.toFixed(6)}}{${inputs.guardBandInputs.reqTUR}} \\\\
+        = ${TstRUnc}
+        $$`}
+      </Latex>
       <Latex>
         {`$
-        \\text{Measurement Uncertainty} = 0 \\\\
-        \\text{Measurement Reliability} = 0 \\\\
+        \\text{Measurement Uncertainty} = MeasUnc = ${inputs.guardBandInputs.combUnc} \\\\
+        \\text{Measurement Reliability Calculated/Assumed} = r = ${inputs.guardBandInputs.measrelCalcAssumed*100}\\% \\\\
         $`}
       </Latex>
+    </div>
+    <div className="breakdown-step">
       <Latex>
-        {`$$\\text{Biased Uncertainty} = \\sqrt{\\left(\\frac{L_{Up} - L_{Low}}{2 \\cdot \\Phi^{-1}\\!\\left(\\tfrac{1+r}{2}\\right)}\\right)^{2} - u_{Cal}^{2}}$$`}
+        {`$$\\text{Biased Uncertainty} = \\sqrt{\\left(\\frac{L_{Up} - L_{Low}}{2 \\cdot \\Phi^{-1}\\!\\left(\\tfrac{1+r}{2}\\right)}\\right)^{2} - u_{Cal}^{2}} \\\\
+        = \\sqrt{\\left(\\frac{${LUP} - ${LLOW}}{2 \\cdot ${InvNormalDistribution((1 + inputs.guardBandInputs.measrelCalcAssumed) / 2)}}\\right)^{2} - (${TstRUnc})^{2}} \\\\
+        = ${biasUncObs}
+        $$`}
       </Latex>
     </div>
     <div className="breakdown-step">
       <Latex>
-        {`$$\\text{Deviation Uncertainty} = \\sqrt{MeasUnc^{2} + BiasUnc^{2}}$$`}
+        {`$$\\text{Deviation Uncertainty} = \\sqrt{MeasUnc^{2} + BiasUnc^{2}} \\\\ 
+        = \\sqrt{${inputs.guardBandInputs.combUnc}^{2} + ${biasUncObs}^{2}} \\\\
+        = ${devUncObs}
+        $$`}
       </Latex>
     </div>
     <div className="breakdown-step">
       <Latex>
-        {`$$ObsRel = \\Phi\\left(\\frac{L_{Up}}{DevUnc}\\right) - \\Phi\\left(\\frac{L_{Low}}{DevUnc}\\right)$$`}
+        {`$$ObsRel = \\Phi\\left(\\frac{L_{Up}}{DevUnc}\\right) - \\Phi\\left(\\frac{L_{Low}}{DevUnc}\\right) \\\\
+        = \\Phi\\left(\\frac{${LUP-nominal}}{${devUncObs}}\\right) - \\Phi\\left(\\frac{${LLOW-nominal}}{${devUncObs}}\\right) \\\\
+        = ${obsRel}
+        $$`}
       </Latex>
     </div>
     <div className="breakdown-step">
       <h5>Predicted Reliability</h5>
       <Latex>
         {`$
-        \\text{Measurement Uncertainty} = 0 \\\\
-        \\text{Measurement Reliability} = 0 \\\\
+        \\text{Calibration Uncertainty} = u_{Cal} = MeasUnc = ${inputs.guardBandInputs.combUnc} \\\\
+        \\text{Measurement Reliability Target} = r = ${inputs.guardBandInputs.measRelTarget*100}\\%  \\\\
         $`}
       </Latex>
+    </div>
+    <div className="breakdown-step">
       <Latex>
-        {`$$\\text{Biased Uncertainty} = \\sqrt{\\left(\\frac{GB_{Up} - GB_{Low}}{2 \\cdot \\Phi^{-1}\\!\\left(\\tfrac{1+r}{2}\\right)}\\right)^{2} - u_{Cal}^{2}}$$`}
+        {`$$\\text{Biased Uncertainty} = \\sqrt{\\left(\\frac{GB_{Up} - GB_{Low}}{2 \\cdot \\Phi^{-1}\\!\\left(\\tfrac{1+r}{2}\\right)}\\right)^{2} - u_{Cal}^{2}} \\\\
+        = \\sqrt{\\left(\\frac{${GBUP} - ${GBLOW}}{2 \\cdot ${InvNormalDistribution((1 + inputs.guardBandInputs.measRelTarget) / 2)}}\\right)^{2} - (${inputs.guardBandInputs.combUnc})^{2}} \\\\
+        = ${biasUncRel}
+        $$`}
       </Latex>
     </div>
     <div className="breakdown-step">
       <Latex>
-        {`$$\\text{Deviation Uncertainty} = \\sqrt{MeasUnc^{2} + BiasUnc^{2}}$$`}
+        {`$$\\text{Deviation Uncertainty} = \\sqrt{MeasUnc^{2} + BiasUnc^{2}} \\\\
+        = \\sqrt{${inputs.guardBandInputs.combUnc}^{2} + ${biasUncRel}^{2}} \\\\
+        = ${devUncRel}
+        $$`}
       </Latex>
     </div>
     <div className="breakdown-step">
       <Latex>
-        {`$$PredRel = \\Phi\\left(\\frac{GB_{Up}}{DevUnc}\\right) - \\Phi\\left(\\frac{GB_{Low}}{DevUnc}\\right)$$`}
+        {`$$PredRel = \\Phi\\left(\\frac{L_{Up}}{DevUnc}\\right) - \\Phi\\left(\\frac{L_{Low}}{DevUnc}\\right) \\\\
+        = \\Phi\\left(\\frac{${LUP-nominal}}{${devUncRel}}\\right) - \\Phi\\left(\\frac{${LLOW-nominal}}{${devUncRel}}\\right) \\\\
+        = ${predRel}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Step 3: Results</h5>
+      <Latex>
+      {`$$\\text{GB Calibration Interval} = \\frac{\log{\\text{(Predicted Reliability)}}}{\log{\\text{(Observed Reliability)}}} \\cdot \\text{Calibration Interval} \\\\
+      = \\frac{${Math.log(predRel)}}{${Math.log(obsRel)}} \\cdot ${inputs.guardBandInputs.calibrationInt} \\\\
+      = ${calIntWGb}
+      $$`}
       </Latex>
     </div>
   </div>
 )
 };
 
-export const NoGBCalIntBreakdown = ({ inputs }) => (
+export const NoGBCalIntBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+  return(
   <div className="modal-body-scrollable">
     <Latex>
         {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
@@ -1391,9 +1451,11 @@ export const NoGBCalIntBreakdown = ({ inputs }) => (
         )}} \\text{ ${inputs.nominalUnit}} $$`}
       </Latex>
   </div>
-);
+)};
 
-export const NoGBMeasRelBreakdown = ({ inputs }) => (
+export const NoGBMeasRelBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+  return(
   <div className="modal-body-scrollable">
     <Latex>
         {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
@@ -1401,4 +1463,4 @@ export const NoGBMeasRelBreakdown = ({ inputs }) => (
         )}} \\text{ ${inputs.nominalUnit}} $$`}
       </Latex>
   </div>
-);
+)};

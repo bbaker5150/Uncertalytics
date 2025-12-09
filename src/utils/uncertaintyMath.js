@@ -1215,6 +1215,9 @@ export function ObsRel(
   if (sRiskType === "NotThreshold") {
     dBiasUnc = uutUnc(dMeasRel, dCalUnc, dTolLow, dTolUp);
     dDevUnc = Math.sqrt(Math.pow(dMeasUnc, 2) + Math.pow(dBiasUnc, 2));
+
+    console.log("biasUnc: ",uutUnc(dMeasRel, dCalUnc, dTolLow, dTolUp),"DevUnc: ", dDevUnc , "OBS REL:", vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc))
+
     return vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc);
   }
 
@@ -1249,6 +1252,9 @@ export function PredRel(
   if (sRiskType === "NotThreshold") {
     dBiasUnc = uutUnc(dMeasRel, dCalUnc, dGBLow, dGBUp);
     dDevUnc = Math.sqrt(Math.pow(dMeasUnc, 2) + Math.pow(dBiasUnc, 2));
+    console.log("item1: ", dMeasRel ,"item2: ", dCalUnc , "item3: ",dMeasUnc)
+    console.log("biasUnc: ",uutUnc(dMeasRel, dCalUnc, dGBLow, dGBUp) , "DevUnc: ", dDevUnc , "Pred REL:", vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc))
+
     return vbNormSDist(dTolUp / dDevUnc) - vbNormSDist(dTolLow / dDevUnc);
   }
 
@@ -1853,7 +1859,7 @@ export function CalIntwGBMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc
     } else {
         dObsRel = dMeasRel;
     }
-
+    
     const dPredRel = PredRel(sRiskType, dMeasUnc, dReqRel, dAvg, dTolLow, dTolUp, dMeasUnc, dGBLow, dGBUp);
     const dPredInt = (Math.log(dPredRel) / Math.log(dObsRel)) * dInt;
     return dPredInt > 0 ? [dPredInt,dObsRel,dPredRel] : "";
