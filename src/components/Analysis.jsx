@@ -530,7 +530,7 @@ function Analysis({
       gbLow,
       gbHigh
     );
-    let [gbPFA, gbPFAT1, gbPFAT2] = PFAwGBMgr(
+    let [gbPFA, gbPFAT1, gbPFAT2, gbPFAuUUT, gbPFAuDev, gbPFACor] = PFAwGBMgr(
       uutNominal.value,
       0,
       LLow,
@@ -615,6 +615,9 @@ function Analysis({
       GBPFA: gbPFA * 100,
       GBPFAT1: gbPFAT1 * 100,
       GBPFAT2: gbPFAT2 * 100,
+      GBPFAUUUT: gbPFAuUUT, 
+      GBPFAUDEV: gbPFAuDev, 
+      GBPFACOR: gbPFACor,
       GBPFR: gbPFR * 100,
       GBPFRT1: gbPFRT1 * 100,
       GBPFRT2: gbPFRT2 * 100,

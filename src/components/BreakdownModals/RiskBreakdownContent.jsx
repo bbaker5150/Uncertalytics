@@ -930,10 +930,10 @@ export const GBPFABreakdown = ({ inputs, results }) => {
   const ALow_norm = results.gbResults.GBLOW - mid;
   const AUp_norm = results.gbResults.GBUP - mid;
 
-  const z_x_low = LLow_norm / results.uUUT;
-  const z_x_high = LUp_norm / results.uUUT; // The "true" positive Z-score for LUp
-  const z_y_low = ALow_norm / results.uDev;
-  const z_y_high = AUp_norm / results.uDev;
+  const z_x_low = LLow_norm / results.gbResults.GBPFAUUUT;
+  const z_x_high = LUp_norm / results.gbResults.GBPFAUUUT; // The "true" positive Z-score for LUp
+  const z_y_low = ALow_norm / results.gbResults.GBPFAUDEV;
+  const z_y_high = AUp_norm / results.gbResults.GBPFAUDEV;
 
   const safeNativeUnit =
     results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
@@ -956,24 +956,24 @@ export const GBPFABreakdown = ({ inputs, results }) => {
           <li>
             True UUT Error (σ<sub>uut</sub>):{" "}
             <strong>
-              {results.uUUT.toPrecision(4)} {safeNativeUnit}
+              {results.gbResults.GBPFAUUUT.toPrecision(4)} {safeNativeUnit}
             </strong>
             <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
           </li>
           <li>
             Observed Error (σ<sub>obs</sub>):{" "}
             <strong>
-              {results.uDev.toPrecision(4)} {safeNativeUnit}
+              {results.gbResults.GBPFAUDEV.toPrecision(4)} {safeNativeUnit}
             </strong>
             <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
           </li>
           <li>
             Correlation (ρ):{" "}
-            <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.uUUT.toPrecision(
+            <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.gbResults.GBPFAUUUT.toPrecision(
               4
-            )}}{${results.uDev.toPrecision(
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
               4
-            )}} = \\mathbf{${results.correlation.toFixed(4)}} $$`}</Latex>
+            )}} = \\mathbf{${results.gbResults.GBPFACOR.toFixed(4)}} $$`}</Latex>
           </li>
         </ul>
       </div>
@@ -988,7 +988,7 @@ export const GBPFABreakdown = ({ inputs, results }) => {
             z<sub>x_low</sub> (True Error):{" "}
             <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
               4
-            )}}{${results.uUUT.toPrecision(
+            )}}{${results.gbResults.GBPFAUUUT.toPrecision(
               4
             )}} = \\mathbf{${z_x_low.toFixed(4)}} $$`}</Latex>
           </li>
@@ -996,7 +996,7 @@ export const GBPFABreakdown = ({ inputs, results }) => {
             z<sub>x_high</sub> (True Error):{" "}
             <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
               4
-            )}}{${results.uUUT.toPrecision(
+            )}}{${results.gbResults.GBPFAUUUT.toPrecision(
               4
             )}} = \\mathbf{${z_x_high.toFixed(4)}} $$`}</Latex>
           </li>
@@ -1004,7 +1004,7 @@ export const GBPFABreakdown = ({ inputs, results }) => {
             z<sub>y_low</sub> (Measured Error):{" "}
             <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
               4
-            )}}{${results.uDev.toPrecision(
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
               4
             )}} = \\mathbf{${z_y_low.toFixed(4)}} $$`}</Latex>
           </li>
@@ -1012,7 +1012,7 @@ export const GBPFABreakdown = ({ inputs, results }) => {
             z<sub>y_high</sub> (Measured Error):{" "}
             <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
               4
-            )}}{${results.uDev.toPrecision(
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
               4
             )}} = \\mathbf{${z_y_high.toFixed(4)}} $$`}</Latex>
           </li>
@@ -1032,12 +1032,12 @@ export const GBPFABreakdown = ({ inputs, results }) => {
         <Latex>{`$$ = \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_high.toFixed(
           2
-        )}, ${results.correlation.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
+        )}, ${results.gbResults.GBPFACOR.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
           2
-        )}, ${z_y_low.toFixed(2)}, ${results.correlation.toFixed(
+        )}, ${z_y_low.toFixed(2)}, ${results.gbResults.GBPFACOR.toFixed(
           2
         )}) $$`}</Latex>
-        <Latex>{`$$ = \\mathbf{${(results.pfa_term1 / 100).toExponential(
+        <Latex>{`$$ = \\mathbf{${(results.gbResults.GBPFAT1 / 100).toExponential(
           4
         )}} $$`}</Latex>
         <p>
@@ -1055,11 +1055,11 @@ export const GBPFABreakdown = ({ inputs, results }) => {
         <Latex>{`$$ = \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_low.toFixed(
           2
-        )}, ${results.correlation.toFixed(
+        )}, ${results.gbResults.GBPFACOR.toFixed(
           2
         )}) - \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_high.toFixed(
           2
-        )}, ${results.correlation.toFixed(2)}) $$`}</Latex>
+        )}, ${results.gbResults.GBPFACOR.toFixed(2)}) $$`}</Latex>
         <Latex>{`$$ = \\mathbf{${(results.gbResults.GBPFAT2 / 100).toExponential(
           4
         )}} $$`}</Latex>
@@ -1087,14 +1087,16 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
   const mid = (inputs.LUp + inputs.LLow) / 2;
   const LLow_norm = inputs.LLow - mid;
   const LUp_norm = inputs.LUp - mid;
-  const ALow_norm = results.ALow - mid;
-  const AUp_norm = results.AUp - mid;
+  const ALow_norm = results.gbResults.GBLOW - mid;
+  const AUp_norm = results.gbResults.GBUP - mid;
 
   // Z-Scores (Normalized Limits)
-  const z_x_low = LLow_norm / results.uUUT;
-  const z_x_high = LUp_norm / results.uUUT;
-  const z_y_low = ALow_norm / results.uDev;
-  const z_y_high = AUp_norm / results.uDev;
+  const z_x_low = LLow_norm / results.gbResults.GBPFAUUUT;
+  const z_x_high = LUp_norm / results.gbResults.GBPFAUUUT; // The "true" positive Z-score for LUp
+  const z_y_low = ALow_norm / results.gbResults.GBPFAUDEV;
+  const z_y_high = AUp_norm / results.gbResults.GBPFAUDEV;
+
+  console.log(results.gbResults.GBPFAUDEV)
 
   const safeNativeUnit =
     results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
@@ -1128,24 +1130,24 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
           <li>
             True UUT Error (σ<sub>uut</sub>):{" "}
             <strong>
-              {results.uUUT.toPrecision(4)} {safeNativeUnit}
+              {results.gbResults.GBPFAUUUT.toPrecision(4)} {safeNativeUnit}
             </strong>
             <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
           </li>
           <li>
             Observed Error (σ<sub>obs</sub>):{" "}
             <strong>
-              {results.uDev.toPrecision(4)} {safeNativeUnit}
+              {results.gbResults.GBPFAUDEV.toPrecision(4)} {safeNativeUnit}
             </strong>
             <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
           </li>
           <li>
             Correlation (ρ):{" "}
-            <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.uUUT.toPrecision(
+            <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.gbResults.GBPFAUUUT.toPrecision(
               4
-            )}}{${results.uDev.toPrecision(
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
               4
-            )}} = \\mathbf{${results.correlation.toFixed(4)}} $$`}</Latex>
+            )}} = \\mathbf{${results.gbResults.GBPFACOR.toFixed(4)}} $$`}</Latex>
           </li>
         </ul>
       </div>
@@ -1160,7 +1162,7 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
             z<sub>x_low</sub> (True Error):{" "}
             <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
               4
-            )}}{${results.uUUT.toPrecision(
+            )}}{${results.gbResults.GBPFAUUUT.toPrecision(
               4
             )}} = \\mathbf{${z_x_low.toFixed(4)}} $$`}</Latex>
           </li>
@@ -1168,7 +1170,7 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
             z<sub>x_high</sub> (True Error):{" "}
             <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
               4
-            )}}{${results.uUUT.toPrecision(
+            )}}{${results.gbResults.GBPFAUUUT.toPrecision(
               4
             )}} = \\mathbf{${z_x_high.toFixed(4)}} $$`}</Latex>
           </li>
@@ -1176,7 +1178,7 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
             z<sub>y_low</sub> (Measured Error):{" "}
             <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
               4
-            )}}{${results.uDev.toPrecision(
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
               4
             )}} = \\mathbf{${z_y_low.toFixed(4)}} $$`}</Latex>
           </li>
@@ -1184,7 +1186,7 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
             z<sub>y_high</sub> (Measured Error):{" "}
             <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
               4
-            )}}{${results.uDev.toPrecision(
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
               4
             )}} = \\mathbf{${z_y_high.toFixed(4)}} $$`}</Latex>
           </li>
@@ -1204,12 +1206,12 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
         <Latex>{`$$ = \\Phi_2(z_{x\\_high}, z_{y\\_low}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${z_x_high.toFixed(2)}, ${z_y_low.toFixed(
           2
-        )}, ${results.correlation.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
+        )}, ${results.gbResults.GBPFACOR.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
           2
-        )}, ${z_y_low.toFixed(2)}, ${results.correlation.toFixed(
+        )}, ${z_y_low.toFixed(2)}, ${results.gbResults.GBPFACOR.toFixed(
           2
         )}) $$`}</Latex>
-        <Latex>{`$$ = \\mathbf{${(results.pfr_term1 / 100).toExponential(
+        <Latex>{`$$ = \\mathbf{${(results.gbResults.GBPFRT1 / 100).toExponential(
           4
         )}} $$`}</Latex>
         <p>
@@ -1227,24 +1229,24 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
         <Latex>{`$$ = \\Phi_2(-z_{x\\_low}, -z_{y\\_high}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${-z_x_low.toFixed(2)}, ${-z_y_high.toFixed(
           2
-        )}, ${results.correlation.toFixed(
+        )}, ${results.gbResults.GBPFACOR.toFixed(
           2
         )}) - \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_high.toFixed(
           2
-        )}, ${results.correlation.toFixed(2)}) $$`}</Latex>
-        <Latex>{`$$ = \\mathbf{${(results.pfr_term2 / 100).toExponential(
+        )}, ${results.gbResults.GBPFACOR.toFixed(2)}) $$`}</Latex>
+        <Latex>{`$$ = \\mathbf{${(results.gbResults.GBPFRT2 / 100).toExponential(
           4
         )}} $$`}</Latex>
       </div>
       <div className="breakdown-step">
         <h5>Step 5: Final PFR</h5>
         <Latex>{`$$ PFR = PFR_{Lower} + PFR_{Upper} $$`}</Latex>
-        <Latex>{`$$ = ${(results.pfr_term1 / 100).toExponential(4)} + ${(
-          results.pfr_term2 / 100
-        ).toExponential(4)} = \\mathbf{${(results.pfr / 100).toExponential(
+        <Latex>{`$$ = ${(results.gbResults.GBPFRT1 / 100).toExponential(4)} + ${(
+          results.gbResults.GBPFRT2 / 100
+        ).toExponential(4)} = \\mathbf{${(results.gbResults.GBPFR / 100).toExponential(
           4
         )}} $$`}</Latex>
-        <Latex>{`$$ \\text{Total PFR} = \\mathbf{${results.pfr.toFixed(
+        <Latex>{`$$ \\text{Total PFR} = \\mathbf{${results.gbResults.GBPFR.toFixed(
           4
         )}\\%} $$`}</Latex>
       </div>
@@ -1469,13 +1471,6 @@ export const NoGBCalIntBreakdown = ({ inputs, results }) => {
   // PRED REL CALCULATIONS
   const GBUP = results.gbResults.GBUP;
   const GBLOW = results.gbResults.GBLOW;
-  const biasUncRel = Math.sqrt((((GBUP-GBLOW)/(2*InvNormalDistribution((1 + inputs.guardBandInputs.measRelTarget) / 2))) ** 2) - ((inputs.guardBandInputs.combUnc)**2));
-  const devUncRel = Math.sqrt(inputs.guardBandInputs.combUnc ** 2 + biasUncRel ** 2);
-  const predRel = vbNormSDist((LUP-nominal)/devUncRel) - vbNormSDist((LLOW-nominal)/devUncRel)
-
-  // FULL CALCULATIONS
-  const calIntWGb = results.pfa < inputs.guardBandInputs.reqPFA*100 ? (Math.log(inputs.guardBandInputs.measRelTarget) / Math.log(obsRel)) * (inputs.guardBandInputs.calibrationInt) : (Math.log(predRel) / Math.log(obsRel)) * (inputs.guardBandInputs.calibrationInt)
-
 
   return (
   <div className="modal-body-scrollable">
@@ -1561,9 +1556,9 @@ export const NoGBCalIntBreakdown = ({ inputs, results }) => {
       ${results.pfa < inputs.guardBandInputs.reqPFA*100 ? 
         `= \\frac{${Math.log(inputs.guardBandInputs.measRelTarget)}}{${Math.log(obsRel)}} \\cdot ${calInt} \\\\`
         : 
-        `= \\frac{${Math.log(predRel)}}{${Math.log(obsRel)}} \\cdot ${calInt} \\\\`
+        `= \\frac{${Math.log(results.gbResults.NOGBCALINTPRED)}}{${Math.log(obsRel)}} \\cdot ${calInt} \\\\`
       } \\\\
-      = ${calIntWGb}
+      = ${results.gbResults.NOGBCALINT}
       $$`}
       </Latex>
     </div>
