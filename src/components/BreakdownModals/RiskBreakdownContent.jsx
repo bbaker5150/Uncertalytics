@@ -1572,12 +1572,111 @@ export const NoGBCalIntBreakdown = ({ inputs, results }) => {
 
 export const NoGBMeasRelBreakdown = ({ inputs, results }) => {
   if (!results || !inputs) return null;
-  return(
+
+  console.log("INPUT: ", inputs);
+  console.log("RESULTS: ",  results);
+
+  const interval = inputs.guardBandInputs.calibrationInt ?? 0;
+  const TstRUnc = (inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR) ?? 0;
+  const precise = 6;
+  const nominal = inputs.guardBandInputs.nominal;
+  const calInt = inputs.guardBandInputs.calibrationInt;
+  const combinedUncertainty = inputs.guardBandInputs.combUnc;
+
+  // OBS REL CALCULATIONS
+  const LUP = inputs.LUp;
+  const LLOW = inputs.LLow;
+  const biasUncObs = Math.sqrt((((LUP-LLOW)/(2*InvNormalDistribution((1 + inputs.guardBandInputs.measrelCalcAssumed) / 2))) ** 2) - ((TstRUnc)**2));
+  const devUncObs = Math.sqrt(inputs.guardBandInputs.combUnc ** 2 + biasUncObs ** 2);
+  const obsRel = vbNormSDist((LUP-nominal)/devUncObs) - vbNormSDist((LLOW-nominal)/devUncObs);
+  
+  // PRED REL CALCULATIONS
+  const GBUP = results.gbResults.GBUP;
+  const GBLOW = results.gbResults.GBLOW;
+  const biasUncRel = Math.sqrt((((GBUP-GBLOW)/(2*InvNormalDistribution((1 + inputs.guardBandInputs.measRelTarget) / 2))) ** 2) - ((inputs.guardBandInputs.combUnc)**2));
+  const devUncRel = Math.sqrt(inputs.guardBandInputs.combUnc ** 2 + biasUncRel ** 2);
+  const predRel = vbNormSDist((LUP-nominal)/devUncRel) - vbNormSDist((LLOW-nominal)/devUncRel)
+
+  // FULL CALCULATIONS
+  const calIntWGb = results.pfa < inputs.guardBandInputs.reqPFA*100 ? (Math.log(inputs.guardBandInputs.measRelTarget) / Math.log(obsRel)) * (inputs.guardBandInputs.calibrationInt) : (Math.log(predRel) / Math.log(obsRel)) * (inputs.guardBandInputs.calibrationInt)
+
+
+  return (
   <div className="modal-body-scrollable">
-    <Latex>
-        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
-          6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+    <div className="breakdown-step">
+      <h5>Step 1: Formula</h5>
+      <p>
+        The Guardband Calibration Interval is calculated by the ratio of log of predicted reliability and log of observed reliability times the calibration interval. Predicted reliablity is calculated using guardband limits and observed uses UUT tolerance limits.
+      </p>
+      <Latex>
+      {`$\\text{GB Calibration Interval} = \\frac{\log{\\text{(Predicted Reliability)}}}{\log{\\text{(Observed Reliability)}}} \\cdot \\text{Calibration Interval}$`}
+    </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Inputs</h5>
+      <Latex>
+        {`$$\\text{Calibration Interval} = ${interval} \\\\
+        \\text{L}_{UP} = ${LUP} \\\\
+        \\text{L}_{LOW} = ${LLOW} \\\\$$`}
       </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Step 2: Key Inputs and Calculations<br></br>
+        Observed Reliability</h5>
+      <Latex>
+        {`$$
+        \\text{Calibration Uncertainty} = \\frac{MeasUnc \\cdot TUR}{ReqTUR} = u_{Cal} = \\frac{${combinedUncertainty.toFixed(6)} \\cdot ${inputs.guardBandInputs.turVal.toFixed(6)}}{${inputs.guardBandInputs.reqTUR}} \\\\
+        = ${TstRUnc}
+        $$`}
+      </Latex>
+      <Latex>
+        {`$
+        \\text{Measurement Uncertainty} = MeasUnc = ${combinedUncertainty} \\\\
+        \\text{Measurement Reliability Calculated/Assumed} = r = ${inputs.guardBandInputs.measrelCalcAssumed*100}\\% \\\\
+        $`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Biased Uncertainty} = \\sqrt{\\left(\\frac{L_{Up} - L_{Low}}{2 \\cdot \\Phi^{-1}\\!\\left(\\tfrac{1+r}{2}\\right)}\\right)^{2} - u_{Cal}^{2}} \\\\
+        = \\sqrt{\\left(\\frac{${LUP} - ${LLOW}}{2 \\cdot ${InvNormalDistribution((1 + inputs.guardBandInputs.measrelCalcAssumed) / 2)}}\\right)^{2} - (${TstRUnc})^{2}} \\\\
+        = ${biasUncObs}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Deviation Uncertainty} = \\sqrt{MeasUnc^{2} + BiasUnc^{2}} \\\\ 
+        = \\sqrt{${combinedUncertainty}^{2} + ${biasUncObs}^{2}} \\\\
+        = ${devUncObs}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$ObsRel = \\Phi\\left(\\frac{L_{Up}}{DevUnc}\\right) - \\Phi\\left(\\frac{L_{Low}}{DevUnc}\\right) \\\\
+        = \\Phi\\left(\\frac{${LUP-nominal}}{${devUncObs}}\\right) - \\Phi\\left(\\frac{${LLOW-nominal}}{${devUncObs}}\\right) \\\\
+        = ${obsRel}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Measurement Reliability Needed</h5>
+
+      <Latex>
+        {results.pfa < inputs.guardBandInputs.reqPFA*100  ? 
+        `$$\\text{Measurement Reliability} = \\text{Measurement Reliability Target} =  ${inputs.guardBandInputs.measRelTarget}
+        $$` 
+        : 
+        `$$\\text{Inital Predicted Reliability} = 1 - \\frac{\\lvert (1-Observed Reliability)\\rvert}{2} \\\\
+        = ${1-(Math.abs(1-obsRel)/2)}
+        $$`
+        }
+      </Latex>
+      <p>{results.pfa < inputs.guardBandInputs.reqPFA*100 ? "" : "This initial predicted reliability is plugged into the PFA calculation as 'r' and adjusted until PFA calculations meet the required PFA. The difference between predicted and observed reliability is added or subtracted to the initial predicted reliability until PFA meets the requirements. This difference is divided by 2 each iteration that it doesn't match PFA."}</p>
+      <Latex>
+        {results.pfa < inputs.guardBandInputs.reqPFA*100 ? "" : `$$\\text{Measurement Reliability} = ${results.gbResults.NOGBCALINTPRED}$$`}
+      </Latex>
+    </div>
   </div>
 )};
