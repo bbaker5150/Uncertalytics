@@ -1463,7 +1463,7 @@ export const NoGBMeasRelBreakdown = ({ inputs, results }) => {
   console.log("RESULTS: ",  results);
 
   const interval = inputs.guardBandInputs.calibrationInt ?? 0;
-  const TstRUnc = (inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR) ?? 0;
+  const TstRUnc = ((inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR)) ?? 0;
   const precise = 6;
   const nominal = inputs.guardBandInputs.nominal;
   const calInt = inputs.guardBandInputs.calibrationInt;
