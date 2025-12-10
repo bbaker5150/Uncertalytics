@@ -2,6 +2,8 @@ import React from "react";
 import Latex from "../Latex";
 import { InvNormalDistribution } from "../../utils/uncertaintyMath";
 import { vbNormSDist } from "../../utils/uncertaintyMath";
+import { resUp } from "../../utils/uncertaintyMath";
+import { resDwn } from "../../utils/uncertaintyMath";
 
 // --- Helper to display safe units ---
 const SafeUnit = ({ unit }) => {
@@ -681,7 +683,9 @@ export const PfrBreakdown = ({ results, inputs }) => {
 // ==========================================
 // 6. GUARDBAND BREAKDOWNS (Individual Exports)
 // ==========================================
-export const GBInputsBreakdown = ({ inputs }) => (
+export const GBInputsBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+  return(
   <div className="modal-body-scrollable">
     <>
     <div className="breakdown-step">
@@ -690,16 +694,16 @@ export const GBInputsBreakdown = ({ inputs }) => (
         These values are uncertainty requirements set on the Uncertalytics.
       </p>
       <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
-        inputs.measRelTarget * 100
+        inputs.guardBandInputs.measRelTarget * 100
       }}\\% $$`}</Latex>
       <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${
-        inputs.measrelCalcAssumed * 100
+        inputs.guardBandInputs.measrelCalcAssumed * 100
       }}\\% $$`}</Latex>
       <Latex>{`$$ PFA\\ Required = \\mathbf{${
-        inputs.reqPFA * 100
+        inputs.guardBandInputs.reqPFA * 100
       }}\\% $$`}</Latex>
-      <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
-      <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+      <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.guardBandInputs.reqTUR}} $$`}</Latex>
+      <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.guardBandInputs.calibrationInt}} $$`}</Latex>
     </div>
 
     <div className="breakdown-step">
@@ -708,7 +712,7 @@ export const GBInputsBreakdown = ({ inputs }) => (
         The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to
         the expanded measurement uncertainty span.
       </p>
-      <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
+      <Latex>{`$$ TUR = \\mathbf{${inputs.guardBandInputs.turVal.toFixed(4)}:1} $$`}</Latex>
     </div>
 
     <div className="breakdown-step">
@@ -720,9 +724,9 @@ export const GBInputsBreakdown = ({ inputs }) => (
         detailed budget.
       </p>
       <Latex>
-        {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(
+        {`$$ u_{combined} = \\mathbf{${inputs.guardBandInputs.combUnc.toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
     </div>
 
@@ -730,9 +734,9 @@ export const GBInputsBreakdown = ({ inputs }) => (
       <h5>Nominal Value</h5>
       <p>The is the current measurement point.</p>
       <Latex>
-        {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(
+        {`$$ Nominal = \\mathbf{${parseFloat(inputs.guardBandInputs.nominal).toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
     </div>
 
@@ -740,14 +744,14 @@ export const GBInputsBreakdown = ({ inputs }) => (
       <h5>UUT Tolerance Limits</h5>
       <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
       <Latex>
-        {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(
+        {`$$ Lower = \\mathbf{${parseFloat(inputs.guardBandInputs.uutLower).toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
       <Latex>
-        {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(
+        {`$$ Upper = \\mathbf{${parseFloat(inputs.guardBandInputs.uutUpper).toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
     </div>
 
@@ -758,28 +762,30 @@ export const GBInputsBreakdown = ({ inputs }) => (
         Equipment (TMDE).
       </p>
       <Latex>
-        {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(
+        {`$$ Lower = \\mathbf{${parseFloat(inputs.guardBandInputs.tmdeLower).toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
       <Latex>
-        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+        {`$$ Upper = \\mathbf{${parseFloat(inputs.guardBandInputs.tmdeUpper).toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
     </div>
   </>
   </div>
-);
+)};
 
-export const GBLowBreakdown = ({ inputs, results }) => (
+export const GBLowBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+  return(
   <div className="modal-body-scrollable">
     <div className="breakdown-step">
         <h5>Step 1: Formula</h5>
         <p>
           The Lower Guardband Tolerance (GB Low) is the product of the UUT Lower Tolerance times the Guardband Multiplier. Acceptance Tolerance are lowered to meet the required PFA in the cases that the PFA is above the {(inputs.reqPFA ?? 0) * 100}% PFA threshold.
         </p>
-        <Latex>{"$$ GB_{LOW} = L_{Lower} * GB_{MULTIPLIER} $$"}</Latex>
+        <Latex>{"$$ GB_{LOW} = (L_{Lower} * GB_{MULTIPLIER}) + \\text{Nominal} $$"}</Latex>
       </div>
       <div className="breakdown-step">
         <h5>Step 2: Guardband Multiplier Calculation</h5>
@@ -787,30 +793,52 @@ export const GBLowBreakdown = ({ inputs, results }) => (
       </div>
       <div className="breakdown-step">
         <h5>Step 3: Guardband Low Value</h5>
-        <Latex>{`$$\\text{Calculated Guardband Multiplier} = ${results.gbResults.GBLOWMULT}$$`}</Latex>  
+        <Latex>{`$$\\text{Calculated Guardband Multiplier} = ${results.gbResults.GBLOWMULT} \\\\
+        = ${results.gbResults.GBLOWMULT} \\cdot ${inputs.LLow - inputs.guardBandInputs.nominal} \\\\
+        = ${results.gbResults.GBLOWMULT * (inputs.LLow - inputs.guardBandInputs.nominal)} + ${inputs.guardBandInputs.nominal} \\\\
+        = ${results.gbResults.GBLOWMULT * (inputs.LLow - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal} \\\\
+        = \\text{ResDwn}(${results.gbResults.GBLOWMULT * (inputs.LLow - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal}) \\\\
+        = ${resDwn(results.gbResults.GBLOWMULT * (inputs.LLow - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal, inputs.guardBandInputs.safeRes)}
+        $$`}</Latex>  
+      </div>
+      <div className="breakdown-step">
+        <h5>Question: Why is this calculated Guard Band Multipler not the same as our final results?</h5>
+        <p>Our GB Low value is rounded up to the nearest measuring resolutions place.</p>
       </div>
   </div>
-);
+)};
 
-export const GBHighBreakdown = ({ inputs, results }) => (
+export const GBHighBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+  return(
   <div className="modal-body-scrollable">
     <div className="breakdown-step">
         <h5>Step 1: Formula</h5>
         <p>
           The Upper Guardband Tolerance (GB Up) is the product of the UUT Upper Tolerance times the Guardband Multiplier. Acceptance Tolerance are lowered to meet the required PFA in the cases that the PFA is above the {(inputs.reqPFA ?? 0) * 100}% PFA threshold.
         </p>
-        <Latex>{"$$ GB_{Up} = L_{Up} * GB_{MULTIPLIER} $$"}</Latex>
+        <Latex>{"$$ GB_{Up} = (L_{Up} * GB_{MULTIPLIER}) + \\text{Nominal} $$"}</Latex>
       </div>
       <div className="breakdown-step">
         <h5>Step 2: Guardband Multiplier Calculation</h5>
         <p>Guardband Multiplier is calculated first to get our GB LOW and HIGH values. We recalculate the exact same PFA, but instead our acceptance limits are changed. GB Multiplier is initally 1 and decrements by 0.05 recalculating PFA each time until PFA is equal to the required {results.gbInputs.reqPFA*100}% PFA.</p>
       </div>
       <div className="breakdown-step">
-        <h5>Step 3: Guardband Upper Value</h5>
-        <Latex>{`$$\\text{Calculated Guardband Multiplier} = ${results.gbResults.GBUPMULT}$$`}</Latex>  
+        <h5>Step 3: Guardband Up Value</h5>
+        <Latex>{`$$\\text{Calculated Guardband Multiplier} = ${results.gbResults.GBLOWMULT} \\\\
+        = ${results.gbResults.GBUPMULT} \\cdot ${inputs.LUp - inputs.guardBandInputs.nominal} \\\\
+        = ${results.gbResults.GBUPMULT * (inputs.LUp - inputs.guardBandInputs.nominal)} + ${inputs.guardBandInputs.nominal} \\\\
+        = ${results.gbResults.GBUPMULT * (inputs.LUp - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal} \\\\
+        = \\text{ResUp}(${results.gbResults.GBUPMULT * (inputs.LUp - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal}) \\\\
+        = ${resUp(results.gbResults.GBUPMULT * (inputs.LUp - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal, inputs.guardBandInputs.safeRes)}
+        $$`}</Latex>  
+      </div>
+      <div className="breakdown-step">
+        <h5>Question: Why is this calculated Guard Band Multipler not the same as our final results?</h5>
+        <p>Our GB Upper value is rounded down to the nearest measuring resolutions place.</p>
       </div>
   </div>
-);
+)};
 
 export const GBPFABreakdown = ({ inputs, results }) => {
   if (!results || !inputs) return null;
@@ -986,8 +1014,6 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
   const z_x_high = LUp_norm / results.gbResults.GBPFAUUUT; // The "true" positive Z-score for LUp
   const z_y_low = ALow_norm / results.gbResults.GBPFAUDEV;
   const z_y_high = AUp_norm / results.gbResults.GBPFAUDEV;
-
-  console.log(results.gbResults.GBPFAUDEV)
 
   const safeNativeUnit =
     results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
@@ -1342,9 +1368,6 @@ export const GBCalIntBreakdown = ({ inputs, results }) => {
 export const NoGBCalIntBreakdown = ({ inputs, results }) => {
   if (!results || !inputs) return null;
 
-  console.log("INPUT: ", inputs);
-  console.log("RESULTS: ",  results);
-
   const interval = inputs.guardBandInputs.calibrationInt ?? 0;
   const TstRUnc = (inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR) ?? 0;
   const precise = 6;
@@ -1458,9 +1481,6 @@ export const NoGBCalIntBreakdown = ({ inputs, results }) => {
 
 export const NoGBMeasRelBreakdown = ({ inputs, results }) => {
   if (!results || !inputs) return null;
-
-  console.log("INPUT: ", inputs);
-  console.log("RESULTS: ",  results);
 
   const interval = inputs.guardBandInputs.calibrationInt ?? 0;
   const TstRUnc = ((inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR)) ?? 0;

@@ -540,6 +540,7 @@ function Analysis({
       gbLow,
       gbHigh
     );
+
     let [gbPFA, gbPFAT1, gbPFAT2, gbPFAuUUT, gbPFAuDev, gbPFACor] = PFAwGBMgr(
       uutNominal.value,
       0,
@@ -615,6 +616,7 @@ function Analysis({
       reqTUR: turNeeded,
       reqPFA: pfaRequired,
       nominalUnit: nominalUnit,
+      safeRes: safeRes
     };
 
     let gbResults = {

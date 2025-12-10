@@ -1712,7 +1712,6 @@ export function gbLowMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngMea
         dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
         if (dUUTUnc <= 0) return [];
         GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
-        console.log(GBMult);
         return [dNominal + dTolLow * GBMult,GBMult];
     } else if (sRiskType === "LowThreshold") {
         dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
