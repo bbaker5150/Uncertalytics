@@ -537,6 +537,7 @@ body.theme-cyberpunk {
   --seal-background-color: #d600c0;         /* Magenta */
   --seal-background-color-derived: #00eaff; /* Cyan */
   --seal-tmde-background-color: #000000;    /* Black (Hard contrast) */
+  --risk-value-color: #00eaff;
 }
 
 body.theme-cyberpunk.dark-mode {
@@ -3199,7 +3200,7 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 .gbcalint-card .risk-value,
 .calint-card .risk-value,
 .measrel-card .risk-value {
-  color: var(--status-good);
+  color: var(--risk-value-color);
 }
 
 /* =================================================================== */
@@ -3346,9 +3347,9 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 .metric-pod.gbcalint,
 .metric-pod.calint,
 .metric-pod.measrel {
-  border-color: var(--status-good);
-  color: var(--status-good);
-  animation: glow-good 3s infinite alternate;
+  border-color: var(--risk-value-color);
+  color: var(--risk-value-color);
+  animation: glow-theme 3s infinite alternate;
 }
 
 /* --- Metric Pod Glow Animations --- */
@@ -3371,6 +3372,10 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 @keyframes glow-muted {
   from { box-shadow: 0 0 3px 0px var(--text-color-muted); }
   to { box-shadow: 0 0 8px 2px var(--text-color-muted); }
+}
+@keyframes glow-theme {
+  from { box-shadow: 0 0 3px 0px var(--risk-value-color); }
+  to { box-shadow: 0 0 8px 2px var(--risk-value-color); }
 }
 
 /* --- Dark Mode Overrides --- */

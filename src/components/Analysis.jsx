@@ -496,9 +496,19 @@ function Analysis({
         LUp,
         uCal_Native,
         reliability
-      ),
+      )[0],
       safeRes
     );
+    let gbLowMult =
+      gbLowMgr(
+        pfaRequired,
+        uutNominal.value,
+        0,
+        LLow,
+        LUp,
+        uCal_Native,
+        reliability
+      )[1];
     let gbHigh = resUp(
       gbUpMgr(
         pfaRequired,
@@ -508,9 +518,19 @@ function Analysis({
         LUp,
         uCal_Native,
         reliability
-      ),
+      )[0],
       safeRes
     );
+    let gbHighMult =
+      gbUpMgr(
+        pfaRequired,
+        uutNominal.value,
+        0,
+        LLow,
+        LUp,
+        uCal_Native,
+        reliability
+      )[1];
     let gbMult = GBMultMgr(
       pfaRequired,
       uutNominal.value,
@@ -520,7 +540,7 @@ function Analysis({
       gbLow,
       gbHigh
     );
-    let [gbPFA, gbPFAT1, gbPFAT2] = PFAwGBMgr(
+    let [gbPFA, gbPFAT1, gbPFAT2, gbPFAuUUT, gbPFAuDev, gbPFACor] = PFAwGBMgr(
       uutNominal.value,
       0,
       LLow,
@@ -540,7 +560,7 @@ function Analysis({
       gbLow,
       gbHigh
     );
-    let gbCalInt = CalIntwGBMgr(
+    let [gbCalInt,gbCalIntObs,gbCalIntPred] = CalIntwGBMgr(
       uutNominal.value,
       0,
       LLow,
@@ -554,7 +574,7 @@ function Analysis({
       turNeeded,
       calInt
     );
-    let nogbCalInt = CalIntMgr(
+    let [nogbCalInt,nogbCalIntObs,nogbCalIntPred] = CalIntMgr(
       uutNominal.value,
       0,
       LLow,
@@ -567,7 +587,7 @@ function Analysis({
       calInt,
       pfaRequired
     );
-    let nogbMeasRel = CalRelMgr(
+    let [nogbMeasRel,nogbMeasRelOBS] = CalRelMgr(
       uutNominal.value,
       0,
       LLow,
@@ -587,7 +607,7 @@ function Analysis({
       uutUpper: LUp,
       tmdeLower: parseFloat(uutNominal.value) + tmdeToleranceLow_Native,
       tmdeUpper: parseFloat(uutNominal.value) + tmdeToleranceHigh_Native,
-      combUnc: calcResults.combined_uncertainty_absolute_base,
+      combUnc: uCal_Native,
       turVal: turResult,
       measRelTarget: reliability,
       calibrationInt: calInt,
@@ -599,17 +619,27 @@ function Analysis({
 
     let gbResults = {
       GBLOW: gbLow,
+      GBLOWMULT: gbLowMult,
       GBUP: gbHigh,
+      GBUPMULT: gbHighMult,
       GBMULT: gbMult * 100,
       GBPFA: gbPFA * 100,
       GBPFAT1: gbPFAT1 * 100,
       GBPFAT2: gbPFAT2 * 100,
+      GBPFAUUUT: gbPFAuUUT, 
+      GBPFAUDEV: gbPFAuDev, 
+      GBPFACOR: gbPFACor,
       GBPFR: gbPFR * 100,
       GBPFRT1: gbPFRT1 * 100,
       GBPFRT2: gbPFRT2 * 100,
       GBCALINT: gbCalInt,
+      GBCALINTOBS: gbCalIntObs,
+      GBCALINTPRED: gbCalIntPred,
       NOGBCALINT: nogbCalInt,
+      NOGBCALINTOBS: nogbCalIntObs,
+      NOGBCALINTPRED: nogbCalIntPred,
       NOGBMEASREL: nogbMeasRel * 100,
+      NOGBMEASRELOBS: nogbMeasRelOBS * 100,
     };
 
     const newRiskMetrics = {
@@ -1645,14 +1675,14 @@ function Analysis({
           results: riskResults,
           inputs: riskResults
             ? {
-              LLow: parseFloat(riskInputs.LLow),
-              LUp: parseFloat(riskInputs.LUp),
-              reliability: parseFloat(sessionData.uncReq.reliability),
-              guardBandMultiplier: parseFloat(
-                sessionData.uncReq.guardBandMultiplier
-              ),
-              ...riskResults.gbInputs,
-            }
+                LLow: parseFloat(riskInputs.LLow),
+                LUp: parseFloat(riskInputs.LUp),
+                reliability: parseFloat(sessionData.uncReq.reliability),
+                guardBandMultiplier: parseFloat(
+                  sessionData.uncReq.guardBandMultiplier
+                ),
+                guardBandInputs: riskResults.gbInputs,
+              }
             : null,
         }}
       />
