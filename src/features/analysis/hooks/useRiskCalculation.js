@@ -276,9 +276,19 @@ export const useRiskCalculation = (
         LUp,
         uCal_Native,
         reliability
-      ),
+      )[0],
       safeRes
     );
+    let gbLowMult =
+      gbLowMgr(
+        pfaRequired,
+        uutNominal.value,
+        0,
+        LLow,
+        LUp,
+        uCal_Native,
+        reliability
+      )[1];
     let gbHigh = resUp(
       gbUpMgr(
         pfaRequired,
@@ -288,9 +298,19 @@ export const useRiskCalculation = (
         LUp,
         uCal_Native,
         reliability
-      ),
+      )[0],
       safeRes
     );
+    let gbHighMult =
+      gbUpMgr(
+        pfaRequired,
+        uutNominal.value,
+        0,
+        LLow,
+        LUp,
+        uCal_Native,
+        reliability
+      )[1];
     let gbMult = GBMultMgr(
       pfaRequired,
       uutNominal.value,
@@ -300,7 +320,7 @@ export const useRiskCalculation = (
       gbLow,
       gbHigh
     );
-    let [gbPFA, gbPFAT1, gbPFAT2] = PFAwGBMgr(
+    let [gbPFA, gbPFAT1, gbPFAT2, gbPFAuUUT, gbPFAuDev, gbPFACor] = PFAwGBMgr(
       uutNominal.value,
       0,
       LLow,
@@ -320,7 +340,7 @@ export const useRiskCalculation = (
       gbLow,
       gbHigh
     );
-    let gbCalInt = CalIntwGBMgr(
+    let [gbCalInt,gbCalIntObs,gbCalIntPred] = CalIntwGBMgr(
       uutNominal.value,
       0,
       LLow,
@@ -334,7 +354,7 @@ export const useRiskCalculation = (
       turNeeded,
       calInt
     );
-    let nogbCalInt = CalIntMgr(
+    let [nogbCalInt,nogbCalIntObs,nogbCalIntPred] = CalIntMgr(
       uutNominal.value,
       0,
       LLow,
@@ -347,7 +367,7 @@ export const useRiskCalculation = (
       calInt,
       pfaRequired
     );
-    let nogbMeasRel = CalRelMgr(
+    let [nogbMeasRel,nogbMeasRelOBS] = CalRelMgr(
       uutNominal.value,
       0,
       LLow,
@@ -360,7 +380,6 @@ export const useRiskCalculation = (
       calInt,
       pfaRequired
     );
-
     let gbInputs = {
       nominal: parseFloat(uutNominal.value),
       uutLower: LLow,
@@ -368,6 +387,7 @@ export const useRiskCalculation = (
       tmdeLower: parseFloat(uutNominal.value) + tmdeToleranceLow_Native,
       tmdeUpper: parseFloat(uutNominal.value) + tmdeToleranceHigh_Native,
       combUnc: calcResults.combined_uncertainty_absolute_base,
+      combUnc: uCal_Native,
       turVal: turResult,
       measRelTarget: reliability,
       calibrationInt: calInt,
@@ -375,21 +395,31 @@ export const useRiskCalculation = (
       reqTUR: turNeeded,
       reqPFA: pfaRequired,
       nominalUnit: nominalUnit,
+      safeRes: safeRes
     };
-
     let gbResults = {
       GBLOW: gbLow,
+      GBLOWMULT: gbLowMult,
       GBUP: gbHigh,
+      GBUPMULT: gbHighMult,
       GBMULT: gbMult * 100,
       GBPFA: gbPFA * 100,
       GBPFAT1: gbPFAT1 * 100,
       GBPFAT2: gbPFAT2 * 100,
+      GBPFAUUUT: gbPFAuUUT, 
+      GBPFAUDEV: gbPFAuDev, 
+      GBPFACOR: gbPFACor,
       GBPFR: gbPFR * 100,
       GBPFRT1: gbPFRT1 * 100,
       GBPFRT2: gbPFRT2 * 100,
       GBCALINT: gbCalInt,
+      GBCALINTOBS: gbCalIntObs,
+      GBCALINTPRED: gbCalIntPred,
       NOGBCALINT: nogbCalInt,
+      NOGBCALINTOBS: nogbCalIntObs,
+      NOGBCALINTPRED: nogbCalIntPred,
       NOGBMEASREL: nogbMeasRel * 100,
+      NOGBMEASRELOBS: nogbMeasRelOBS * 100,
     };
 
     const newRiskMetrics = {

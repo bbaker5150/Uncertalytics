@@ -274,7 +274,7 @@ function Analysis({
             LUp: parseFloat(riskInputs.LUp),
             reliability: parseFloat(sessionData.uncReq.reliability),
             guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
-            ...riskResults.gbInputs,
+            guardBandInputs: riskResults.gbInputs,
           } : null,
         }}
       />

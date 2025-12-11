@@ -392,6 +392,16 @@ export const calculateUncertaintyFromToleranceObject = (
     toleranceObject,
     referenceMeasurementPoint
   ) => {
+    // DEBUG LOG 5: Check what the calculator receives
+    if (toleranceObject.name) { // Only log named items (TMDEs) to reduce noise
+        console.log(`DEBUG: [CalcUnc] Processing "${toleranceObject.name}"`);
+        if (toleranceObject.range) {
+             console.log(`DEBUG: [CalcUnc] Range Object:`, toleranceObject.range);
+             console.log(`DEBUG: [CalcUnc] Range Full Scale Value: ${toleranceObject.range.value}`);
+             if (!toleranceObject.range.value) console.error("DEBUG: [CalcUnc] Range Value is Missing! Calculation will fail.");
+        }
+    }
+
     if (
       !toleranceObject ||
       !referenceMeasurementPoint ||
@@ -954,6 +964,8 @@ export const findInstrumentTolerance = (instrument, value, unit) => {
   // 4. Return Tolerance & Resolution
   return {
       tolerance: matchedRange.tolerances,
+      rangeMax: matchedRange.max,
+      rangeUnit: matchedFunction.unit,
       resolution: matchedRange.resolution,
       rangeInfo: `${matchedRange.min}-${matchedRange.max} ${matchedFunction.unit}`
   };
@@ -1710,16 +1722,16 @@ export function gbLowMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngMea
 
     if (sRiskType === "NotThreshold") {
         dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-        if (dUUTUnc <= 0) return "";
+        if (dUUTUnc <= 0) return [];
         GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
-        return dNominal + dTolLow * GBMult;
+        return [dNominal + dTolLow * GBMult,GBMult];
     } else if (sRiskType === "LowThreshold") {
         dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
-        if (dUUTUnc <= 0) return "";
+        if (dUUTUnc <= 0) return [];
         GBMult = pfaLLGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolLow);
-        return dAvg - (dAvg - dTolLow) * GBMult;
+        return [dAvg - (dAvg - dTolLow) * GBMult,GBMult];
     } else if (sRiskType === "AltLowThreshold") {
-        return dTolLow - PHIDInv(dReq) * dMeasUnc;
+        return [dTolLow - PHIDInv(dReq) * dMeasUnc,GBMult];
     }
     return "";
 }
@@ -1794,16 +1806,16 @@ export function gbUpMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeas
 
     if (sRiskType === "NotThreshold") {
         dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-        if (dUUTUnc <= 0) return "";
+        if (dUUTUnc <= 0) return [];
         GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
-        return dTolUp * GBMult + dNominal;
+        return [dTolUp * GBMult + dNominal,GBMult];
     } else if (sRiskType === "UpThreshold") {
         dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
-        if (dUUTUnc <= 0) return "";
+        if (dUUTUnc <= 0) return [];
         GBMult = PFAULGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolUp);
-        return (dTolUp - dAvg) * GBMult + dAvg;
+        return [(dTolUp - dAvg) * GBMult + dAvg,GBMult];
     } else if (sRiskType === "AltUpThreshold") {
-        return dTolUp + PHIDInv(dReq) * dMeasUnc;
+        return [dTolUp + PHIDInv(dReq) * dMeasUnc,GBMult];
     }
     return "";
 }
@@ -1910,10 +1922,10 @@ export function CalIntwGBMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc
     } else {
         dObsRel = dMeasRel;
     }
-
+    
     const dPredRel = PredRel(sRiskType, dMeasUnc, dReqRel, dAvg, dTolLow, dTolUp, dMeasUnc, dGBLow, dGBUp);
     const dPredInt = (Math.log(dPredRel) / Math.log(dObsRel)) * dInt;
-    return dPredInt > 0 ? dPredInt : "";
+    return dPredInt > 0 ? [dPredInt,dObsRel,dPredRel] : "";
 }
 
 export function CalIntMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngReqRel, rngMeasRel, rngTUR, rngReqTUR, rngInt, rngReqPFA) {
@@ -1935,16 +1947,16 @@ export function CalIntMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, r
     }
 
     let result = PFAIter(sRiskType, dObsRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-    if (result === -1) return "";
+    if (result === -1) return ["","",""];
     let dPFA = result;
 
     if (dPFA <= dReqPFA) {
-        return (Math.log(dReqRel) / Math.log(dObsRel)) * dInt;
+        return [(Math.log(dReqRel) / Math.log(dObsRel)) * dInt,dObsRel,dReqRel];
     }
 
     let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
     result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-    if (result === -1) return "";
+    if (result === -1) return ["","",""];
     dPFA = result;
 
     let dChg = dPFA < dReqPFA ? -Math.abs(dPredRel - dObsRel) : Math.abs(dPredRel - dObsRel);
@@ -1963,7 +1975,7 @@ export function CalIntMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, r
         if (result !== -1) dPFA = result;
     }
 
-    return dPFA === -1 ? "" : (Math.log(dPredRel) / Math.log(dObsRel)) * dInt;
+    return dPFA === -1 ? ["","",""] : [(Math.log(dPredRel) / Math.log(dObsRel)) * dInt,dObsRel,dPredRel];
 }
 
 export function CalRelMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngReqRel, rngMeasRel, rngTUR, rngReqTUR, rngInt, rngReqPFA) {
@@ -1988,7 +2000,7 @@ export function CalRelMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, r
     if (result === -1) return "";
     let dPFA = result;
 
-    if (dPFA <= dReqPFA) return dReqRel;
+    if (dPFA <= dReqPFA) return [dReqRel, dObsRel];
 
     let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
     result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
@@ -2011,5 +2023,5 @@ export function CalRelMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, r
         if (result !== -1) dPFA = result;
     }
 
-    return dPFA === -1 ? "" : dPredRel;
+    return dPFA === -1 ? "" : [dPredRel, dObsRel];
 }

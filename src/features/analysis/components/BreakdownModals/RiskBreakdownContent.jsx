@@ -1,5 +1,9 @@
 import React from "react";
 import Latex from "../../../../components/common/Latex";
+import { InvNormalDistribution } from "../../../../utils/uncertaintyMath";
+import { vbNormSDist } from "../../../../utils/uncertaintyMath";
+import { resUp } from "../../../../utils/uncertaintyMath";
+import { resDwn } from "../../../../utils/uncertaintyMath";
 
 // --- Helper to display safe units ---
 const SafeUnit = ({ unit }) => {
@@ -679,24 +683,27 @@ export const PfrBreakdown = ({ results, inputs }) => {
 // ==========================================
 // 6. GUARDBAND BREAKDOWNS (Individual Exports)
 // ==========================================
-const CommonGBInputDisplay = ({ inputs }) => (
-  <>
+export const GBInputsBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+  return(
+  <div className="modal-body-scrollable">
+    <>
     <div className="breakdown-step">
       <h5>Uncertainty Requirements</h5>
       <p>
         These values are uncertainty requirements set on the Uncertalytics.
       </p>
       <Latex>{`$$ Measurement\\ Reliability\\ Target = \\mathbf{${
-        inputs.measRelTarget * 100
+        inputs.guardBandInputs.measRelTarget * 100
       }}\\% $$`}</Latex>
       <Latex>{`$$ Measurement\\ Reliability\\ Calculated\\ Assumed = \\mathbf{${
-        inputs.measrelCalcAssumed * 100
+        inputs.guardBandInputs.measrelCalcAssumed * 100
       }}\\% $$`}</Latex>
       <Latex>{`$$ PFA\\ Required = \\mathbf{${
-        inputs.reqPFA * 100
+        inputs.guardBandInputs.reqPFA * 100
       }}\\% $$`}</Latex>
-      <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.reqTUR}} $$`}</Latex>
-      <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.calibrationInt}} $$`}</Latex>
+      <Latex>{`$$ TUR\\ Required = \\mathbf{${inputs.guardBandInputs.reqTUR}} $$`}</Latex>
+      <Latex>{`$$ Calibration\\ Interval = \\mathbf{${inputs.guardBandInputs.calibrationInt}} $$`}</Latex>
     </div>
 
     <div className="breakdown-step">
@@ -705,7 +712,7 @@ const CommonGBInputDisplay = ({ inputs }) => (
         The Test Uncertainty Ratio (TUR) is the ratio of the tolerance span to
         the expanded measurement uncertainty span.
       </p>
-      <Latex>{`$$ TUR = \\mathbf{${inputs.turVal.toFixed(4)}:1} $$`}</Latex>
+      <Latex>{`$$ TUR = \\mathbf{${inputs.guardBandInputs.turVal.toFixed(4)}:1} $$`}</Latex>
     </div>
 
     <div className="breakdown-step">
@@ -717,9 +724,9 @@ const CommonGBInputDisplay = ({ inputs }) => (
         detailed budget.
       </p>
       <Latex>
-        {`$$ u_{combined} = \\mathbf{${inputs.combUnc.toPrecision(
+        {`$$ u_{combined} = \\mathbf{${inputs.guardBandInputs.combUnc.toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
     </div>
 
@@ -727,9 +734,9 @@ const CommonGBInputDisplay = ({ inputs }) => (
       <h5>Nominal Value</h5>
       <p>The is the current measurement point.</p>
       <Latex>
-        {`$$ Nominal = \\mathbf{${parseFloat(inputs.nominal).toPrecision(
+        {`$$ Nominal = \\mathbf{${parseFloat(inputs.guardBandInputs.nominal).toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
     </div>
 
@@ -737,14 +744,14 @@ const CommonGBInputDisplay = ({ inputs }) => (
       <h5>UUT Tolerance Limits</h5>
       <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
       <Latex>
-        {`$$ Lower = \\mathbf{${parseFloat(inputs.uutLower).toPrecision(
+        {`$$ Lower = \\mathbf{${parseFloat(inputs.guardBandInputs.uutLower).toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
       <Latex>
-        {`$$ Upper = \\mathbf{${parseFloat(inputs.uutUpper).toPrecision(
+        {`$$ Upper = \\mathbf{${parseFloat(inputs.guardBandInputs.uutUpper).toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
     </div>
 
@@ -755,69 +762,827 @@ const CommonGBInputDisplay = ({ inputs }) => (
         Equipment (TMDE).
       </p>
       <Latex>
-        {`$$ Lower = \\mathbf{${parseFloat(inputs.tmdeLower).toPrecision(
+        {`$$ Lower = \\mathbf{${parseFloat(inputs.guardBandInputs.tmdeLower).toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
       <Latex>
-        {`$$ Upper = \\mathbf{${parseFloat(inputs.tmdeUpper).toPrecision(
+        {`$$ Upper = \\mathbf{${parseFloat(inputs.guardBandInputs.tmdeUpper).toPrecision(
           6
-        )}} \\text{ ${inputs.nominalUnit}} $$`}
+        )}} \\text{ ${inputs.guardBandInputs.nominalUnit}} $$`}
       </Latex>
     </div>
   </>
-);
-
-export const GBInputsBreakdown = ({ inputs }) => (
-  <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
   </div>
-);
+)};
 
-export const GBLowBreakdown = ({ inputs }) => (
+export const GBLowBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+  return(
   <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
+    <div className="breakdown-step">
+        <h5>Step 1: Formula</h5>
+        <p>
+          The Lower Guardband Tolerance (GB Low) is the product of the UUT Lower Tolerance times the Guardband Multiplier. Acceptance Tolerance are lowered to meet the required PFA in the cases that the PFA is above the {(inputs.reqPFA ?? 0) * 100}% PFA threshold.
+        </p>
+        <Latex>{"$$ GB_{LOW} = (L_{Lower} * GB_{MULTIPLIER}) + \\text{Nominal} $$"}</Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 2: Guardband Multiplier Calculation</h5>
+        <p>Guardband Multiplier is calculated first to get our GB LOW and HIGH values. We recalculate the exact same PFA, but instead our acceptance limits are changed. GB Multiplier is initally 1 and decrements by 0.05 recalculating PFA each time until PFA is equal to the required {results.gbInputs.reqPFA*100}% PFA.</p>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 3: Guardband Low Value</h5>
+        <Latex>{`$$\\text{Calculated Guardband Multiplier} = ${results.gbResults.GBLOWMULT} \\\\
+        = ${results.gbResults.GBLOWMULT} \\cdot ${inputs.LLow - inputs.guardBandInputs.nominal} \\\\
+        = ${results.gbResults.GBLOWMULT * (inputs.LLow - inputs.guardBandInputs.nominal)} + ${inputs.guardBandInputs.nominal} \\\\
+        = ${results.gbResults.GBLOWMULT * (inputs.LLow - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal} \\\\
+        = \\text{ResDwn}(${results.gbResults.GBLOWMULT * (inputs.LLow - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal}) \\\\
+        = ${resDwn(results.gbResults.GBLOWMULT * (inputs.LLow - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal, inputs.guardBandInputs.safeRes)}
+        $$`}</Latex>  
+      </div>
+      <div className="breakdown-step">
+        <h5>Question: Why is this calculated Guard Band Multipler not the same as our final results?</h5>
+        <p>Our GB Low value is rounded up to the nearest measuring resolutions place.</p>
+      </div>
   </div>
-);
+)};
 
-export const GBHighBreakdown = ({ inputs }) => (
+export const GBHighBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+  return(
   <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
+    <div className="breakdown-step">
+        <h5>Step 1: Formula</h5>
+        <p>
+          The Upper Guardband Tolerance (GB Up) is the product of the UUT Upper Tolerance times the Guardband Multiplier. Acceptance Tolerance are lowered to meet the required PFA in the cases that the PFA is above the {(inputs.reqPFA ?? 0) * 100}% PFA threshold.
+        </p>
+        <Latex>{"$$ GB_{Up} = (L_{Up} * GB_{MULTIPLIER}) + \\text{Nominal} $$"}</Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 2: Guardband Multiplier Calculation</h5>
+        <p>Guardband Multiplier is calculated first to get our GB LOW and HIGH values. We recalculate the exact same PFA, but instead our acceptance limits are changed. GB Multiplier is initally 1 and decrements by 0.05 recalculating PFA each time until PFA is equal to the required {results.gbInputs.reqPFA*100}% PFA.</p>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 3: Guardband Up Value</h5>
+        <Latex>{`$$\\text{Calculated Guardband Multiplier} = ${results.gbResults.GBLOWMULT} \\\\
+        = ${results.gbResults.GBUPMULT} \\cdot ${inputs.LUp - inputs.guardBandInputs.nominal} \\\\
+        = ${results.gbResults.GBUPMULT * (inputs.LUp - inputs.guardBandInputs.nominal)} + ${inputs.guardBandInputs.nominal} \\\\
+        = ${results.gbResults.GBUPMULT * (inputs.LUp - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal} \\\\
+        = \\text{ResUp}(${results.gbResults.GBUPMULT * (inputs.LUp - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal}) \\\\
+        = ${resUp(results.gbResults.GBUPMULT * (inputs.LUp - inputs.guardBandInputs.nominal) + inputs.guardBandInputs.nominal, inputs.guardBandInputs.safeRes)}
+        $$`}</Latex>  
+      </div>
+      <div className="breakdown-step">
+        <h5>Question: Why is this calculated Guard Band Multipler not the same as our final results?</h5>
+        <p>Our GB Upper value is rounded down to the nearest measuring resolutions place.</p>
+      </div>
   </div>
-);
+)};
 
-export const GBPFABreakdown = ({ inputs }) => (
-  <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
-  </div>
-);
+export const GBPFABreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
 
-export const GBPFRBreakdown = ({ inputs }) => (
-  <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
-  </div>
-);
+  const mid = (inputs.LUp + inputs.LLow) / 2;
+  const LLow_norm = inputs.LLow - mid;
+  const LUp_norm = inputs.LUp - mid;
+  const ALow_norm = results.gbResults.GBLOW - mid;
+  const AUp_norm = results.gbResults.GBUP - mid;
 
-export const GBMultBreakdown = ({ inputs }) => (
-  <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
-  </div>
-);
+  const z_x_low = LLow_norm / results.gbResults.GBPFAUUUT;
+  const z_x_high = LUp_norm / results.gbResults.GBPFAUUUT; // The "true" positive Z-score for LUp
+  const z_y_low = ALow_norm / results.gbResults.GBPFAUDEV;
+  const z_y_high = AUp_norm / results.gbResults.GBPFAUDEV;
 
-export const GBCalIntBreakdown = ({ inputs }) => (
-  <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
-  </div>
-);
+  const safeNativeUnit =
+    results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
+  return (
+    <div className="modal-body-scrollable">
+      <div className="breakdown-step">
+        <h5>Step 1: Formula</h5>
+        <p>
+          The Probability of False Accept (PFA) is the sum of the probabilities
+          in the two "False Accept" regions of the risk scatterplot. This is
+          calculated using the Bivariate Normal Cumulative Distribution Function
+          (Φ₂).
+        </p>
+        <Latex>{"$$ PFA = PFA_{Lower} + PFA_{Upper} $$"}</Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 2: Key Statistical Inputs</h5>
+        <p>These values are derived from your budget and reliability settings.</p>
+        <ul>
+          <li>
+            True UUT Error (σ<sub>uut</sub>):{" "}
+            <strong>
+              {results.gbResults.GBPFAUUUT.toPrecision(4)} {safeNativeUnit}
+            </strong>
+            <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
+          </li>
+          <li>
+            Observed Error (σ<sub>obs</sub>):{" "}
+            <strong>
+              {results.gbResults.GBPFAUDEV.toPrecision(4)} {safeNativeUnit}
+            </strong>
+            <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
+          </li>
+          <li>
+            Correlation (ρ):{" "}
+            <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.gbResults.GBPFAUUUT.toPrecision(
+              4
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
+              4
+            )}} = \\mathbf{${results.gbResults.GBPFACOR.toFixed(4)}} $$`}</Latex>
+          </li>
+        </ul>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 3: Normalized Limits (Z-Scores)</h5>
+        <p>
+          The limits are normalized by their respective standard deviations. (L
+          = UUT Tolerance, A = Acceptance Limit)
+        </p>
+        <ul>
+          <li>
+            z<sub>x_low</sub> (True Error):{" "}
+            <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
+              4
+            )}}{${results.gbResults.GBPFAUUUT.toPrecision(
+              4
+            )}} = \\mathbf{${z_x_low.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>x_high</sub> (True Error):{" "}
+            <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
+              4
+            )}}{${results.gbResults.GBPFAUUUT.toPrecision(
+              4
+            )}} = \\mathbf{${z_x_high.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>y_low</sub> (Measured Error):{" "}
+            <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
+              4
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
+              4
+            )}} = \\mathbf{${z_y_low.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>y_high</sub> (Measured Error):{" "}
+            <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
+              4
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
+              4
+            )}} = \\mathbf{${z_y_high.toFixed(4)}} $$`}</Latex>
+          </li>
+        </ul>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 4: Bivariate Calculation</h5>
+        <p>The probability for each tail (region) is calculated separately.</p>
+        <p>
+          <strong>Lower Tail Risk (PFA_Lower):</strong>
+        </p>
+        <Latex>
+          {
+            "$$ P(z_x < z_{x\\_low} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+          }
+        </Latex>
+        <Latex>{`$$ = \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
+        <Latex>{`$$ = \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_high.toFixed(
+          2
+        )}, ${results.gbResults.GBPFACOR.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
+          2
+        )}, ${z_y_low.toFixed(2)}, ${results.gbResults.GBPFACOR.toFixed(
+          2
+        )}) $$`}</Latex>
+        <Latex>{`$$ = \\mathbf{${(results.gbResults.GBPFAT1 / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+        <p>
+          <strong>Upper Tail Risk (PFA_Upper):</strong>
+        </p>
+        <Latex>
+          {
+            "$$ P(z_x > z_{x\\_high} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+          }
+        </Latex>
+        <p>
+          Calculated using symmetry:{" "}
+          <Latex>{`$$ = P(z_x < -z_{x\\_high} \\text{ and } -z_{y\\_high} < z_y < -z_{y\\_low}) $$`}</Latex>
+        </p>
+        <Latex>{`$$ = \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
+        <Latex>{`$$ = \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_low.toFixed(
+          2
+        )}, ${results.gbResults.GBPFACOR.toFixed(
+          2
+        )}) - \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_high.toFixed(
+          2
+        )}, ${results.gbResults.GBPFACOR.toFixed(2)}) $$`}</Latex>
+        <Latex>{`$$ = \\mathbf{${(results.gbResults.GBPFAT2 / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 5: Final PFA</h5>
+        <Latex>{`$$ PFA = PFA_{Lower} + PFA_{Upper} $$`}</Latex>
+        <Latex>{`$$ = ${(results.gbResults.GBPFAT1 / 100).toExponential(4)} + ${(
+          results.gbResults.GBPFAT2 / 100
+        ).toExponential(4)} = \\mathbf{${(results.gbResults.GBPFA / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+        <Latex>{`$$ \\text{Total PFA} = \\mathbf{${results.gbResults.GBPFA.toFixed(
+          4
+        )}\\%} $$`}</Latex>
+      </div>
+    </div>
+  );
 
-export const NoGBCalIntBreakdown = ({ inputs }) => (
-  <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
-  </div>
-);
+};
 
-export const NoGBMeasRelBreakdown = ({ inputs }) => (
+export const GBPFRBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+
+  const mid = (inputs.LUp + inputs.LLow) / 2;
+  const LLow_norm = inputs.LLow - mid;
+  const LUp_norm = inputs.LUp - mid;
+  const ALow_norm = results.gbResults.GBLOW - mid;
+  const AUp_norm = results.gbResults.GBUP - mid;
+
+  // Z-Scores (Normalized Limits)
+  const z_x_low = LLow_norm / results.gbResults.GBPFAUUUT;
+  const z_x_high = LUp_norm / results.gbResults.GBPFAUUUT; // The "true" positive Z-score for LUp
+  const z_y_low = ALow_norm / results.gbResults.GBPFAUDEV;
+  const z_y_high = AUp_norm / results.gbResults.GBPFAUDEV;
+
+  const safeNativeUnit =
+    results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
+
+  return (
+    <div className="modal-body-scrollable">
+      <div className="breakdown-step">
+        <h5>Step 1: Formula</h5>
+        <p>
+          The Probability of False Reject (PFR) is the sum of the probabilities
+          in the two "False Reject" regions of the risk scatterplot. This is
+          calculated using the Bivariate Normal Cumulative Distribution Function
+          (Φ₂).
+        </p>
+        <Latex>{"$$ PFR = PFR_{Lower} + PFR_{Upper} $$"}</Latex>
+        <Latex>
+          {
+            "$$ PFR_{Lower} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} < A_{Low}) $$"
+          }
+        </Latex>
+        <Latex>
+          {
+            "$$ PFR_{Upper} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} > A_{Up}) $$"
+          }
+        </Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 2: Key Statistical Inputs</h5>
+        <p>These values are derived from your budget and reliability settings.</p>
+        <ul>
+          <li>
+            True UUT Error (σ<sub>uut</sub>):{" "}
+            <strong>
+              {results.gbResults.GBPFAUUUT.toPrecision(4)} {safeNativeUnit}
+            </strong>
+            <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
+          </li>
+          <li>
+            Observed Error (σ<sub>obs</sub>):{" "}
+            <strong>
+              {results.gbResults.GBPFAUDEV.toPrecision(4)} {safeNativeUnit}
+            </strong>
+            <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
+          </li>
+          <li>
+            Correlation (ρ):{" "}
+            <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.gbResults.GBPFAUUUT.toPrecision(
+              4
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
+              4
+            )}} = \\mathbf{${results.gbResults.GBPFACOR.toFixed(4)}} $$`}</Latex>
+          </li>
+        </ul>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 3: Normalized Limits (Z-Scores)</h5>
+        <p>
+          The limits are normalized by their respective standard deviations. (L
+          = UUT Tolerance, A = Acceptance Limit)
+        </p>
+        <ul>
+          <li>
+            z<sub>x_low</sub> (True Error):{" "}
+            <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
+              4
+            )}}{${results.gbResults.GBPFAUUUT.toPrecision(
+              4
+            )}} = \\mathbf{${z_x_low.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>x_high</sub> (True Error):{" "}
+            <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
+              4
+            )}}{${results.gbResults.GBPFAUUUT.toPrecision(
+              4
+            )}} = \\mathbf{${z_x_high.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>y_low</sub> (Measured Error):{" "}
+            <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
+              4
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
+              4
+            )}} = \\mathbf{${z_y_low.toFixed(4)}} $$`}</Latex>
+          </li>
+          <li>
+            z<sub>y_high</sub> (Measured Error):{" "}
+            <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
+              4
+            )}}{${results.gbResults.GBPFAUDEV.toPrecision(
+              4
+            )}} = \\mathbf{${z_y_high.toFixed(4)}} $$`}</Latex>
+          </li>
+        </ul>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 4: Bivariate Calculation</h5>
+        <p>The probability for each side (region) is calculated separately.</p>
+        <p>
+          <strong>Lower Side Risk (PFR_Lower):</strong>
+        </p>
+        <Latex>
+          {
+            "$$ P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y < z_{y\\_low}) $$"
+          }
+        </Latex>
+        <Latex>{`$$ = \\Phi_2(z_{x\\_high}, z_{y\\_low}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
+        <Latex>{`$$ = \\Phi_2(${z_x_high.toFixed(2)}, ${z_y_low.toFixed(
+          2
+        )}, ${results.gbResults.GBPFACOR.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
+          2
+        )}, ${z_y_low.toFixed(2)}, ${results.gbResults.GBPFACOR.toFixed(
+          2
+        )}) $$`}</Latex>
+        <Latex>{`$$ = \\mathbf{${(results.gbResults.GBPFRT1 / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+        <p>
+          <strong>Upper Side Risk (PFR_Upper):</strong>
+        </p>
+        <Latex>
+          {
+            "$$ P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y > z_{y\\_high}) $$"
+          }
+        </Latex>
+        <p>
+          Calculated using symmetry:{" "}
+          <Latex>{`$$ = P(-z_{x\\_high} < z_x < -z_{x\\_low} \\text{ and } z_y < -z_{y\\_high}) $$`}</Latex>
+        </p>
+        <Latex>{`$$ = \\Phi_2(-z_{x\\_low}, -z_{y\\_high}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
+        <Latex>{`$$ = \\Phi_2(${-z_x_low.toFixed(2)}, ${-z_y_high.toFixed(
+          2
+        )}, ${results.gbResults.GBPFACOR.toFixed(
+          2
+        )}) - \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_high.toFixed(
+          2
+        )}, ${results.gbResults.GBPFACOR.toFixed(2)}) $$`}</Latex>
+        <Latex>{`$$ = \\mathbf{${(results.gbResults.GBPFRT2 / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+      </div>
+      <div className="breakdown-step">
+        <h5>Step 5: Final PFR</h5>
+        <Latex>{`$$ PFR = PFR_{Lower} + PFR_{Upper} $$`}</Latex>
+        <Latex>{`$$ = ${(results.gbResults.GBPFRT1 / 100).toExponential(4)} + ${(
+          results.gbResults.GBPFRT2 / 100
+        ).toExponential(4)} = \\mathbf{${(results.gbResults.GBPFR / 100).toExponential(
+          4
+        )}} $$`}</Latex>
+        <Latex>{`$$ \\text{Total PFR} = \\mathbf{${results.gbResults.GBPFR.toFixed(
+          4
+        )}\\%} $$`}</Latex>
+      </div>
+    </div>
+  );
+};
+
+export const GBMultBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+  const safeNativeUnit =
+    results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
+  const uutToleranceUpper =
+    (inputs.LUp ?? 0) - (results.gbInputs.nominal ?? 0);
+  const gbUpper =
+    (results.gbResults.GBUP ?? 0) - (results.gbInputs.nominal ?? 0);
+  const reqPFA = results.gbInputs.reqPFA ?? 0;
+  const nominal = results.gbInputs.nominal ?? 0;
+  const gbUP = results.gbResults.GBUP ?? 0;
+  const gbMult = results.gbResults.GBMULT ?? 0;
+  const precise = 6;
+
+  
+  return (
+    <div className="modal-body-scrollable">
+      <div className="breakdown-step">
+        <h5>Step 1: Formula</h5>
+        <p>
+          The Guardband Multiplier is the ratio of the UUT tolerance to
+          the Guardbanded tolerance. Calculated by adjusting acceptance limits until required {reqPFA * 100}% PFA is met.
+        </p>
+        <Latex>
+          {
+            "$$ \\text{Guardband Multiplier} = \\frac{\\text{UUT Upper Tolerance}}{\\text{Guardband Upper Tolerance}} = \\frac{L_{Upper} - Nominal}{GB_{Upper} - Nominal} $$"
+          }
+        </Latex>
+        </div>
+        <div className="breakdown-step">
+          <h5>Step 2: Inputs</h5>
+          <ul>
+            <li>
+              Upper Tolerance :{" "}
+              <Latex>{`$$ L_{Upper} - Nominal = ${inputs.LUp.toPrecision(
+                precise
+              )} - (${nominal.toPrecision(
+                precise
+              )}) = ${uutToleranceUpper.toPrecision(
+                precise
+              )} \\text{ ${safeNativeUnit}} $$`}</Latex>
+            </li>
+            <li>
+              Guardband Upper Tolerance :{" "}
+              <Latex>{`$$ GB_{Upper} - Nominal = ${gbUP.toPrecision(4)} - ${nominal.toPrecision(precise)} 
+              = \\mathbf{${gbUpper.toPrecision(precise)}} \\text{ ${safeNativeUnit}} $$`}</Latex>
+            </li>
+          </ul>
+        </div>
+        <div className="breakdown-step">
+          <h5>Step 3: Final Calculation</h5>
+          <Latex>{`$$ GB Multiplier = \\frac{${gbUpper.toPrecision(
+            precise
+          )}}{${uutToleranceUpper.toPrecision(
+            precise
+          )}} = \\mathbf{${gbMult.toFixed(precise)}} \\% $$`}</Latex>
+        </div>
+    </div>
+  );
+}
+
+export const GBCalIntBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+  const interval = inputs.guardBandInputs.calibrationInt ?? 0;
+  const TstRUnc = (inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR) ?? 0;
+  const precise = 6;
+  const nominal = inputs.guardBandInputs.nominal;
+  const calInt = inputs.guardBandInputs.calibrationInt;
+  const combinedUncertainty = inputs.guardBandInputs.combUnc;
+
+  // OBS REL CALCULATIONS
+  const LUP = inputs.LUp;
+  const LLOW = inputs.LLow;
+  const biasUncObs = Math.sqrt((((LUP-LLOW)/(2*InvNormalDistribution((1 + inputs.guardBandInputs.measrelCalcAssumed) / 2))) ** 2) - ((TstRUnc)**2));
+  const devUncObs = Math.sqrt(inputs.guardBandInputs.combUnc ** 2 + biasUncObs ** 2);
+  const obsRel = vbNormSDist((LUP-nominal)/devUncObs) - vbNormSDist((LLOW-nominal)/devUncObs);
+  
+  // PRED REL CALCULATIONS
+  const GBUP = results.gbResults.GBUP;
+  const GBLOW = results.gbResults.GBLOW;
+  const biasUncRel = Math.sqrt((((GBUP-GBLOW)/(2*InvNormalDistribution((1 + inputs.guardBandInputs.measRelTarget) / 2))) ** 2) - ((inputs.guardBandInputs.combUnc)**2));
+  const devUncRel = Math.sqrt(inputs.guardBandInputs.combUnc ** 2 + biasUncRel ** 2);
+  const predRel = vbNormSDist((LUP-nominal)/devUncRel) - vbNormSDist((LLOW-nominal)/devUncRel)
+
+  // FULL CALCULATIONS
+  const calIntWGb = (Math.log(predRel) / Math.log(obsRel)) * (inputs.guardBandInputs.calibrationInt)
+
+  return (
   <div className="modal-body-scrollable">
-    <CommonGBInputDisplay inputs={inputs} />
+    <div className="breakdown-step">
+      <h5>Step 1: Formula</h5>
+      <p>
+        The Guardband Calibration Interval is calculated by the ratio of log of predicted reliability and log of observed reliability times the calibration interval. Predicted reliablity is calculated using guardband limits and observed uses UUT tolerance limits.
+      </p>
+      <Latex>
+      {`$\\text{GB Calibration Interval} = \\frac{\log{\\text{(Predicted Reliability)}}}{\log{\\text{(Observed Reliability)}}} \\cdot \\text{Calibration Interval}$`}
+    </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Inputs</h5>
+      <Latex>
+        {`$$\\text{Calibration Interval} = ${interval} \\\\
+        \\text{L}_{UP} = ${LUP} \\\\
+        \\text{L}_{LOW} = ${LLOW} \\\\
+        \\text{GB}_{UP} = ${GBUP} \\\\
+        \\text{GB}_{LOW} = ${GBLOW} \\\\ $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Step 2: Key Inputs and Calculations<br></br>
+        Observed Reliability</h5>
+      <Latex>
+        {`$$
+        \\text{Calibration Uncertainty} = \\frac{MeasUnc \\cdot TUR}{ReqTUR} = u_{Cal} = \\frac{${combinedUncertainty.toFixed(6)} \\cdot ${inputs.guardBandInputs.turVal.toFixed(6)}}{${inputs.guardBandInputs.reqTUR}} \\\\
+        = ${TstRUnc}
+        $$`}
+      </Latex>
+      <Latex>
+        {`$
+        \\text{Measurement Uncertainty} = MeasUnc = ${combinedUncertainty} \\\\
+        \\text{Measurement Reliability Calculated/Assumed} = r = ${inputs.guardBandInputs.measrelCalcAssumed*100}\\% \\\\
+        $`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Biased Uncertainty} = \\sqrt{\\left(\\frac{L_{Up} - L_{Low}}{2 \\cdot \\Phi^{-1}\\!\\left(\\tfrac{1+r}{2}\\right)}\\right)^{2} - u_{Cal}^{2}} \\\\
+        = \\sqrt{\\left(\\frac{${LUP} - ${LLOW}}{2 \\cdot ${InvNormalDistribution((1 + inputs.guardBandInputs.measrelCalcAssumed) / 2)}}\\right)^{2} - (${TstRUnc})^{2}} \\\\
+        = ${biasUncObs}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Deviation Uncertainty} = \\sqrt{MeasUnc^{2} + BiasUnc^{2}} \\\\ 
+        = \\sqrt{${combinedUncertainty}^{2} + ${biasUncObs}^{2}} \\\\
+        = ${devUncObs}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$ObsRel = \\Phi\\left(\\frac{L_{Up}}{DevUnc}\\right) - \\Phi\\left(\\frac{L_{Low}}{DevUnc}\\right) \\\\
+        = \\Phi\\left(\\frac{${LUP-nominal}}{${devUncObs}}\\right) - \\Phi\\left(\\frac{${LLOW-nominal}}{${devUncObs}}\\right) \\\\
+        = ${obsRel}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Predicted Reliability</h5>
+      <Latex>
+        {`$
+        \\text{Calibration Uncertainty} = u_{Cal} = MeasUnc = ${combinedUncertainty} \\\\
+        \\text{Measurement Reliability Target} = r = ${inputs.guardBandInputs.measRelTarget*100}\\%  \\\\
+        $`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Biased Uncertainty} = \\sqrt{\\left(\\frac{GB_{Up} - GB_{Low}}{2 \\cdot \\Phi^{-1}\\!\\left(\\tfrac{1+r}{2}\\right)}\\right)^{2} - u_{Cal}^{2}} \\\\
+        = \\sqrt{\\left(\\frac{${GBUP} - ${GBLOW}}{2 \\cdot ${InvNormalDistribution((1 + inputs.guardBandInputs.measRelTarget) / 2)}}\\right)^{2} - (${combinedUncertainty})^{2}} \\\\
+        = ${biasUncRel}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Deviation Uncertainty} = \\sqrt{MeasUnc^{2} + BiasUnc^{2}} \\\\
+        = \\sqrt{${combinedUncertainty}^{2} + ${biasUncRel}^{2}} \\\\
+        = ${devUncRel}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$PredRel = \\Phi\\left(\\frac{L_{Up}}{DevUnc}\\right) - \\Phi\\left(\\frac{L_{Low}}{DevUnc}\\right) \\\\
+        = \\Phi\\left(\\frac{${LUP-nominal}}{${devUncRel}}\\right) - \\Phi\\left(\\frac{${LLOW-nominal}}{${devUncRel}}\\right) \\\\
+        = ${predRel}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Step 3: Results</h5>
+      <Latex>
+      {`$$\\text{GB Calibration Interval} = \\frac{\log{\\text{(Predicted Reliability)}}}{\log{\\text{(Observed Reliability)}}} \\cdot \\text{Calibration Interval} \\\\
+      = \\frac{${Math.log(predRel)}}{${Math.log(obsRel)}} \\cdot ${calInt} \\\\
+      = ${calIntWGb}
+      $$`}
+      </Latex>
+    </div>
   </div>
-);
+)
+};
+
+export const NoGBCalIntBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+
+  const interval = inputs.guardBandInputs.calibrationInt ?? 0;
+  const TstRUnc = (inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR) ?? 0;
+  const precise = 6;
+  const nominal = inputs.guardBandInputs.nominal;
+  const calInt = inputs.guardBandInputs.calibrationInt;
+  const combinedUncertainty = inputs.guardBandInputs.combUnc;
+
+  // OBS REL CALCULATIONS
+  const LUP = inputs.LUp;
+  const LLOW = inputs.LLow;
+  const biasUncObs = Math.sqrt((((LUP-LLOW)/(2*InvNormalDistribution((1 + inputs.guardBandInputs.measrelCalcAssumed) / 2))) ** 2) - ((TstRUnc)**2));
+  const devUncObs = Math.sqrt(inputs.guardBandInputs.combUnc ** 2 + biasUncObs ** 2);
+  const obsRel = vbNormSDist((LUP-nominal)/devUncObs) - vbNormSDist((LLOW-nominal)/devUncObs);
+  
+  // PRED REL CALCULATIONS
+  const GBUP = results.gbResults.GBUP;
+  const GBLOW = results.gbResults.GBLOW;
+
+  return (
+  <div className="modal-body-scrollable">
+    <div className="breakdown-step">
+      <h5>Step 1: Formula</h5>
+      <p>
+        The Guardband Calibration Interval is calculated by the ratio of log of predicted reliability and log of observed reliability times the calibration interval. Predicted reliablity is calculated using guardband limits and observed uses UUT tolerance limits.
+      </p>
+      <Latex>
+      {`$\\text{GB Calibration Interval} = \\frac{\log{\\text{(Predicted Reliability)}}}{\log{\\text{(Observed Reliability)}}} \\cdot \\text{Calibration Interval}$`}
+    </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Inputs</h5>
+      <Latex>
+        {`$$\\text{Calibration Interval} = ${interval} \\\\
+        \\text{L}_{UP} = ${LUP} \\\\
+        \\text{L}_{LOW} = ${LLOW} \\\\$$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Step 2: Key Inputs and Calculations<br></br>
+        Observed Reliability</h5>
+      <Latex>
+        {`$$
+        \\text{Calibration Uncertainty} = \\frac{MeasUnc \\cdot TUR}{ReqTUR} = u_{Cal} = \\frac{${combinedUncertainty.toFixed(6)} \\cdot ${inputs.guardBandInputs.turVal.toFixed(6)}}{${inputs.guardBandInputs.reqTUR}} \\\\
+        = ${TstRUnc}
+        $$`}
+      </Latex>
+      <Latex>
+        {`$
+        \\text{Measurement Uncertainty} = MeasUnc = ${combinedUncertainty} \\\\
+        \\text{Measurement Reliability Calculated/Assumed} = r = ${inputs.guardBandInputs.measrelCalcAssumed*100}\\% \\\\
+        $`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Biased Uncertainty} = \\sqrt{\\left(\\frac{L_{Up} - L_{Low}}{2 \\cdot \\Phi^{-1}\\!\\left(\\tfrac{1+r}{2}\\right)}\\right)^{2} - u_{Cal}^{2}} \\\\
+        = \\sqrt{\\left(\\frac{${LUP} - ${LLOW}}{2 \\cdot ${InvNormalDistribution((1 + inputs.guardBandInputs.measrelCalcAssumed) / 2)}}\\right)^{2} - (${TstRUnc})^{2}} \\\\
+        = ${biasUncObs}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Deviation Uncertainty} = \\sqrt{MeasUnc^{2} + BiasUnc^{2}} \\\\ 
+        = \\sqrt{${combinedUncertainty}^{2} + ${biasUncObs}^{2}} \\\\
+        = ${devUncObs}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$ObsRel = \\Phi\\left(\\frac{L_{Up}}{DevUnc}\\right) - \\Phi\\left(\\frac{L_{Low}}{DevUnc}\\right) \\\\
+        = \\Phi\\left(\\frac{${LUP-nominal}}{${devUncObs}}\\right) - \\Phi\\left(\\frac{${LLOW-nominal}}{${devUncObs}}\\right) \\\\
+        = ${obsRel}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Predicted Reliability</h5>
+
+      <Latex>
+        {results.pfa < inputs.guardBandInputs.reqPFA*100  ? 
+        `$$\\text{Predicted Reliability} = \\text{Measurement Reliability Target} =  ${inputs.guardBandInputs.measRelTarget}
+        $$` 
+        : 
+        `$$\\text{Inital Predicted Reliability} = 1 - \\frac{\\lvert (1-Observed Reliability)\\rvert}{2} \\\\
+        = ${1-(Math.abs(1-obsRel)/2)}
+        $$`
+        }
+      </Latex>
+      <p>{results.pfa < inputs.guardBandInputs.reqPFA*100 ? "" : "This initial predicted reliability is plugged into the PFA calculation as 'r' and adjusted until PFA calculations meet the required PFA. The difference between predicted and observed reliability is added or subtracted to the initial predicted reliability until PFA meets the requirements. This difference is divided by 2 each iteration that it doesn't match PFA."}</p>
+      <Latex>
+        {results.pfa < inputs.guardBandInputs.reqPFA*100 ? "" : `$$\\text{Predicted Reliability} = ${results.gbResults.NOGBCALINTPRED}$$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Step 3: Results</h5>
+      <Latex>
+      {`$$\\text{GB Calibration Interval} = \\frac{\log{\\text{(Predicted Reliability)}}}{\log{\\text{(Observed Reliability)}}} \\cdot \\text{Calibration Interval} \\\\
+      ${results.pfa < inputs.guardBandInputs.reqPFA*100 ? 
+        `= \\frac{${Math.log(inputs.guardBandInputs.measRelTarget)}}{${Math.log(obsRel)}} \\cdot ${calInt} \\\\`
+        : 
+        `= \\frac{${Math.log(results.gbResults.NOGBCALINTPRED)}}{${Math.log(obsRel)}} \\cdot ${calInt} \\\\`
+      } \\\\
+      = ${results.gbResults.NOGBCALINT}
+      $$`}
+      </Latex>
+    </div>
+  </div>
+)};
+
+export const NoGBMeasRelBreakdown = ({ inputs, results }) => {
+  if (!results || !inputs) return null;
+
+  const interval = inputs.guardBandInputs.calibrationInt ?? 0;
+  const TstRUnc = ((inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR)) ?? 0;
+  const precise = 6;
+  const nominal = inputs.guardBandInputs.nominal;
+  const calInt = inputs.guardBandInputs.calibrationInt;
+  const combinedUncertainty = inputs.guardBandInputs.combUnc;
+
+  // OBS REL CALCULATIONS
+  const LUP = inputs.LUp;
+  const LLOW = inputs.LLow;
+  const biasUncObs = Math.sqrt((((LUP-LLOW)/(2*InvNormalDistribution((1 + inputs.guardBandInputs.measrelCalcAssumed) / 2))) ** 2) - ((TstRUnc)**2));
+  const devUncObs = Math.sqrt(inputs.guardBandInputs.combUnc ** 2 + biasUncObs ** 2);
+  const obsRel = vbNormSDist((LUP-nominal)/devUncObs) - vbNormSDist((LLOW-nominal)/devUncObs);
+  
+  // PRED REL CALCULATIONS
+  const GBUP = results.gbResults.GBUP;
+  const GBLOW = results.gbResults.GBLOW;
+  const biasUncRel = Math.sqrt((((GBUP-GBLOW)/(2*InvNormalDistribution((1 + inputs.guardBandInputs.measRelTarget) / 2))) ** 2) - ((inputs.guardBandInputs.combUnc)**2));
+  const devUncRel = Math.sqrt(inputs.guardBandInputs.combUnc ** 2 + biasUncRel ** 2);
+  const predRel = vbNormSDist((LUP-nominal)/devUncRel) - vbNormSDist((LLOW-nominal)/devUncRel)
+
+  // FULL CALCULATIONS
+  const calIntWGb = results.pfa < inputs.guardBandInputs.reqPFA*100 ? (Math.log(inputs.guardBandInputs.measRelTarget) / Math.log(obsRel)) * (inputs.guardBandInputs.calibrationInt) : (Math.log(predRel) / Math.log(obsRel)) * (inputs.guardBandInputs.calibrationInt)
+
+
+  return (
+  <div className="modal-body-scrollable">
+    <div className="breakdown-step">
+      <h5>Step 1: Formula</h5>
+      <p>
+        The Guardband Calibration Interval is calculated by the ratio of log of predicted reliability and log of observed reliability times the calibration interval. Predicted reliablity is calculated using guardband limits and observed uses UUT tolerance limits.
+      </p>
+      <Latex>
+      {`$\\text{GB Calibration Interval} = \\frac{\log{\\text{(Predicted Reliability)}}}{\log{\\text{(Observed Reliability)}}} \\cdot \\text{Calibration Interval}$`}
+    </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Inputs</h5>
+      <Latex>
+        {`$$\\text{Calibration Interval} = ${interval} \\\\
+        \\text{L}_{UP} = ${LUP} \\\\
+        \\text{L}_{LOW} = ${LLOW} \\\\$$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Step 2: Key Inputs and Calculations<br></br>
+        Observed Reliability</h5>
+      <Latex>
+        {`$$
+        \\text{Calibration Uncertainty} = \\frac{MeasUnc \\cdot TUR}{ReqTUR} = u_{Cal} = \\frac{${combinedUncertainty.toFixed(6)} \\cdot ${inputs.guardBandInputs.turVal.toFixed(6)}}{${inputs.guardBandInputs.reqTUR}} \\\\
+        = ${TstRUnc}
+        $$`}
+      </Latex>
+      <Latex>
+        {`$
+        \\text{Measurement Uncertainty} = MeasUnc = ${combinedUncertainty} \\\\
+        \\text{Measurement Reliability Calculated/Assumed} = r = ${inputs.guardBandInputs.measrelCalcAssumed*100}\\% \\\\
+        $`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Biased Uncertainty} = \\sqrt{\\left(\\frac{L_{Up} - L_{Low}}{2 \\cdot \\Phi^{-1}\\!\\left(\\tfrac{1+r}{2}\\right)}\\right)^{2} - u_{Cal}^{2}} \\\\
+        = \\sqrt{\\left(\\frac{${LUP} - ${LLOW}}{2 \\cdot ${InvNormalDistribution((1 + inputs.guardBandInputs.measrelCalcAssumed) / 2)}}\\right)^{2} - (${TstRUnc})^{2}} \\\\
+        = ${biasUncObs}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$\\text{Deviation Uncertainty} = \\sqrt{MeasUnc^{2} + BiasUnc^{2}} \\\\ 
+        = \\sqrt{${combinedUncertainty}^{2} + ${biasUncObs}^{2}} \\\\
+        = ${devUncObs}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <Latex>
+        {`$$ObsRel = \\Phi\\left(\\frac{L_{Up}}{DevUnc}\\right) - \\Phi\\left(\\frac{L_{Low}}{DevUnc}\\right) \\\\
+        = \\Phi\\left(\\frac{${LUP-nominal}}{${devUncObs}}\\right) - \\Phi\\left(\\frac{${LLOW-nominal}}{${devUncObs}}\\right) \\\\
+        = ${obsRel}
+        $$`}
+      </Latex>
+    </div>
+    <div className="breakdown-step">
+      <h5>Measurement Reliability Needed</h5>
+
+      <Latex>
+        {results.pfa < inputs.guardBandInputs.reqPFA*100  ? 
+        `$$\\text{Measurement Reliability} = \\text{Measurement Reliability Target} =  ${inputs.guardBandInputs.measRelTarget}
+        $$` 
+        : 
+        `$$\\text{Inital Predicted Reliability} = 1 - \\frac{\\lvert (1-Observed Reliability)\\rvert}{2} \\\\
+        = ${1-(Math.abs(1-obsRel)/2)}
+        $$`
+        }
+      </Latex>
+      <p>{results.pfa < inputs.guardBandInputs.reqPFA*100 ? "" : "This initial predicted reliability is plugged into the PFA calculation as 'r' and adjusted until PFA calculations meet the required PFA. The difference between predicted and observed reliability is added or subtracted to the initial predicted reliability until PFA meets the requirements. This difference is divided by 2 each iteration that it doesn't match PFA."}</p>
+      <Latex>
+        {results.pfa < inputs.guardBandInputs.reqPFA*100 ? "" : `$$\\text{Measurement Reliability} = ${results.gbResults.NOGBCALINTPRED}$$`}
+      </Latex>
+    </div>
+  </div>
+)};

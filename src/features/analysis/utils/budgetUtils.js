@@ -32,12 +32,19 @@ export const getBudgetComponentsFromTolerance = (
   toleranceObject,
   referenceMeasurementPoint
 ) => {
+  // --- DEBUG: Entry Log ---
+  if (toleranceObject?.name) { // Only log identified TMDEs to reduce noise
+    console.groupCollapsed(`DEBUG: Budget Calc for "${toleranceObject.name}"`);
+    console.log("Inputs:", { toleranceObject, referenceMeasurementPoint });
+  }
+
   if (
     !toleranceObject ||
     !referenceMeasurementPoint ||
     !referenceMeasurementPoint.value ||
     !referenceMeasurementPoint.unit
   ) {
+    if (toleranceObject?.name) console.groupEnd();
     return [];
   }
 
@@ -54,7 +61,17 @@ export const getBudgetComponentsFromTolerance = (
     baseValueForRelative,
     isResolution = false
   ) => {
+    // --- DEBUG: Component Check ---
     if (!tolComp && !isResolution) return;
+
+    // Log the raw component data being processed
+    if (toleranceObject.name) {
+       console.log(`Processing Component: [${name}]`, { 
+           tolComp, 
+           baseValueForRelative, 
+           isResolution 
+       });
+    }
 
     let halfSpanPPM, u_i_native, unit_native;
     const distributionDivisor = isResolution
@@ -74,9 +91,19 @@ export const getBudgetComponentsFromTolerance = (
       unit_native = unit;
     } else {
       const high = parseFloat(tolComp?.high || 0);
+      // DEBUG: Log how 'low' is calculated
       const low = parseFloat(tolComp?.low || -high);
+      
       const halfSpan = (high - low) / 2;
-      if (halfSpan === 0) return;
+      
+      if (toleranceObject.name) {
+          console.log(`  -> Span Calc: High=${high}, Low=${low} (Parsed from ${tolComp?.low}), HalfSpan=${halfSpan}`);
+      }
+
+      if (halfSpan === 0) {
+          if (toleranceObject.name) console.warn(`  -> SKIPPED: HalfSpan is 0`);
+          return;
+      }
 
       const unit = tolComp.unit;
       let valueInNominalUnits;
@@ -87,7 +114,15 @@ export const getBudgetComponentsFromTolerance = (
         else if (unit === "ppm") multiplier = 1e-6;
         else if (unit === "ppb") multiplier = 1e-9;
 
+        // DEBUG: Check if baseValueForRelative (e.g. Range Value) is missing
+        if (isNaN(baseValueForRelative)) {
+             console.error(`  -> ERROR: baseValueForRelative is NaN! (Likely missing Range Value)`);
+        }
+
         valueInNominalUnits = halfSpan * multiplier * baseValueForRelative;
+        if (toleranceObject.name) {
+            console.log(`  -> Relative Calc: ${halfSpan} * ${multiplier} * ${baseValueForRelative} = ${valueInNominalUnits}`);
+        }
       } else {
         const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
         const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
@@ -117,12 +152,20 @@ export const getBudgetComponentsFromTolerance = (
         isCore: true,
         distribution: distributionLabel,
       });
+      if (toleranceObject.name) console.log(`  -> SUCCESS: Added component with u_i=${u_i}`);
+    } else {
+       if (toleranceObject.name) console.warn(`  -> FAILED: halfSpanPPM is NaN`);
     }
   };
+  
   processComponent(toleranceObject.reading, "Reading", nominalValue);
 
   processComponent(toleranceObject.readings_iv, "Readings (IV)", nominalValue);
 
+  // DEBUG: Explicitly log Range Value passing
+  if (toleranceObject.name) {
+      console.log(`Checking Range Value:`, toleranceObject.range?.value);
+  }
   processComponent(
     toleranceObject.range,
     "Range",
@@ -183,5 +226,6 @@ export const getBudgetComponentsFromTolerance = (
     );
   }
 
+  if (toleranceObject.name) console.groupEnd();
   return budgetComponents;
 };

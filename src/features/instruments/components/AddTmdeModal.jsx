@@ -6,7 +6,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faPlus, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import InstrumentLookupModal from "./InstrumentLookupModal";
 
-// --- Configuration for Unit Grouping (Copied from ToleranceForm) ---
+// --- Unit Category Definitions ---
+// (Keeping this helper standard for dropdowns)
 const unitCategories = {
   Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
   Current: ["A", "mA", "uA", "nA", "pA", "kA"],
@@ -22,12 +23,10 @@ const unitCategories = {
   Power: ["W", "mW", "kW", "MW", "dBm"],
 };
 
-// Helper to transform flat unit list into React-Select Grouped Options
 const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
   const options = [];
   const usedUnits = new Set();
 
-  // 1. Prioritize Reference Unit (Smart Context)
   if (referenceUnit && allUnits.includes(referenceUnit)) {
     let refCategory = "Suggested";
     for (const [cat, units] of Object.entries(unitCategories)) {
@@ -36,56 +35,32 @@ const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
         break;
       }
     }
-
     const categoryUnits = unitCategories[refCategory] || [referenceUnit];
     const prioritizedOptions = categoryUnits
       .filter((u) => allUnits.includes(u))
-      .map((u) => {
-        usedUnits.add(u);
-        return { value: u, label: u };
-      });
-
+      .map((u) => { usedUnits.add(u); return { value: u, label: u }; });
     options.push({ label: refCategory, options: prioritizedOptions });
   }
 
-  // 2. Add remaining categories
   Object.entries(unitCategories).forEach(([label, units]) => {
     if (options.some((opt) => opt.label === label)) return;
-
     const groupOptions = units
       .filter((u) => allUnits.includes(u) && !usedUnits.has(u))
-      .map((u) => {
-        usedUnits.add(u);
-        return { value: u, label: u };
-      });
-
-    if (groupOptions.length > 0) {
-      options.push({ label, options: groupOptions });
-    }
+      .map((u) => { usedUnits.add(u); return { value: u, label: u }; });
+    if (groupOptions.length > 0) options.push({ label, options: groupOptions });
   });
 
-  // 3. Catch-all for leftovers
   const leftovers = allUnits
     .filter((u) => !usedUnits.has(u) && !["%", "ppm", "dB", "ppb"].includes(u))
     .map((u) => ({ value: u, label: u }));
-
-  if (leftovers.length > 0) {
-    options.push({ label: "Other", options: leftovers });
-  }
+  if (leftovers.length > 0) options.push({ label: "Other", options: leftovers });
 
   return options;
 };
 
-// --- Style to ensure dropdown isn't clipped by modal ---
 const portalStyle = {
-  menuPortal: (base) => ({
-    ...base,
-    zIndex: 99999,
-  }),
-  menu: (base) => ({
-    ...base,
-    zIndex: 99999,
-  }),
+  menuPortal: (base) => ({ ...base, zIndex: 99999 }),
+  menu: (base) => ({ ...base, zIndex: 99999 }),
 };
 
 const AddTmdeModal = ({
@@ -119,8 +94,7 @@ const AddTmdeModal = ({
       id: Date.now(),
       name: "New TMDE",
       measurementPoint: isDerived ? { value: "", unit: "" } : { ...uutMeasurementPoint },
-      variableType:
-        isDerived && availableTypes.length > 0 ? availableTypes[0] : "",
+      variableType: isDerived && availableTypes.length > 0 ? availableTypes[0] : "",
       quantity: 1,
     };
 
@@ -130,8 +104,7 @@ const AddTmdeModal = ({
         existingData.measurementPoint = isDerived ? { value: "", unit: "" } : { ...uutMeasurementPoint };
       }
       if (!existingData.hasOwnProperty("variableType")) {
-        existingData.variableType =
-          isDerived && availableTypes.length > 0 ? availableTypes[0] : "";
+        existingData.variableType = isDerived && availableTypes.length > 0 ? availableTypes[0] : "";
       }
       if (!existingData.id) {
         existingData.id = Date.now() + Math.random();
@@ -142,7 +115,7 @@ const AddTmdeModal = ({
   }, [uutMeasurementPoint, initialTmdeData, isDerived, availableTypes]);
 
   const [tmde, setTmde] = useState(getInitialState());
-  const [useUutRef, setUseUutRef] = useState(!isDerived);
+  const [useUutRef, setUseUutRef] = useState(!isDerived); // Used to track toggle state if needed
 
   const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
   
@@ -152,13 +125,13 @@ const AddTmdeModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      const initialState = getInitialState();
-      setTmde(initialState);
+      setTmde(getInitialState());
       setUseUutRef(!isDerived); 
       setIsLookupOpen(false);
     }
   }, [isOpen, getInitialState, isDerived]);
 
+  // Keep manual measurement point in sync with UUT unless derived
   useEffect(() => {
     if (!isDerived && uutMeasurementPoint) {
       setTmde((prev) => ({
@@ -168,7 +141,6 @@ const AddTmdeModal = ({
     }
   }, [uutMeasurementPoint, isDerived]);
 
-  // Handle Import from Instrument Library
   const handleInstrumentImport = (instrument) => {
     const currentVal = tmde.measurementPoint?.value;
     const currentUnit = tmde.measurementPoint?.unit;
@@ -178,7 +150,6 @@ const AddTmdeModal = ({
       return;
     }
 
-    // FIX 1: Parse value to ensure numeric comparison works in the lookup utility
     const numericVal = parseFloat(currentVal);
     if (isNaN(numericVal)) {
         alert("Invalid measurement value. Please enter a number.");
@@ -186,22 +157,50 @@ const AddTmdeModal = ({
     }
 
     const matchedData = findInstrumentTolerance(instrument, numericVal, currentUnit);
-
+    
     if (matchedData) {
-      // FIX 2: Robustly find the specs (handle both 'tolerances' and 'tolerance' keys)
-      // This solves the issue of specs not populating if the property name differs.
-      const specs = matchedData.tolerances || matchedData.tolerance || {};
+      // 1. Get specs
+      const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
+
+      // 2. Determine Range Max (Required for Range Tolerances)
+      let calculatedRangeMax = matchedData.rangeMax; 
+      if (!calculatedRangeMax) {
+          calculatedRangeMax = numericVal;
+      }
+      
+      // 3. SIMPLIFIED DATA FIX
+      const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
+      
+      compKeys.forEach(key => {
+        if (specs[key]) {
+             // A. Ensure Unit Exists
+             if (!specs[key].unit) {
+                if (key === 'reading' || key === 'range') specs[key].unit = '%';
+                else if (key === 'floor' || key === 'readings_iv') specs[key].unit = currentUnit;
+             }
+             
+             // B. Inject Range Value
+             if (key === 'range') {
+                 specs[key].value = calculatedRangeMax;
+             }
+
+             // C. FIX SIGN ERROR: Force low to be negative
+             if (specs[key].high) {
+                 const highVal = parseFloat(specs[key].high);
+                 if (!isNaN(highVal)) {
+                     specs[key].low = String(-Math.abs(highVal));
+                 }
+                 // Ensure symmetric flag is set so UI renders correctly
+                 specs[key].symmetric = true; 
+             }
+        }
+      });
 
       setTmde(prev => ({
         ...prev,
         name: `${instrument.manufacturer} ${instrument.model}`, 
-        
-        // FIX 3: Explicitly remove measuringResolution so it doesn't persist from previous states
-        // This solves the issue of "Resolution" appearing in the budget when it shouldn't.
+        ...specs,
         measuringResolution: undefined, 
-        
-        // Apply the found specs (Reading, Range, etc.)
-        ...specs
       }));
     } else {
       alert(`Could not find a matching range in ${instrument.model} for ${currentVal} ${currentUnit}.`);
@@ -209,33 +208,31 @@ const AddTmdeModal = ({
   };
 
   const handleSave = (andClose = true) => {
+    // Basic cleanup of empty fields
     const cleanupTolerance = (tol) => {
       const cleaned = { ...tol };
       const componentKeys = ["reading", "readings_iv", "range", "floor", "db"];
+      
       componentKeys.forEach((key) => {
-        if (
-          cleaned[key] &&
-          (cleaned[key].high === "" || isNaN(parseFloat(cleaned[key].high)))
-        ) {
-          delete cleaned[key];
+        const comp = cleaned[key];
+        if (comp) {
+            const highVal = parseFloat(comp.high);
+            if (comp.high === "" || comp.high === null || isNaN(highVal)) {
+                 delete cleaned[key];
+            }
         }
       });
+
       if (!isDerived && cleaned.hasOwnProperty("variableType")) {
         delete cleaned.variableType;
       }
       return cleaned;
     };
 
-    const finalTmde = {
-      ...tmde,
-      quantity: parseInt(tmde.quantity, 10) || 1,
-    };
-
-    onSave(cleanupTolerance(finalTmde), andClose);
+    onSave(cleanupTolerance(tmde), andClose);
 
     if (!andClose) {
       setTmde(getInitialState());
-      setUseUutRef(!isDerived);
     }
   };
 
@@ -244,7 +241,6 @@ const AddTmdeModal = ({
   const modalContent = (
     <div className="modal-content" style={{ maxWidth: "600px" }}>
       
-      {/* Nested Lookup Modal */}
       <InstrumentLookupModal 
          isOpen={isLookupOpen} 
          onClose={() => setIsLookupOpen(false)} 
@@ -256,7 +252,6 @@ const AddTmdeModal = ({
         &times;
       </button>
       
-      {/* Cleaned Header (Button Removed) */}
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
         <h3>{initialTmdeData ? (tmde.name || "Edit TMDE") : "Add New TMDE"}</h3>
       </div>
@@ -266,7 +261,6 @@ const AddTmdeModal = ({
           <div className="details-grid">
             <div className="form-section">
               <label>TMDE Name</label>
-              {/* Flex Container for Input + Library Button */}
               <div style={{display: 'flex', gap: '10px'}}>
                   <input
                     type="text"

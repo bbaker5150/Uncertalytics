@@ -153,10 +153,48 @@ const EditSessionModal = ({
     );
 
     if (matchedData) {
+        // 1. Clone Specs
+        const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
+        
+        // 2. Determine Range Max
+        let calculatedRangeMax = matchedData.rangeMax;
+        if (!calculatedRangeMax) {
+            // Default to the prompt value if rangeMax isn't explicit
+            const promptVal = parseFloat(rangePromptData.value);
+            if (!isNaN(promptVal)) calculatedRangeMax = promptVal;
+        }
+
+        // 3. CLEAN UP DATA (Apply Same Fixes as AddTmdeModal)
+        const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
+      
+        compKeys.forEach(key => {
+            if (specs[key]) {
+                // A. Ensure Unit Exists
+                if (!specs[key].unit) {
+                    if (key === 'reading' || key === 'range') specs[key].unit = '%';
+                    else if (key === 'floor' || key === 'readings_iv') specs[key].unit = rangePromptData.unit;
+                }
+                
+                // B. Inject Range Value
+                if (key === 'range') {
+                    specs[key].value = calculatedRangeMax;
+                }
+
+                // C. FIX SIGN ERROR: Force low to be negative
+                if (specs[key].high) {
+                    const highVal = parseFloat(specs[key].high);
+                    if (!isNaN(highVal)) {
+                        specs[key].low = String(-Math.abs(highVal));
+                    }
+                    specs[key].symmetric = true; 
+                }
+            }
+        });
+
         setFormData(prev => ({
             ...prev,
             uutTolerance: {
-                ...matchedData.tolerances,
+                ...specs,
                 measuringResolution: matchedData.resolution
             }
         }));
