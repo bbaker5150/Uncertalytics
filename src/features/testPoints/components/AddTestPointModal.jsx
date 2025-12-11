@@ -2,8 +2,8 @@ import * as math from 'mathjs';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
-import { unitSystem } from '../utils/uncertaintyMath';
-import NotificationModal from './NotificationModal';
+import { unitSystem } from '../../../utils/uncertaintyMath';
+import NotificationModal from '../../../components/modals/NotificationModal';
 
 const SymbolButton = ({ onSymbolClick, symbol, title }) => (
     <button

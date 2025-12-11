@@ -1,7 +1,7 @@
 import * as math from 'mathjs';
 import React, { useMemo } from 'react';
-import Latex from "./Latex";
-import { unitSystem, calculateUncertaintyFromToleranceObject } from '../utils/uncertaintyMath';
+import Latex from "../../../../components/common/Latex";
+import { unitSystem, calculateUncertaintyFromToleranceObject } from "../../../../utils/uncertaintyMath";
 
 // Helper to format numbers for LaTeX display
 const formatNumberForLatex = (num, precision = 4) => {
@@ -17,7 +17,7 @@ const formatNumberForLatex = (num, precision = 4) => {
 
 const DerivedBreakdownModal = ({ isOpen, onClose, breakdownData }) => {
 
-    // --- UPDATED: This hook now rebuilds the formula from individual TMDEs ---
+    // --- This hook now rebuilds the formula from individual TMDEs ---
     const formulaTerms = useMemo(() => {
         const tmdes = breakdownData?.tmdeTolerances || [];
         const components = breakdownData?.results?.calculatedBudgetComponents || [];

@@ -5,8 +5,8 @@ import {
   faCheck, faTimes, faPlus, faTrashAlt, faEdit, faRadio, 
   faLayerGroup, faArrowLeft, faSearch, faChevronDown, faChevronUp, faInfoCircle
 } from "@fortawesome/free-solid-svg-icons";
-import { unitSystem } from "../utils/uncertaintyMath";
-import ToleranceForm from "./ToleranceForm";
+import { unitSystem } from "../../../utils/uncertaintyMath";
+import ToleranceForm from "../../../components/common/ToleranceForm";
 
 // --- Configuration for Unit Grouping ---
 const unitCategories = {

@@ -1,5 +1,5 @@
 import React from "react";
-import { getToleranceSummary } from "../utils/uncertaintyMath";
+import { getToleranceSummary } from "../../../utils/uncertaintyMath";
 
 const TestPointInfoModal = ({ isOpen, onClose, testPoint }) => {
   if (!isOpen || !testPoint) return null;

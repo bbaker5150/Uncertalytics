@@ -1,5 +1,5 @@
 import React from "react";
-import Latex from "../Latex";
+import Latex from "../../../../components/common/Latex";
 
 // --- Helper to display safe units ---
 const SafeUnit = ({ unit }) => {

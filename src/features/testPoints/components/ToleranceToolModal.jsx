@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import ToleranceForm from "./ToleranceForm"; // Import the refactored form
-import ContextMenu from "./ContextMenu";
-import NotificationModal from './NotificationModal';
+import ToleranceForm from "../../../components/common/ToleranceForm"; // Import the refactored form
+import ContextMenu from "../../../components/common/ContextMenu";
+import NotificationModal from '../../../components/modals/NotificationModal';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faTrashAlt,

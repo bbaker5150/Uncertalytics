@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import AddTmdeModal from "./AddTmdeModal";
+import AddTmdeModal from "../../instruments/components/AddTmdeModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faTimes,
@@ -13,7 +13,7 @@ import {
   getAbsoluteLimits,
   calculateUncertaintyFromToleranceObject,
   convertPpmToUnit,
-} from "../utils/uncertaintyMath";
+} from "../../../utils/uncertaintyMath";
 
 // --- Sub-Components ---
 

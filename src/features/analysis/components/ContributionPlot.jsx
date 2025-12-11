@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useRef } from "react";
-import { useTheme } from "../App";
+import { useTheme } from "../../../App";
 
 const PercentageBarGraph = ({ type, data, unit = "" }) => {
   const isDarkMode = useTheme();

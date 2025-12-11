@@ -1,21 +1,21 @@
 import React, { useState, useMemo, useEffect } from "react";
 
 // --- Components ---
-import Analysis from "./components/Analysis";
-import NotificationModal from "./components/NotificationModal";
-import AddTestPointModal from "./components/AddTestPointModal";
-import TestPointDetailView from "./components/TestPointDetailView";
-import ToleranceToolModal from "./components/ToleranceToolModal";
-import EditSessionModal from "./components/EditSessionModal";
-import OverviewModal from "./components/OverviewModal";
-import ContextMenu from "./components/ContextMenu";
-import FullBreakdownModal from "./components/FullBreakdownModal";
-import TestPointInfoModal from "./components/TestPointInfoModal";
-import InstrumentBuilderModal from "./components/InstrumentBuilderModal";
+import Analysis from "./features/analysis/Analysis";
+import NotificationModal from "./components/modals/NotificationModal";
+import AddTestPointModal from "./features/testPoints/components/AddTestPointModal";
+import TestPointDetailView from "./features/testPoints/components/TestPointDetailView";
+import ToleranceToolModal from "./features/testPoints/components/ToleranceToolModal";
+import EditSessionModal from "./features/session/components/EditSessionModal";
+import OverviewModal from "./features/session/components/OverviewModal";
+import ContextMenu from "./components/common/ContextMenu";
+import FullBreakdownModal from "./features/analysis/components/BreakdownModals/FullBreakdownModal";
+import TestPointInfoModal from "./features/testPoints/components/TestPointInfoModal";
+import InstrumentBuilderModal from "./features/instruments/components/InstrumentBuilderModal";
 
 // --- Floating Tools ---
-import FloatingNotepad from "./components/FloatingNotepad";
-import UnitConverter from "./components/UnitConverter";
+import FloatingNotepad from "./components/tools/FloatingNotepad";
+import UnitConverter from "./components/tools/UnitConverter";
 
 // --- Utils & Hooks ---
 import useSessionManager from "./hooks/useSessionManager";

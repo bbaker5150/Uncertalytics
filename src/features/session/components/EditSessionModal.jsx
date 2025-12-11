@@ -1,5 +1,5 @@
 import React, { useState, useLayoutEffect, useMemo, useEffect } from "react";
-import ToleranceForm from "./ToleranceForm";
+import ToleranceForm from "../../../components/common/ToleranceForm";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -8,9 +8,9 @@ import {
   faTimes,
   faBookOpen
 } from "@fortawesome/free-solid-svg-icons";
-import NotificationModal from './NotificationModal';
-import InstrumentLookupModal from "./InstrumentLookupModal";
-import { findInstrumentTolerance } from "../utils/uncertaintyMath";
+import NotificationModal from '../../../components/modals/NotificationModal';
+import InstrumentLookupModal from "../../instruments/components/InstrumentLookupModal";
+import { findInstrumentTolerance } from "../../../utils/uncertaintyMath";
 
 const EditSessionModal = ({
   isOpen,
@@ -156,7 +156,7 @@ const EditSessionModal = ({
         setFormData(prev => ({
             ...prev,
             uutTolerance: {
-                ...matchedData.tolerance,
+                ...matchedData.tolerances,
                 measuringResolution: matchedData.resolution
             }
         }));

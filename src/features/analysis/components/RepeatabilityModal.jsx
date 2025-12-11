@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrashAlt, faUndo, faCheck, faChartLine } from "@fortawesome/free-solid-svg-icons";
 import * as math from "mathjs";
-import { unitSystem, convertToPPM } from "../utils/uncertaintyMath";
+import { unitSystem, convertToPPM } from "../../../utils/uncertaintyMath";
 
 // Helper to calculate standard deviation (Sample)
 const calculateStats = (values) => {

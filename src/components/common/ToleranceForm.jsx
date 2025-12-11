@@ -4,7 +4,7 @@ import Select from "react-select";
 import {
   unitSystem,
   errorDistributions,
-} from "../utils/uncertaintyMath";
+} from "../../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrashAlt, faPlus } from "@fortawesome/free-solid-svg-icons";
 

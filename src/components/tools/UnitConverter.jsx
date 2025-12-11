@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faMinus, faExchangeAlt, faCopy, faRightLeft } from "@fortawesome/free-solid-svg-icons";
-import { unitSystem } from "../utils/uncertaintyMath";
+import { unitSystem } from "../../utils/uncertaintyMath";
 
 const UnitConverter = ({ isOpen, onClose }) => {
   const [position, setPosition] = useState({ x: 420, y: 150 });

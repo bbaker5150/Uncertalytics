@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from "react";
-import Latex from "./Latex";
+import Latex from "../../../../components/common/Latex";
 import {
   calculateUncertaintyFromToleranceObject,
   unitSystem,
   convertPpmToUnit,
-} from "../utils/uncertaintyMath";
+} from "../../../../utils/uncertaintyMath";
 
 const BreakdownItem = ({ comp, nominal }) => {
   const [displayUnit, setDisplayUnit] = useState(nominal?.unit || "ppm");

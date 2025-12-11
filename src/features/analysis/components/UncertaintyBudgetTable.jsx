@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import Latex from "./Latex"; // Assuming Latex.jsx is in the components folder
-import { unitSystem } from "../utils/uncertaintyMath";
+import Latex from "../../../components/common/Latex"; // Assuming Latex.jsx is in the components folder
+import { unitSystem } from "../../../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { 
   faCalculator, 

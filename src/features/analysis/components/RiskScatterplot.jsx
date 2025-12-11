@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useTheme } from "../App";
+import { useTheme } from "../../../App";
 
 // Use the factory to create a Plot component that uses the basic distribution
 import Plotly from 'plotly.js-basic-dist';

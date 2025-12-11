@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { convertToPPM } from "../utils/uncertaintyMath";
+import { convertToPPM } from "../../utils/uncertaintyMath";
 
 const ConversionInfo = ({ value, unit, nominal }) => {
   const { explanation, warning } = useMemo(() => {

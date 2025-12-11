@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Select from "react-select"; 
-import ToleranceForm from "./ToleranceForm";
-import { unitSystem, findInstrumentTolerance } from "../utils/uncertaintyMath";
+import ToleranceForm from "../../../components/common/ToleranceForm";
+import { unitSystem, findInstrumentTolerance } from "../../../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faPlus, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import InstrumentLookupModal from "./InstrumentLookupModal";
@@ -178,14 +178,30 @@ const AddTmdeModal = ({
       return;
     }
 
-    const matchedData = findInstrumentTolerance(instrument, currentVal, currentUnit);
+    // FIX 1: Parse value to ensure numeric comparison works in the lookup utility
+    const numericVal = parseFloat(currentVal);
+    if (isNaN(numericVal)) {
+        alert("Invalid measurement value. Please enter a number.");
+        return;
+    }
+
+    const matchedData = findInstrumentTolerance(instrument, numericVal, currentUnit);
 
     if (matchedData) {
+      // FIX 2: Robustly find the specs (handle both 'tolerances' and 'tolerance' keys)
+      // This solves the issue of specs not populating if the property name differs.
+      const specs = matchedData.tolerances || matchedData.tolerance || {};
+
       setTmde(prev => ({
         ...prev,
         name: `${instrument.manufacturer} ${instrument.model}`, 
-        ...matchedData.tolerance,
-        measuringResolution: matchedData.resolution || prev.measuringResolution 
+        
+        // FIX 3: Explicitly remove measuringResolution so it doesn't persist from previous states
+        // This solves the issue of "Resolution" appearing in the budget when it shouldn't.
+        measuringResolution: undefined, 
+        
+        // Apply the found specs (Reading, Range, etc.)
+        ...specs
       }));
     } else {
       alert(`Could not find a matching range in ${instrument.model} for ${currentVal} ${currentUnit}.`);
