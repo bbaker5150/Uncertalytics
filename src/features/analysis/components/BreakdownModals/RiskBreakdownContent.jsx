@@ -1235,7 +1235,7 @@ export const GBMultBreakdown = ({ inputs, results }) => {
 export const GBCalIntBreakdown = ({ inputs, results }) => {
   if (!results || !inputs) return null;
   const interval = inputs.guardBandInputs.calibrationInt ?? 0;
-  const TstRUnc = (inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR) ?? 0;
+  const TstRUnc = (inputs.guardBandInputs.combUnc * inputs.guardBandInputs.turVal) / parseFloat(inputs.guardBandInputs.reqTUR) || 0;
   const precise = 6;
   const nominal = inputs.guardBandInputs.nominal;
   const calInt = inputs.guardBandInputs.calibrationInt;
@@ -1369,7 +1369,7 @@ export const NoGBCalIntBreakdown = ({ inputs, results }) => {
   if (!results || !inputs) return null;
 
   const interval = inputs.guardBandInputs.calibrationInt ?? 0;
-  const TstRUnc = (inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR) ?? 0;
+  const TstRUnc = (inputs.guardBandInputs.combUnc * inputs.guardBandInputs.turVal) / parseFloat(inputs.guardBandInputs.reqTUR) || 0;
   const precise = 6;
   const nominal = inputs.guardBandInputs.nominal;
   const calInt = inputs.guardBandInputs.calibrationInt;
@@ -1483,7 +1483,7 @@ export const NoGBMeasRelBreakdown = ({ inputs, results }) => {
   if (!results || !inputs) return null;
 
   const interval = inputs.guardBandInputs.calibrationInt ?? 0;
-  const TstRUnc = ((inputs.guardBandInputs.combUnc*inputs.guardBandInputs.turVal)/parseFloat(inputs.guardBandInputs.reqTUR)) ?? 0;
+  const TstRUnc = (inputs.guardBandInputs.combUnc * inputs.guardBandInputs.turVal) / parseFloat(inputs.guardBandInputs.reqTUR) || 0;
   const precise = 6;
   const nominal = inputs.guardBandInputs.nominal;
   const calInt = inputs.guardBandInputs.calibrationInt;
