@@ -471,19 +471,6 @@ function App() {
             {/* 2. RIGHT: ACTION RIBBON */}
             <div className="header-actions">
               {/* STATUS INDICATOR (Primary Context) */}
-              <button
-                className={`status-pill ${
-                  dbPath ? "connected" : "disconnected"
-                }`}
-                onClick={dbPath ? disconnectDatabase : selectDatabaseFolder}
-                title={dbPath ? `Connected: ${dbPath}` : "Connect to Database"}
-              >
-                <span className="status-dot"></span>
-                <span className="status-text">
-                  {dbPath ? "Database Connected" : "Local Mode"}
-                </span>
-              </button>
-
               <div className="header-divider"></div>
 
               {/* FLOATING TOOLS ACTIONS */}
@@ -585,6 +572,18 @@ function App() {
                   </button>
                 )}
               </div>
+              <button
+                className={`status-pill ${
+                  dbPath ? "connected" : "disconnected"
+                }`}
+                onClick={dbPath ? disconnectDatabase : selectDatabaseFolder}
+                title={dbPath ? `Connected: ${dbPath}` : "Connect to Database"}
+              >
+                <span className="status-dot"></span>
+                <span className="status-text">
+                  {dbPath ? "Database Connected" : "Local Mode"}
+                </span>
+              </button>
             </div>
           </div>
           {/* ======================================================= */}
