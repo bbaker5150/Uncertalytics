@@ -16,6 +16,7 @@ import InstrumentBuilderModal from "./features/instruments/components/Instrument
 // --- Floating Tools ---
 import FloatingNotepad from "./components/tools/FloatingNotepad";
 import UnitConverter from "./components/tools/UnitConverter";
+import ReverseTraceabilityTool from "./components/tools/ReverseTraceabilityTool";
 
 // --- Utils & Hooks ---
 import useSessionManager from "./hooks/useSessionManager";
@@ -38,6 +39,7 @@ import {
   faStickyNote,
   faRightLeft,
   faRadio,
+  faHistory
 } from "@fortawesome/free-solid-svg-icons";
 
 // --- Contexts ---
@@ -87,10 +89,11 @@ function App() {
   const [confirmationModal, setConfirmationModal] = useState(null);
   const [appNotification, setAppNotification] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
-  
+
   // --- Floating Tools State ---
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);
+  const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
   const [isInstrumentBuilderOpen, setIsInstrumentBuilderOpen] = useState(false);
 
   // --- Theme & Dark Mode State ---
@@ -199,34 +202,34 @@ function App() {
 
   // --- Instrument Saver ---
   const handleSaveInstrument = (instrument) => {
-      saveInstrument(instrument);
-      setIsInstrumentBuilderOpen(false);
-      setAppNotification({ title: "Success", message: `Instrument "${instrument.model}" saved.` });
+    saveInstrument(instrument);
+    setIsInstrumentBuilderOpen(false);
+    setAppNotification({ title: "Success", message: `Instrument "${instrument.model}" saved.` });
   };
 
   const handleOpenSessionEditor = async (initialTab = "details", tmdeToEdit = null) => {
     setInitialSessionTab(initialTab);
     setInitialTmdeToEdit(tmdeToEdit);
-    
+
     if (currentSessionData) {
-        setEditingSession(currentSessionData);
-        const cachedMap = sessionImageCache.get(currentSessionData.id);
-        if (!cachedMap || cachedMap.size === 0) {
-            try {
-                const imagesFromDb = await loadSessionImages(currentSessionData.id);
-                if (imagesFromDb && imagesFromDb.length > 0) {
-                    setSessionImageCache(prev => {
-                        const newCache = new Map(prev);
-                        const sessionMap = new Map();
-                        imagesFromDb.forEach(img => sessionMap.set(img.id, img.data));
-                        newCache.set(currentSessionData.id, sessionMap);
-                        return newCache;
-                    });
-                }
-            } catch (e) {
-                console.error("Failed to load images", e);
-            }
+      setEditingSession(currentSessionData);
+      const cachedMap = sessionImageCache.get(currentSessionData.id);
+      if (!cachedMap || cachedMap.size === 0) {
+        try {
+          const imagesFromDb = await loadSessionImages(currentSessionData.id);
+          if (imagesFromDb && imagesFromDb.length > 0) {
+            setSessionImageCache(prev => {
+              const newCache = new Map(prev);
+              const sessionMap = new Map();
+              imagesFromDb.forEach(img => sessionMap.set(img.id, img.data));
+              newCache.set(currentSessionData.id, sessionMap);
+              return newCache;
+            });
+          }
+        } catch (e) {
+          console.error("Failed to load images", e);
         }
+      }
     }
   };
 
@@ -326,26 +329,30 @@ function App() {
         {/* --- FLOATING TOOLS --- */}
         {currentSessionData && (
           <>
-            <FloatingNotepad 
+            <FloatingNotepad
               isOpen={isNotepadOpen}
               onClose={() => setIsNotepadOpen(false)}
               notes={currentSessionData.notes || ""}
               onSave={handleUpdateNotes}
             />
-            <UnitConverter 
-                isOpen={isConverterOpen} 
-                onClose={() => setIsConverterOpen(false)} 
+            <UnitConverter
+              isOpen={isConverterOpen}
+              onClose={() => setIsConverterOpen(false)}
+            />
+            <ReverseTraceabilityTool
+              isOpen={isTraceabilityOpen}
+              onClose={() => setIsTraceabilityOpen(false)}
             />
           </>
         )}
 
         {/* --- INSTRUMENT BUILDER MODAL --- */}
-        <InstrumentBuilderModal 
-            isOpen={isInstrumentBuilderOpen}
-            onClose={() => setIsInstrumentBuilderOpen(false)}
-            onSave={handleSaveInstrument}
-            onDelete={deleteInstrument}
-            instruments={instruments} 
+        <InstrumentBuilderModal
+          isOpen={isInstrumentBuilderOpen}
+          onClose={() => setIsInstrumentBuilderOpen(false)}
+          onSave={handleSaveInstrument}
+          onDelete={deleteInstrument}
+          instruments={instruments}
         />
 
         {confirmationModal && (
@@ -476,6 +483,14 @@ function App() {
               {/* FLOATING TOOLS ACTIONS */}
               <div className="action-group">
                 <button
+                  className={`icon-action-btn ${isTraceabilityOpen ? "active" : ""}`}
+                  onClick={() => setIsTraceabilityOpen(!isTraceabilityOpen)}
+                  title="Reverse Traceability Tool"
+                >
+                  <FontAwesomeIcon icon={faHistory} />
+                </button>
+
+                <button
                   className={`icon-action-btn ${isNotepadOpen ? "active" : ""}`}
                   onClick={() => setIsNotepadOpen(!isNotepadOpen)}
                   title="Session Notes"
@@ -494,7 +509,7 @@ function App() {
                 {/* --- INSTRUMENT BUILDER --- */}
                 <button
                   className={`icon-action-btn ${isInstrumentBuilderOpen ? "active" : ""}`}
-                  onClick={() => setIsInstrumentBuilderOpen(true)}
+                  onClick={() => setIsInstrumentBuilderOpen(!isInstrumentBuilderOpen)}
                   title="Instrument Builder"
                 >
                   <FontAwesomeIcon icon={faRadio} />
@@ -537,8 +552,8 @@ function App() {
                 {showThemeSelector && (
                   <div className="theme-selector-minimal">
                     <FontAwesomeIcon icon={faPalette} className="theme-icon" />
-                    <select 
-                      value={currentTheme} 
+                    <select
+                      value={currentTheme}
                       onChange={(e) => setCurrentTheme(e.target.value)}
                       className="theme-select-input"
                       title="Change Theme"
@@ -554,8 +569,8 @@ function App() {
                 {/* --- DARK MODE TOGGLE LOGIC --- */}
                 {currentTheme === 'theme-stranger' && !isDarkMode ? (
                   /* CASE 1: Stranger Things Light Mode -> Show EASTER EGG ONLY */
-                  <div 
-                    className="stranger-hint" 
+                  <div
+                    className="stranger-hint"
                     onClick={() => setIsDarkMode(true)}
                     title="Enter the Upside Down"
                   >
@@ -563,7 +578,7 @@ function App() {
                   </div>
                 ) : (
                   /* CASE 2: All Other Modes -> Show Standard Toggle */
-                  <button 
+                  <button
                     className={`icon-action-btn ${isDarkMode ? "active" : ""}`}
                     onClick={() => setIsDarkMode(!isDarkMode)}
                     title="Toggle Dark Mode"
@@ -573,9 +588,8 @@ function App() {
                 )}
               </div>
               <button
-                className={`status-pill ${
-                  dbPath ? "connected" : "disconnected"
-                }`}
+                className={`status-pill ${dbPath ? "connected" : "disconnected"
+                  }`}
                 onClick={dbPath ? disconnectDatabase : selectDatabaseFolder}
                 title={dbPath ? `Connected: ${dbPath}` : "Connect to Database"}
               >
@@ -658,9 +672,8 @@ function App() {
                   <button
                     key={tp.id}
                     onClick={() => setSelectedTestPointId(tp.id)}
-                    className={`measurement-point-item ${
-                      selectedTestPointId === tp.id ? "active" : ""
-                    }`}
+                    className={`measurement-point-item ${selectedTestPointId === tp.id ? "active" : ""
+                      }`}
                     onDoubleClick={() => setEditingTestPoint(tp)}
                     onContextMenu={(e) => {
                       e.preventDefault();

@@ -1,10 +1,67 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import Select from "react-select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrashAlt, faUndo, faCheck, faChartLine } from "@fortawesome/free-solid-svg-icons";
 import * as math from "mathjs";
 import { unitSystem, convertToPPM } from "../../../utils/uncertaintyMath";
 
-// Helper to calculate standard deviation (Sample)
+// --- Unit Category Definitions ---
+const unitCategories = {
+  Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
+  Current: ["A", "mA", "uA", "nA", "pA", "kA"],
+  Resistance: ["Ohm", "kOhm", "MOhm", "mOhm", "GOhm", "TOhm"],
+  Capacitance: ["F", "uF", "nF", "pF", "mF"],
+  Inductance: ["H", "mH", "uH"],
+  Frequency: ["Hz", "kHz", "MHz", "GHz", "THz"],
+  Time: ["s", "ms", "us", "ns", "ps", "min", "hr", "day"],
+  Temperature: ["Cel", "degF", "degC", "K"],
+  Pressure: ["Pa", "kPa", "MPa", "psi", "bar", "mbar", "torr", "inHg"],
+  Length: ["m", "cm", "mm", "um", "nm", "km", "in", "ft", "yd", "mi"],
+  Mass: ["kg", "g", "mg", "ug", "lb", "oz"],
+  Power: ["W", "mW", "kW", "MW", "dBm"],
+};
+
+const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
+  const options = [];
+  const usedUnits = new Set();
+
+  if (referenceUnit && allUnits.includes(referenceUnit)) {
+    let refCategory = "Suggested";
+    for (const [cat, units] of Object.entries(unitCategories)) {
+      if (units.includes(referenceUnit)) {
+        refCategory = cat;
+        break;
+      }
+    }
+    const categoryUnits = unitCategories[refCategory] || [referenceUnit];
+    const prioritizedOptions = categoryUnits
+      .filter((u) => allUnits.includes(u))
+      .map((u) => { usedUnits.add(u); return { value: u, label: u }; });
+    options.push({ label: refCategory, options: prioritizedOptions });
+  }
+
+  Object.entries(unitCategories).forEach(([label, units]) => {
+    if (options.some((opt) => opt.label === label)) return;
+    const groupOptions = units
+      .filter((u) => allUnits.includes(u) && !usedUnits.has(u))
+      .map((u) => { usedUnits.add(u); return { value: u, label: u }; });
+    if (groupOptions.length > 0) options.push({ label, options: groupOptions });
+  });
+
+  const leftovers = allUnits
+    .filter((u) => !usedUnits.has(u) && !["%", "ppm", "dB", "ppb"].includes(u))
+    .map((u) => ({ value: u, label: u }));
+  if (leftovers.length > 0) options.push({ label: "Other", options: leftovers });
+
+  return options;
+};
+
+const portalStyle = {
+  menuPortal: (base) => ({ ...base, zIndex: 99999 }),
+  menu: (base) => ({ ...base, zIndex: 99999 }),
+};
+
+// --- Helper to calculate standard deviation (Sample) ---
 const calculateStats = (values) => {
   if (!values || values.length < 2) return { mean: 0, stdDev: 0, dof: 0 };
   
@@ -21,6 +78,12 @@ const RepeatabilityModal = ({ isOpen, onClose, onSave, uutNominal }) => {
   const [currentInput, setCurrentInput] = useState("");
   const [selectedUnit, setSelectedUnit] = useState(uutNominal?.unit || "V");
   const inputRef = useRef(null);
+
+  // Prepare Unit Options
+  const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
+  const unitOptions = useMemo(() => {
+    return getCategorizedUnitOptions(allUnits, uutNominal?.unit || selectedUnit);
+  }, [allUnits, uutNominal?.unit, selectedUnit]);
 
   // Focus input on open
   useEffect(() => {
@@ -100,7 +163,7 @@ const RepeatabilityModal = ({ isOpen, onClose, onSave, uutNominal }) => {
                 
                 <div className="form-section" style={{margin: 0}}>
                     <label>Add Measurement</label>
-                    <div className="input-group" style={{ gridTemplateColumns: '2fr 1fr 40px', alignItems: 'center' }}>
+                    <div className="input-group" style={{ gridTemplateColumns: '2fr 1.2fr 40px', alignItems: 'center' }}>
                         <input
                             ref={inputRef}
                             type="number"
@@ -111,17 +174,24 @@ const RepeatabilityModal = ({ isOpen, onClose, onSave, uutNominal }) => {
                             placeholder="e.g. 10.001"
                             style={{borderColor: 'var(--primary-color)'}}
                         />
-                        <select 
-                            value={selectedUnit} 
-                            onChange={(e) => setSelectedUnit(e.target.value)}
-                            style={{backgroundColor: 'var(--input-background)'}}
-                        >
-                            <option value={uutNominal?.unit}>{uutNominal?.unit}</option>
-                            {unitSystem.getRelevantUnits(uutNominal?.unit).filter(u => u !== uutNominal?.unit).map(u => (
-                                <option key={u} value={u}>{u}</option>
-                            ))}
-                        </select>
-                        {/* CLEANED UP PLUS ICON: No background, simple icon */}
+                        
+                        <Select
+                            value={
+                                unitOptions
+                                    .flatMap(g => g.options ? g.options : g)
+                                    .find(opt => opt.value === selectedUnit) || { value: selectedUnit, label: selectedUnit }
+                            }
+                            onChange={(option) => setSelectedUnit(option ? option.value : "")}
+                            options={unitOptions}
+                            className="react-select-container"
+                            classNamePrefix="react-select"
+                            placeholder="Unit"
+                            isSearchable={true}
+                            menuPortalTarget={document.body}
+                            menuPosition="fixed"
+                            styles={portalStyle}
+                        />
+
                         <button 
                             onClick={handleAddReading}
                             title="Add Value"
