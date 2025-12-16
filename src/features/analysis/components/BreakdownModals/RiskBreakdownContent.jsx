@@ -17,11 +17,14 @@ const SafeUnit = ({ unit }) => {
 export const InputsBreakdown = ({ results, inputs }) => {
   if (!results || !inputs) return null;
 
+  // Calculate the effective span used by the math engine (centering on tolerance)
   const mid = (inputs.LUp + inputs.LLow) / 2;
-  const LUp_symmetric = Math.abs(inputs.LUp - mid);
+  const effectiveHalfSpan = Math.abs(inputs.LUp - inputs.LLow) / 2;
+  
   const safeNativeUnit =
     results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
-  const zScore = results.uDev > 0 ? LUp_symmetric / results.uDev : 0;
+  
+  const zScore = results.uDev > 0 ? effectiveHalfSpan / results.uDev : 0;
   const reliability = parseFloat(inputs.reliability);
   const p_cumulative = (1 + reliability) / 2;
 
@@ -47,28 +50,34 @@ export const InputsBreakdown = ({ results, inputs }) => {
           Observed (measured) UUT Error (&sigma;<sub>observed</sub>)
         </h5>
         <p>
-          This value is calculated using the EOP reliability (REOP) and the
-          Inverse Normal Distribution Function to determine a Z-Score. The
-          Z-score (number of standard deviations) is found using the Inverse
-          Normal CDF (`Φ⁻¹`, or `probit`) on the cumulative probability `p` (our
-          REOP percentage).
+          This value is calculated using the Reliability Target (R) and the
+          Effective Tolerance Span. 
         </p>
+        
+        <p><strong>1. Determine Z-Score from Reliability:</strong></p>
         <Latex>
           {`$$ p = (1 + R) / 2 = (1 + ${reliability}) / 2 = \\mathbf{${p_cumulative.toFixed(
             4
           )}} $$`}
         </Latex>
         <Latex>
-          {`$$ Z_{\\text{score}} = \\Phi^{-1}(p) = \\Phi^{-1}(${p_cumulative.toFixed(
-            4
-          )}) = \\mathbf{${zScore.toPrecision(4)}} $$`}
+          {`$$Z_{\\text{score}} = \\Phi^{-1}(p) = \\mathbf{${zScore.toPrecision(4)}}$$`}
         </Latex>
+
+        <p style={{marginTop: '10px'}}><strong>2. Determine Effective Half-Span:</strong></p>
+        <p style={{fontSize: '0.9em', color: 'var(--text-color-muted)'}}>
+            Note: The math engine centers the distribution on the tolerance midpoint, 
+            using the half-width of the total span.
+        </p>
         <Latex>
-          {`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} = \\frac{${LUp_symmetric.toPrecision(
+            {`$$L_{eff} = \\frac{L_{Up} - L_{Low}}{2} = \\frac{${inputs.LUp.toPrecision(6)} - (${inputs.LLow.toPrecision(6)})}{2} = \\mathbf{${effectiveHalfSpan.toPrecision(6)}}$$`}
+        </Latex>
+
+        <p style={{marginTop: '10px'}}><strong>3. Calculate Observed Error:</strong></p>
+        <Latex>
+          {`$$ \\sigma_{observed} = \\frac{L_{eff}}{Z_{score}} = \\frac{${effectiveHalfSpan.toPrecision(
             6
-          )}}{\\Phi^{-1}((1+${
-            inputs.reliability
-          })/2)} = \\mathbf{${results.uDev.toPrecision(
+          )}}{${zScore.toPrecision(4)}} = \\mathbf{${results.uDev.toPrecision(
             6
           )}} \\text{ ${safeNativeUnit}} $$`}
         </Latex>
@@ -95,7 +104,7 @@ export const InputsBreakdown = ({ results, inputs }) => {
 
       <div className="breakdown-step">
         <h5>UUT Tolerance Limits (L)</h5>
-        <p>The specified tolerance limits for the Unit Under Test (UUT).</p>
+        <p>The specified absolute tolerance limits.</p>
         <Latex>
           {`$$ L_{Low} = \\mathbf{${parseFloat(inputs.LLow).toPrecision(
             6
@@ -111,27 +120,21 @@ export const InputsBreakdown = ({ results, inputs }) => {
       <div className="breakdown-step">
         <h5>Acceptance Limits (A)</h5>
         <p>
-          Calculated by applying the Guard Band Multiplier to the tolerance
-          limits.
+          For Standard Risk Analysis (Non-Guardbanded), the Acceptance Limits are equal to the UUT Tolerance Limits.
         </p>
         <Latex>
-          {`$$ A_{Low} = L_{Low} \\times G = ${parseFloat(
-            inputs.LLow
-          ).toPrecision(6)} \\times ${
-            inputs.guardBandMultiplier
-          } = \\mathbf{${results.ALow.toPrecision(
+          {`$$ A_{Low} = L_{Low} = \\mathbf{${results.ALow.toPrecision(
             6
           )}} \\text{ ${safeNativeUnit}} $$`}
         </Latex>
         <Latex>
-          {`$$ A_{Up} = L_{Up} \\times G = ${parseFloat(inputs.LUp).toPrecision(
-            6
-          )} \\times ${
-            inputs.guardBandMultiplier
-          } = \\mathbf{${results.AUp.toPrecision(
+          {`$$ A_{Up} = L_{Up} = \\mathbf{${results.AUp.toPrecision(
             6
           )}} \\text{ ${safeNativeUnit}} $$`}
         </Latex>
+        <p style={{fontSize: "0.85rem", fontStyle: "italic", marginTop: "5px"}}>
+           Note: To see limits adjusted for Guardbanding, view the "Guardband Analysis" breakdowns.
+        </p>
       </div>
 
       <div className="breakdown-step">
@@ -356,9 +359,15 @@ export const PfaBreakdown = ({ results, inputs }) => {
 
   // Z-Scores (Normalized Limits)
   const z_x_low = LLow_norm / results.uUUT;
-  const z_x_high = LUp_norm / results.uUUT; // The "true" positive Z-score for LUp
+  const z_x_high = LUp_norm / results.uUUT; 
   const z_y_low = ALow_norm / results.uDev;
   const z_y_high = AUp_norm / results.uDev;
+
+  // --- Calc variables for Observed Error breakdown ---
+  const effectiveHalfSpan = Math.abs(inputs.LUp - inputs.LLow) / 2;
+  const reliability = parseFloat(inputs.reliability);
+  const p_cumulative = (1 + reliability) / 2;
+  const zScoreObs = results.uDev > 0 ? effectiveHalfSpan / results.uDev : 0;
 
   const safeNativeUnit =
     results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
@@ -373,7 +382,7 @@ export const PfaBreakdown = ({ results, inputs }) => {
           calculated using the Bivariate Normal Cumulative Distribution Function
           (Φ₂).
         </p>
-        <Latex>{"$$ PFA = PFA_{Lower} + PFA_{Upper} $$"}</Latex>
+        <Latex>{"$$PFA = PFA_{Lower} + PFA_{Upper}$$"}</Latex>
       </div>
       <div className="breakdown-step">
         <h5>Step 2: Key Statistical Inputs</h5>
@@ -384,14 +393,16 @@ export const PfaBreakdown = ({ results, inputs }) => {
             <strong>
               {results.uUUT.toPrecision(4)} {safeNativeUnit}
             </strong>
-            <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
+            <Latex>{`$$\\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2}$$`}</Latex>
           </li>
           <li>
-            Observed Error (σ<sub>obs</sub>):{" "}
+            <div style={{marginBottom: '5px'}}>Observed Error (σ<sub>obs</sub>):{" "}
             <strong>
               {results.uDev.toPrecision(4)} {safeNativeUnit}
-            </strong>
-            <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
+            </strong></div>
+            <Latex>{`$$ L_{eff} = \\frac{L_{Up} - L_{Low}}{2} = ${effectiveHalfSpan.toPrecision(4)} $$`}</Latex>
+            <Latex>{`$$ Z_{score} = \\Phi^{-1}(\\frac{1+${reliability}}{2}) = ${zScoreObs.toPrecision(4)} $$`}</Latex>
+            <Latex>{`$$\\sigma_{observed} = \\frac{L_{eff}}{Z_{score}} = \\frac{${effectiveHalfSpan.toPrecision(4)}}{${zScoreObs.toPrecision(4)}} = \\mathbf{${results.uDev.toPrecision(4)}}$$`}</Latex>
           </li>
           <li>
             Correlation (ρ):{" "}
@@ -452,10 +463,10 @@ export const PfaBreakdown = ({ results, inputs }) => {
         </p>
         <Latex>
           {
-            "$$ P(z_x < z_{x\\_low} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+            "$$P(z_x < z_{x\\_low} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high})$$"
           }
         </Latex>
-        <Latex>{`$$ = \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
+        <Latex>{`$$= \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho)$$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_high.toFixed(
           2
         )}, ${results.correlation.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
@@ -471,14 +482,14 @@ export const PfaBreakdown = ({ results, inputs }) => {
         </p>
         <Latex>
           {
-            "$$ P(z_x > z_{x\\_high} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+            "$$P(z_x > z_{x\\_high} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high})$$"
           }
         </Latex>
         <p>
           Calculated using symmetry:{" "}
-          <Latex>{`$$ = P(z_x < -z_{x\\_high} \\text{ and } -z_{y\\_high} < z_y < -z_{y\\_low}) $$`}</Latex>
+          <Latex>{`$$= P(z_x < -z_{x\\_high} \\text{ and } -z_{y\\_high} < z_y < -z_{y\\_low})$$ `}</Latex>
         </p>
-        <Latex>{`$$ = \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
+        <Latex>{`$$= \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho)$$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_low.toFixed(
           2
         )}, ${results.correlation.toFixed(
@@ -492,7 +503,7 @@ export const PfaBreakdown = ({ results, inputs }) => {
       </div>
       <div className="breakdown-step">
         <h5>Step 5: Final PFA</h5>
-        <Latex>{`$$ PFA = PFA_{Lower} + PFA_{Upper} $$`}</Latex>
+        <Latex>{`$$PFA = PFA_{Lower} + PFA_{Upper}$$`}</Latex>
         <Latex>{`$$ = ${(results.pfa_term1 / 100).toExponential(4)} + ${(
           results.pfa_term2 / 100
         ).toExponential(4)} = \\mathbf{${(results.pfa / 100).toExponential(
@@ -524,6 +535,11 @@ export const PfrBreakdown = ({ results, inputs }) => {
   const z_y_low = ALow_norm / results.uDev;
   const z_y_high = AUp_norm / results.uDev;
 
+  // --- Calc variables for Observed Error breakdown ---
+  const effectiveHalfSpan = Math.abs(inputs.LUp - inputs.LLow) / 2;
+  const reliability = parseFloat(inputs.reliability);
+  const zScoreObs = results.uDev > 0 ? effectiveHalfSpan / results.uDev : 0;
+
   const safeNativeUnit =
     results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
 
@@ -537,15 +553,15 @@ export const PfrBreakdown = ({ results, inputs }) => {
           calculated using the Bivariate Normal Cumulative Distribution Function
           (Φ₂).
         </p>
-        <Latex>{"$$ PFR = PFR_{Lower} + PFR_{Upper} $$"}</Latex>
+        <Latex>{"$$PFR = PFR_{Lower} + PFR_{Upper}$$"}</Latex>
         <Latex>
           {
-            "$$ PFR_{Lower} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} < A_{Low}) $$"
+            "$$PFR_{Lower} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} < A_{Low})$$"
           }
         </Latex>
         <Latex>
           {
-            "$$ PFR_{Upper} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} > A_{Up}) $$"
+            "$$PFR_{Upper} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} > A_{Up})$$"
           }
         </Latex>
       </div>
@@ -558,14 +574,16 @@ export const PfrBreakdown = ({ results, inputs }) => {
             <strong>
               {results.uUUT.toPrecision(4)} {safeNativeUnit}
             </strong>
-            <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
+            <Latex>{`$$\\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2}$$`}</Latex>
           </li>
           <li>
-            Observed Error (σ<sub>obs</sub>):{" "}
+            <div style={{marginBottom: '5px'}}>Observed Error (σ<sub>obs</sub>):{" "}
             <strong>
               {results.uDev.toPrecision(4)} {safeNativeUnit}
-            </strong>
-            <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
+            </strong></div>
+            <Latex>{`$$ L_{eff} = \\frac{L_{Up} - L_{Low}}{2} = ${effectiveHalfSpan.toPrecision(4)} $$`}</Latex>
+            <Latex>{`$$ Z_{score} = \\Phi^{-1}(\\frac{1+${reliability}}{2}) = ${zScoreObs.toPrecision(4)} $$`}</Latex>
+            <Latex>{`$$\\sigma_{observed} = \\frac{L_{eff}}{Z_{score}} = \\frac{${effectiveHalfSpan.toPrecision(4)}}{${zScoreObs.toPrecision(4)}} = \\mathbf{${results.uDev.toPrecision(4)}}$$`}</Latex>
           </li>
           <li>
             Correlation (ρ):{" "}
@@ -626,10 +644,10 @@ export const PfrBreakdown = ({ results, inputs }) => {
         </p>
         <Latex>
           {
-            "$$ P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y < z_{y\\_low}) $$"
+            "$$P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y < z_{y\\_low})$$"
           }
         </Latex>
-        <Latex>{`$$ = \\Phi_2(z_{x\\_high}, z_{y\\_low}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
+        <Latex>{`$$= \\Phi_2(z_{x\\_high}, z_{y\\_low}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho)$$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${z_x_high.toFixed(2)}, ${z_y_low.toFixed(
           2
         )}, ${results.correlation.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
@@ -645,14 +663,14 @@ export const PfrBreakdown = ({ results, inputs }) => {
         </p>
         <Latex>
           {
-            "$$ P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y > z_{y\\_high}) $$"
+            "$$P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y > z_{y\\_high})$$"
           }
         </Latex>
         <p>
           Calculated using symmetry:{" "}
-          <Latex>{`$$ = P(-z_{x\\_high} < z_x < -z_{x\\_low} \\text{ and } z_y < -z_{y\\_high}) $$`}</Latex>
+          <Latex>{ `$$= P(-z_{x\\_high} < z_x < -z_{x\\_low} \\text{ and } z_y < -z_{y\\_high})$$ `}</Latex>
         </p>
-        <Latex>{`$$ = \\Phi_2(-z_{x\\_low}, -z_{y\\_high}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
+        <Latex>{`$$= \\Phi_2(-z_{x\\_low}, -z_{y\\_high}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho)$$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${-z_x_low.toFixed(2)}, ${-z_y_high.toFixed(
           2
         )}, ${results.correlation.toFixed(
@@ -666,7 +684,7 @@ export const PfrBreakdown = ({ results, inputs }) => {
       </div>
       <div className="breakdown-step">
         <h5>Step 5: Final PFR</h5>
-        <Latex>{`$$ PFR = PFR_{Lower} + PFR_{Upper} $$`}</Latex>
+        <Latex>{`$$PFR = PFR_{Lower} + PFR_{Upper}$$`}</Latex>
         <Latex>{`$$ = ${(results.pfr_term1 / 100).toExponential(4)} + ${(
           results.pfr_term2 / 100
         ).toExponential(4)} = \\mathbf{${(results.pfr / 100).toExponential(
@@ -843,30 +861,35 @@ export const GBHighBreakdown = ({ inputs, results }) => {
 export const GBPFABreakdown = ({ inputs, results }) => {
   if (!results || !inputs) return null;
 
-  const mid = (inputs.LUp + inputs.LLow) / 2;
+  // Use Guardband Limits for Normalization in this Breakdown
+  const mid = (results.gbResults.GBUP + results.gbResults.GBLOW) / 2;
   const LLow_norm = inputs.LLow - mid;
   const LUp_norm = inputs.LUp - mid;
   const ALow_norm = results.gbResults.GBLOW - mid;
   const AUp_norm = results.gbResults.GBUP - mid;
 
   const z_x_low = LLow_norm / results.gbResults.GBPFAUUUT;
-  const z_x_high = LUp_norm / results.gbResults.GBPFAUUUT; // The "true" positive Z-score for LUp
+  const z_x_high = LUp_norm / results.gbResults.GBPFAUUUT; 
   const z_y_low = ALow_norm / results.gbResults.GBPFAUDEV;
   const z_y_high = AUp_norm / results.gbResults.GBPFAUDEV;
 
+  // Calculate effective half-span using GUARDBAND limits
+  // This matches the math engine's basis for the GB sigma_obs calculation
+  const effectiveHalfSpan = Math.abs(results.gbResults.GBUP - results.gbResults.GBLOW) / 2;
+  const reliability = parseFloat(inputs.reliability);
+  const zScoreObs = results.gbResults.GBPFAUDEV > 0 ? effectiveHalfSpan / results.gbResults.GBPFAUDEV : 0;
+
   const safeNativeUnit =
     results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
+
   return (
     <div className="modal-body-scrollable">
       <div className="breakdown-step">
         <h5>Step 1: Formula</h5>
         <p>
-          The Probability of False Accept (PFA) is the sum of the probabilities
-          in the two "False Accept" regions of the risk scatterplot. This is
-          calculated using the Bivariate Normal Cumulative Distribution Function
-          (Φ₂).
+          The Probability of False Accept (PFA) with Guardband uses the <strong>Guardband Limits</strong> as the basis for calculating the observed process error.
         </p>
-        <Latex>{"$$ PFA = PFA_{Lower} + PFA_{Upper} $$"}</Latex>
+        <Latex>{"$$PFA = PFA_{Lower} + PFA_{Upper}$$"}</Latex>
       </div>
       <div className="breakdown-step">
         <h5>Step 2: Key Statistical Inputs</h5>
@@ -877,14 +900,18 @@ export const GBPFABreakdown = ({ inputs, results }) => {
             <strong>
               {results.gbResults.GBPFAUUUT.toPrecision(4)} {safeNativeUnit}
             </strong>
-            <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
           </li>
           <li>
-            Observed Error (σ<sub>obs</sub>):{" "}
+            <div style={{marginBottom: '5px'}}>Observed Error (σ<sub>obs</sub>):{" "}
             <strong>
               {results.gbResults.GBPFAUDEV.toPrecision(4)} {safeNativeUnit}
-            </strong>
-            <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
+            </strong></div>
+            <p style={{fontSize: '0.9em', color: 'var(--text-color-muted)'}}>
+                For Guardband PFA, sigma is derived using the Guardband Span:
+            </p>
+            <Latex>{`$$L_{eff(GB)} = \\frac{GB_{Up} - GB_{Low}}{2} = ${effectiveHalfSpan.toPrecision(4)}$$`}</Latex>
+            <Latex>{`$$Z_{score} = \\Phi^{-1}(\\frac{1+${reliability}}{2}) = ${zScoreObs.toPrecision(4)}$$`}</Latex>
+            <Latex>{`$$\\sigma_{observed} = \\frac{L_{eff(GB)}}{Z_{score}} = \\frac{${effectiveHalfSpan.toPrecision(4)}}{${zScoreObs.toPrecision(4)}} = \\mathbf{${results.gbResults.GBPFAUDEV.toPrecision(4)}}$$`}</Latex>
           </li>
           <li>
             Correlation (ρ):{" "}
@@ -945,10 +972,10 @@ export const GBPFABreakdown = ({ inputs, results }) => {
         </p>
         <Latex>
           {
-            "$$ P(z_x < z_{x\\_low} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+            "$$P(z_x < z_{x\\_low} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high})$$"
           }
         </Latex>
-        <Latex>{`$$ = \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
+        <Latex>{`$$= \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho)$$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_high.toFixed(
           2
         )}, ${results.gbResults.GBPFACOR.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
@@ -964,14 +991,14 @@ export const GBPFABreakdown = ({ inputs, results }) => {
         </p>
         <Latex>
           {
-            "$$ P(z_x > z_{x\\_high} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high}) $$"
+            "$$P(z_x > z_{x\\_high} \\text{ and } z_{y\\_low} < z_y < z_{y\\_high})$$"
           }
         </Latex>
         <p>
           Calculated using symmetry:{" "}
-          <Latex>{`$$ = P(z_x < -z_{x\\_high} \\text{ and } -z_{y\\_high} < z_y < -z_{y\\_low}) $$`}</Latex>
+          <Latex>{ `$$= P(z_x < -z_{x\\_high} \\text{ and } -z_{y\\_high} < z_y < -z_{y\\_low})$$ `}</Latex>
         </p>
-        <Latex>{`$$ = \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
+        <Latex>{`$$= \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho)$$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_low.toFixed(
           2
         )}, ${results.gbResults.GBPFACOR.toFixed(
@@ -985,7 +1012,7 @@ export const GBPFABreakdown = ({ inputs, results }) => {
       </div>
       <div className="breakdown-step">
         <h5>Step 5: Final PFA</h5>
-        <Latex>{`$$ PFA = PFA_{Lower} + PFA_{Upper} $$`}</Latex>
+        <Latex>{`$$PFA = PFA_{Lower} + PFA_{Upper}$$`}</Latex>
         <Latex>{`$$ = ${(results.gbResults.GBPFAT1 / 100).toExponential(4)} + ${(
           results.gbResults.GBPFAT2 / 100
         ).toExponential(4)} = \\mathbf{${(results.gbResults.GBPFA / 100).toExponential(
@@ -997,23 +1024,26 @@ export const GBPFABreakdown = ({ inputs, results }) => {
       </div>
     </div>
   );
-
 };
 
 export const GBPFRBreakdown = ({ inputs, results }) => {
   if (!results || !inputs) return null;
 
-  const mid = (inputs.LUp + inputs.LLow) / 2;
+  const mid = (results.gbResults.GBUP + results.gbResults.GBLOW) / 2;
   const LLow_norm = inputs.LLow - mid;
   const LUp_norm = inputs.LUp - mid;
   const ALow_norm = results.gbResults.GBLOW - mid;
   const AUp_norm = results.gbResults.GBUP - mid;
 
-  // Z-Scores (Normalized Limits)
   const z_x_low = LLow_norm / results.gbResults.GBPFAUUUT;
-  const z_x_high = LUp_norm / results.gbResults.GBPFAUUUT; // The "true" positive Z-score for LUp
+  const z_x_high = LUp_norm / results.gbResults.GBPFAUUUT;
   const z_y_low = ALow_norm / results.gbResults.GBPFAUDEV;
   const z_y_high = AUp_norm / results.gbResults.GBPFAUDEV;
+
+  // Use Guardband Limits for Normalization in this Breakdown
+  const effectiveHalfSpan = Math.abs(results.gbResults.GBUP - results.gbResults.GBLOW) / 2;
+  const reliability = parseFloat(inputs.reliability);
+  const zScoreObs = results.gbResults.GBPFAUDEV > 0 ? effectiveHalfSpan / results.gbResults.GBPFAUDEV : 0;
 
   const safeNativeUnit =
     results.nativeUnit === "%" ? "\\%" : results.nativeUnit || "units";
@@ -1028,15 +1058,15 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
           calculated using the Bivariate Normal Cumulative Distribution Function
           (Φ₂).
         </p>
-        <Latex>{"$$ PFR = PFR_{Lower} + PFR_{Upper} $$"}</Latex>
+        <Latex>{"$$PFR = PFR_{Lower} + PFR_{Upper}$$"}</Latex>
         <Latex>
           {
-            "$$ PFR_{Lower} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} < A_{Low}) $$"
+            "$$PFR_{Lower} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} < A_{Low})$$"
           }
         </Latex>
         <Latex>
           {
-            "$$ PFR_{Upper} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} > A_{Up}) $$"
+            "$$PFR_{Upper} = P(L_{Low} < \\text{True} < L_{Up} \\text{ and Measured} > A_{Up})$$"
           }
         </Latex>
       </div>
@@ -1049,14 +1079,18 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
             <strong>
               {results.gbResults.GBPFAUUUT.toPrecision(4)} {safeNativeUnit}
             </strong>
-            <Latex>{`$$ \\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2} $$`}</Latex>
           </li>
           <li>
-            Observed Error (σ<sub>obs</sub>):{" "}
+            <div style={{marginBottom: '5px'}}>Observed Error (σ<sub>obs</sub>):{" "}
             <strong>
               {results.gbResults.GBPFAUDEV.toPrecision(4)} {safeNativeUnit}
-            </strong>
-            <Latex>{`$$ \\sigma_{observed} = \\frac{L_{Upper}}{\\Phi^{-1}((1+R)/2)} $$`}</Latex>
+            </strong></div>
+             <p style={{fontSize: '0.9em', color: 'var(--text-color-muted)'}}>
+                For Guardband PFR, sigma is derived using the Guardband Span:
+            </p>
+            <Latex>{`$$L_{eff(GB)} = \\frac{GB_{Up} - GB_{Low}}{2} = ${effectiveHalfSpan.toPrecision(4)}$$`}</Latex>
+            <Latex>{`$$Z_{score} = \\Phi^{-1}(\\frac{1+${reliability}}{2}) = ${zScoreObs.toPrecision(4)}$$`}</Latex>
+            <Latex>{`$$\\sigma_{observed} = \\frac{L_{eff(GB)}}{Z_{score}} = \\frac{${effectiveHalfSpan.toPrecision(4)}}{${zScoreObs.toPrecision(4)}} = \\mathbf{${results.gbResults.GBPFAUDEV.toPrecision(4)}}$$`}</Latex>
           </li>
           <li>
             Correlation (ρ):{" "}
@@ -1117,10 +1151,10 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
         </p>
         <Latex>
           {
-            "$$ P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y < z_{y\\_low}) $$"
+            "$$P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y < z_{y\\_low})$$"
           }
         </Latex>
-        <Latex>{`$$ = \\Phi_2(z_{x\\_high}, z_{y\\_low}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho) $$`}</Latex>
+        <Latex>{`$$= \\Phi_2(z_{x\\_high}, z_{y\\_low}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho)$$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${z_x_high.toFixed(2)}, ${z_y_low.toFixed(
           2
         )}, ${results.gbResults.GBPFACOR.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
@@ -1136,14 +1170,14 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
         </p>
         <Latex>
           {
-            "$$ P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y > z_{y\\_high}) $$"
+            "$$P(z_{x\\_low} < z_x < z_{x\\_high} \\text{ and } z_y > z_{y\\_high})$$"
           }
         </Latex>
         <p>
           Calculated using symmetry:{" "}
-          <Latex>{`$$ = P(-z_{x\\_high} < z_x < -z_{x\\_low} \\text{ and } z_y < -z_{y\\_high}) $$`}</Latex>
+          <Latex>{ `$$= P(-z_{x\\_high} < z_x < -z_{x\\_low} \\text{ and } z_y < -z_{y\\_high})$$ `}</Latex>
         </p>
-        <Latex>{`$$ = \\Phi_2(-z_{x\\_low}, -z_{y\\_high}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho) $$`}</Latex>
+        <Latex>{`$$= \\Phi_2(-z_{x\\_low}, -z_{y\\_high}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho)$$`}</Latex>
         <Latex>{`$$ = \\Phi_2(${-z_x_low.toFixed(2)}, ${-z_y_high.toFixed(
           2
         )}, ${results.gbResults.GBPFACOR.toFixed(
@@ -1157,7 +1191,7 @@ export const GBPFRBreakdown = ({ inputs, results }) => {
       </div>
       <div className="breakdown-step">
         <h5>Step 5: Final PFR</h5>
-        <Latex>{`$$ PFR = PFR_{Lower} + PFR_{Upper} $$`}</Latex>
+        <Latex>{`$$PFR = PFR_{Lower} + PFR_{Upper}$$`}</Latex>
         <Latex>{`$$ = ${(results.gbResults.GBPFRT1 / 100).toExponential(4)} + ${(
           results.gbResults.GBPFRT2 / 100
         ).toExponential(4)} = \\mathbf{${(results.gbResults.GBPFR / 100).toExponential(
