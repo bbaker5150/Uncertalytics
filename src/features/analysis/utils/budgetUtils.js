@@ -32,11 +32,6 @@ export const getBudgetComponentsFromTolerance = (
   toleranceObject,
   referenceMeasurementPoint
 ) => {
-  // --- DEBUG: Entry Log ---
-  if (toleranceObject?.name) { // Only log identified TMDEs to reduce noise
-    console.groupCollapsed(`DEBUG: Budget Calc for "${toleranceObject.name}"`);
-    console.log("Inputs:", { toleranceObject, referenceMeasurementPoint });
-  }
 
   if (
     !toleranceObject ||
@@ -64,14 +59,6 @@ export const getBudgetComponentsFromTolerance = (
     // --- DEBUG: Component Check ---
     if (!tolComp && !isResolution) return;
 
-    // Log the raw component data being processed
-    if (toleranceObject.name) {
-       console.log(`Processing Component: [${name}]`, { 
-           tolComp, 
-           baseValueForRelative, 
-           isResolution 
-       });
-    }
 
     let halfSpanPPM, u_i_native, unit_native;
     const distributionDivisor = isResolution
@@ -95,10 +82,6 @@ export const getBudgetComponentsFromTolerance = (
       const low = parseFloat(tolComp?.low || -high);
       
       const halfSpan = (high - low) / 2;
-      
-      if (toleranceObject.name) {
-          console.log(`  -> Span Calc: High=${high}, Low=${low} (Parsed from ${tolComp?.low}), HalfSpan=${halfSpan}`);
-      }
 
       if (halfSpan === 0) {
           if (toleranceObject.name) console.warn(`  -> SKIPPED: HalfSpan is 0`);
@@ -162,10 +145,6 @@ export const getBudgetComponentsFromTolerance = (
 
   processComponent(toleranceObject.readings_iv, "Readings (IV)", nominalValue);
 
-  // DEBUG: Explicitly log Range Value passing
-  if (toleranceObject.name) {
-      console.log(`Checking Range Value:`, toleranceObject.range?.value);
-  }
   processComponent(
     toleranceObject.range,
     "Range",

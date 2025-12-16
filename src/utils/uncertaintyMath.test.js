@@ -1,7 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import * as um from './uncertaintyMath';
 
 describe('uncertaintyMath.js', () => {
+
+  // Clean up mocks (like console.error spies) after every test
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   // ==========================================
   // 1. Unit Systems & Helpers
@@ -261,6 +266,189 @@ describe('uncertaintyMath.js', () => {
     it('returns null if out of all ranges', () => {
       const res = um.findInstrumentTolerance(mockInstrument, '500', 'V');
       expect(res).toBeNull();
+    });
+  });
+
+  // ==========================================
+  // 7. Derived Uncertainty (Equation Parsing)
+  // ==========================================
+  describe('calculateDerivedUncertainty', () => {
+    it('calculates Ohm\'s Law (V = I * R) correctly', () => {
+      const equation = 'V = I * R';
+      const variableMappings = { I: 'current', R: 'resistance' };
+      const tmdeTolerances = [
+        { 
+          variableType: 'current', 
+          measurementPoint: { value: '2', unit: 'A' },
+          quantity: 1,
+          reading: { high: '1', unit: '%' } // 1% of 2A = 0.02A
+        },
+        { 
+          variableType: 'resistance', 
+          measurementPoint: { value: '10', unit: 'Ohm' },
+          quantity: 1,
+          reading: { high: '1', unit: '%' } // 1% of 10Ohm = 0.1Ohm
+        }
+      ];
+
+      const result = um.calculateDerivedUncertainty(equation, variableMappings, tmdeTolerances);
+
+      expect(result.error).toBeNull();
+      // Nominal: 2 * 10 = 20
+      expect(result.nominalResult).toBe(20);
+      // Sensitivity check: dV/dI = R = 10; dV/dR = I = 2
+      const breakdownI = result.breakdown.find(b => b.variable === 'I');
+      expect(breakdownI.ci).toBe(10); 
+      expect(breakdownI.nominal).toBe(2);
+    });
+
+    it('returns an error for invalid syntax', () => {
+      // Silence console.error for this expected failure
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      
+      const result = um.calculateDerivedUncertainty('V = I *', { I: 'x' }, []);
+      
+      expect(result.error).toBeDefined();
+      expect(consoleSpy).toHaveBeenCalled(); 
+    });
+
+    it('handles missing variable mappings gracefully', () => {
+       // Silence console.error for this expected failure
+       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+       const result = um.calculateDerivedUncertainty('y = m * x + b', { m: 'slope' }, []); 
+       
+       expect(result.error).toContain('Missing TMDE assignments');
+       expect(consoleSpy).toHaveBeenCalled();
+    });
+  });
+
+  // ==========================================
+  // 8. Statistical Core Functions (Normal & Bivariate)
+  // ==========================================
+  describe('Statistical Core Functions', () => {
+    describe('InvNormalDistribution (Probit)', () => {
+      it('returns correct z-scores for standard probabilities', () => {
+        expect(um.InvNormalDistribution(0.5)).toBeCloseTo(0, 5);
+        expect(um.InvNormalDistribution(0.84134)).toBeCloseTo(1.0, 3); // 1 Sigma
+        expect(um.InvNormalDistribution(0.97725)).toBeCloseTo(2.0, 3); // 2 Sigma
+        expect(um.InvNormalDistribution(0.99865)).toBeCloseTo(3.0, 3); // 3 Sigma
+      });
+
+      it('handles edge cases (0 and 1)', () => {
+        expect(um.InvNormalDistribution(0)).toBeLessThan(-100); // -Infinity approx
+        expect(um.InvNormalDistribution(1)).toBeGreaterThan(100); // Infinity approx
+      });
+    });
+
+    describe('bivariateNormalCDF', () => {
+      it('calculates volume under 2D gaussian', () => {
+        // No correlation, independent events
+        const res = um.bivariateNormalCDF(0, 0, 0); 
+        // P(x<0) * P(y<0) = 0.5 * 0.5 = 0.25
+        expect(res).toBeCloseTo(0.25, 3);
+      });
+
+      it('handles high correlation (r > 0.7)', () => {
+        const val = um.bivariateNormalCDF(0, 0, 0.9);
+        // Positive correlation increases overlap volume in the quadrant
+        expect(val).toBeGreaterThan(0.25); 
+      });
+
+      it('handles negative correlation (r < -0.7)', () => {
+        const val = um.bivariateNormalCDF(0, 0, -0.9);
+        expect(val).toBeLessThan(0.25);
+      });
+    });
+  });
+
+  // ==========================================
+  // 9. Risk Management Managers (Guard Banding)
+  // ==========================================
+  describe('Risk Management Managers', () => {
+    it('gbLowMgr calculates guard band for low limit', () => {
+      // Nominal 10, TolLow 9, TolHigh 11. (Span +/- 1)
+      // MeasUnc 0.3, MeasRel 0.90 => Valid UUT, Valid PFA > 0
+      // Strict Req (0.0001) => Force Guard Band
+      const res = um.gbLowMgr(
+        '0.0001', // Max PFA 0.01%
+        '10', '10', '9', '11', '0.3', '0.90'
+      );
+      // Result should be [NewLimit, Multiplier]
+      expect(Array.isArray(res)).toBe(true);
+      // Expect multiplier to reduce range (be < 1)
+      expect(res[1]).toBeLessThan(1);
+      // Expect new low limit to be higher than 9 (tighter)
+      expect(res[0]).toBeGreaterThan(9); 
+    });
+
+    it('gbUpMgr calculates guard band for upper limit', () => {
+      // Nominal 10, TolLow 9, TolHigh 11. (Span +/- 1)
+      const res = um.gbUpMgr(
+        '0.0001', // Max PFA 0.01%
+        '10', '10', '9', '11', '0.3', '0.90'
+      );
+      expect(Array.isArray(res)).toBe(true);
+      // Expect new upper limit to be lower than 11 (tighter)
+      expect(res[0]).toBeLessThan(11);
+    });
+
+    it('GBMultMgr calculates simple multiplier percentage', () => {
+        // 10V +/- 1V (9 to 11)
+        // Guard banded to +/- 0.9V (9.1 to 10.9)
+        // Multiplier = 0.9 / 1.0 = 0.9
+        const res = um.GBMultMgr('0', '10', '10', '9', '11', '9.1', '10.9');
+        expect(res).toBeCloseTo(0.9);
+    });
+  });
+
+  // ==========================================
+  // 10. Advanced Risk Managers (CalInt, CalRel)
+  // ==========================================
+  describe('Advanced Risk Managers', () => {
+    // Scenario: Nominal 10, Tol +/- 1 (9-11). Meas Unc 0.25 (TUR 4:1). 
+    // High reliability required.
+    const args = [
+        '10', '10',     // Nom, Avg
+        '9', '11',      // Low, High
+        '0.25',         // Meas Unc
+        '0.95',         // Req Rel (95%)
+        '0.98',         // Meas Rel (Observed Reliability - high)
+        '4', '4',       // TUR, ReqTUR
+        '12',           // Interval (months)
+        '0.02'          // Max PFA (2%)
+    ];
+
+    it('CalIntMgr calculates adjusted interval', () => {
+        // High observed reliability (0.98) vs required (0.95) should extend interval > 12
+        const res = um.CalIntMgr(...args);
+        expect(Array.isArray(res)).toBe(true);
+        expect(res[0]).toBeGreaterThan(12); // New interval
+    });
+
+    it('CalRelMgr calculates reliability target', () => {
+        const res = um.CalRelMgr(...args);
+        expect(Array.isArray(res)).toBe(true);
+        expect(res[0]).toBeGreaterThan(0.9); // Pred Rel
+    });
+
+    it('calcTAR calculates Test Accuracy Ratio', () => {
+        // Tol +/- 1. STD +/- 0.25. TAR = 1 / 0.25 = 4
+        const tar = um.calcTAR('10', '10', '9', '11', '9.75', '10.25');
+        expect(tar).toBeCloseTo(4);
+    });
+
+    it('PFAwGBMgr handles Guard Banded PFA', () => {
+        // Check PFA with a guard band applied
+        const res = um.PFAwGBMgr(
+            '10', '10', 
+            '9', '11', 
+            '0.25', '0.98', 
+            '9.1', '10.9' // Guard banded limits
+        );
+        expect(Array.isArray(res)).toBe(true);
+        // PFA should be very small
+        expect(res[0]).toBeLessThan(0.01);
     });
   });
 

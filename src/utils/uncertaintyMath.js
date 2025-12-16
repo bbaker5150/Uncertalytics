@@ -392,15 +392,6 @@ export const calculateUncertaintyFromToleranceObject = (
     toleranceObject,
     referenceMeasurementPoint
   ) => {
-    // DEBUG LOG 5: Check what the calculator receives
-    if (toleranceObject.name) { // Only log named items (TMDEs) to reduce noise
-        console.log(`DEBUG: [CalcUnc] Processing "${toleranceObject.name}"`);
-        if (toleranceObject.range) {
-             console.log(`DEBUG: [CalcUnc] Range Object:`, toleranceObject.range);
-             console.log(`DEBUG: [CalcUnc] Range Full Scale Value: ${toleranceObject.range.value}`);
-             if (!toleranceObject.range.value) console.error("DEBUG: [CalcUnc] Range Value is Missing! Calculation will fail.");
-        }
-    }
 
     if (
       !toleranceObject ||
