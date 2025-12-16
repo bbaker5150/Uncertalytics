@@ -1,9 +1,61 @@
 import * as math from 'mathjs';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import Select from 'react-select'; // Import React Select
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import { unitSystem } from '../../../utils/uncertaintyMath';
 import NotificationModal from '../../../components/modals/NotificationModal';
+
+// --- Unit Categories (Consistent with App) ---
+const unitCategories = {
+    Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
+    Current: ["A", "mA", "uA", "nA", "pA", "kA"],
+    Resistance: ["Ohm", "kOhm", "MOhm", "mOhm", "GOhm", "TOhm"],
+    Capacitance: ["F", "uF", "nF", "pF", "mF"],
+    Inductance: ["H", "mH", "uH"],
+    Frequency: ["Hz", "kHz", "MHz", "GHz", "THz"],
+    Time: ["s", "ms", "us", "ns", "ps", "min", "hr", "day"],
+    Temperature: ["Cel", "degF", "degC", "K"],
+    Pressure: ["Pa", "kPa", "MPa", "psi", "bar", "mbar", "torr", "inHg"],
+    Length: ["m", "cm", "mm", "um", "nm", "km", "in", "ft", "yd", "mi"],
+    Mass: ["kg", "g", "mg", "ug", "lb", "oz"],
+    Force: ["N", "kN", "lbf", "kgf"],
+    Power: ["W", "mW", "kW", "MW", "dBm"],
+    Ratio: ["dB", "ppm", "%"],
+    Angle: ["deg", "rad", "grad", "arcmin", "arcsec"],
+    Digital: ["bit", "byte", "kB", "MB", "GB", "TB"],
+};
+
+// --- Custom Styles: Merge Z-Index fixes with Height overrides ---
+const customSelectStyles = {
+    // Fix z-index for Modals
+    menuPortal: (base) => ({ ...base, zIndex: 99999 }),
+    menu: (base) => ({ ...base, zIndex: 99999 }),
+    
+    // Fix Size: Force height to 38px to match standard inputs
+    control: (base) => ({
+        ...base,
+        minHeight: '38px',
+        height: '38px',
+        // Determine border/bg via CSS classes, but force layout here
+    }),
+    valueContainer: (base) => ({
+        ...base,
+        height: '38px',
+        padding: '0 8px',
+        display: 'flex',
+        alignItems: 'center'
+    }),
+    input: (base) => ({
+        ...base,
+        margin: 0,
+        padding: 0
+    }),
+    indicatorsContainer: (base) => ({
+        ...base,
+        height: '38px'
+    })
+};
 
 const SymbolButton = ({ onSymbolClick, symbol, title }) => (
     <button
@@ -15,65 +67,6 @@ const SymbolButton = ({ onSymbolClick, symbol, title }) => (
         {symbol.replace('()', '( )')}
     </button>
 );
-
-const SearchableDropdown = ({ name, value, onChange, options }) => {
-    const [searchTerm, setSearchTerm] = useState(value);
-    const [isOpen, setIsOpen] = useState(false);
-    const wrapperRef = useRef(null);
-
-    useEffect(() => {
-        setSearchTerm(value);
-    }, [value]);
-
-    useEffect(() => {
-        function handleClickOutside(event) {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [wrapperRef]);
-
-    const filteredOptions = options.filter(option =>
-        option.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const handleSelect = (option) => {
-        setSearchTerm(option);
-        onChange({ target: { name, value: option } });
-        setIsOpen(false);
-    };
-
-    const handleChange = (e) => {
-        setSearchTerm(e.target.value);
-        onChange(e);
-        if (!isOpen) setIsOpen(true);
-    }
-
-    return (
-        <div className="searchable-dropdown" ref={wrapperRef}>
-            <input
-                type="text"
-                name={name}
-                value={searchTerm}
-                onChange={handleChange}
-                onFocus={() => setIsOpen(true)}
-                autoComplete="off"
-            />
-            {isOpen && filteredOptions.length > 0 && (
-                <div className="dropdown-list">
-                    {filteredOptions.map(option => (
-                        <div key={option} className="dropdown-item" onClick={() => handleSelect(option)}>
-                            {option}
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
 
 const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPoints, previousTestPointData = null }) => {
     const getInitialFormData = () => ({
@@ -152,7 +145,13 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
         ]
     };
 
-    const availableUnits = useMemo(() => Object.keys(unitSystem.units), []);
+    // --- Generate Options for React Select ---
+    const groupedUnitOptions = useMemo(() => {
+        return Object.entries(unitCategories).map(([category, units]) => ({
+            label: category,
+            options: units.map((u) => ({ value: u, label: u })),
+        }));
+    }, []);
 
     const updateEquationVariables = (equation) => {
         if (!equation) {
@@ -198,8 +197,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
             });
 
         } catch (error) {
-            // FIX: Suppress console error while typing incomplete equations
-            // console.error("Error parsing equation expression:", error);
             setEquationVariables([]);
             setFormData(prev => ({ ...prev, variableMappings: {} }));
         }
@@ -262,12 +259,12 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                 setFormData({
                     section: prev.section || '',
                     paramName: prev.testPointInfo.parameter.name || '',
-                    paramValue: '', // <-- Auto-fill, but leave value blank
+                    paramValue: '', 
                     paramUnit: prev.testPointInfo.parameter.unit || '',
                     qualName: prev.testPointInfo.qualifier?.name || 'Frequency',
-                    qualValue: '', // <-- Auto-fill, but leave value blank
+                    qualValue: '',
                     qualUnit: prev.testPointInfo.qualifier?.unit || 'kHz',
-                    copyTmdes: true, // Default to copying TMDEs
+                    copyTmdes: true,
                     measurementType: prev.measurementType || 'direct',
                     equationString: prev.equationString || '',
                     variableMappings: prevMappings,
@@ -284,7 +281,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                 setEquationVariables([]);
             }
         }
-    }, [initialData, isOpen, previousTestPointData]); // Added previousTestPointData
+    }, [initialData, isOpen, previousTestPointData]); 
 
     if (!isOpen) return null;
 
@@ -300,6 +297,14 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
         if (name === 'equationString') {
             updateEquationVariables(newValue);
         }
+    };
+
+    // Helper handler for React Select
+    const handleSelectChange = (name, selectedOption) => {
+        setFormData(prev => ({
+            ...prev,
+            [name]: selectedOption ? selectedOption.value : ''
+        }));
     };
     
     const handleSymbolClick = (symbol) => {
@@ -442,7 +447,22 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                             </div>
                             <div>
                                 <label>Units *</label>
-                                <SearchableDropdown name="paramUnit" value={formData.paramUnit} onChange={handleChange} options={availableUnits} />
+                                <Select
+                                    name="paramUnit"
+                                    value={
+                                        groupedUnitOptions
+                                            .flatMap(g => g.options)
+                                            .find(opt => opt.value === formData.paramUnit) || null
+                                    }
+                                    onChange={(opt) => handleSelectChange('paramUnit', opt)}
+                                    options={groupedUnitOptions}
+                                    placeholder="Unit"
+                                    className="react-select-container"
+                                    classNamePrefix="react-select"
+                                    menuPortalTarget={document.body}
+                                    menuPosition="fixed"
+                                    styles={customSelectStyles}
+                                />
                             </div>
                         </div>
 
@@ -474,7 +494,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                                         <div 
                                             className="symbol-popout" 
                                             ref={symbolMenuRef} 
-                                            // FIX: Added maxHeight and overflowY for scrolling
                                             style={{ maxHeight: '300px', overflowY: 'auto' }}
                                         >
                                             {Object.entries(symbolCategories).map(([category, symbols]) => (
@@ -532,7 +551,22 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                                     </div>
                                     <div>
                                         <label>Units</label>
-                                        <SearchableDropdown name="qualUnit" value={formData.qualUnit} onChange={handleChange} options={availableUnits} />
+                                        <Select
+                                            name="qualUnit"
+                                            value={
+                                                groupedUnitOptions
+                                                    .flatMap(g => g.options)
+                                                    .find(opt => opt.value === formData.qualUnit) || null
+                                            }
+                                            onChange={(opt) => handleSelectChange('qualUnit', opt)}
+                                            options={groupedUnitOptions}
+                                            placeholder="Unit"
+                                            className="react-select-container"
+                                            classNamePrefix="react-select"
+                                            menuPortalTarget={document.body}
+                                            menuPosition="fixed"
+                                            styles={customSelectStyles}
+                                        />
                                     </div>
                                 </div>
                             </>
