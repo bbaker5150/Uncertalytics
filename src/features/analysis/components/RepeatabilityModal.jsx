@@ -73,7 +73,14 @@ const calculateStats = (values) => {
   return { mean, stdDev, dof: n - 1 };
 };
 
-const RepeatabilityModal = ({ isOpen, onClose, onSave, uutNominal }) => {
+const RepeatabilityModal = ({ 
+    isOpen, 
+    onClose, 
+    onSave, 
+    uutNominal,
+    existingData, // <--- New Prop
+    cursorPosition // <--- New Prop for initial placement
+}) => {
   const [readings, setReadings] = useState([]);
   const [currentInput, setCurrentInput] = useState("");
   const [selectedUnit, setSelectedUnit] = useState(uutNominal?.unit || "V");
@@ -84,19 +91,49 @@ const RepeatabilityModal = ({ isOpen, onClose, onSave, uutNominal }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // Center the modal when it opens
+  // --- 1. NEW: Load Existing Data Effect ---
   useEffect(() => {
     if (isOpen) {
-      // Default center position logic
-      const width = 750;
-      const height = 500;
-      const x = typeof window !== 'undefined' ? Math.max(0, (window.innerWidth - width) / 2) : 0;
-      const y = typeof window !== 'undefined' ? Math.max(0, (window.innerHeight - height) / 2) : 0;
-      setPosition({ x, y });
+        if (existingData && existingData.savedInputs) {
+            // If editing, load saved readings
+            setReadings(existingData.savedInputs.readings || []);
+            setSelectedUnit(existingData.savedInputs.unit || uutNominal?.unit || "V");
+        } else if (!existingData) {
+            // If new, reset
+            setReadings([]);
+            setCurrentInput("");
+            // Don't overwrite unit if user already changed it, unless completely resetting? 
+            // Better to stick to default if fresh open
+            setSelectedUnit(uutNominal?.unit || "V");
+        }
     }
-  }, [isOpen]);
+  }, [isOpen, existingData, uutNominal]);
 
-  // --- Drag Handlers ---
+  // --- 2. MODIFIED: Positioning Effect ---
+  useEffect(() => {
+    if (isOpen) {
+      if (cursorPosition) {
+          // If cursor position provided, use it (with basic boundary check)
+          const width = 750;
+          const height = 500;
+          // Ensure it doesn't go off screen bottom/right
+          const safeX = typeof window !== 'undefined' ? Math.min(cursorPosition.left, window.innerWidth - width - 20) : 0;
+          const safeY = typeof window !== 'undefined' ? Math.min(cursorPosition.top + 20, window.innerHeight - height - 20) : 0;
+          
+          // Also ensure it doesn't spawn off top/left
+          setPosition({ x: Math.max(0, safeX), y: Math.max(0, safeY) });
+      } else {
+          // Fallback: Original Center position logic
+          const width = 750;
+          const height = 500;
+          const x = typeof window !== 'undefined' ? Math.max(0, (window.innerWidth - width) / 2) : 0;
+          const y = typeof window !== 'undefined' ? Math.max(0, (window.innerHeight - height) / 2) : 0;
+          setPosition({ x, y });
+      }
+    }
+  }, [isOpen, cursorPosition]);
+
+  // --- Drag Handlers (Unchanged) ---
   const handleMouseDown = (e) => {
     // Only allow dragging from the header
     setIsDragging(true);
@@ -141,14 +178,6 @@ const RepeatabilityModal = ({ isOpen, onClose, onSave, uutNominal }) => {
     }
   }, [isOpen]);
 
-  // Reset when closed
-  useEffect(() => {
-    if (!isOpen) {
-      setReadings([]);
-      setCurrentInput("");
-    }
-  }, [isOpen]);
-
   const handleAddReading = () => {
     const val = parseFloat(currentInput);
     if (!isNaN(val)) {
@@ -181,7 +210,9 @@ const RepeatabilityModal = ({ isOpen, onClose, onSave, uutNominal }) => {
       mean: stats.mean,
       dof: stats.dof,
       unit: selectedUnit,
-      count: readings.length
+      count: readings.length,
+      // --- IMPORTANT: Return raw readings so Analysis.jsx can save them ---
+      readings: readings 
     });
     onClose();
   };
