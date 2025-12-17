@@ -54,9 +54,16 @@ function Analysis({
   // Modal States
   const [isAddTmdeModalOpen, setAddTmdeModalOpen] = useState(false);
   const [tmdeToEdit, setTmdeToEdit] = useState(null);
+  
   const [isManualModalOpen, setManualModalOpen] = useState(false);
   const [editingComponent, setEditingComponent] = useState(null);
+  
   const [isRepeatabilityModalOpen, setRepeatabilityModalOpen] = useState(false);
+  // We reuse 'editingComponent' for repeatability edits to track the ID
+  
+  // State to track where the modal should open (near cursor)
+  const [modalPosition, setModalPosition] = useState(null);
+
   const [breakdownModalType, setBreakdownModalType] = useState(null); // For Risk Breakdown
   const [isDerivedBreakdownOpen, setIsDerivedBreakdownOpen] = useState(false);
   const [derivedBreakdownData, setDerivedBreakdownData] = useState(null);
@@ -78,10 +85,8 @@ function Analysis({
   );
 
   const manualComponents = useMemo(() => {
-    return testPointData.measurementType === "direct"
-      ? testPointData.components || []
-      : [];
-  }, [testPointData.measurementType, testPointData.components]);
+      return testPointData.components || [];
+  }, [testPointData.components]);
 
   // --- 3. Uncertainty Calculation Hook ---
   const { calcResults, calculationError } = useUncertaintyCalculation(
@@ -158,6 +163,23 @@ function Analysis({
     setEditingComponent(null);
   };
 
+  const handleEditComponent = (event, component) => {
+    setEditingComponent(component);
+    
+    // Check if this is a repeatability component based on ID or Name
+    if (component.id.toString().includes('repeatability') || component.name === 'Repeatability') {
+        // Capture coordinates if event exists
+        if (event && event.clientY) {
+            setModalPosition({ top: event.clientY, left: event.clientX });
+        } else {
+            setModalPosition(null);
+        }
+        setRepeatabilityModalOpen(true);
+    } else {
+        setManualModalOpen(true);
+    }
+  };
+
   const handleRemoveComponent = (id) => {
     const updatedComponents = manualComponents.filter((c) => c.id !== id);
     if (updatedComponents.length < manualComponents.length) {
@@ -171,6 +193,7 @@ function Analysis({
   };
 
   const handleSaveRepeatability = (data) => {
+    // Convert Standard Deviation to PPM for the budget
     const { value: ppm, warning } = convertToPPM(
         data.stdDev,
         data.unit,
@@ -185,8 +208,11 @@ function Analysis({
         return;
     }
 
+    const isEditing = editingComponent && editingComponent.id.toString().includes('repeatability');
+    const newId = isEditing ? editingComponent.id : `repeatability_${Date.now()}`;
+
     const componentData = {
-        id: `repeatability_${Date.now()}`,
+        id: newId,
         name: "Repeatability",
         sourcePointLabel: `N=${data.count}, Mean=${data.mean.toPrecision(5)}`,
         type: "A",
@@ -195,11 +221,23 @@ function Analysis({
         unit_native: data.unit,
         dof: data.dof,
         distribution: "Normal",
-        isCore: false
+        isCore: false,
+        // *** KEY CHANGE: Store the raw input data (readings) ***
+        savedInputs: data 
     };
 
-    const updatedComponents = [...manualComponents, componentData];
+    let updatedComponents;
+    if (isEditing) {
+        updatedComponents = manualComponents.map((c) => 
+            c.id === newId ? componentData : c
+        );
+    } else {
+        updatedComponents = [...manualComponents, componentData];
+    }
+
     onDataSave({ components: updatedComponents });
+    setEditingComponent(null); 
+    setRepeatabilityModalOpen(false); 
   };
 
   const handleBudgetRowContextMenu = (event, componentData) => {
@@ -252,9 +290,12 @@ function Analysis({
 
       <RepeatabilityModal 
         isOpen={isRepeatabilityModalOpen}
-        onClose={() => setRepeatabilityModalOpen(false)}
+        onClose={() => { setRepeatabilityModalOpen(false); setEditingComponent(null); }}
         onSave={handleSaveRepeatability}
         uutNominal={uutNominal}
+        // *** KEY CHANGE: Pass existing data and position ***
+        existingData={editingComponent} 
+        position={modalPosition}
       />
 
       <DerivedBreakdownModal
@@ -304,7 +345,6 @@ function Analysis({
       {/* --- UNCERTAINTY VIEW --- */}
       {analysisMode === "uncertaintyTool" && (
         <UncertaintyPanel 
-          // Data
           testPointData={testPointData}
           sessionData={sessionData}
           calcResults={calcResults}
@@ -314,13 +354,11 @@ function Analysis({
           tmdeTolerancesData={tmdeTolerancesData}
           riskResults={riskResults}
           
-          // State
           showContribution={showContribution}
           setShowContribution={setShowContribution}
 
-          // Handlers
           onAddManualComponent={() => { setEditingComponent(null); setManualModalOpen(true); }}
-          onEditManualComponent={(c) => { setEditingComponent(c); setManualModalOpen(true); }}
+          onEditManualComponent={handleEditComponent}
           onRemoveComponent={handleRemoveComponent}
           onAddTmde={() => { setTmdeToEdit(null); setAddTmdeModalOpen(true); }}
           onEditTmde={(tmde) => { setTmdeToEdit(tmde); setAddTmdeModalOpen(true); }}
@@ -331,11 +369,14 @@ function Analysis({
           setBreakdownPoint={setBreakdownPoint}
           onBudgetRowContextMenu={handleBudgetRowContextMenu}
           onShowDerivedBreakdown={() => {
-            // Trigger logic similar to context menu but for button click
             if(calcResults) handleBudgetRowContextMenu({ preventDefault: () => {} });
           }}
           onShowRiskBreakdown={(type) => setBreakdownModalType(type)}
-          onOpenRepeatability={() => setRepeatabilityModalOpen(true)}
+          onOpenRepeatability={(e) => { 
+             if (e && e.clientY) setModalPosition({ top: e.clientY, left: e.clientX });
+             setEditingComponent(null); 
+             setRepeatabilityModalOpen(true); 
+          }}
         />
       )}
 

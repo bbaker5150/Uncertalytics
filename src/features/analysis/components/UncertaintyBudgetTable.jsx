@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import Latex from "../../../components/common/Latex"; // Assuming Latex.jsx is in the components folder
+import Latex from "../../../components/common/Latex"; 
 import { unitSystem } from "../../../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { 
@@ -7,13 +7,13 @@ import {
   faCog, 
   faPlus, 
   faPencilAlt, 
-  faRedo // <--- Added for Repeatability
+  faRedo 
 } from "@fortawesome/free-solid-svg-icons"; 
 
 const UncertaintyBudgetTable = ({
   components,
   onRemove,
-  onEdit,
+  onEdit, // Updated to expect (event, component)
   calcResults,
   referencePoint,
   uncertaintyConfidence,
@@ -27,7 +27,7 @@ const UncertaintyBudgetTable = ({
   setShowContribution,
   hasTmde,
   onAddManualComponent,
-  onOpenRepeatability, // <--- New Prop
+  onOpenRepeatability, 
 }) => {
   const confidencePercent = parseFloat(uncertaintyConfidence) || 95;
   const derivedUnit = referencePoint?.unit || "Units";
@@ -199,9 +199,9 @@ const UncertaintyBudgetTable = ({
               <td className="action-cell">
                 {!c.isCore && (
                   <div style={{display: 'flex', gap: '8px', justifyContent: 'flex-end'}}>
-                    {/* NEW: Edit Button */}
+                    {/* FIXED: Pass 'e' (event) to onEdit for cursor tracking */}
                     <span
-                        onClick={() => onEdit(c)}
+                        onClick={(e) => onEdit(e, c)}
                         className="action-icon"
                         title="Edit Component"
                         style={{ cursor: "pointer", color: "var(--primary-color)", fontSize: "0.9rem" }}
@@ -271,9 +271,10 @@ const UncertaintyBudgetTable = ({
                   <FontAwesomeIcon icon={faPlus} />
                 </span>
 
-                {/* 2. Add Repeatability (NEW) */}
+                {/* 2. Add Repeatability */}
                 <span
-                  onClick={onOpenRepeatability}
+                  // FIXED: Pass 'e' (event) to allow positioning the modal
+                  onClick={(e) => onOpenRepeatability(e)}
                   className="action-icon"
                   title="Repeatability Calculator"
                   style={{
@@ -326,7 +327,9 @@ const UncertaintyBudgetTable = ({
                         top: "100%",
                         right: "0",
                         zIndex: 1010,
-                        backgroundColor: "var(--content-background)",
+                        backgroundColor: "var(--header-background)", 
+                        backdropFilter: "blur(16px)",                
+                        WebkitBackdropFilter: "blur(16px)",
                         border: "1px solid var(--border-color)",
                         borderRadius: "8px",
                         boxShadow: "var(--box-shadow-glow)",
@@ -516,7 +519,6 @@ const UncertaintyBudgetTable = ({
       </tbody>
 
       <tfoot>
-        {/* Footer content remains unchanged */}
         <tr>
           <td colSpan={finalColSpan}>{"Combined Standard Uncertainty (uₑ)"}</td>
           <td>
@@ -536,8 +538,7 @@ const UncertaintyBudgetTable = ({
                   className="final-result-display"
                   style={{ position: "relative" }}
                 >
-                  {/* ... [Existing Footer Logic for Toggle Switches, Expanded Unc, and Risk Dashboard] ... */}
-                   {/* Absolute Toggle Switch */}
+                  {/* Absolute Toggle Switch: Contribution */}
                   <div
                     style={{
                       position: "absolute",
@@ -568,6 +569,8 @@ const UncertaintyBudgetTable = ({
                       <span className="slider"></span>
                     </label>
                   </div>
+
+                  {/* Absolute Toggle Switch: Guardband */}
                   <div
                     style={{
                       position: "absolute",

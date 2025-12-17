@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AddTmdeModal from "../../instruments/components/AddTmdeModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -6,6 +6,8 @@ import {
   faPlus,
   faPencilAlt,
   faTrashAlt,
+  faGripHorizontal,
+  faListAlt
 } from "@fortawesome/free-solid-svg-icons";
 import {
   getToleranceSummary,
@@ -15,7 +17,7 @@ import {
   convertPpmToUnit,
 } from "../../../utils/uncertaintyMath";
 
-// --- Sub-Components ---
+// --- Sub-Components (Preserved) ---
 
 const UutSealDisplay = ({ uutDescription, uutTolerance, measurementType }) => {
   const toleranceSummary = getToleranceSummary(uutTolerance);
@@ -159,6 +161,47 @@ const OverviewModal = ({
   const [editingTmde, setEditingTmde] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
 
+  // --- Floating Window State ---
+  const [position, setPosition] = useState(() => {
+    if (typeof window === 'undefined') return { x: 0, y: 0 };
+    return { 
+        x: Math.max(0, (window.innerWidth - 1000) / 2), 
+        y: Math.max(0, (window.innerHeight - 800) / 2) 
+    };
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setDragOffset({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+    });
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+        if (isDragging) {
+            setPosition({
+                x: e.clientX - dragOffset.x,
+                y: e.clientY - dragOffset.y
+            });
+        }
+    };
+    const handleMouseUp = () => setIsDragging(false);
+
+    if (isDragging) {
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
+
   if (!isOpen || !sessionData) return null;
 
   const handleEditTmdeClick = (tmde, testPoint) => {
@@ -192,10 +235,11 @@ const OverviewModal = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={handleBackgroundClick}>
+    // Note: We removed the main 'modal-overlay' wrapper to make it floating modeless
+    <div onClick={handleBackgroundClick}>
       
       {/* --- NESTED MODAL OVERLAY --- */}
-      {/* This wrapper forces the AddTmdeModal to stack cleanly on top */}
+      {/* This wrapper forces the AddTmdeModal to stack cleanly on top if it opens */}
       {editingTmde && (
         <div className="nested-modal-overlay" onClick={(e) => e.stopPropagation()}>
           <AddTmdeModal
@@ -209,17 +253,49 @@ const OverviewModal = ({
         </div>
       )}
 
-      {/* --- Main Modal Content --- */}
-      <div className="modal-content edit-session-modal" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="modal-close-button">
-          &times;
-        </button>
+      {/* --- Floating Window Content --- */}
+      <div 
+        className="modal-content floating-window-content"
+        style={{
+            position: 'fixed',
+            top: position.y,
+            left: position.x,
+            margin: 0,
+            width: '1000px',
+            maxWidth: '95vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 2000,
+            overflow: 'hidden'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* --- Draggable Header --- */}
+        <div 
+            style={{
+                display:'flex', 
+                justifyContent:'space-between', 
+                alignItems:'center', 
+                paddingBottom: '10px', 
+                marginBottom: '10px', 
+                borderBottom: '1px solid var(--border-color)',
+                cursor: 'move',
+                userSelect: 'none'
+            }}
+            onMouseDown={handleMouseDown}
+        >
+            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                <h3 style={{margin:0, fontSize: '1.2rem'}}>
+                    <FontAwesomeIcon icon={faListAlt} style={{marginRight:'10px', color:'var(--primary-color)'}}/>
+                    Session Overview
+                </h3>
+            </div>
+            <button onClick={onClose} className="modal-close-button" style={{position:'static'}}>&times;</button>
+        </div>
 
-        <div className="modal-main-content">
-          <h3 style={{ textAlign: "center", marginBottom: "30px", borderBottom: "1px solid var(--border-color)", paddingBottom: "15px" }}>
-            Session Overview
-          </h3>
-
+        {/* --- Scrollable Content --- */}
+        <div className="modal-main-content" style={{flex: 1, overflowY: 'auto', paddingRight: '5px'}}>
           <div className="tmde-management-container">
             <UutSealDisplay
               uutDescription={sessionData.uutDescription}

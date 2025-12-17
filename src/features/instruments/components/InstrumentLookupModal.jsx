@@ -175,7 +175,6 @@ const InstrumentLookupModal = ({
         }}
       >
         <h3 style={{ margin: 0, fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "10px" }}>
-          <FontAwesomeIcon icon={faGripHorizontal} style={{ color: "var(--text-color-muted)" }} />
           <span>
             <FontAwesomeIcon icon={faRadio} style={{ marginRight: "10px" }} />
             Select Instrument

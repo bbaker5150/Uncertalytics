@@ -6,7 +6,9 @@ import {
   faCheck,
   faPlus,
   faTimes,
-  faBookOpen
+  faBookOpen,
+  faGripHorizontal,
+  faEdit
 } from "@fortawesome/free-solid-svg-icons";
 import NotificationModal from '../../../components/modals/NotificationModal';
 import InstrumentLookupModal from "../../instruments/components/InstrumentLookupModal";
@@ -35,6 +37,47 @@ const EditSessionModal = ({
   const [pendingInstrument, setPendingInstrument] = useState(null); 
   const [showRangePrompt, setShowRangePrompt] = useState(false);
   const [rangePromptData, setRangePromptData] = useState({ value: "", unit: "" });
+
+  // --- Floating Window State ---
+  const [position, setPosition] = useState(() => {
+    if (typeof window === 'undefined') return { x: 0, y: 0 };
+    return { 
+        x: Math.max(0, (window.innerWidth - 1000) / 2), 
+        y: Math.max(0, (window.innerHeight - 800) / 2) 
+    };
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setDragOffset({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+    });
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+        if (isDragging) {
+            setPosition({
+                x: e.clientX - dragOffset.x,
+                y: e.clientY - dragOffset.y
+            });
+        }
+    };
+    const handleMouseUp = () => setIsDragging(false);
+
+    if (isDragging) {
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
 
   // Gets the URL/Base64 for an image
   const getImageSrc = (imageRef) => {
@@ -265,7 +308,7 @@ const EditSessionModal = ({
   };
 
   return (
-    <div className="modal-overlay">
+    <>
       {notification && (
         <NotificationModal
           isOpen={!!notification}
@@ -276,7 +319,7 @@ const EditSessionModal = ({
       )}
       
       {viewingImageSrc && (
-      <div className="image-viewer-overlay" onClick={() => setViewingImageSrc(null)}>
+      <div className="image-viewer-overlay" onClick={() => setViewingImageSrc(null)} style={{zIndex: 3000}}>
         <button className="image-viewer-close" onClick={() => setViewingImageSrc(null)}>&times;</button>
         <img src={viewingImageSrc} alt="Full-size preview" onClick={(e) => e.stopPropagation()} />
       </div>
@@ -322,12 +365,48 @@ const EditSessionModal = ({
         </div>
       )}
 
-      <div className="modal-content edit-session-modal">
-        <button onClick={onClose} className="modal-close-button">
-          &times;
-        </button>
+      {/* --- Floating Window Content --- */}
+      <div 
+        className="modal-content floating-window-content"
+        style={{
+            position: 'fixed',
+            top: position.y,
+            left: position.x,
+            margin: 0,
+            width: '1000px',
+            maxWidth: '95vw',
+            height: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 2000,
+            overflow: 'hidden'
+        }}
+      >
+        {/* --- Draggable Header --- */}
+        <div 
+            style={{
+                display:'flex', 
+                justifyContent:'space-between', 
+                alignItems:'center', 
+                paddingBottom: '10px', 
+                marginBottom: '10px', 
+                borderBottom: '1px solid var(--border-color)',
+                cursor: 'move',
+                userSelect: 'none'
+            }}
+            onMouseDown={handleMouseDown}
+        >
+            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                <h3 style={{margin:0, fontSize: '1.2rem'}}>
+                    <FontAwesomeIcon icon={faEdit} style={{marginRight:'10px', color:'var(--primary-color)'}}/>
+                    Edit Session Configuration
+                </h3>
+            </div>
+            <button onClick={onClose} className="modal-close-button" style={{position:'static'}}>&times;</button>
+        </div>
 
-        <div className="modal-main-content">
+        {/* --- Scrollable Content --- */}
+        <div className="modal-main-content" style={{flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '5px'}}>
           <div className="modal-tabs">
             <button
               className={`modal-tab ${activeSection === "details" ? "active" : ""}`}
@@ -583,7 +662,7 @@ const EditSessionModal = ({
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

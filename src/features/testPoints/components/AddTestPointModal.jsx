@@ -1,12 +1,12 @@
 import * as math from 'mathjs';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import Select from 'react-select'; // Import React Select
+import Select from 'react-select';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faPlus, faTrashAlt, faGripHorizontal } from '@fortawesome/free-solid-svg-icons';
 import { unitSystem } from '../../../utils/uncertaintyMath';
 import NotificationModal from '../../../components/modals/NotificationModal';
 
-// --- Unit Categories (Consistent with App) ---
+// --- Unit Categories (Updated to include Torque and others) ---
 const unitCategories = {
     Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
     Current: ["A", "mA", "uA", "nA", "pA", "kA"],
@@ -20,24 +20,21 @@ const unitCategories = {
     Length: ["m", "cm", "mm", "um", "nm", "km", "in", "ft", "yd", "mi"],
     Mass: ["kg", "g", "mg", "ug", "lb", "oz"],
     Force: ["N", "kN", "lbf", "kgf"],
+    Torque: ["N-m", "in-ozf", "in-lbf", "ft-lbf"], // Added Torque category
     Power: ["W", "mW", "kW", "MW", "dBm"],
     Ratio: ["dB", "ppm", "%"],
     Angle: ["deg", "rad", "grad", "arcmin", "arcsec"],
     Digital: ["bit", "byte", "kB", "MB", "GB", "TB"],
 };
 
-// --- Custom Styles: Merge Z-Index fixes with Height overrides ---
+// --- Custom Styles ---
 const customSelectStyles = {
-    // Fix z-index for Modals
     menuPortal: (base) => ({ ...base, zIndex: 99999 }),
     menu: (base) => ({ ...base, zIndex: 99999 }),
-    
-    // Fix Size: Force height to 38px to match standard inputs
     control: (base) => ({
         ...base,
         minHeight: '38px',
         height: '38px',
-        // Determine border/bg via CSS classes, but force layout here
     }),
     valueContainer: (base) => ({
         ...base,
@@ -69,6 +66,47 @@ const SymbolButton = ({ onSymbolClick, symbol, title }) => (
 );
 
 const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPoints, previousTestPointData = null }) => {
+    // --- Floating Window State ---
+    const [position, setPosition] = useState(() => {
+        if (typeof window === 'undefined') return { x: 0, y: 0 };
+        return { 
+            x: Math.max(0, (window.innerWidth - 800) / 2), 
+            y: Math.max(0, (window.innerHeight - 800) / 2) 
+        };
+    });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+    const handleMouseDown = (e) => {
+        setIsDragging(true);
+        setDragOffset({
+            x: e.clientX - position.x,
+            y: e.clientY - position.y
+        });
+    };
+
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            if (isDragging) {
+                setPosition({
+                    x: e.clientX - dragOffset.x,
+                    y: e.clientY - dragOffset.y
+                });
+            }
+        };
+        const handleMouseUp = () => setIsDragging(false);
+
+        if (isDragging) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging, dragOffset]);
+
+
     const getInitialFormData = () => ({
         section: '',
         paramName: '', paramValue: '', paramUnit: '',
@@ -145,12 +183,41 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
         ]
     };
 
-    // --- Generate Options for React Select ---
+    // --- Dynamic Unit Options Generation ---
+    // This logic ensures parity with other modals by checking unitSystem
     const groupedUnitOptions = useMemo(() => {
-        return Object.entries(unitCategories).map(([category, units]) => ({
-            label: category,
-            options: units.map((u) => ({ value: u, label: u })),
-        }));
+        const allSupportedUnits = Object.keys(unitSystem.units);
+        const options = [];
+        const usedUnits = new Set();
+
+        // 1. Map defined categories
+        Object.entries(unitCategories).forEach(([category, units]) => {
+            // Only show units that actually exist in the unitSystem
+            const validUnits = units.filter(u => allSupportedUnits.includes(u));
+            
+            if (validUnits.length > 0) {
+                options.push({
+                    label: category,
+                    options: validUnits.map(u => {
+                        usedUnits.add(u);
+                        return { value: u, label: u };
+                    })
+                });
+            }
+        });
+
+        // 2. Catch "Other" (Any unit in unitSystem not yet categorized)
+        // This ensures units like in-ozf appear even if I missed adding "Torque" above
+        const leftovers = allSupportedUnits
+            .filter(u => !usedUnits.has(u))
+            .sort()
+            .map(u => ({ value: u, label: u }));
+
+        if (leftovers.length > 0) {
+            options.push({ label: "Other", options: leftovers });
+        }
+
+        return options;
     }, []);
 
     const updateEquationVariables = (equation) => {
@@ -161,7 +228,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
         }
 
         let expressionToParse = equation.trim(); 
-
         const equalsIndex = expressionToParse.indexOf('=');
         if (equalsIndex !== -1) {
              if (equalsIndex < expressionToParse.length - 1) {
@@ -228,7 +294,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
     useEffect(() => {
         if (isOpen) {
             if (initialData) {
-                // --- EDITING MODE ---
                 const qualExists = !!initialData.testPointInfo.qualifier?.value;
                 setHasQualifier(qualExists);
                 const initialMappings = initialData.variableMappings || {};
@@ -243,7 +308,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                     copyTmdes: false,
                     measurementType: initialData.measurementType || 'direct',
                     equationString: initialData.equationString || '',
-                    variableMappings: initialMappings,
+                    variableMappings: { ...initialMappings }, // Deep copy
                 });
                 if (initialData.measurementType === 'derived') {
                     updateEquationVariables(initialData.equationString);
@@ -251,11 +316,13 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                     setEquationVariables([]);
                 }
             } else if (previousTestPointData) {
-                // --- ADDING NEW, WITH PREVIOUS DATA ---
                 const prev = previousTestPointData;
                 const qualExists = !!prev.testPointInfo.qualifier;
                 setHasQualifier(qualExists);
-                const prevMappings = prev.variableMappings || {};
+                
+                // CRITICAL FIX: Ensure variableMappings is a deep copy to prevent reference sharing issues
+                const prevMappings = prev.variableMappings ? { ...prev.variableMappings } : {};
+                
                 setFormData({
                     section: prev.section || '',
                     paramName: prev.testPointInfo.parameter.name || '',
@@ -275,7 +342,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                     setEquationVariables([]);
                 }
             } else {
-                // --- ADDING NEW, FIRST POINT ---
                 setHasQualifier(false);
                 setFormData(getInitialFormData());
                 setEquationVariables([]);
@@ -299,7 +365,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
         }
     };
 
-    // Helper handler for React Select
     const handleSelectChange = (name, selectedOption) => {
         setFormData(prev => ({
             ...prev,
@@ -392,209 +457,249 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
     const isEditing = !!initialData;
 
     return (
-        <div className="modal-overlay">
+        <>
             {notification && <NotificationModal isOpen={!!notification} onClose={() => setNotification(null)} title={notification.title} message={notification.message} />}
-            <div className="modal-content" style={{maxWidth: '800px'}}>
-                <button onClick={onClose} className="modal-close-button">&times;</button>
-                <h3>{isEditing ? 'Edit Measurement Point' : 'Add New Measurement Point'}</h3>
-
-                <div className="modal-form-grid">
-                    <div className="modal-form-section">
-                        <h4>Identification</h4>
-                        <label>Section *</label>
-                        <input type="text" name="section" value={formData.section} onChange={handleChange} placeholder="e.g., 4.1.a" />
-
-                        <label style={{marginTop: '15px'}}>Measurement Type *</label>
-                         <div style={{ display: 'flex', gap: '15px', marginBottom: '10px' }}>
-                            <label style={{ fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: '5px'}}>
-                                <input
-                                    type="radio"
-                                    name="measurementType"
-                                    value="direct"
-                                    checked={formData.measurementType === 'direct'}
-                                    onChange={handleChange}
-                                    style={{width: 'auto', height: 'auto', margin: 0}}
-                                /> Direct
-                            </label>
-                            <label style={{ fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: '5px'}}>
-                                <input
-                                    type="radio"
-                                    name="measurementType"
-                                    value="derived"
-                                    checked={formData.measurementType === 'derived'}
-                                    onChange={handleChange}
-                                     style={{width: 'auto', height: 'auto', margin: 0}}
-                                /> Derived
-                            </label>
-                        </div>
+            
+            <div 
+                className="modal-content floating-window-content"
+                style={{
+                    position: 'fixed',
+                    top: position.y,
+                    left: position.x,
+                    margin: 0,
+                    width: '800px',
+                    maxWidth: '90vw',
+                    maxHeight: '90vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    zIndex: 2000,
+                    overflow: 'hidden'
+                }}
+            >
+                {/* --- Draggable Header --- */}
+                <div 
+                    style={{
+                        display:'flex', 
+                        justifyContent:'space-between', 
+                        alignItems:'center', 
+                        paddingBottom: '10px', 
+                        marginBottom: '10px', 
+                        borderBottom: '1px solid var(--border-color)',
+                        cursor: 'move',
+                        userSelect: 'none'
+                    }}
+                    onMouseDown={handleMouseDown}
+                >
+                    <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                        <h3 style={{margin:0, fontSize: '1.2rem'}}>
+                            {isEditing ? 'Edit Measurement Point' : 'Add New Measurement Point'}
+                        </h3>
                     </div>
+                    <button onClick={onClose} className="modal-close-button" style={{position:'static'}}>&times;</button>
+                </div>
 
-                    <div className="modal-form-section">
-                        <h4>Parameter</h4>
-                        <label>Parameter Name</label>
-                        <input type="text" name="paramName" value={formData.paramName} onChange={handleChange} placeholder="e.g., DC Voltage, Resistance, Power"/>
+                {/* --- Scrollable Body --- */}
+                <div style={{flex: 1, overflowY: 'auto', paddingRight: '5px'}}>
+                    <div className="modal-form-grid">
+                        <div className="modal-form-section">
+                            <h4>Identification</h4>
+                            <label>Section *</label>
+                            <input type="text" name="section" value={formData.section} onChange={handleChange} placeholder="e.g., 4.1.a" />
 
-                        <div className="input-group">
-                            <div>
-                                <label>Value {formData.measurementType === 'derived' ? '(Nominal/Reference)' : ''} *</label>
-                                <input
-                                    type="text"
-                                    name="paramValue"
-                                    value={formData.paramValue}
-                                    onChange={handleChange}
-                                    placeholder={formData.measurementType === 'derived' ? "Nominal result (e.g., 1)" : "e.g., 10"}
-                                />
-                            </div>
-                            <div>
-                                <label>Units *</label>
-                                <Select
-                                    name="paramUnit"
-                                    value={
-                                        groupedUnitOptions
-                                            .flatMap(g => g.options)
-                                            .find(opt => opt.value === formData.paramUnit) || null
-                                    }
-                                    onChange={(opt) => handleSelectChange('paramUnit', opt)}
-                                    options={groupedUnitOptions}
-                                    placeholder="Unit"
-                                    className="react-select-container"
-                                    classNamePrefix="react-select"
-                                    menuPortalTarget={document.body}
-                                    menuPosition="fixed"
-                                    styles={customSelectStyles}
-                                />
+                            <label style={{marginTop: '15px'}}>Measurement Type *</label>
+                             <div style={{ display: 'flex', gap: '15px', marginBottom: '10px' }}>
+                                <label style={{ fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: '5px'}}>
+                                    <input
+                                        type="radio"
+                                        name="measurementType"
+                                        value="direct"
+                                        checked={formData.measurementType === 'direct'}
+                                        onChange={handleChange}
+                                        style={{width: 'auto', height: 'auto', margin: 0}}
+                                    /> Direct
+                                </label>
+                                <label style={{ fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: '5px'}}>
+                                    <input
+                                        type="radio"
+                                        name="measurementType"
+                                        value="derived"
+                                        checked={formData.measurementType === 'derived'}
+                                        onChange={handleChange}
+                                         style={{width: 'auto', height: 'auto', margin: 0}}
+                                    /> Derived
+                                </label>
                             </div>
                         </div>
 
-                         {formData.measurementType === 'derived' && (
-                            <>
-                                <label style={{marginTop: '15px'}}>Equation *</label>
-                                
-                                <div className="input-with-symbol-button">
+                        <div className="modal-form-section">
+                            <h4>Parameter</h4>
+                            <label>Parameter Name</label>
+                            <input type="text" name="paramName" value={formData.paramName} onChange={handleChange} placeholder="e.g., DC Voltage, Resistance, Power"/>
+
+                            <div className="input-group">
+                                <div>
+                                    <label>Value {formData.measurementType === 'derived' ? '(Nominal/Reference)' : ''} *</label>
                                     <input
-                                        ref={equationInputRef} 
                                         type="text"
-                                        name="equationString"
-                                        value={formData.equationString}
+                                        name="paramValue"
+                                        value={formData.paramValue}
                                         onChange={handleChange}
-                                        placeholder="e.g., V / I or W * L"
-                                        style={{ fontFamily: 'monospace' }}
+                                        placeholder={formData.measurementType === 'derived' ? "Nominal result (e.g., 1)" : "e.g., 10"}
                                     />
-                                    <button
-                                        type="button"
-                                        className="symbol-toggle-button"
-                                        title="Show Symbols"
-                                        ref={symbolButtonRef}
-                                        onClick={() => setIsSymbolMenuOpen(prev => !prev)}
-                                    >
-                                        f(x)
-                                    </button>
+                                </div>
+                                <div>
+                                    <label>Units *</label>
+                                    <Select
+                                        name="paramUnit"
+                                        value={
+                                            groupedUnitOptions
+                                                .flatMap(g => g.options)
+                                                .find(opt => opt.value === formData.paramUnit) || null
+                                        }
+                                        onChange={(opt) => handleSelectChange('paramUnit', opt)}
+                                        options={groupedUnitOptions}
+                                        placeholder="Unit"
+                                        className="react-select-container"
+                                        classNamePrefix="react-select"
+                                        menuPortalTarget={document.body}
+                                        menuPosition="fixed"
+                                        styles={customSelectStyles}
+                                    />
+                                </div>
+                            </div>
+
+                             {formData.measurementType === 'derived' && (
+                                <>
+                                    <label style={{marginTop: '15px'}}>Equation *</label>
                                     
-                                    {isSymbolMenuOpen && (
-                                        <div 
-                                            className="symbol-popout" 
-                                            ref={symbolMenuRef} 
-                                            style={{ maxHeight: '300px', overflowY: 'auto' }}
+                                    <div className="input-with-symbol-button">
+                                        <input
+                                            ref={equationInputRef} 
+                                            type="text"
+                                            name="equationString"
+                                            value={formData.equationString}
+                                            onChange={handleChange}
+                                            placeholder="e.g., V / I or W * L"
+                                            style={{ fontFamily: 'monospace' }}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="symbol-toggle-button"
+                                            title="Show Symbols"
+                                            ref={symbolButtonRef}
+                                            onClick={() => setIsSymbolMenuOpen(prev => !prev)}
                                         >
-                                            {Object.entries(symbolCategories).map(([category, symbols]) => (
-                                                <div key={category} className="symbol-category">
-                                                    <h5 className="symbol-category-title">{category}</h5>
-                                                    <div className="symbol-category-grid">
-                                                        {symbols.map(s => (
-                                                            <SymbolButton 
-                                                                key={s.symbol} 
-                                                                symbol={s.symbol} 
-                                                                title={s.title} 
-                                                                onSymbolClick={handleSymbolClick} 
-                                                            />
-                                                        ))}
+                                            f(x)
+                                        </button>
+                                        
+                                        {isSymbolMenuOpen && (
+                                            <div 
+                                                className="symbol-popout" 
+                                                ref={symbolMenuRef} 
+                                                style={{ maxHeight: '300px', overflowY: 'auto' }}
+                                            >
+                                                {Object.entries(symbolCategories).map(([category, symbols]) => (
+                                                    <div key={category} className="symbol-category">
+                                                        <h5 className="symbol-category-title">{category}</h5>
+                                                        <div className="symbol-category-grid">
+                                                            {symbols.map(s => (
+                                                                <SymbolButton 
+                                                                    key={s.symbol} 
+                                                                    symbol={s.symbol} 
+                                                                    title={s.title} 
+                                                                    onSymbolClick={handleSymbolClick} 
+                                                                />
+                                                            ))}
+                                                        </div>
                                                     </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {equationVariables.length > 0 && (
+                                        <div style={{marginTop: '15px', paddingLeft: '10px', borderLeft: '3px solid var(--border-color)'}}>
+                                            <label style={{fontSize: '0.9em', color: 'var(--text-color-muted)', marginBottom: '5px'}}>Map Variables (*Case Sensitive):</label>
+                                            {equationVariables.map(variable => (
+                                                <div key={variable} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
+                                                    <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{variable} =</span>
+                                                    <input
+                                                        type="text"
+                                                        value={formData.variableMappings[variable] || ''}
+                                                        onChange={(e) => handleMappingChange(variable, e.target.value)}
+                                                        placeholder={`Enter Name (e.g., Voltage, Current, Weight)`}
+                                                        style={{ margin: 0 }}
+                                                    />
                                                 </div>
                                             ))}
                                         </div>
                                     )}
-                                </div>
-                                
-                                {equationVariables.length > 0 && (
-                                    <div style={{marginTop: '15px', paddingLeft: '10px', borderLeft: '3px solid var(--border-color)'}}>
-                                        <label style={{fontSize: '0.9em', color: 'var(--text-color-muted)', marginBottom: '5px'}}>Map Variables (*Case Sensitive):</label>
-                                        {equationVariables.map(variable => (
-                                            <div key={variable} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
-                                                <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{variable} =</span>
-                                                <input
-                                                    type="text"
-                                                    value={formData.variableMappings[variable] || ''}
-                                                    onChange={(e) => handleMappingChange(variable, e.target.value)}
-                                                    placeholder={`Enter Name (e.g., Voltage, Current, Weight)`}
-                                                    style={{ margin: 0 }}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </>
-                        )}
+                                </>
+                            )}
 
-                        <hr />
-                         {hasQualifier ? (
-                            <>
-                                <div className="qualifier-header">
-                                    <h4>Qualifier</h4>
-                                    <button onClick={() => setHasQualifier(false)} title="Remove Qualifier"><FontAwesomeIcon icon={faTrashAlt} /></button>
-                                </div>
-                                <label>Qualifier Name</label>
-                                <input type="text" name="qualName" value={formData.qualName} onChange={handleChange} />
-                                <div className="input-group">
-                                    <div>
-                                        <label>Value</label>
-                                        <input type="text" name="qualValue" value={formData.qualValue} onChange={handleChange} />
+                            <hr />
+                             {hasQualifier ? (
+                                <>
+                                    <div className="qualifier-header">
+                                        <h4>Qualifier</h4>
+                                        <button onClick={() => setHasQualifier(false)} title="Remove Qualifier"><FontAwesomeIcon icon={faTrashAlt} /></button>
                                     </div>
-                                    <div>
-                                        <label>Units</label>
-                                        <Select
-                                            name="qualUnit"
-                                            value={
-                                                groupedUnitOptions
-                                                    .flatMap(g => g.options)
-                                                    .find(opt => opt.value === formData.qualUnit) || null
-                                            }
-                                            onChange={(opt) => handleSelectChange('qualUnit', opt)}
-                                            options={groupedUnitOptions}
-                                            placeholder="Unit"
-                                            className="react-select-container"
-                                            classNamePrefix="react-select"
-                                            menuPortalTarget={document.body}
-                                            menuPosition="fixed"
-                                            styles={customSelectStyles}
-                                        />
+                                    <label>Qualifier Name</label>
+                                    <input type="text" name="qualName" value={formData.qualName} onChange={handleChange} />
+                                    <div className="input-group">
+                                        <div>
+                                            <label>Value</label>
+                                            <input type="text" name="qualValue" value={formData.qualValue} onChange={handleChange} />
+                                        </div>
+                                        <div>
+                                            <label>Units</label>
+                                            <Select
+                                                name="qualUnit"
+                                                value={
+                                                    groupedUnitOptions
+                                                        .flatMap(g => g.options)
+                                                        .find(opt => opt.value === formData.qualUnit) || null
+                                                }
+                                                onChange={(opt) => handleSelectChange('qualUnit', opt)}
+                                                options={groupedUnitOptions}
+                                                placeholder="Unit"
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                                menuPortalTarget={document.body}
+                                                menuPosition="fixed"
+                                                styles={customSelectStyles}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            </>
-                        ) : (
-                             <button className="add-qualifier-btn" onClick={() => setHasQualifier(true)}>
-                                <FontAwesomeIcon icon={faPlus} /> Add Qualifier
-                            </button>
-                        )}
+                                </>
+                            ) : (
+                                 <button className="add-qualifier-btn" onClick={() => setHasQualifier(true)}>
+                                    <FontAwesomeIcon icon={faPlus} /> Add Qualifier
+                                </button>
+                            )}
+                        </div>
                     </div>
+
+                    {!isEditing && hasExistingPoints && (
+                        <div className="copy-tmde-section">
+                            <input
+                                type="checkbox"
+                                id="copyTmdes"
+                                name="copyTmdes"
+                                checked={formData.copyTmdes}
+                                onChange={handleChange}
+                            />
+                            <label htmlFor="copyTmdes">Use TMDEs from previous measurement point</label>
+                        </div>
+                    )}
                 </div>
 
-                {!isEditing && hasExistingPoints && (
-                    <div className="copy-tmde-section">
-                        <input
-                            type="checkbox"
-                            id="copyTmdes"
-                            name="copyTmdes"
-                            checked={formData.copyTmdes}
-                            onChange={handleChange}
-                        />
-                        <label htmlFor="copyTmdes">Use TMDEs from previous measurement point</label>
-                    </div>
-                )}
-                 <div className="modal-actions">
+                {/* --- Footer --- */}
+                <div className="modal-actions" style={{marginTop: '20px'}}>
                     <button className="modal-icon-button primary" onClick={handleSave} title="Save Changes"><FontAwesomeIcon icon={faCheck} /></button>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 

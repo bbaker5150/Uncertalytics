@@ -513,6 +513,29 @@ body.theme-orbital .modal-content {
   box-shadow: 0 20px 50px rgba(0,0,0,0.5);
 }
 
+/* --- ORBITAL DARK MODE: FIX TABLE BUTTON VISIBILITY --- */
+body.theme-orbital.dark-mode .btn-icon-only {
+  /* Give the button its own semi-transparent background so it doesn't vanish */
+  background-color: rgba(15, 23, 42, 0.8); 
+  
+  /* Make the border visible but subtle */
+  border-color: rgba(148, 163, 184, 0.3); 
+  
+  /* Force the icon color to the bright Neon Cyan variable */
+  color: var(--orbital-cyan); 
+  
+  /* Add a small glow so it looks active */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Hover State: "Ignite" the button */
+body.theme-orbital.dark-mode .btn-icon-only:hover {
+  background-color: var(--orbital-cyan);
+  color: #000000; /* Black icon on Cyan background for max contrast */
+  box-shadow: 0 0 15px var(--orbital-cyan);
+  border-color: var(--orbital-cyan);
+}
+
 /* --- 1D. THEME: CYBERPUNK --- */
 body.theme-cyberpunk {
   /* Coding/Terminal Font */
@@ -533,7 +556,7 @@ body.theme-cyberpunk {
   --sidebar-background: transparent;
   --border-color: #000000;
   --component-bg: #ffffff;
-  --component-header-bg: #d600c0;
+  --component-header-bg: #00eaff;
   --border-gradient: linear-gradient(90deg, #d600c0, #00eaff);
   --box-shadow-glow: 5px 5px 0px rgba(0,0,0,1);
   --toggle-bg-off: #999;
@@ -4919,15 +4942,15 @@ body.dark-mode .floating-window-content {
 
 /* 1. The Overlay (Backdrop) */
 body.theme-orbital .modal-overlay {
-  /* Use a dark, tinted blur instead of plain grey */
-  background-color: rgba(15, 23, 42, 0.4); 
+  /* LIGHT MODE: Lighter, solar-tinted blur */
+  background-color: rgba(255, 255, 255, 0.2); 
   backdrop-filter: blur(8px) saturate(120%); 
   -webkit-backdrop-filter: blur(8px) saturate(120%);
   transition: all 0.3s ease;
 }
 
-/* Dark Mode Overlay: Make it darker to let the neon pop, but keep stars visible */
 body.theme-orbital.dark-mode .modal-overlay {
+  /* DARK MODE: Deep space tint */
   background-color: rgba(0, 0, 0, 0.6); 
   backdrop-filter: blur(12px) grayscale(40%);
   -webkit-backdrop-filter: blur(12px) grayscale(40%);
@@ -4935,54 +4958,71 @@ body.theme-orbital.dark-mode .modal-overlay {
 
 /* 2. The Floating Window (Orbit Specifics) */
 body.theme-orbital .floating-window-content {
-  /* HUD / Glass Cockpit Look */
-  background-color: var(--header-background); /* Semi-transparent */
+  /* LIGHT MODE: Solar Command HUD (White/Glass) */
+  background-color: rgba(255, 255, 255, 0.85); 
   border: 1px solid var(--primary-color);
-  border-top: 2px solid var(--primary-color); /* HUD Top Accent */
+  border-top: 4px solid var(--primary-color); /* Thicker top accent */
   
-  /* Remove the generic "content" background image from the main theme */
   background-image: none; 
   
-  /* Glowing Edges */
+  /* Day-time Glow */
   box-shadow: 
-    0 20px 60px rgba(0,0,0,0.5),
-    0 0 0 1px rgba(8, 145, 178, 0.2), /* Inner Ring */
-    0 0 20px rgba(8, 145, 178, 0.15); /* Outer Glow */
+    0 20px 60px rgba(0,0,0,0.1),
+    0 0 0 1px rgba(8, 145, 178, 0.1),
+    0 0 20px rgba(8, 145, 178, 0.1); 
     
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-radius: 12px;
 }
 
-/* Dark Mode Window: Deep Space HUD */
 body.theme-orbital.dark-mode .floating-window-content {
-  background-color: rgba(10, 20, 30, 0.85); /* Darker glass */
+  /* DARK MODE: Deep Space HUD (Dark/Glass) */
+  background-color: rgba(10, 20, 30, 0.85); 
   border-color: var(--primary-color);
   box-shadow: 
     0 25px 80px rgba(0,0,0,0.8),
     0 0 0 1px var(--primary-color-dark),
-    0 0 30px rgba(6, 182, 212, 0.15); /* Cyan Glow */
+    0 0 30px rgba(6, 182, 212, 0.15); 
 }
 
 /* 3. Header/Footer inside Floating Window */
 body.theme-orbital .floating-window-content > div:first-child, /* Header */
 body.theme-orbital .floating-window-content .modal-actions {   /* Footer */
-  background-color: rgba(15, 23, 42, 0.3); /* Subtle separation */
+  /* LIGHT MODE: White semi-transparent */
+  background-color: rgba(255, 255, 255, 0.5); 
+  border-color: rgba(148, 163, 184, 0.2);
+  color: var(--text-color);
+}
+
+body.theme-orbital.dark-mode .floating-window-content > div:first-child,
+body.theme-orbital.dark-mode .floating-window-content .modal-actions {
+  /* DARK MODE: Dark semi-transparent */
+  background-color: rgba(15, 23, 42, 0.6); 
   border-color: rgba(148, 163, 184, 0.2);
 }
 
 /* 4. Scrollable Areas */
 body.theme-orbital .floating-window-content .modal-body-scrollable,
 body.theme-orbital .floating-window-content .lookup-table-container {
-  /* Ensure backgrounds inside don't fight the glass effect */
   background-color: transparent;
 }
 
 /* 5. Inputs inside Floating Window */
 body.theme-orbital .floating-window-content input,
 body.theme-orbital .floating-window-content select {
-  background-color: rgba(0, 0, 0, 0.2); /* Darker inputs for contrast on glass */
+  /* LIGHT MODE: White inputs for cleanliness */
+  background-color: rgba(255, 255, 255, 0.8); 
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+body.theme-orbital.dark-mode .floating-window-content input,
+body.theme-orbital.dark-mode .floating-window-content select {
+  /* DARK MODE: Dark glass inputs */
+  background-color: rgba(0, 0, 0, 0.3); 
   border-color: rgba(148, 163, 184, 0.3);
+  color: var(--text-color);
 }
 
 body.theme-orbital.dark-mode .floating-window-content input:focus,

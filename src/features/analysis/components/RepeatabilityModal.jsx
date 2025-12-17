@@ -79,6 +79,55 @@ const RepeatabilityModal = ({ isOpen, onClose, onSave, uutNominal }) => {
   const [selectedUnit, setSelectedUnit] = useState(uutNominal?.unit || "V");
   const inputRef = useRef(null);
 
+  // --- Floating Window State ---
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Center the modal when it opens
+  useEffect(() => {
+    if (isOpen) {
+      // Default center position logic
+      const width = 750;
+      const height = 500;
+      const x = typeof window !== 'undefined' ? Math.max(0, (window.innerWidth - width) / 2) : 0;
+      const y = typeof window !== 'undefined' ? Math.max(0, (window.innerHeight - height) / 2) : 0;
+      setPosition({ x, y });
+    }
+  }, [isOpen]);
+
+  // --- Drag Handlers ---
+  const handleMouseDown = (e) => {
+    // Only allow dragging from the header
+    setIsDragging(true);
+    setDragOffset({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+    });
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+        if (isDragging) {
+            setPosition({
+                x: e.clientX - dragOffset.x,
+                y: e.clientY - dragOffset.y
+            });
+        }
+    };
+    const handleMouseUp = () => setIsDragging(false);
+
+    if (isDragging) {
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
+
   // Prepare Unit Options
   const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
   const unitOptions = useMemo(() => {
@@ -140,24 +189,60 @@ const RepeatabilityModal = ({ isOpen, onClose, onSave, uutNominal }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 2002 }}>
-      <div className="modal-content" style={{ maxWidth: "700px", display: 'flex', flexDirection: 'column' }}>
-        <button onClick={onClose} className="modal-close-button">&times;</button>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '15px' }}>
-            <div style={{ 
-                width: '40px', height: '40px', borderRadius: '8px', 
-                backgroundColor: 'var(--primary-color-light)', color: 'var(--primary-color)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'
-            }}>
-                <FontAwesomeIcon icon={faChartLine} />
+    <div 
+        className="modal-content floating-window-content" 
+        style={{ 
+            maxWidth: "95vw",
+            width: "750px",
+            display: 'flex', 
+            flexDirection: 'column',
+            position: 'fixed',
+            top: position.y,
+            left: position.x,
+            margin: 0,
+            zIndex: 2002, // High z-index to stay above other elements
+            height: 'auto',
+            maxHeight: '90vh'
+        }}
+    >
+        {/* DRAGGABLE HEADER */}
+        <div 
+            onMouseDown={handleMouseDown}
+            style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                marginBottom: '10px', 
+                borderBottom: '1px solid var(--border-color)', 
+                paddingBottom: '15px',
+                cursor: 'move', // Indicates draggable
+                userSelect: 'none'
+            }}
+        >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ 
+                    width: '40px', height: '40px', borderRadius: '8px', 
+                    backgroundColor: 'var(--primary-color-light)', color: 'var(--primary-color)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'
+                }}>
+                    <FontAwesomeIcon icon={faChartLine} />
+                </div>
+                <div>
+                    <h3 style={{ margin: 0, fontSize: '1.3rem' }}>Repeatability Calculator</h3>
+                </div>
             </div>
-            <div>
-                <h3 style={{ margin: 0, fontSize: '1.3rem' }}>Repeatability Calculator</h3>
-            </div>
+            
+            {/* Close Button Integrated in Header */}
+            <button 
+                onClick={onClose} 
+                className="modal-close-button"
+                style={{ position: 'static', transform: 'none' }}
+            >
+                &times;
+            </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', flexGrow: 1, minHeight: '350px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', flexGrow: 1, minHeight: '350px', overflowY: 'auto', paddingRight: '5px' }}>
             {/* LEFT: Input Side */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 
@@ -338,7 +423,6 @@ const RepeatabilityModal = ({ isOpen, onClose, onSave, uutNominal }) => {
                 </div>
             </div>
         </div>
-      </div>
     </div>
   );
 };

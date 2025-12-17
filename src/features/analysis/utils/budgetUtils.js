@@ -84,7 +84,6 @@ export const getBudgetComponentsFromTolerance = (
       const halfSpan = (high - low) / 2;
 
       if (halfSpan === 0) {
-          if (toleranceObject.name) console.warn(`  -> SKIPPED: HalfSpan is 0`);
           return;
       }
 
@@ -103,14 +102,11 @@ export const getBudgetComponentsFromTolerance = (
         }
 
         valueInNominalUnits = halfSpan * multiplier * baseValueForRelative;
-        if (toleranceObject.name) {
-            console.log(`  -> Relative Calc: ${halfSpan} * ${multiplier} * ${baseValueForRelative} = ${valueInNominalUnits}`);
-        }
-      } else {
-        const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
-        const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
-        valueInNominalUnits = valueInBase / nominalUnitInBase;
       }
+      const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
+      const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
+      valueInNominalUnits = valueInBase / nominalUnitInBase;
+
 
       halfSpanPPM = convertToPPM(
         valueInNominalUnits,
@@ -135,9 +131,6 @@ export const getBudgetComponentsFromTolerance = (
         isCore: true,
         distribution: distributionLabel,
       });
-      if (toleranceObject.name) console.log(`  -> SUCCESS: Added component with u_i=${u_i}`);
-    } else {
-       if (toleranceObject.name) console.warn(`  -> FAILED: halfSpanPPM is NaN`);
     }
   };
   

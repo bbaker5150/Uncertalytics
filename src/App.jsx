@@ -478,6 +478,14 @@ function App() {
             {/* 2. RIGHT: ACTION RIBBON */}
             <div className="header-actions">
               {/* STATUS INDICATOR (Primary Context) */}
+                {/* --- INSTRUMENT BUILDER --- */}
+                <button
+                  className={`icon-action-btn ${isInstrumentBuilderOpen ? "active" : ""}`}
+                  onClick={() => setIsInstrumentBuilderOpen(!isInstrumentBuilderOpen)}
+                  title="Instrument Builder"
+                >
+                  <FontAwesomeIcon icon={faRadio} />
+                </button>
               <div className="header-divider"></div>
 
               {/* FLOATING TOOLS ACTIONS */}
@@ -504,15 +512,6 @@ function App() {
                   title="Unit Converter"
                 >
                   <FontAwesomeIcon icon={faRightLeft} />
-                </button>
-
-                {/* --- INSTRUMENT BUILDER --- */}
-                <button
-                  className={`icon-action-btn ${isInstrumentBuilderOpen ? "active" : ""}`}
-                  onClick={() => setIsInstrumentBuilderOpen(!isInstrumentBuilderOpen)}
-                  title="Instrument Builder"
-                >
-                  <FontAwesomeIcon icon={faRadio} />
                 </button>
               </div>
 

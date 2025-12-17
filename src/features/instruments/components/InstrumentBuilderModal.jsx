@@ -374,7 +374,6 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
             onMouseDown={handleMouseDown}
         >
             <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                <FontAwesomeIcon icon={faGripHorizontal} style={{color:'var(--text-color-muted)'}} />
                 {viewMode === 'edit' && <button className="icon-action-btn" onClick={() => setViewMode("list")} title="Back to Library"><FontAwesomeIcon icon={faArrowLeft}/></button>}
                 <h3 style={{margin:0, fontSize: '1.2rem'}}><FontAwesomeIcon icon={faRadio} style={{marginRight: '10px'}}/> {viewMode === 'list' ? 'Instrument Library' : 'Edit Instrument'}</h3>
             </div>

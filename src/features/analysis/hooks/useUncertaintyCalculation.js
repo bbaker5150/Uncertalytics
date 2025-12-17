@@ -147,6 +147,50 @@ export const useUncertaintyCalculation = (
           });
         });
 
+        // -------------------------------------------------------------
+        // NEW CODE START: Handle Manual Components (e.g., Repeatability)
+        // -------------------------------------------------------------
+        if (manualComponents && manualComponents.length > 0) {
+            manualComponents.forEach((comp, idx) => {
+                // Manual components typically come in as PPM (relative).
+                // We need to convert them to absolute native units to add to the
+                // Derived Total Variance (which is calculated in Native Units squared).
+                
+                // comp.value is the uncertainty (usually PPM/Relative).
+                // derivedNominalValue is the calculated nominal result of the equation.
+                
+                // Calculate Absolute Uncertainty in Native Units
+                // (PPM / 1,000,000) * Nominal
+                const absUncNative = (comp.value / 1e6) * Math.abs(derivedNominalValue);
+
+                // Calculate Absolute Uncertainty in Base Units (SI)
+                const absUncBase = absUncNative * targetUnitInfo.to_si;
+
+                if (!isNaN(absUncNative)) {
+                    // Add to Total Variance (Sum of Squares)
+                    totalVariance_Native += absUncNative ** 2;
+
+                    componentsForBudgetTable.push({
+                        ...comp,
+                        id: comp.id || `manual_derived_${idx}`,
+                        sourcePointLabel: "Manual",
+                        // For derived table, 'value' often represents the Base Unit value 
+                        // (matching the logic in derivedBreakdown push above)
+                        value: absUncBase, 
+                        unit: derivedNominalUnit,
+                        isBaseUnitValue: true,
+                        sensitivityCoefficient: 1, // Direct contributor to the result
+                        contribution: absUncNative,
+                        dof: comp.dof || Infinity,
+                        isCore: false
+                    });
+                }
+            });
+        }
+        // -------------------------------------------------------------
+        // NEW CODE END
+        // -------------------------------------------------------------
+
         // Add direct components like resolution
         let uutResolutionUncertaintyBase = 0;
         let uutResolutionUncertaintyNative = 0;
@@ -402,6 +446,7 @@ export const useUncertaintyCalculation = (
       }
     }
   }, [
+    testPointData.id,
     testPointData.measurementType,
     testPointData.equationString,
     testPointData.variableMappings,
