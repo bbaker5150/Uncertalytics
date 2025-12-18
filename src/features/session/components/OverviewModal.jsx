@@ -143,6 +143,8 @@ const AddTmdeSeal = ({ onClick }) => (
 );
 
 const getPfaClass = (pfa) => {
+  // Add safety check for null pfa
+  if (pfa == null) return ""; 
   if (pfa > 5) return "status-bad";
   if (pfa > 2) return "status-warning";
   return "status-good";
@@ -229,17 +231,13 @@ const OverviewModal = ({
     setEditingTmde(null);
   };
 
-  // Close context menu on click elsewhere
   const handleBackgroundClick = () => {
     if (contextMenu) setContextMenu(null);
   };
 
   return (
-    // Note: We removed the main 'modal-overlay' wrapper to make it floating modeless
     <div onClick={handleBackgroundClick}>
       
-      {/* --- NESTED MODAL OVERLAY --- */}
-      {/* This wrapper forces the AddTmdeModal to stack cleanly on top if it opens */}
       {editingTmde && (
         <div className="nested-modal-overlay" onClick={(e) => e.stopPropagation()}>
           <AddTmdeModal
@@ -253,7 +251,6 @@ const OverviewModal = ({
         </div>
       )}
 
-      {/* --- Floating Window Content --- */}
       <div 
         className="modal-content floating-window-content"
         style={{
@@ -271,7 +268,6 @@ const OverviewModal = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* --- Draggable Header --- */}
         <div 
             style={{
                 display:'flex', 
@@ -294,7 +290,6 @@ const OverviewModal = ({
             <button onClick={onClose} className="modal-close-button" style={{position:'static'}}>&times;</button>
         </div>
 
-        {/* --- Scrollable Content --- */}
         <div className="modal-main-content" style={{flex: 1, overflowY: 'auto', paddingRight: '5px'}}>
           <div className="tmde-management-container">
             <UutSealDisplay
@@ -320,24 +315,25 @@ const OverviewModal = ({
                       </div>
                     </div>
 
+                    {/* FIXED: Added optional chaining and fallbacks for safety */}
                     {tp.riskMetrics && (
                       <div className="tp-header-row secondary-row">
                         <div className="tp-info-item">
                           <span className="tp-label">Expanded Uncertainty:</span>
                           <span className="tp-value">
-                            {tp.riskMetrics.expandedUncertainty.toPrecision(4)} {tp.riskMetrics.nativeUnit}
+                            {tp.riskMetrics.expandedUncertainty?.toPrecision(4) ?? "N/A"} {tp.riskMetrics.nativeUnit}
                           </span>
                         </div>
                         <div className="tp-info-item">
                           <span className="tp-label">Tolerance Low:</span>
                           <span className="tp-value">
-                            {tp.riskMetrics.LLow} {tp.riskMetrics.nativeUnit}
+                            {tp.riskMetrics.LLow ?? "N/A"} {tp.riskMetrics.nativeUnit}
                           </span>
                         </div>
                         <div className="tp-info-item">
                           <span className="tp-label">Tolerance High:</span>
                           <span className="tp-value">
-                            {tp.riskMetrics.LUp} {tp.riskMetrics.nativeUnit}
+                            {tp.riskMetrics.LUp ?? "N/A"} {tp.riskMetrics.nativeUnit}
                           </span>
                         </div>
                       </div>
@@ -358,7 +354,6 @@ const OverviewModal = ({
                           onEditClick={() => handleEditTmdeClick(tmde, tp)}
                           onContextMenu={(e) => {
                             e.preventDefault();
-                            // Context menu logic if needed
                           }}
                         />
                       ));
@@ -367,23 +362,40 @@ const OverviewModal = ({
                   </div>
 
                   <div className="metric-pods-row-condensed">
+                    {/* FIXED: Added safety checks for every .toFixed() call */}
                     {tp.riskMetrics ? (
                       <>
                         <div className={`metric-pod ${getPfaClass(tp.riskMetrics.pfa)}`}>
                           <span className="metric-pod-label">PFA</span>
-                          <span className="metric-pod-value">{tp.riskMetrics.pfa.toFixed(4)} %</span>
+                          <span className="metric-pod-value">
+                            {typeof tp.riskMetrics.pfa === 'number' 
+                              ? `${tp.riskMetrics.pfa.toFixed(4)} %` 
+                              : '---'}
+                          </span>
                         </div>
                         <div className="metric-pod pfr">
                           <span className="metric-pod-label">PFR</span>
-                          <span className="metric-pod-value">{tp.riskMetrics.pfr.toFixed(4)} %</span>
+                          <span className="metric-pod-value">
+                            {typeof tp.riskMetrics.pfr === 'number' 
+                              ? `${tp.riskMetrics.pfr.toFixed(4)} %` 
+                              : '---'}
+                          </span>
                         </div>
                         <div className="metric-pod tur">
                           <span className="metric-pod-label">TUR</span>
-                          <span className="metric-pod-value">{tp.riskMetrics.tur.toFixed(2)} : 1</span>
+                          <span className="metric-pod-value">
+                            {typeof tp.riskMetrics.tur === 'number' 
+                              ? `${tp.riskMetrics.tur.toFixed(2)} : 1` 
+                              : '---'}
+                          </span>
                         </div>
                         <div className="metric-pod tar">
                           <span className="metric-pod-label">TAR</span>
-                          <span className="metric-pod-value">{tp.riskMetrics.tar.toFixed(2)} : 1</span>
+                          <span className="metric-pod-value">
+                            {typeof tp.riskMetrics.tar === 'number' 
+                              ? `${tp.riskMetrics.tar.toFixed(2)} : 1` 
+                              : '---'}
+                          </span>
                         </div>
                       </>
                     ) : (
