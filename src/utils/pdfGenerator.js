@@ -54,23 +54,43 @@ class PdfPageManager {
 
     const maxWidth = this.width - this.margins.left - this.margins.right - indent;
     
-    let lines = [text];
-    if (wrap) {
-      lines = [];
-      let currentLine = '';
-      const words = String(text).split(' '); 
-      for (const word of words) {
-        const testLine = currentLine + (currentLine ? ' ' : '') + word;
-        const testWidth = font.widthOfTextAtSize(testLine, fontSize);
-        if (testWidth <= maxWidth) {
-          currentLine = testLine;
-        } else {
-          lines.push(currentLine);
-          currentLine = word;
-        }
+    // --- FIX START: Handle Newlines Manually ---
+    // 1. Split text by explicit newlines first to respect paragraphs
+    const paragraphs = String(text).split(/\r\n|\r|\n/g);
+    
+    let lines = [];
+
+    for (const paragraph of paragraphs) {
+      // If the paragraph is empty (double enter), we still need to push an empty line to advance Y
+      if (paragraph === '') {
+        lines.push('');
+        continue;
       }
-      lines.push(currentLine);
+
+      if (wrap) {
+        let currentLine = '';
+        const words = paragraph.split(' '); 
+        
+        for (const word of words) {
+          // Check if adding the next word exceeds width
+          const testLine = currentLine ? currentLine + ' ' + word : word;
+          const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+          
+          if (testWidth <= maxWidth) {
+            currentLine = testLine;
+          } else {
+            lines.push(currentLine);
+            currentLine = word;
+          }
+        }
+        // Push the remainder of the paragraph
+        if (currentLine) lines.push(currentLine);
+      } else {
+        // No wrapping requested, just push the paragraph as is
+        lines.push(paragraph);
+      }
     }
+    // --- FIX END ---
 
     for (const line of lines) {
       if (this.checkAddPage(fontSize)) {
@@ -83,14 +103,19 @@ class PdfPageManager {
         x = this.width - this.margins.right - textWidth - indent;
       }
 
-      this.page.drawText(line, {
-        x: x, 
-        y: this.y,
-        size: fontSize,
-        font: font,
-        color: color,
-      });
-      if (lines.length > 1) {
+      // Only draw if line has content (otherwise just advance Y)
+      if (line && line.trim().length > 0) {
+        this.page.drawText(line, {
+          x: x, 
+          y: this.y,
+          size: fontSize,
+          font: font,
+          color: color,
+        });
+      }
+      
+      // Move Y down for the next line
+      if (lines.length > 0) {
          this.y -= (options.lineHeight || this.lineHeight);
       }
     }
@@ -184,6 +209,7 @@ export const generateOverviewReport = async (pdfDoc, session, fonts, helpers) =>
   if (session.notes) {
     manager.addVerticalSpace(10);
     await manager.drawText("Analysis Notes:", { font: manager.boldFont });
+    // This call previously failed on newlines
     await manager.drawText(session.notes, {
       indent: 10,
       color: rgb(0.3, 0.3, 0.3),
@@ -221,12 +247,13 @@ export const generateOverviewReport = async (pdfDoc, session, fonts, helpers) =>
 
     if (tp.riskMetrics) {
       const risk = tp.riskMetrics;
-      await manager.drawText(`- Expanded Uncertainty: ${risk.expandedUncertainty?.toPrecision(4)} ${risk.nativeUnit}`, { indent: contentIndent });
-      await manager.drawText(`- UUT Tolerance Limits: ${risk.LLow} to ${risk.LUp} ${risk.nativeUnit}`, { indent: contentIndent });
-      await manager.drawText(`- PFA: ${risk.pfa?.toFixed(4)} %`, { indent: contentIndent });
-      await manager.drawText(`- PFR: ${risk.pfr?.toFixed(4)} %`, { indent: contentIndent });
-      await manager.drawText(`- TUR: ${risk.tur?.toFixed(2)} : 1`, { indent: contentIndent });
-      await manager.drawText(`- TAR: ${risk.tar?.toFixed(2)} : 1`, { indent: contentIndent });
+      // Using optional chaining and null coalescing to be safe
+      await manager.drawText(`- Expanded Uncertainty: ${risk.expandedUncertainty?.toPrecision(4) ?? "N/A"} ${risk.nativeUnit}`, { indent: contentIndent });
+      await manager.drawText(`- UUT Tolerance Limits: ${risk.LLow ?? "N/A"} to ${risk.LUp ?? "N/A"} ${risk.nativeUnit}`, { indent: contentIndent });
+      await manager.drawText(`- PFA: ${risk.pfa?.toFixed(4) ?? "N/A"} %`, { indent: contentIndent });
+      await manager.drawText(`- PFR: ${risk.pfr?.toFixed(4) ?? "N/A"} %`, { indent: contentIndent });
+      await manager.drawText(`- TUR: ${risk.tur?.toFixed(2) ?? "N/A"} : 1`, { indent: contentIndent });
+      await manager.drawText(`- TAR: ${risk.tar?.toFixed(2) ?? "N/A"} : 1`, { indent: contentIndent });
     } else {
       await manager.drawText("- Not Calculated", { indent: contentIndent });
     }
