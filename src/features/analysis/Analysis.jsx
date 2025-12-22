@@ -22,17 +22,21 @@ import RiskScatterplot from "./components/RiskScatterplot";
 // --- Modals ---
 import NotificationModal from "../../components/modals/NotificationModal";
 import AddTmdeModal from "../instruments/components/AddTmdeModal";
+import EditUutModal from "../instruments/components/EditUutModal"; 
 import DerivedBreakdownModal from "./components/BreakdownModals/DerivedBreakdownModal";
 import RiskBreakdownModal from "./components/BreakdownModals/RiskBreakdownModals";
 import RepeatabilityModal from "./components/RepeatabilityModal";
 
 // --- Utils ---
-import { convertToPPM } from "../../utils/uncertaintyMath";
+import { 
+  convertToPPM,
+} from "../../utils/uncertaintyMath";
 
 function Analysis({
   sessionData,
   testPointData,
-  onDataSave,
+  onDataSave, 
+  onSessionSave, 
   defaultTestPoint,
   setContextMenu,
   setBreakdownPoint,
@@ -41,30 +45,29 @@ function Analysis({
   instruments,
   onDeleteTmdeDefinition,
   onDecrementTmdeQuantity,
+  onDeleteUut,
   onOpenOverview,
   // Shared State lifted from App.js
   riskResults: parentRiskResults, 
   setRiskResults: parentSetRiskResults 
 }) {
   // --- 1. Local UI State ---
-  const [analysisMode, setAnalysisMode] = useState("uncertaintyTool"); // Tabs: uncertaintyTool, risk, riskmitigation
+  const [analysisMode, setAnalysisMode] = useState("uncertaintyTool");
   const [showContribution, setShowContribution] = useState(false);
   const [notification, setNotification] = useState(null);
   
   // Modal States
   const [isAddTmdeModalOpen, setAddTmdeModalOpen] = useState(false);
+  const [isUutModalOpen, setIsUutModalOpen] = useState(false); 
   const [tmdeToEdit, setTmdeToEdit] = useState(null);
   
   const [isManualModalOpen, setManualModalOpen] = useState(false);
   const [editingComponent, setEditingComponent] = useState(null);
   
   const [isRepeatabilityModalOpen, setRepeatabilityModalOpen] = useState(false);
-  // We reuse 'editingComponent' for repeatability edits to track the ID
-  
-  // State to track where the modal should open (near cursor)
   const [modalPosition, setModalPosition] = useState(null);
 
-  const [breakdownModalType, setBreakdownModalType] = useState(null); // For Risk Breakdown
+  const [breakdownModalType, setBreakdownModalType] = useState(null);
   const [isDerivedBreakdownOpen, setIsDerivedBreakdownOpen] = useState(false);
   const [derivedBreakdownData, setDerivedBreakdownData] = useState(null);
 
@@ -100,7 +103,6 @@ function Analysis({
   );
 
   // --- 4. Risk Calculation Hook ---
-  // Wrapper to sync hook results with parent App.js state (setRiskResults)
   const handleRiskDataSave = (data) => {
     if (data.riskMetrics !== undefined && parentSetRiskResults) {
         parentSetRiskResults(data.riskMetrics);
@@ -120,20 +122,30 @@ function Analysis({
     uutNominal,
     calcResults,
     analysisMode,
-    handleRiskDataSave // Use wrapper
+    handleRiskDataSave 
   );
 
-  // Sync risk notification to local notification
   if (riskNotification && !notification) {
     setNotification(riskNotification);
   }
 
   // --- 5. Handlers ---
+  const handleSaveUut = ({ description, tolerance, instrument }) => {
+    if (onSessionSave) {
+        onSessionSave({
+            ...sessionData,
+            uutDescription: description,
+            uutTolerance: tolerance,
+            uutInstrument: instrument || sessionData.uutInstrument 
+        });
+    } else {
+        console.error("onSessionSave prop missing in Analysis.jsx");
+    }
+  };
 
   const handleSaveTmde = (tmdeToSave, andClose = true) => {
     const existingIndex = tmdeTolerancesData.findIndex((t) => t.id === tmdeToSave.id);
     let updatedTolerances;
-
     if (existingIndex > -1) {
       updatedTolerances = tmdeTolerancesData.map((t, index) =>
         index === existingIndex ? tmdeToSave : t
@@ -165,10 +177,7 @@ function Analysis({
 
   const handleEditComponent = (event, component) => {
     setEditingComponent(component);
-    
-    // Check if this is a repeatability component based on ID or Name
     if (component.id.toString().includes('repeatability') || component.name === 'Repeatability') {
-        // Capture coordinates if event exists
         if (event && event.clientY) {
             setModalPosition({ top: event.clientY, left: event.clientX });
         } else {
@@ -193,7 +202,6 @@ function Analysis({
   };
 
   const handleSaveRepeatability = (data) => {
-    // Convert Standard Deviation to PPM for the budget
     const { value: ppm, warning } = convertToPPM(
         data.stdDev,
         data.unit,
@@ -222,7 +230,6 @@ function Analysis({
         dof: data.dof,
         distribution: "Normal",
         isCore: false,
-        // *** KEY CHANGE: Store the raw input data (readings) ***
         savedInputs: data 
     };
 
@@ -256,6 +263,8 @@ function Analysis({
     setIsDerivedBreakdownOpen(true);
   };
 
+  // REMOVED: Automatic Tolerance Update Check on Navigation (useEffect)
+
   return (
     <div>
       {/* --- HEADER --- */}
@@ -268,7 +277,17 @@ function Analysis({
       <NotificationModal
         isOpen={!!notification}
         onClose={() => setNotification(null)}
-        {...notification}
+        {...notification} 
+      />
+
+      <EditUutModal
+        isOpen={isUutModalOpen}
+        onClose={() => setIsUutModalOpen(false)}
+        onSave={handleSaveUut}
+        initialDescription={sessionData.uutDescription}
+        initialTolerance={sessionData.uutTolerance}
+        instruments={instruments}
+        uutNominal={uutNominal}
       />
 
       <AddTmdeModal
@@ -293,7 +312,6 @@ function Analysis({
         onClose={() => { setRepeatabilityModalOpen(false); setEditingComponent(null); }}
         onSave={handleSaveRepeatability}
         uutNominal={uutNominal}
-        // *** KEY CHANGE: Pass existing data and position ***
         existingData={editingComponent} 
         position={modalPosition}
       />
@@ -342,7 +360,7 @@ function Analysis({
         </button>
       </div>
 
-      {/* --- UNCERTAINTY VIEW --- */}
+      {/* --- PANELS --- */}
       {analysisMode === "uncertaintyTool" && (
         <UncertaintyPanel 
           testPointData={testPointData}
@@ -364,7 +382,11 @@ function Analysis({
           onEditTmde={(tmde) => { setTmdeToEdit(tmde); setAddTmdeModalOpen(true); }}
           onDeleteTmdeDefinition={onDeleteTmdeDefinition}
           onDecrementTmdeQuantity={onDecrementTmdeQuantity}
+          
+          onOpenUutModal={() => setIsUutModalOpen(true)}
+          onDeleteUut={onDeleteUut} 
           handleOpenSessionEditor={handleOpenSessionEditor}
+
           setContextMenu={setContextMenu}
           setBreakdownPoint={setBreakdownPoint}
           onBudgetRowContextMenu={handleBudgetRowContextMenu}
@@ -380,7 +402,6 @@ function Analysis({
         />
       )}
 
-      {/* --- RISK ANALYSIS VIEW --- */}
       {analysisMode === "risk" && (
         <div>
           {!calcResults ? (
@@ -413,7 +434,6 @@ function Analysis({
         </div>
       )}
 
-      {/* --- RISK MITIGATION VIEW --- */}
       {analysisMode === "riskmitigation" && (
         <>
           {!calcResults ? (

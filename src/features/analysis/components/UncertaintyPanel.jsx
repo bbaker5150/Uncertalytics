@@ -46,6 +46,8 @@ const UncertaintyPanel = ({
   onDeleteTmdeDefinition,
   onDecrementTmdeQuantity,
   handleOpenSessionEditor,
+  onOpenUutModal, 
+  onDeleteUut, // <--- New Prop
   setContextMenu,
   setBreakdownPoint,
   onBudgetRowContextMenu,
@@ -56,76 +58,104 @@ const UncertaintyPanel = ({
   onOpenRepeatability,
   riskResults
 }) => {
+
+  // Determine if UUT is defined (has a description or specs)
+  const isUutDefined = (sessionData.uutDescription && sessionData.uutDescription.trim() !== "") || 
+                       (uutToleranceData && Object.keys(uutToleranceData).length > 0);
+
   return (
     <div className="configuration-panel">
       {/* --- UUT SECTION --- */}
       <h4 className="uut-components-title">Unit Under Test</h4>
       <div className="uut-seal-container">
-        <div
-          className={`uut-seal ${testPointData.measurementType === "derived" ? "derived-point" : ""}`}
-          onClick={() => handleOpenSessionEditor("uut")}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            setContextMenu({
-              x: e.pageX,
-              y: e.pageY,
-              items: [
-                {
-                  label: "View UUT Calculation",
-                  action: () =>
-                    setBreakdownPoint({
-                      title: "UUT Breakdown",
-                      toleranceObject: uutToleranceData,
-                      referencePoint: uutNominal,
-                    }),
-                  icon: faCalculator,
-                },
-              ],
-            });
-          }}
-        >
-          <div className="uut-seal-content">
-            <span className="seal-label">Unit Under Test</span>
-            <h4 className="seal-title">{sessionData.uutDescription || "N/A"}</h4>
-            <div className="seal-info-item">
-              <span>Current Point {testPointData.measurementType === "derived" && "(Derived)"}</span>
-              <strong>
-                {testPointData.measurementType === "derived"
-                  ? calcResults?.calculatedNominalValue?.toPrecision(5) ?? (testPointData.testPointInfo.parameter.name || "Derived Value")
-                  : `${uutNominal?.value ?? ""} ${uutNominal?.unit ?? ""}`}{" "}
-                {testPointData.measurementType === "derived" && ` (${uutNominal?.unit ?? ""})`}
-              </strong>
-            </div>
-            {testPointData.measurementType === "derived" && testPointData.equationString && (
-              <div className="seal-info-item" style={{ fontStyle: "italic", marginTop: "5px" }}>
-                <span>Equation</span>
-                <strong style={{ fontFamily: "monospace" }}>{testPointData.equationString}</strong>
-              </div>
-            )}
-            <div className="seal-info-item">
-              <span>Tolerance Spec</span>
-              <strong>{getToleranceSummary(uutToleranceData)}</strong>
-            </div>
-            <div className="seal-info-item">
-              <span>Calculated Error</span>
-              <strong>{getToleranceErrorSummary(uutToleranceData, uutNominal)}</strong>
-            </div>
-            <div className="seal-limits-split">
-              <div className="seal-info-item">
-                <span>Low Limit</span>
-                <strong className="calculated-limit">
-                  {getAbsoluteLimits(uutToleranceData, uutNominal).low}
+        {!isUutDefined ? (
+           // Render "Add UUT" Button when not defined
+           <div className="add-tmde-card" style={{borderColor: 'var(--primary-color)', background: 'rgba(var(--primary-color-rgb), 0.05)'}}>
+              <button className="add-tmde-button" onClick={onOpenUutModal} style={{color: 'var(--primary-color)'}}>
+                <FontAwesomeIcon icon={faPlus} />
+                <span>Add UUT</span>
+              </button>
+           </div>
+        ) : (
+           // Render Seal when defined
+            <div
+            className={`uut-seal ${testPointData.measurementType === "derived" ? "derived-point" : ""}`}
+            onClick={onOpenUutModal} // Open UUT Modal directly
+            onContextMenu={(e) => {
+                e.preventDefault();
+                setContextMenu({
+                x: e.pageX,
+                y: e.pageY,
+                items: [
+                    {
+                    label: "View UUT Calculation",
+                    action: () =>
+                        setBreakdownPoint({
+                        title: "UUT Breakdown",
+                        toleranceObject: uutToleranceData,
+                        referencePoint: uutNominal,
+                        }),
+                    icon: faCalculator,
+                    },
+                    {
+                        label: "Edit UUT Specifications",
+                        action: onOpenUutModal,
+                        icon: faPencilAlt
+                    },
+                    { type: "divider" },
+                    {
+                        label: "Delete UUT",
+                        action: onDeleteUut,
+                        icon: faTrashAlt,
+                        className: "destructive"
+                    }
+                ],
+                });
+            }}
+            >
+            <div className="uut-seal-content">
+                <span className="seal-label">Unit Under Test</span>
+                <h4 className="seal-title">{sessionData.uutDescription || "N/A"}</h4>
+                <div className="seal-info-item">
+                <span>Current Point {testPointData.measurementType === "derived" && "(Derived)"}</span>
+                <strong>
+                    {testPointData.measurementType === "derived"
+                    ? calcResults?.calculatedNominalValue?.toPrecision(5) ?? (testPointData.testPointInfo.parameter.name || "Derived Value")
+                    : `${uutNominal?.value ?? ""} ${uutNominal?.unit ?? ""}`}{" "}
+                    {testPointData.measurementType === "derived" && ` (${uutNominal?.unit ?? ""})`}
                 </strong>
-              </div>
-              <div className="seal-info-item">
-                <span>High Limit</span>
-                <strong className="calculated-limit">
-                  {getAbsoluteLimits(uutToleranceData, uutNominal).high}
-                </strong>
-              </div>
+                </div>
+                {testPointData.measurementType === "derived" && testPointData.equationString && (
+                <div className="seal-info-item" style={{ fontStyle: "italic", marginTop: "5px" }}>
+                    <span>Equation</span>
+                    <strong style={{ fontFamily: "monospace" }}>{testPointData.equationString}</strong>
+                </div>
+                )}
+                <div className="seal-info-item">
+                <span>Tolerance Spec</span>
+                <strong>{getToleranceSummary(uutToleranceData)}</strong>
+                </div>
+                <div className="seal-info-item">
+                <span>Calculated Error</span>
+                <strong>{getToleranceErrorSummary(uutToleranceData, uutNominal)}</strong>
+                </div>
+                <div className="seal-limits-split">
+                <div className="seal-info-item">
+                    <span>Low Limit</span>
+                    <strong className="calculated-limit">
+                    {getAbsoluteLimits(uutToleranceData, uutNominal).low}
+                    </strong>
+                </div>
+                <div className="seal-info-item">
+                    <span>High Limit</span>
+                    <strong className="calculated-limit">
+                    {getAbsoluteLimits(uutToleranceData, uutNominal).high}
+                    </strong>
+                </div>
+                </div>
             </div>
-          </div>
-        </div>
+            </div>
+        )}
       </div>
 
       {/* --- TMDE SECTION --- */}

@@ -21,6 +21,7 @@ import ReverseTraceabilityTool from "./components/tools/ReverseTraceabilityTool"
 // --- Utils & Hooks ---
 import useSessionManager from "./hooks/useSessionManager";
 import { saveSessionToPdf, parseSessionPdf } from "./utils/fileIo";
+import { findInstrumentTolerance, getToleranceSummary } from "./utils/uncertaintyMath"; 
 import "./App.css";
 
 // --- Icons ---
@@ -42,14 +43,79 @@ import {
   faHistory
 } from "@fortawesome/free-solid-svg-icons";
 
-// --- Contexts ---
 const ThemeContext = React.createContext(false);
 export const useTheme = () => React.useContext(ThemeContext);
+
+const recalculateTolerance = (instrument, value, unit, existingData = {}) => {
+    const matchedData = findInstrumentTolerance(instrument, parseFloat(value), unit);
+    if (!matchedData) return null;
+
+    const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
+    
+    let calculatedRangeMax = matchedData.rangeMax; 
+    if (!calculatedRangeMax) calculatedRangeMax = parseFloat(value);
+    
+    const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
+    
+    compKeys.forEach(key => {
+        if (specs[key]) {
+            if (!specs[key].unit) {
+                if (key === 'reading' || key === 'range') specs[key].unit = '%';
+                else if (key === 'floor' || key === 'readings_iv') specs[key].unit = unit;
+            }
+            if (key === 'range') {
+                specs[key].value = calculatedRangeMax;
+            }
+            if (specs[key].high) {
+                const highVal = parseFloat(specs[key].high);
+                if (!isNaN(highVal)) {
+                    specs[key].low = String(-Math.abs(highVal));
+                }
+                specs[key].symmetric = true; 
+            }
+        }
+    });
+    
+    return {
+        ...existingData,
+        ...specs,
+        measuringResolution: matchedData.resolution
+    };
+};
+
+const generateDiffMessage = (changes) => (
+  <div>
+    <p style={{ marginBottom: "15px", color: "var(--text-color)" }}>
+      The new measurement point value requires updated instrument tolerances based on the library.
+    </p>
+    <div style={{ 
+      display: "grid", 
+      gridTemplateColumns: "1.5fr 1fr 1fr", 
+      gap: "10px", 
+      fontSize: "0.9rem",
+      background: "var(--background-secondary)",
+      padding: "10px",
+      borderRadius: "4px"
+    }}>
+      <div style={{ fontWeight: "bold", borderBottom: "1px solid var(--border-color)", paddingBottom: "5px" }}>Instrument</div>
+      <div style={{ fontWeight: "bold", borderBottom: "1px solid var(--border-color)", paddingBottom: "5px" }}>Old Spec</div>
+      <div style={{ fontWeight: "bold", borderBottom: "1px solid var(--border-color)", paddingBottom: "5px" }}>New Spec</div>
+      {changes.map((c, i) => (
+        <React.Fragment key={i}>
+          <div style={{alignSelf: "center", fontWeight: "500"}}>{c.name}</div>
+          <div style={{ color: "var(--text-color-muted)", fontSize: "0.85rem" }}>{c.oldSpec}</div>
+          <div style={{ color: "var(--primary-color)", fontWeight: "500", fontSize: "0.85rem" }}>{c.newSpec}</div>
+        </React.Fragment>
+      ))}
+    </div>
+  </div>
+);
+
 
 function App() {
   const {
     sessions,
-    instruments, // <--- Access instruments
+    instruments, 
     saveInstrument,
     deleteInstrument,
     selectedSessionId,
@@ -78,7 +144,6 @@ function App() {
     deleteSessionImage
   } = useSessionManager();
 
-  // --- UI State ---
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTestPoint, setEditingTestPoint] = useState(null);
   const [editingSession, setEditingSession] = useState(null);
@@ -90,16 +155,13 @@ function App() {
   const [appNotification, setAppNotification] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
 
-  // --- Floating Tools State ---
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
   const [isInstrumentBuilderOpen, setIsInstrumentBuilderOpen] = useState(false);
 
-  // --- Theme & Dark Mode State ---
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("default");
-  // Easter egg state to hide/show the theme selector
   const [showThemeSelector, setShowThemeSelector] = useState(false);
 
   const [initialSessionTab, setInitialSessionTab] = useState("details");
@@ -107,61 +169,41 @@ function App() {
   const [sessionImageCache, setSessionImageCache] = useState(new Map());
   const [riskResults, setRiskResults] = useState(null);
 
-  // --- Hotkey Listener for Migration (Ctrl + Shift + M) ---
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'M') {
         e.preventDefault();
-        console.log("Migration Hotkey Triggered");
         migrateToDisk();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [migrateToDisk]);
 
-  // --- Hotkey Listener for Theme Easter Egg (Ctrl + Shift + T) ---
   useEffect(() => {
     const handleThemeKey = (e) => {
-      // Check for Ctrl + Shift + T (case insensitive)
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 't') {
         e.preventDefault();
-        console.log("Theme Easter Egg Triggered");
         setShowThemeSelector(prev => !prev);
       }
     };
-
     window.addEventListener('keydown', handleThemeKey);
     return () => window.removeEventListener('keydown', handleThemeKey);
   }, []);
 
-  // --- Theme Effect ---
   useEffect(() => {
     const body = document.body;
     body.classList.remove("theme-orbital", "theme-cyberpunk", "theme-stranger");
-
-    if (currentTheme !== "default") {
-      body.classList.add(currentTheme);
-    }
-
-    if (isDarkMode) {
-      body.classList.add("dark-mode");
-    } else {
-      body.classList.remove("dark-mode");
-    }
-
+    if (currentTheme !== "default") body.classList.add(currentTheme);
+    if (isDarkMode) body.classList.add("dark-mode");
+    else body.classList.remove("dark-mode");
     if (window.require) {
       try {
         const { ipcRenderer } = window.require("electron");
         ipcRenderer.send("set-theme", isDarkMode ? "dark" : "light");
-      } catch (error) {
-        console.warn("Could not connect to Electron IPC", error);
-      }
+      } catch (error) { console.warn("Could not connect to Electron IPC", error); }
     }
   }, [isDarkMode, currentTheme]);
-
-  // --- Handlers ---
 
   const handleAddNewSession = () => {
     const newSession = addSession();
@@ -193,14 +235,12 @@ function App() {
     setEditingSession(null);
   };
 
-  // --- Sync Notepad to Session Data ---
   const handleUpdateNotes = (newNotes) => {
     if (!currentSessionData) return;
     const updatedSession = { ...currentSessionData, notes: newNotes };
     updateSession(updatedSession);
   };
 
-  // --- Instrument Saver ---
   const handleSaveInstrument = (instrument) => {
     saveInstrument(instrument);
     setIsInstrumentBuilderOpen(false);
@@ -233,8 +273,93 @@ function App() {
     }
   };
 
+  // --- UPDATED: Handle Save Test Point with Confirmation Logic ---
   const handleSaveTestPoint = (formData) => {
-    saveTestPoint(formData);
+    const finalData = { ...formData }; // Ensure this is locally scoped
+    
+    // Check if this is a NEW point (no ID yet) and if we should copy TMDEs from previous point
+    if (!formData.id && currentTestPoints.length > 0) {
+        const previousPoint = currentTestPoints[currentTestPoints.length - 1];
+        
+        if (!finalData.tmdeTolerances || finalData.tmdeTolerances.length === 0) {
+            if (previousPoint.tmdeTolerances && previousPoint.tmdeTolerances.length > 0) {
+                
+                const changes = []; 
+                const newTmdes = previousPoint.tmdeTolerances.map(tmde => {
+                    let targetValue = finalData.testPointInfo.parameter.value;
+                    let targetUnit = finalData.testPointInfo.parameter.unit;
+
+                    if (finalData.measurementType === 'derived') {
+                       targetValue = tmde.measurementPoint?.value;
+                       targetUnit = tmde.measurementPoint?.unit;
+                    }
+
+                    if (tmde.sourceInstrument && targetValue) {
+                        const newSpecs = recalculateTolerance(tmde.sourceInstrument, targetValue, targetUnit, tmde);
+                        
+                        if (newSpecs) {
+                             const oldSummary = getToleranceSummary(tmde);
+                             const newSummary = getToleranceSummary(newSpecs);
+                             
+                             if (oldSummary !== newSummary) {
+                                changes.push({
+                                    name: tmde.name,
+                                    oldSpec: oldSummary,
+                                    newSpec: newSummary
+                                });
+                             }
+                             // IMPORTANT: Generate a new ID here so it saves as a new unique record
+                             return { 
+                                 ...newSpecs, 
+                                 measurementPoint: { value: targetValue, unit: targetUnit },
+                                 id: Date.now() + Math.random() 
+                             };
+                        }
+                    }
+                    
+                    // Fallback: Copy with new ID
+                    return { ...tmde, measurementPoint: { value: targetValue, unit: targetUnit }, id: Date.now() + Math.random() };
+                });
+
+                if (changes.length > 0) {
+                    setAppNotification({
+                        title: "Update Tolerances?",
+                        message: generateDiffMessage(changes),
+                        confirmText: "Update & Save",
+                        cancelText: "Keep Old Specs",
+                        onConfirm: () => {
+                            // Explicitly construct the updated payload with the new unique TMDEs
+                            const updatedPayload = {
+                                ...finalData,
+                                tmdeTolerances: newTmdes
+                            };
+                            saveTestPoint(updatedPayload);
+                            setAppNotification(null);
+                        },
+                        onClose: () => {
+                             // User rejected or closed: Save with strict copy of OLD specs (but still new IDs)
+                             const revertPayload = {
+                                 ...finalData,
+                                 tmdeTolerances: previousPoint.tmdeTolerances.map(t => ({
+                                     ...t, 
+                                     measurementPoint: { value: finalData.testPointInfo.parameter.value, unit: finalData.testPointInfo.parameter.unit },
+                                     id: Date.now() + Math.random()
+                                 }))
+                             };
+                             saveTestPoint(revertPayload);
+                             setAppNotification(null);
+                        }
+                    });
+                    setIsAddModalOpen(false);
+                    return; 
+                }
+
+                finalData.tmdeTolerances = newTmdes;
+            }
+        }
+    }
+
+    saveTestPoint(finalData);
     setIsAddModalOpen(false);
     setEditingTestPoint(null);
   };
@@ -256,6 +381,24 @@ function App() {
       message: "Are you sure you want to delete this entire TMDE definition (all instances)?",
       onConfirm: () => {
         deleteTmdeDefinition(tmdeId);
+        setConfirmationModal(null);
+      },
+    });
+  };
+  
+  const handleDeleteUut = () => {
+    setConfirmationModal({
+      title: "Delete UUT",
+      message: "Are you sure you want to delete the UUT definition? This will remove the UUT specifications from this session.",
+      onConfirm: () => {
+        if (currentSessionData) {
+            updateSession({
+                ...currentSessionData,
+                uutDescription: "",
+                uutTolerance: {},
+                uutInstrument: null 
+            });
+        }
         setConfirmationModal(null);
       },
     });
@@ -309,10 +452,25 @@ function App() {
     if (!currentSessionData || !selectedTestPointId) return null;
     const pointData = currentTestPoints.find((p) => p.id === selectedTestPointId);
     if (!pointData) return null;
+
+    let effectiveUutTolerance = currentSessionData.uutTolerance;
+
+    if (currentSessionData.uutInstrument && pointData.testPointInfo?.parameter?.value) {
+        const autoSpecs = recalculateTolerance(
+            currentSessionData.uutInstrument, 
+            pointData.testPointInfo.parameter.value, 
+            pointData.testPointInfo.parameter.unit,
+            currentSessionData.uutTolerance
+        );
+        if (autoSpecs) {
+            effectiveUutTolerance = autoSpecs;
+        }
+    }
+
     return {
       ...pointData,
       uutDescription: currentSessionData.uutDescription,
-      uutTolerance: currentSessionData.uutTolerance,
+      uutTolerance: effectiveUutTolerance,
     };
   }, [currentSessionData, selectedTestPointId, currentTestPoints]);
 
@@ -321,12 +479,17 @@ function App() {
       <div className="App">
         <NotificationModal
           isOpen={!!appNotification}
-          onClose={() => setAppNotification(null)}
+          onClose={() => {
+              if (appNotification?.onClose) appNotification.onClose();
+              setAppNotification(null);
+          }}
           title={appNotification?.title}
           message={appNotification?.message}
+          confirmText={appNotification?.confirmText}
+          cancelText={appNotification?.cancelText}
+          onConfirm={appNotification?.onConfirm}
         />
 
-        {/* --- FLOATING TOOLS --- */}
         {currentSessionData && (
           <>
             <FloatingNotepad
@@ -346,7 +509,6 @@ function App() {
           </>
         )}
 
-        {/* --- INSTRUMENT BUILDER MODAL --- */}
         <InstrumentBuilderModal
           isOpen={isInstrumentBuilderOpen}
           onClose={() => setIsInstrumentBuilderOpen(false)}
@@ -411,7 +573,7 @@ function App() {
           sessionImageCache={sessionImageCache}
           onImageCacheChange={setSessionImageCache}
           onRemoveImageFile={deleteSessionImage}
-          instruments={instruments} // <--- Pass Instruments Here
+          instruments={instruments} 
         />
         <OverviewModal
           isOpen={isOverviewOpen}
@@ -420,7 +582,7 @@ function App() {
           onUpdateTestPoint={handleUpdateSpecificTestPoint}
           onDeleteTmdeDefinition={deleteTmdeDefinition}
           onDecrementTmdeQuantity={decrementTmdeQuantity}
-          instruments={instruments} // <--- CHANGED: Passed instruments prop
+          instruments={instruments} 
         />
         {testPointData && (
           <ToleranceToolModal
@@ -458,11 +620,7 @@ function App() {
         )}
 
         <div className="content-area uncertainty-analysis-page">
-          {/* ======================================================= */}
-          {/* PROFESSIONAL HEADER BAR                                 */}
-          {/* ======================================================= */}
           <div className="app-pro-header">
-            {/* 1. LEFT: IDENTITY */}
             <div className="header-identity">
               <div className="app-logo-mark custom-logo full-bleed">
                 <img src={appLogo} alt="App Logo" />
@@ -476,10 +634,7 @@ function App() {
               </div>
             </div>
 
-            {/* 2. RIGHT: ACTION RIBBON */}
             <div className="header-actions">
-              {/* STATUS INDICATOR (Primary Context) */}
-                {/* --- INSTRUMENT BUILDER --- */}
                 <button
                   className={`icon-action-btn ${isInstrumentBuilderOpen ? "active" : ""}`}
                   onClick={() => setIsInstrumentBuilderOpen(!isInstrumentBuilderOpen)}
@@ -489,7 +644,6 @@ function App() {
                 </button>
               <div className="header-divider"></div>
 
-              {/* FLOATING TOOLS ACTIONS */}
               <div className="action-group">
                 <button
                   className={`icon-action-btn ${isTraceabilityOpen ? "active" : ""}`}
@@ -518,7 +672,6 @@ function App() {
 
               <div className="header-divider"></div>
 
-              {/* FILE ACTIONS */}
               <div className="action-group">
                 <button
                   className="icon-action-btn"
@@ -546,9 +699,7 @@ function App() {
 
               <div className="header-divider"></div>
 
-              {/* SETTINGS GROUP */}
               <div className="action-group">
-                {/* --- THEME SELECTOR (HIDDEN BY DEFAULT - Ctrl+Shift+T) --- */}
                 {showThemeSelector && (
                   <div className="theme-selector-minimal">
                     <FontAwesomeIcon icon={faPalette} className="theme-icon" />
@@ -565,10 +716,7 @@ function App() {
                     </select>
                   </div>
                 )}
-
-                {/* --- DARK MODE TOGGLE LOGIC --- */}
                 {currentTheme === 'theme-stranger' && !isDarkMode ? (
-                  /* CASE 1: Stranger Things Light Mode -> Show EASTER EGG ONLY */
                   <div
                     className="stranger-hint"
                     onClick={() => setIsDarkMode(true)}
@@ -577,7 +725,6 @@ function App() {
                     <span>ENTER THE UPSIDE DOWN</span>
                   </div>
                 ) : (
-                  /* CASE 2: All Other Modes -> Show Standard Toggle */
                   <button
                     className={`icon-action-btn ${isDarkMode ? "active" : ""}`}
                     onClick={() => setIsDarkMode(!isDarkMode)}
@@ -600,11 +747,9 @@ function App() {
               </button>
             </div>
           </div>
-          {/* ======================================================= */}
 
           <div className="results-workflow-container">
             <aside className="results-sidebar">
-              {/* ... Sidebar Content ... */}
               <div
                 className="sidebar-header"
                 style={{ alignItems: "flex-end" }}
@@ -745,6 +890,7 @@ function App() {
                     sessionData={currentSessionData}
                     testPointData={testPointData}
                     onDataSave={updateTestPointData}
+                    onSessionSave={updateSession} 
                     defaultTestPoint={defaultTestPoint}
                     setContextMenu={setContextMenu}
                     setBreakdownPoint={setBreakdownPoint}
@@ -753,8 +899,9 @@ function App() {
                     setRiskResults={setRiskResults}
                     onDeleteTmdeDefinition={handleDeleteTmdeDefinition}
                     onDecrementTmdeQuantity={decrementTmdeQuantity}
+                    onDeleteUut={handleDeleteUut} 
                     onOpenOverview={() => setIsOverviewOpen(true)}
-                    instruments={instruments} // <--- Pass Instruments Here
+                    instruments={instruments} 
                   />
                 </TestPointDetailView>
               ) : (

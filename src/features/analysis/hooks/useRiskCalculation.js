@@ -264,7 +264,8 @@ export const useRiskCalculation = (
       turNeeded
     );
 
-    const resRaw = parseFloat(testPointData.uutTolerance.measuringResolution);
+    // FIXED: Safely access measuringResolution
+    const resRaw = parseFloat(testPointData?.uutTolerance?.measuringResolution);
     const safeRes = isNaN(resRaw) ? 0 : resRaw;
 
     let gbLow = resDwn(
@@ -448,7 +449,8 @@ export const useRiskCalculation = (
       nativeUnit: nominalUnit,
       gbInputs: gbInputs,
       gbResults: gbResults,
-      uutResolution: testPointData.uutTolerance.measuringResolution.length
+      // FIXED: Added safe navigation to prevent crash on deletion
+      uutResolution: testPointData?.uutTolerance?.measuringResolution?.length || 0
     };
 
     // --- INFINITE LOOP FIX ---
@@ -475,7 +477,7 @@ export const useRiskCalculation = (
     calcResults,
     uutToleranceData,
     tmdeTolerancesData,
-    testPointData.uutTolerance.measuringResolution,
+    testPointData?.uutTolerance?.measuringResolution, // FIXED Dependency
     onDataSave,
   ]);
 

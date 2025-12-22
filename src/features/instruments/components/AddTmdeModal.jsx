@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Select from "react-select"; 
 import ToleranceForm from "../../../components/common/ToleranceForm";
-import { unitSystem, findInstrumentTolerance } from "../../../utils/uncertaintyMath";
+import { unitSystem, findInstrumentTolerance, getToleranceSummary } from "../../../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faPlus, faBookOpen, faGripHorizontal } from "@fortawesome/free-solid-svg-icons";
 import InstrumentLookupModal from "./InstrumentLookupModal";
+import NotificationModal from "../../../components/modals/NotificationModal"; //
 
-// --- Unit Category Definitions ---
-// (Keeping this helper standard for dropdowns)
 const unitCategories = {
   Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
   Current: ["A", "mA", "uA", "nA", "pA", "kA"],
@@ -73,8 +72,9 @@ const AddTmdeModal = ({
   instruments = [] 
 }) => {
   const [isLookupOpen, setIsLookupOpen] = useState(false);
+  const [selectedInstrument, setSelectedInstrument] = useState(null);
+  const [notification, setNotification] = useState(null); // Local notification state
 
-  // --- Floating Window State ---
   const [position, setPosition] = useState(() => {
     if (typeof window === 'undefined') return { x: 0, y: 0 };
     return { 
@@ -156,7 +156,6 @@ const AddTmdeModal = ({
   }, [uutMeasurementPoint, initialTmdeData, isDerived, availableTypes]);
 
   const [tmde, setTmde] = useState(getInitialState());
-  const [useUutRef, setUseUutRef] = useState(!isDerived); // Used to track toggle state if needed
 
   const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
   
@@ -167,12 +166,16 @@ const AddTmdeModal = ({
   useEffect(() => {
     if (isOpen) {
       setTmde(getInitialState());
-      setUseUutRef(!isDerived); 
+      if (initialTmdeData && initialTmdeData.sourceInstrument) {
+          setSelectedInstrument(initialTmdeData.sourceInstrument);
+      } else {
+          setSelectedInstrument(null);
+      }
       setIsLookupOpen(false);
+      setNotification(null);
     }
-  }, [isOpen, getInitialState, isDerived]);
+  }, [isOpen, getInitialState]);
 
-  // Keep manual measurement point in sync with UUT unless derived
   useEffect(() => {
     if (!isDerived && uutMeasurementPoint) {
       setTmde((prev) => ({
@@ -183,6 +186,8 @@ const AddTmdeModal = ({
   }, [uutMeasurementPoint, isDerived]);
 
   const handleInstrumentImport = (instrument) => {
+    setSelectedInstrument(instrument); 
+
     const currentVal = tmde.measurementPoint?.value;
     const currentUnit = tmde.measurementPoint?.unit;
 
@@ -200,60 +205,66 @@ const AddTmdeModal = ({
     const matchedData = findInstrumentTolerance(instrument, numericVal, currentUnit);
     
     if (matchedData) {
-      // 1. Get specs
       const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
-
-      // 2. Determine Range Max (Required for Range Tolerances)
       let calculatedRangeMax = matchedData.rangeMax; 
       if (!calculatedRangeMax) {
           calculatedRangeMax = numericVal;
       }
       
-      // 3. SIMPLIFIED DATA FIX
       const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
-      
       compKeys.forEach(key => {
         if (specs[key]) {
-             // A. Ensure Unit Exists
              if (!specs[key].unit) {
                 if (key === 'reading' || key === 'range') specs[key].unit = '%';
                 else if (key === 'floor' || key === 'readings_iv') specs[key].unit = currentUnit;
              }
-             
-             // B. Inject Range Value
              if (key === 'range') {
                  specs[key].value = calculatedRangeMax;
              }
-
-             // C. FIX SIGN ERROR: Force low to be negative
              if (specs[key].high) {
                  const highVal = parseFloat(specs[key].high);
                  if (!isNaN(highVal)) {
                      specs[key].low = String(-Math.abs(highVal));
                  }
-                 // Ensure symmetric flag is set so UI renders correctly
                  specs[key].symmetric = true; 
              }
         }
       });
 
-      setTmde(prev => ({
-        ...prev,
-        name: `${instrument.manufacturer} ${instrument.model}`, 
-        ...specs,
-        measuringResolution: undefined, 
-      }));
+      // Use Custom Notification Modal instead of window.confirm
+      const summary = getToleranceSummary(specs);
+      setNotification({
+        title: "Confirm Specifications",
+        message: `Found specifications for ${instrument.model}:\n\n` +
+                 `Range: ${matchedData.rangeMin ?? 'N/A'} to ${matchedData.rangeMax ?? 'N/A'} ${matchedData.unit || ""}\n` +
+                 `Tolerance: ${summary}\n\n` +
+                 `Do you want to apply these tolerances?`,
+        confirmText: "Apply Specs",
+        cancelText: "Cancel",
+        onConfirm: () => {
+             setTmde(prev => ({
+                ...prev,
+                name: `${instrument.manufacturer} ${instrument.model}`, 
+                ...specs,
+                measuringResolution: undefined, 
+              }));
+              setNotification(null);
+        }
+      });
+
     } else {
       alert(`Could not find a matching range in ${instrument.model} for ${currentVal} ${currentUnit}.`);
     }
   };
 
   const handleSave = (andClose = true) => {
-    // Basic cleanup of empty fields
     const cleanupTolerance = (tol) => {
       const cleaned = { ...tol };
-      const componentKeys = ["reading", "readings_iv", "range", "floor", "db"];
+      if (selectedInstrument) {
+          cleaned.sourceInstrument = selectedInstrument;
+      }
       
+      const componentKeys = ["reading", "readings_iv", "range", "floor", "db"];
       componentKeys.forEach((key) => {
         const comp = cleaned[key];
         if (comp) {
@@ -274,6 +285,7 @@ const AddTmdeModal = ({
 
     if (!andClose) {
       setTmde(getInitialState());
+      setSelectedInstrument(null);
     }
   };
 
@@ -286,6 +298,16 @@ const AddTmdeModal = ({
          onClose={() => setIsLookupOpen(false)} 
          instruments={instruments}
          onSelect={handleInstrumentImport} 
+      />
+
+      <NotificationModal
+        isOpen={!!notification}
+        onClose={() => setNotification(null)}
+        title={notification?.title}
+        message={notification?.message}
+        onConfirm={notification?.onConfirm}
+        confirmText={notification?.confirmText}
+        cancelText={notification?.cancelText}
       />
 
       <div 
@@ -304,7 +326,6 @@ const AddTmdeModal = ({
             overflow: 'hidden'
         }}
       >
-        {/* --- Draggable Header --- */}
         <div 
             style={{
                 display:'flex', 
@@ -326,7 +347,6 @@ const AddTmdeModal = ({
             <button onClick={onClose} className="modal-close-button" style={{position:'static'}}>&times;</button>
         </div>
 
-        {/* --- Scrollable Body --- */}
         <div className="modal-body-scrollable" style={{flex: 1, paddingRight: '5px'}}>
             <div className="tmde-header">
                 <div className="details-grid">

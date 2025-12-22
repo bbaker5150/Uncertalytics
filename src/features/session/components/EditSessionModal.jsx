@@ -1,18 +1,14 @@
-import React, { useState, useLayoutEffect, useMemo, useEffect } from "react";
-import ToleranceForm from "../../../components/common/ToleranceForm";
+import React, { useState, useLayoutEffect, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { v4 as uuidv4 } from "uuid";
 import {
   faCheck,
   faPlus,
   faTimes,
-  faBookOpen,
-  faGripHorizontal,
   faEdit
 } from "@fortawesome/free-solid-svg-icons";
 import NotificationModal from '../../../components/modals/NotificationModal';
-import InstrumentLookupModal from "../../instruments/components/InstrumentLookupModal";
-import { findInstrumentTolerance } from "../../../utils/uncertaintyMath";
+// EditUutModal import removed
 
 const EditSessionModal = ({
   isOpen,
@@ -31,12 +27,6 @@ const EditSessionModal = ({
   const [newlyAddedFiles, setNewlyAddedFiles] = useState([]);
   const [imageSrcCache, setImageSrcCache] = useState(new Map());
   const [viewingImageSrc, setViewingImageSrc] = useState(null);
-
-  // --- Lookup & Range Prompt State ---
-  const [isLookupOpen, setIsLookupOpen] = useState(false);
-  const [pendingInstrument, setPendingInstrument] = useState(null); 
-  const [showRangePrompt, setShowRangePrompt] = useState(false);
-  const [rangePromptData, setRangePromptData] = useState({ value: "", unit: "" });
 
   // --- Floating Window State ---
   const [position, setPosition] = useState(() => {
@@ -154,7 +144,6 @@ const EditSessionModal = ({
             });
         }
     }
-    // Also include newly added (unsaved) images
     newlyAddedFiles.forEach((file) => {
       newImageSrcCache.set(file.id, file.fileObject);
     });
@@ -170,83 +159,6 @@ const EditSessionModal = ({
       setActiveSection(initialSection || "details");
     }
   }, [isOpen, sessionData, initialSection]);
-
-  // --- Instrument Library Logic ---
-
-  const handleInstrumentSelect = (instrument) => {
-    // 1. Set the Name immediately
-    setFormData(prev => ({
-        ...prev,
-        uutDescription: `${instrument.manufacturer} ${instrument.model} ${instrument.description}`
-    }));
-    
-    // 2. Ask for a point to resolve tolerance
-    setPendingInstrument(instrument);
-    setRangePromptData({ value: "", unit: instrument.functions[0]?.unit || "V" });
-    setShowRangePrompt(true);
-  };
-
-  const confirmRangeSelection = () => {
-    if (!pendingInstrument) return;
-    
-    const matchedData = findInstrumentTolerance(
-        pendingInstrument, 
-        rangePromptData.value, 
-        rangePromptData.unit
-    );
-
-    if (matchedData) {
-        // 1. Clone Specs
-        const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
-        
-        // 2. Determine Range Max
-        let calculatedRangeMax = matchedData.rangeMax;
-        if (!calculatedRangeMax) {
-            // Default to the prompt value if rangeMax isn't explicit
-            const promptVal = parseFloat(rangePromptData.value);
-            if (!isNaN(promptVal)) calculatedRangeMax = promptVal;
-        }
-
-        // 3. CLEAN UP DATA (Apply Same Fixes as AddTmdeModal)
-        const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
-      
-        compKeys.forEach(key => {
-            if (specs[key]) {
-                // A. Ensure Unit Exists
-                if (!specs[key].unit) {
-                    if (key === 'reading' || key === 'range') specs[key].unit = '%';
-                    else if (key === 'floor' || key === 'readings_iv') specs[key].unit = rangePromptData.unit;
-                }
-                
-                // B. Inject Range Value
-                if (key === 'range') {
-                    specs[key].value = calculatedRangeMax;
-                }
-
-                // C. FIX SIGN ERROR: Force low to be negative
-                if (specs[key].high) {
-                    const highVal = parseFloat(specs[key].high);
-                    if (!isNaN(highVal)) {
-                        specs[key].low = String(-Math.abs(highVal));
-                    }
-                    specs[key].symmetric = true; 
-                }
-            }
-        });
-
-        setFormData(prev => ({
-            ...prev,
-            uutTolerance: {
-                ...specs,
-                measuringResolution: matchedData.resolution
-            }
-        }));
-        setShowRangePrompt(false);
-        setPendingInstrument(null);
-    } else {
-        alert("No matching range found for the values entered. Specs were not imported.");
-    }
-  };
 
 
   if (!isOpen) return null;
@@ -268,15 +180,6 @@ const EditSessionModal = ({
         [name]: value,
       },
     }));
-  };
-
-  const handleToleranceChange = (updater) => {
-    setFormData((prev) => {
-      const currentTolerance = prev.uutTolerance || {};
-      const newTolerance =
-        typeof updater === "function" ? updater(currentTolerance) : updater;
-      return { ...prev, uutTolerance: newTolerance };
-    });
   };
 
   const handleSave = () => {
@@ -319,49 +222,9 @@ const EditSessionModal = ({
       )}
       
       {viewingImageSrc && (
-      <div className="image-viewer-overlay" onClick={() => setViewingImageSrc(null)} style={{zIndex: 3000}}>
-        <button className="image-viewer-close" onClick={() => setViewingImageSrc(null)}>&times;</button>
-        <img src={viewingImageSrc} alt="Full-size preview" onClick={(e) => e.stopPropagation()} />
-      </div>
-    )}
-
-      {/* --- Lookup Modal --- */}
-      <InstrumentLookupModal 
-         isOpen={isLookupOpen} 
-         onClose={() => setIsLookupOpen(false)} 
-         instruments={instruments} 
-         onSelect={handleInstrumentSelect}
-      />
-
-      {/* --- Range Prompt Modal --- */}
-      {showRangePrompt && (
-        <div className="modal-overlay" style={{zIndex: 2200, backgroundColor: 'rgba(0,0,0,0.7)'}}>
-            <div className="modal-content" style={{maxWidth: '400px'}}>
-                <h4 style={{marginTop: 0}}>Set Baseline Tolerance</h4>
-                <p style={{fontSize: '0.9rem', color: 'var(--text-color-muted)'}}>
-                    Please enter a representative measurement value (e.g., 10 V). 
-                    This is required to import the correct range specifications from the library for the Session Defaults.
-                </p>
-                <div className="input-group" style={{marginBottom: '20px'}}>
-                    <input 
-                        type="number" 
-                        placeholder="Value" 
-                        value={rangePromptData.value} 
-                        onChange={e => setRangePromptData({...rangePromptData, value: e.target.value})}
-                        autoFocus
-                    />
-                    <input 
-                        type="text" 
-                        placeholder="Unit" 
-                        value={rangePromptData.unit} 
-                        onChange={e => setRangePromptData({...rangePromptData, unit: e.target.value})}
-                    />
-                </div>
-                <div className="modal-actions">
-                    <button className="button button-secondary" onClick={() => { setShowRangePrompt(false); setPendingInstrument(null); }}>Skip Spec Import</button>
-                    <button className="button button-primary" onClick={confirmRangeSelection} disabled={!rangePromptData.value}>Import Specs</button>
-                </div>
-            </div>
+        <div className="image-viewer-overlay" onClick={() => setViewingImageSrc(null)} style={{zIndex: 3000}}>
+            <button className="image-viewer-close" onClick={() => setViewingImageSrc(null)}>&times;</button>
+            <img src={viewingImageSrc} alt="Full-size preview" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
 
@@ -415,12 +278,6 @@ const EditSessionModal = ({
               Session Details
             </button>
             <button
-              className={`modal-tab ${activeSection === "uut" ? "active" : ""}`}
-              onClick={() => setActiveSection("uut")}
-            >
-              UUT Specification
-            </button>
-            <button
               className={`modal-tab ${activeSection === "requirements" ? "active" : ""}`}
               onClick={() => setActiveSection("requirements")}
             >
@@ -440,6 +297,9 @@ const EditSessionModal = ({
                   placeholder="e.g., Fluke 8588A Verification"
                 />
               </div>
+
+              {/* UUT Field Removed Here */}
+
               <div className="form-section">
                 <label>Analyst</label>
                 <input
@@ -534,40 +394,6 @@ const EditSessionModal = ({
                 </div>
               </div>
             </div>
-          )}
-
-          {activeSection === "uut" && (
-            <>
-              <div className="form-section">
-                <label>UUT Name / Model</label>
-                <div style={{display: 'flex', gap: '10px'}}>
-                    <input
-                      type="text"
-                      name="uutDescription"
-                      value={formData.uutDescription || ""}
-                      onChange={handleChange}
-                      placeholder="e.g., Fluke 8588A"
-                      style={{flex: 1}}
-                    />
-                    {/* Updated Button Style */}
-                    <button 
-                        className="btn-icon-only" 
-                        onClick={() => setIsLookupOpen(true)}
-                        title="Import from Instrument Library"
-                        style={{ width: '42px', height: '42px', fontSize: '1rem' }}
-                    >
-                        <FontAwesomeIcon icon={faBookOpen} />
-                    </button>
-                </div>
-              </div>
-              <ToleranceForm
-                tolerance={formData.uutTolerance || {}}
-                setTolerance={handleToleranceChange}
-                isUUT={true}
-                referencePoint={null}
-                hideDistribution={true}
-              />
-            </>
           )}
 
           {activeSection === "requirements" && (
