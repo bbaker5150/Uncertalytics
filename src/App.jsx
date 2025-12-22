@@ -273,29 +273,58 @@ function App() {
     }
   };
 
-  // --- UPDATED: Handle Save Test Point with Confirmation Logic ---
+  // --- UPDATED: Handle Save Test Point with Confirmation Logic (UUT + TMDE) ---
   const handleSaveTestPoint = (formData) => {
-    const finalData = { ...formData }; // Ensure this is locally scoped
+    const finalData = { ...formData }; 
+    const changes = [];
+    let uutUpdate = null; // Track proposed UUT update
+
+    // 1. Calculate UUT Changes (If a UUT Instrument is defined)
+    // Runs for both New and Edit actions to keep session UUT specs in sync with active point.
+    const targetValue = finalData.testPointInfo.parameter.value;
+    const targetUnit = finalData.testPointInfo.parameter.unit;
+
+    if (currentSessionData.uutInstrument && targetValue) {
+        const newUutSpecs = recalculateTolerance(
+            currentSessionData.uutInstrument, 
+            targetValue, 
+            targetUnit, 
+            currentSessionData.uutTolerance
+        );
+        
+        if (newUutSpecs) {
+             const oldSummary = getToleranceSummary(currentSessionData.uutTolerance);
+             const newSummary = getToleranceSummary(newUutSpecs);
+             
+             if (oldSummary !== newSummary) {
+                changes.push({
+                    name: currentSessionData.uutDescription || "Unit Under Test",
+                    oldSpec: oldSummary,
+                    newSpec: newSummary
+                });
+                uutUpdate = newUutSpecs;
+             }
+        }
+    }
     
-    // Check if this is a NEW point (no ID yet) and if we should copy TMDEs from previous point
-    if (!formData.id && currentTestPoints.length > 0) {
+    // 2. Calculate TMDE Changes (For New Points with Copy active)
+    if (!formData.id && currentTestPoints.length > 0 && finalData.copyTmdes) {
         const previousPoint = currentTestPoints[currentTestPoints.length - 1];
         
         if (!finalData.tmdeTolerances || finalData.tmdeTolerances.length === 0) {
             if (previousPoint.tmdeTolerances && previousPoint.tmdeTolerances.length > 0) {
                 
-                const changes = []; 
                 const newTmdes = previousPoint.tmdeTolerances.map(tmde => {
-                    let targetValue = finalData.testPointInfo.parameter.value;
-                    let targetUnit = finalData.testPointInfo.parameter.unit;
+                    let tmdeTargetValue = targetValue;
+                    let tmdeTargetUnit = targetUnit;
 
                     if (finalData.measurementType === 'derived') {
-                       targetValue = tmde.measurementPoint?.value;
-                       targetUnit = tmde.measurementPoint?.unit;
+                       tmdeTargetValue = tmde.measurementPoint?.value;
+                       tmdeTargetUnit = tmde.measurementPoint?.unit;
                     }
 
-                    if (tmde.sourceInstrument && targetValue) {
-                        const newSpecs = recalculateTolerance(tmde.sourceInstrument, targetValue, targetUnit, tmde);
+                    if (tmde.sourceInstrument && tmdeTargetValue) {
+                        const newSpecs = recalculateTolerance(tmde.sourceInstrument, tmdeTargetValue, tmdeTargetUnit, tmde);
                         
                         if (newSpecs) {
                              const oldSummary = getToleranceSummary(tmde);
@@ -308,58 +337,59 @@ function App() {
                                     newSpec: newSummary
                                 });
                              }
-                             // IMPORTANT: Generate a new ID here so it saves as a new unique record
                              return { 
                                  ...newSpecs, 
-                                 measurementPoint: { value: targetValue, unit: targetUnit },
+                                 measurementPoint: { value: tmdeTargetValue, unit: tmdeTargetUnit },
                                  id: Date.now() + Math.random() 
                              };
                         }
                     }
                     
-                    // Fallback: Copy with new ID
-                    return { ...tmde, measurementPoint: { value: targetValue, unit: targetUnit }, id: Date.now() + Math.random() };
+                    return { ...tmde, measurementPoint: { value: tmdeTargetValue, unit: tmdeTargetUnit }, id: Date.now() + Math.random() };
                 });
 
-                if (changes.length > 0) {
-                    setAppNotification({
-                        title: "Update Tolerances?",
-                        message: generateDiffMessage(changes),
-                        confirmText: "Update & Save",
-                        cancelText: "Keep Old Specs",
-                        onConfirm: () => {
-                            // Explicitly construct the updated payload with the new unique TMDEs
-                            const updatedPayload = {
-                                ...finalData,
-                                tmdeTolerances: newTmdes
-                            };
-                            saveTestPoint(updatedPayload);
-                            setAppNotification(null);
-                        },
-                        onClose: () => {
-                             // User rejected or closed: Save with strict copy of OLD specs (but still new IDs)
-                             const revertPayload = {
-                                 ...finalData,
-                                 tmdeTolerances: previousPoint.tmdeTolerances.map(t => ({
-                                     ...t, 
-                                     measurementPoint: { value: finalData.testPointInfo.parameter.value, unit: finalData.testPointInfo.parameter.unit },
-                                     id: Date.now() + Math.random()
-                                 }))
-                             };
-                             saveTestPoint(revertPayload);
-                             setAppNotification(null);
-                        }
-                    });
-                    setIsAddModalOpen(false);
-                    return; 
-                }
-
+                // Apply new TMDEs immediately to finalData so they are ready for save
                 finalData.tmdeTolerances = newTmdes;
             }
         }
     }
 
-    saveTestPoint(finalData);
+    if (changes.length > 0) {
+        setAppNotification({
+            title: "Update Tolerances?",
+            message: generateDiffMessage(changes),
+            confirmText: "Update & Save",
+            cancelText: "Keep Old Specs",
+            onConfirm: () => {
+                // Save point with UUT updates applied to session
+                saveTestPoint(finalData, uutUpdate ? { uutTolerance: uutUpdate } : null);
+                setAppNotification(null);
+            },
+            onClose: () => {
+                 // User rejected: Revert TMDEs to old copies (if applicable) and save without UUT update
+                 let revertPayload = { ...finalData };
+                 
+                 // If we had calculated new TMDEs, we need to revert them to exact copies of previous point
+                 if (!formData.id && currentTestPoints.length > 0 && finalData.copyTmdes && (!finalData.tmdeTolerances || finalData.tmdeTolerances.length === 0)) {
+                      const previousPoint = currentTestPoints[currentTestPoints.length - 1];
+                      revertPayload.tmdeTolerances = previousPoint.tmdeTolerances.map(t => ({
+                         ...t, 
+                         measurementPoint: { value: targetValue, unit: targetUnit },
+                         id: Date.now() + Math.random()
+                      }));
+                 }
+
+                 saveTestPoint(revertPayload, null); // Pass null for sessionUpdates
+                 setAppNotification(null);
+            }
+        });
+        setIsAddModalOpen(false);
+        return; 
+    }
+
+    // No changes detected (or they were minor), save normally.
+    // We pass uutUpdate just in case we want silent updates, but uutUpdate is only set if changes detected.
+    saveTestPoint(finalData, null);
     setIsAddModalOpen(false);
     setEditingTestPoint(null);
   };

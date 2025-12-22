@@ -386,11 +386,16 @@ const useSessionManager = () => {
     persistSession(loadedSession, imagesToSave);
   };
 
-  const saveTestPoint = (formData) => {
+  // FIX: Added sessionUpdates parameter to allow saving UUT tolerance along with the test point
+  const saveTestPoint = (formData, sessionUpdates = null) => {
     const session = sessions.find(s => s.id === selectedSessionId);
     if(!session) return;
-    let updatedSession;
+    
+    // Start with a copy of the session and apply any immediate session-level overrides (like uutTolerance)
+    let updatedSession = { ...session, ...sessionUpdates };
+    
     if (formData.id) {
+        // UPDATE EXISTING POINT
         const updatedTestPoints = session.testPoints.map((tp) => {
         if (tp.id === formData.id) {
             return {
@@ -400,19 +405,23 @@ const useSessionManager = () => {
             measurementType: formData.measurementType,
             equationString: formData.equationString,
             variableMappings: formData.variableMappings,
+            tmdeTolerances: formData.tmdeTolerances || tp.tmdeTolerances
             };
         }
         return tp;
         });
-        updatedSession = { ...session, testPoints: updatedTestPoints };
+        updatedSession = { ...updatedSession, testPoints: updatedTestPoints };
     } else {
+        // CREATE NEW POINT
         const lastTestPoint = session.testPoints.find((tp) => tp.id === selectedTestPointId);
-        let copiedTmdes = [];
-        if (formData.copyTmdes && lastTestPoint) {
-            copiedTmdes = JSON.parse(JSON.stringify(lastTestPoint.tmdeTolerances || []));
+        
+        let finalTmdes = formData.tmdeTolerances || [];
+
+        if (finalTmdes.length === 0 && formData.copyTmdes && lastTestPoint) {
+            finalTmdes = JSON.parse(JSON.stringify(lastTestPoint.tmdeTolerances || []));
             const originalTestPointParameter = lastTestPoint.testPointInfo.parameter;
             const newTestPointParameter = formData.testPointInfo.parameter;
-            copiedTmdes.forEach((tmde) => {
+            finalTmdes.forEach((tmde) => {
               const wasUsingUutRef =
                 tmde.measurementPoint?.value === originalTestPointParameter.value &&
                 tmde.measurementPoint?.unit === originalTestPointParameter.unit;
@@ -421,18 +430,19 @@ const useSessionManager = () => {
               }
             });
         }
+
         const newTestPoint = {
             id: Date.now(),
             ...defaultTestPoint,
             section: formData.section,
             testPointInfo: formData.testPointInfo,
-            tmdeTolerances: copiedTmdes,
+            tmdeTolerances: finalTmdes,
             measurementType: formData.measurementType,
             equationString: formData.equationString,
             variableMappings: formData.variableMappings,
         };
         setSelectedTestPointId(newTestPoint.id);
-        updatedSession = { ...session, testPoints: [...session.testPoints, newTestPoint] };
+        updatedSession = { ...updatedSession, testPoints: [...session.testPoints, newTestPoint] };
     }
     updateSession(updatedSession);
   };
@@ -501,7 +511,7 @@ const useSessionManager = () => {
     sessions,
     instruments,
     saveInstrument,
-    deleteInstrument, // <--- EXPORTED
+    deleteInstrument, 
     loadInstruments,
     selectedSessionId,
     setSelectedSessionId,
