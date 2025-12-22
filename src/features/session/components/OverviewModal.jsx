@@ -159,6 +159,7 @@ const OverviewModal = ({
   onUpdateTestPoint,
   onDeleteTmdeDefinition,
   onDecrementTmdeQuantity,
+  instruments, // <--- 1. Accept instruments prop
 }) => {
   const [editingTmde, setEditingTmde] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
@@ -238,19 +239,8 @@ const OverviewModal = ({
   return (
     <div onClick={handleBackgroundClick}>
       
-      {editingTmde && (
-        <div className="nested-modal-overlay" onClick={(e) => e.stopPropagation()}>
-          <AddTmdeModal
-            isOpen={!!editingTmde}
-            onClose={() => setEditingTmde(null)}
-            onSave={handleSaveTmde}
-            testPointData={editingTmde.testPoint}
-            initialTmdeData={editingTmde.tmde}
-            hasParentOverlay={false} 
-          />
-        </div>
-      )}
-
+      {/* 2. Moved Editing Modal to BOTTOM of JSX for better Z-Index stacking */}
+      
       <div 
         className="modal-content floating-window-content"
         style={{
@@ -412,6 +402,20 @@ const OverviewModal = ({
           </div>
         </div>
       </div>
+
+      {editingTmde && (
+        <div className="nested-modal-overlay" onClick={(e) => e.stopPropagation()}>
+          <AddTmdeModal
+            isOpen={!!editingTmde}
+            onClose={() => setEditingTmde(null)}
+            onSave={handleSaveTmde}
+            testPointData={editingTmde.testPoint}
+            initialTmdeData={editingTmde.tmde}
+            hasParentOverlay={true}
+            instruments={instruments}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import ReactDOM from "react-dom"; // <--- 1. Import ReactDOM
 import Select from "react-select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrashAlt, faUndo, faCheck, faChartLine } from "@fortawesome/free-solid-svg-icons";
@@ -78,8 +79,8 @@ const RepeatabilityModal = ({
     onClose, 
     onSave, 
     uutNominal,
-    existingData, // <--- New Prop
-    cursorPosition // <--- New Prop for initial placement
+    existingData,
+    cursorPosition
 }) => {
   const [readings, setReadings] = useState([]);
   const [currentInput, setCurrentInput] = useState("");
@@ -91,39 +92,35 @@ const RepeatabilityModal = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // --- 1. NEW: Load Existing Data Effect ---
+  // --- 1. Load Existing Data Effect ---
   useEffect(() => {
     if (isOpen) {
         if (existingData && existingData.savedInputs) {
-            // If editing, load saved readings
             setReadings(existingData.savedInputs.readings || []);
             setSelectedUnit(existingData.savedInputs.unit || uutNominal?.unit || "V");
         } else if (!existingData) {
-            // If new, reset
             setReadings([]);
             setCurrentInput("");
-            // Don't overwrite unit if user already changed it, unless completely resetting? 
-            // Better to stick to default if fresh open
             setSelectedUnit(uutNominal?.unit || "V");
         }
     }
   }, [isOpen, existingData, uutNominal]);
 
-  // --- 2. MODIFIED: Positioning Effect ---
+  // --- 2. Positioning Effect ---
   useEffect(() => {
     if (isOpen) {
       if (cursorPosition) {
           // If cursor position provided, use it (with basic boundary check)
           const width = 750;
           const height = 500;
-          // Ensure it doesn't go off screen bottom/right
+          
+          // Using window.inner dimensions is correct because we are now Portaled to body
           const safeX = typeof window !== 'undefined' ? Math.min(cursorPosition.left, window.innerWidth - width - 20) : 0;
           const safeY = typeof window !== 'undefined' ? Math.min(cursorPosition.top + 20, window.innerHeight - height - 20) : 0;
           
-          // Also ensure it doesn't spawn off top/left
           setPosition({ x: Math.max(0, safeX), y: Math.max(0, safeY) });
       } else {
-          // Fallback: Original Center position logic
+          // Fallback: Center position logic
           const width = 750;
           const height = 500;
           const x = typeof window !== 'undefined' ? Math.max(0, (window.innerWidth - width) / 2) : 0;
@@ -133,9 +130,8 @@ const RepeatabilityModal = ({
     }
   }, [isOpen, cursorPosition]);
 
-  // --- Drag Handlers (Unchanged) ---
+  // --- Drag Handlers ---
   const handleMouseDown = (e) => {
-    // Only allow dragging from the header
     setIsDragging(true);
     setDragOffset({
         x: e.clientX - position.x,
@@ -164,14 +160,12 @@ const RepeatabilityModal = ({
     };
   }, [isDragging, dragOffset]);
 
-
   // Prepare Unit Options
   const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
   const unitOptions = useMemo(() => {
     return getCategorizedUnitOptions(allUnits, uutNominal?.unit || selectedUnit);
   }, [allUnits, uutNominal?.unit, selectedUnit]);
 
-  // Focus input on open
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
@@ -211,7 +205,6 @@ const RepeatabilityModal = ({
       dof: stats.dof,
       unit: selectedUnit,
       count: readings.length,
-      // --- IMPORTANT: Return raw readings so Analysis.jsx can save them ---
       readings: readings 
     });
     onClose();
@@ -219,7 +212,9 @@ const RepeatabilityModal = ({
 
   if (!isOpen) return null;
 
-  return (
+  // --- 3. WRAP IN PORTAL ---
+  // This ensures the modal is attached to document.body, ignoring parent transforms/filters
+  return ReactDOM.createPortal(
     <div 
         className="modal-content floating-window-content" 
         style={{ 
@@ -231,7 +226,7 @@ const RepeatabilityModal = ({
             top: position.y,
             left: position.x,
             margin: 0,
-            zIndex: 2002, // High z-index to stay above other elements
+            zIndex: 9999, // Ensure it sits above other UI elements
             height: 'auto',
             maxHeight: '90vh'
         }}
@@ -246,7 +241,7 @@ const RepeatabilityModal = ({
                 marginBottom: '10px', 
                 borderBottom: '1px solid var(--border-color)', 
                 paddingBottom: '15px',
-                cursor: 'move', // Indicates draggable
+                cursor: 'move', 
                 userSelect: 'none'
             }}
         >
@@ -263,7 +258,6 @@ const RepeatabilityModal = ({
                 </div>
             </div>
             
-            {/* Close Button Integrated in Header */}
             <button 
                 onClick={onClose} 
                 className="modal-close-button"
@@ -439,7 +433,7 @@ const RepeatabilityModal = ({
                             border: 'none', 
                             color: readings.length < 2 ? 'var(--text-color-muted)' : 'var(--primary-color)', 
                             cursor: readings.length < 2 ? 'not-allowed' : 'pointer', 
-                            fontSize: '1.5rem', /* Slightly larger for main action */
+                            fontSize: '1.5rem',
                             display: 'flex', 
                             alignItems: 'center', 
                             justifyContent: 'center',
@@ -454,7 +448,8 @@ const RepeatabilityModal = ({
                 </div>
             </div>
         </div>
-    </div>
+    </div>,
+    document.body // <-- Attach to body
   );
 };
 

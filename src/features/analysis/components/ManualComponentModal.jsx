@@ -8,8 +8,9 @@
  */
 
 import React, { useState, useEffect, useMemo } from "react";
+import ReactDOM from "react-dom"; // <--- 1. Import ReactDOM
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faPenSquare } from "@fortawesome/free-solid-svg-icons"; // Added faPenSquare for icon
+import { faCheck, faPenSquare } from "@fortawesome/free-solid-svg-icons"; 
 import ConversionInfo from "../../../components/common/ConversionInfo";
 import { convertToPPM, unitSystem } from "../../../utils/uncertaintyMath";
 import { oldErrorDistributions } from "../utils/budgetUtils";
@@ -43,6 +44,7 @@ const ManualComponentModal = ({
     if (isOpen) {
       const width = 800;
       const height = 500;
+      // Because we use a Portal, window dimensions are now always accurate relative to the modal
       const x = typeof window !== 'undefined' ? Math.max(0, (window.innerWidth - width) / 2) : 0;
       const y = typeof window !== 'undefined' ? Math.max(0, (window.innerHeight - height) / 2) : 0;
       setPosition({ x, y });
@@ -204,7 +206,8 @@ const ManualComponentModal = ({
 
   if (!isOpen) return null;
 
-  return (
+  // --- 2. WRAP IN PORTAL ---
+  return ReactDOM.createPortal(
     <div 
         className="modal-content floating-window-content" 
         style={{ 
@@ -216,7 +219,7 @@ const ManualComponentModal = ({
             top: position.y,
             left: position.x,
             margin: 0,
-            zIndex: 2002,
+            zIndex: 9999, // High z-index to stay on top
             height: 'auto',
             maxHeight: '90vh'
         }}
@@ -390,7 +393,8 @@ const ManualComponentModal = ({
                 </button>
             </div>
         </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

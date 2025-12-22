@@ -420,6 +420,7 @@ function App() {
           onUpdateTestPoint={handleUpdateSpecificTestPoint}
           onDeleteTmdeDefinition={deleteTmdeDefinition}
           onDecrementTmdeQuantity={decrementTmdeQuantity}
+          instruments={instruments} // <--- CHANGED: Passed instruments prop
         />
         {testPointData && (
           <ToleranceToolModal
