@@ -83,31 +83,59 @@ const recalculateTolerance = (instrument, value, unit, existingData = {}) => {
     };
 };
 
-const generateDiffMessage = (changes) => (
+const generateDiffMessage = (changes, missing) => (
   <div>
-    <p style={{ marginBottom: "15px", color: "var(--text-color)" }}>
-      The new measurement point value requires updated instrument tolerances based on the library.
-    </p>
-    <div style={{ 
-      display: "grid", 
-      gridTemplateColumns: "1.5fr 1fr 1fr", 
-      gap: "10px", 
-      fontSize: "0.9rem",
-      background: "var(--background-secondary)",
-      padding: "10px",
-      borderRadius: "4px"
-    }}>
-      <div style={{ fontWeight: "bold", borderBottom: "1px solid var(--border-color)", paddingBottom: "5px" }}>Instrument</div>
-      <div style={{ fontWeight: "bold", borderBottom: "1px solid var(--border-color)", paddingBottom: "5px" }}>Old Spec</div>
-      <div style={{ fontWeight: "bold", borderBottom: "1px solid var(--border-color)", paddingBottom: "5px" }}>New Spec</div>
-      {changes.map((c, i) => (
-        <React.Fragment key={i}>
-          <div style={{alignSelf: "center", fontWeight: "500"}}>{c.name}</div>
-          <div style={{ color: "var(--text-color-muted)", fontSize: "0.85rem" }}>{c.oldSpec}</div>
-          <div style={{ color: "var(--primary-color)", fontWeight: "500", fontSize: "0.85rem" }}>{c.newSpec}</div>
-        </React.Fragment>
-      ))}
-    </div>
+    {changes.length > 0 && (
+      <>
+        <p style={{ marginBottom: "10px", color: "var(--text-color)" }}>
+          The following instruments were updated based on the library:
+        </p>
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: "1.5fr 1fr 1fr", 
+          gap: "10px", 
+          fontSize: "0.85rem",
+          background: "var(--background-secondary)",
+          padding: "10px",
+          borderRadius: "4px",
+          marginBottom: "15px"
+        }}>
+          <div style={{ fontWeight: "bold", borderBottom: "1px solid var(--border-color)", paddingBottom: "5px" }}>Instrument</div>
+          <div style={{ fontWeight: "bold", borderBottom: "1px solid var(--border-color)", paddingBottom: "5px" }}>Old Spec</div>
+          <div style={{ fontWeight: "bold", borderBottom: "1px solid var(--border-color)", paddingBottom: "5px" }}>New Spec</div>
+          {changes.map((c, i) => (
+            <React.Fragment key={i}>
+              <div style={{alignSelf: "center", fontWeight: "500"}}>{c.name}</div>
+              <div style={{ color: "var(--text-color-muted)" }}>{c.oldSpec}</div>
+              <div style={{ color: "var(--primary-color)", fontWeight: "500" }}>{c.newSpec}</div>
+            </React.Fragment>
+          ))}
+        </div>
+      </>
+    )}
+
+    {missing.length > 0 && (
+      <>
+        <p style={{ marginBottom: "10px", color: "var(--status-warning)" }}>
+          <strong>Attention Needed:</strong> No library data found for the following instruments at the new value.
+          <br />They will be created with <u>empty specifications</u> for you to fill in manually.
+        </p>
+        <ul style={{ 
+          fontSize: "0.9rem", 
+          background: "rgba(255, 193, 7, 0.1)", 
+          border: "1px solid var(--status-warning)",
+          borderRadius: "4px",
+          padding: "10px 10px 10px 30px",
+          margin: 0
+        }}>
+          {missing.map((m, i) => (
+            <li key={i} style={{ marginBottom: "4px" }}>
+              <strong>{m.name}</strong>: No spec found for {m.target}
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
   </div>
 );
 
@@ -273,14 +301,14 @@ function App() {
     }
   };
 
-  // --- UPDATED: Handle Save Test Point with Confirmation Logic (UUT + TMDE) ---
+  // --- UPDATED: Handle Save Test Point with Confirmation Logic ---
   const handleSaveTestPoint = (formData) => {
     const finalData = { ...formData }; 
     const changes = [];
-    let uutUpdate = null; // Track proposed UUT update
+    const missing = []; // Track instruments where we couldn't find new specs
+    let uutUpdate = null; 
 
-    // 1. Calculate UUT Changes (If a UUT Instrument is defined)
-    // Runs for both New and Edit actions to keep session UUT specs in sync with active point.
+    // 1. Calculate UUT Changes
     const targetValue = finalData.testPointInfo.parameter.value;
     const targetUnit = finalData.testPointInfo.parameter.unit;
 
@@ -289,7 +317,6 @@ function App() {
             currentSessionData.uutInstrument, 
             targetValue, 
             targetUnit, 
-            // FIX: Check against TP specific tolerance if it exists, otherwise Session
             finalData.uutTolerance || currentSessionData.uutTolerance
         );
         
@@ -305,6 +332,13 @@ function App() {
                 });
                 uutUpdate = newUutSpecs;
              }
+        } else {
+             missing.push({
+                name: currentSessionData.uutDescription || "Unit Under Test",
+                target: `${targetValue} ${targetUnit}`
+             });
+             // FIX: Completely reset UUT tolerance to empty object when missing
+             finalData.uutTolerance = {}; 
         }
     }
     
@@ -343,47 +377,53 @@ function App() {
                                  measurementPoint: { value: tmdeTargetValue, unit: tmdeTargetUnit },
                                  id: Date.now() + Math.random() 
                              };
+                        } else {
+                             missing.push({
+                                name: tmde.name,
+                                target: `${tmdeTargetValue} ${tmdeTargetUnit}`
+                             });
+                             
+                             const cleanTmde = { ...tmde };
+                             ['reading', 'range', 'floor', 'readings_iv', 'db', 'tolerance', 'tolerances', 'measuringResolution', 'uncertainty', 'k'].forEach(k => delete cleanTmde[k]);
+
+                             return {
+                                ...cleanTmde,
+                                measurementPoint: { value: tmdeTargetValue, unit: tmdeTargetUnit },
+                                id: Date.now() + Math.random(),
+                                rangeMax: "", 
+                             };
                         }
                     }
                     
                     return { ...tmde, measurementPoint: { value: tmdeTargetValue, unit: tmdeTargetUnit }, id: Date.now() + Math.random() };
                 });
 
-                // Apply new TMDEs immediately to finalData so they are ready for save
                 finalData.tmdeTolerances = newTmdes;
             }
         }
     }
 
-    if (changes.length > 0) {
+    // Trigger Notification if there are Changes OR Missing items
+    if (changes.length > 0 || missing.length > 0) {
         setAppNotification({
-            title: "Update Tolerances?",
-            message: generateDiffMessage(changes),
-            confirmText: "Update & Save",
-            cancelText: "Keep Old Specs",
+            title: missing.length > 0 ? "Manual Entry Required" : "Update Tolerances?",
+            message: generateDiffMessage(changes, missing),
+            confirmText: missing.length > 0 ? "Save & Edit Specs" : "Update & Save",
+            cancelText: "Cancel",
             onConfirm: () => {
-                // FIX: Save point with UUT updates applied to the TEST POINT (finalData), not session
                 if (uutUpdate) {
                     finalData.uutTolerance = uutUpdate;
                 }
                 saveTestPoint(finalData, null); 
                 setAppNotification(null);
+
+                if (missing.length > 0) {
+                    setTimeout(() => {
+                        setIsToleranceModalOpen(true);
+                    }, 200);
+                }
             },
             onClose: () => {
-                 // User rejected: Revert TMDEs to old copies (if applicable) and save without UUT update
-                 let revertPayload = { ...finalData };
-                 
-                 // If we had calculated new TMDEs, we need to revert them to exact copies of previous point
-                 if (!formData.id && currentTestPoints.length > 0 && finalData.copyTmdes && (!finalData.tmdeTolerances || finalData.tmdeTolerances.length === 0)) {
-                      const previousPoint = currentTestPoints[currentTestPoints.length - 1];
-                      revertPayload.tmdeTolerances = previousPoint.tmdeTolerances.map(t => ({
-                         ...t, 
-                         measurementPoint: { value: targetValue, unit: targetUnit },
-                         id: Date.now() + Math.random()
-                      }));
-                 }
-
-                 saveTestPoint(revertPayload, null); 
                  setAppNotification(null);
             }
         });
@@ -391,7 +431,6 @@ function App() {
         return; 
     }
 
-    // No changes detected (or they were minor), save normally.
     saveTestPoint(finalData, null);
     setIsAddModalOpen(false);
     setEditingTestPoint(null);
@@ -486,11 +525,9 @@ function App() {
     const pointData = currentTestPoints.find((p) => p.id === selectedTestPointId);
     if (!pointData) return null;
 
-    // FIX: Prioritize Test Point's own tolerance
-    let effectiveUutTolerance = pointData.uutTolerance; 
+    let effectiveUutTolerance = currentSessionData.uutTolerance;
 
-    // Fallback: Try auto-calculation from Session Instrument
-    if (!effectiveUutTolerance && currentSessionData.uutInstrument && pointData.testPointInfo?.parameter?.value) {
+    if (currentSessionData.uutInstrument && pointData.testPointInfo?.parameter?.value) {
         const autoSpecs = recalculateTolerance(
             currentSessionData.uutInstrument, 
             pointData.testPointInfo.parameter.value, 
@@ -500,11 +537,6 @@ function App() {
         if (autoSpecs) {
             effectiveUutTolerance = autoSpecs;
         }
-    }
-    
-    // Fallback: Use Session Global Tolerance (Legacy support)
-    if (!effectiveUutTolerance) {
-        effectiveUutTolerance = currentSessionData.uutTolerance;
     }
 
     return {
@@ -631,11 +663,13 @@ function App() {
             onSave={(data) => {
               const { uutTolerance, ...testPointSpecificData } = data;
               if (uutTolerance) {
-                // FIX: Update the specific test point, NOT the session
-                updateTestPointData({ ...testPointSpecificData, uutTolerance });
-              } else {
-                updateTestPointData(testPointSpecificData);
+                setSessions((prev) =>
+                  prev.map((s) =>
+                    s.id === selectedSessionId ? { ...s, uutTolerance } : s
+                  )
+                );
               }
+              updateTestPointData(testPointSpecificData);
             }}
             testPointData={testPointData}
           />

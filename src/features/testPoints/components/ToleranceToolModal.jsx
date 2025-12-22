@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import ToleranceForm from "../../../components/common/ToleranceForm"; // Import the refactored form
+import ToleranceForm from "../../../components/common/ToleranceForm"; 
 import ContextMenu from "../../../components/common/ContextMenu";
 import NotificationModal from '../../../components/modals/NotificationModal';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,7 +7,6 @@ import {
   faTrashAlt,
   faCheck,
   faTimes,
-  faInfoCircle,
 } from "@fortawesome/free-solid-svg-icons";
 
 const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
@@ -15,7 +14,6 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
   const [uutTolerance, setUutTolerance] = useState({});
   const [tmdeTolerances, setTmdeTolerances] = useState([]);
   const [contextMenu, setContextMenu] = useState(null);
-  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   
   useEffect(() => {
     if (isOpen && testPointData) {
@@ -30,7 +28,6 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
         };
       }
 
-      // Ensure readings_iv has unit if needed (optional but good for consistency)
       if (initialUut.readings_iv && !initialUut.readings_iv.unit && testPointData.testPointInfo?.parameter?.unit) {
         initialUut = {
             ...initialUut,
@@ -59,11 +56,9 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
     const cleanupTolerance = (tol, isUut = false) => {
       const cleaned = { ...tol };
       
-      // UPDATED: Added "readings_iv" to the list of keys to check/cleanup
       const componentKeys = ["reading", "readings_iv", "range", "floor", "db"];
       
       componentKeys.forEach((key) => {
-        // If high limit is empty or not a number, remove the component entirely
         if (cleaned[key] && (cleaned[key].high === "" || isNaN(parseFloat(cleaned[key].high)))) {
           delete cleaned[key];
         }
@@ -85,36 +80,37 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
     onClose();
   };
 
-  const infoMessage = "• This tool is for editing complex, asymmetric, or multi-component tolerances for the UUT and any associated TMDEs.\n\n" +
-                      "• To add a new TMDE, close this editor and use the 'Add TMDE' button in the main analysis view.\n\n" +
-                      "• To delete a TMDE, right-click on its tab.";
-
   const activeTmde = tmdeTolerances.find((t) => t.id === activeTab);
 
   return (
     <div className="modal-overlay">
       {contextMenu && (<ContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />)}
-      <NotificationModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} title="Using the Tolerance Editor" message={infoMessage} />
+      
       <div className="modal-content" style={{ maxWidth: "600px" }}>
-        <div style={{ position: 'absolute', top: '15px', right: '15px', display: 'flex', gap: '10px' }}>
-            <FontAwesomeIcon 
-                icon={faInfoCircle} 
-                className="info-icon-modal" 
-                onClick={() => setIsInfoModalOpen(true)} 
-                title="How to use this editor" 
-                style={{ cursor: 'pointer', color: '#666' }}
-            />
-            {/* FIXED: Standard X icon button */}
+        
+        {/* Modal Header */}
+        <div className="modal-header" style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '15px' 
+        }}>
+            <h3 style={{ margin: 0 }}>Tolerance Editor</h3>
             <button 
                 onClick={onClose} 
-                className="modal-icon-button secondary" 
-                style={{ padding: '0 5px', height: 'auto', border: 'none', background: 'transparent' }}
+                className="modal-close-button"
+                title="Close"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.2rem',
+                  cursor: 'pointer',
+                  color: 'var(--text-color)'
+                }}
             >
-                <FontAwesomeIcon icon={faTimes} size="lg" />
+                <FontAwesomeIcon icon={faTimes} />
             </button>
         </div>
-
-        <h3 style={{ marginTop: '0', paddingRight: '60px' }}>Tolerance Editor</h3>
         
         <div className="modal-tabs">
           <button className={`modal-tab ${activeTab === "UUT" ? "active" : ""}`} onClick={() => setActiveTab("UUT")}>
@@ -140,10 +136,17 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
           )}
         </div>
 
-        <div className="modal-actions">
-          <button className="modal-icon-button secondary" onClick={onClose} title="Cancel">Cancel</button>
-          <button className="modal-icon-button primary" onClick={handleSave} title="Store and Return"><FontAwesomeIcon icon={faCheck} /> Save Changes</button>
+        {/* Modal Footer */}
+        <div className="modal-actions" style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '15px', justifyContent: 'flex-end' }}>
+          <button 
+            className="modal-icon-button primary" 
+            onClick={handleSave} 
+            title="Save Changes"
+          >
+            <FontAwesomeIcon icon={faCheck} />
+          </button>
         </div>
+
       </div>
     </div>
   );
