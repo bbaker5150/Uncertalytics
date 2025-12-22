@@ -9,6 +9,8 @@ const useSessionManager = () => {
       section: "",
       tmdeDescription: "",
       tmdeTolerances: [],
+      // NEW: Allow specific UUT tolerance per point
+      uutTolerance: null, 
       specifications: {
         mfg: { uncertainty: "", k: 2 },
         navy: { uncertainty: "", k: 2 },
@@ -405,7 +407,10 @@ const useSessionManager = () => {
             measurementType: formData.measurementType,
             equationString: formData.equationString,
             variableMappings: formData.variableMappings,
-            tmdeTolerances: formData.tmdeTolerances || tp.tmdeTolerances
+            // FIX: Ensure we accept updated tolerances if passed
+            tmdeTolerances: formData.tmdeTolerances || tp.tmdeTolerances,
+            // FIX: Ensure UUT tolerance is saved to the point
+            uutTolerance: formData.uutTolerance || tp.uutTolerance || null
             };
         }
         return tp;
@@ -417,6 +422,7 @@ const useSessionManager = () => {
         
         let finalTmdes = formData.tmdeTolerances || [];
 
+        // Only run copy logic if we DON'T have provided tolerances AND copy is requested
         if (finalTmdes.length === 0 && formData.copyTmdes && lastTestPoint) {
             finalTmdes = JSON.parse(JSON.stringify(lastTestPoint.tmdeTolerances || []));
             const originalTestPointParameter = lastTestPoint.testPointInfo.parameter;
@@ -437,6 +443,8 @@ const useSessionManager = () => {
             section: formData.section,
             testPointInfo: formData.testPointInfo,
             tmdeTolerances: finalTmdes,
+            // FIX: Accept passed UUT tolerance or default to null
+            uutTolerance: formData.uutTolerance || null, 
             measurementType: formData.measurementType,
             equationString: formData.equationString,
             variableMappings: formData.variableMappings,

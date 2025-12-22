@@ -77,9 +77,10 @@ function Analysis({
     [testPointData?.testPointInfo?.parameter]
   );
   
+  // FIX: Read from testPointData first (which App.jsx enriches), then fallback to session
   const uutToleranceData = useMemo(
-    () => sessionData.uutTolerance || {},
-    [sessionData.uutTolerance]
+    () => testPointData.uutTolerance || sessionData.uutTolerance || {},
+    [testPointData.uutTolerance, sessionData.uutTolerance]
   );
   
   const tmdeTolerancesData = useMemo(
@@ -131,11 +132,17 @@ function Analysis({
 
   // --- 5. Handlers ---
   const handleSaveUut = ({ description, tolerance, instrument }) => {
+    // FIX: Save specific tolerance to the Test Point (isolating it)
+    onDataSave({ uutTolerance: tolerance });
+
     if (onSessionSave) {
+        // Update global description and instrument definition
         onSessionSave({
             ...sessionData,
             uutDescription: description,
-            uutTolerance: tolerance,
+            // We can update the session default here too, but the TP specific 
+            // value will always override it thanks to the memo above.
+            uutTolerance: tolerance, 
             uutInstrument: instrument || sessionData.uutInstrument 
         });
     } else {
@@ -263,8 +270,6 @@ function Analysis({
     setIsDerivedBreakdownOpen(true);
   };
 
-  // REMOVED: Automatic Tolerance Update Check on Navigation (useEffect)
-
   return (
     <div>
       {/* --- HEADER --- */}
@@ -285,7 +290,7 @@ function Analysis({
         onClose={() => setIsUutModalOpen(false)}
         onSave={handleSaveUut}
         initialDescription={sessionData.uutDescription}
-        initialTolerance={sessionData.uutTolerance}
+        initialTolerance={uutToleranceData} // Pass the specific tolerance
         instruments={instruments}
         uutNominal={uutNominal}
       />

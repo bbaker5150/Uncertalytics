@@ -264,8 +264,7 @@ export const useRiskCalculation = (
       turNeeded
     );
 
-    // FIXED: Safely access measuringResolution
-    const resRaw = parseFloat(testPointData?.uutTolerance?.measuringResolution);
+    const resRaw = parseFloat(uutToleranceData?.measuringResolution);
     const safeRes = isNaN(resRaw) ? 0 : resRaw;
 
     let gbLow = resDwn(

@@ -289,11 +289,12 @@ function App() {
             currentSessionData.uutInstrument, 
             targetValue, 
             targetUnit, 
-            currentSessionData.uutTolerance
+            // FIX: Check against TP specific tolerance if it exists, otherwise Session
+            finalData.uutTolerance || currentSessionData.uutTolerance
         );
         
         if (newUutSpecs) {
-             const oldSummary = getToleranceSummary(currentSessionData.uutTolerance);
+             const oldSummary = getToleranceSummary(finalData.uutTolerance || currentSessionData.uutTolerance);
              const newSummary = getToleranceSummary(newUutSpecs);
              
              if (oldSummary !== newSummary) {
@@ -361,8 +362,11 @@ function App() {
             confirmText: "Update & Save",
             cancelText: "Keep Old Specs",
             onConfirm: () => {
-                // Save point with UUT updates applied to session
-                saveTestPoint(finalData, uutUpdate ? { uutTolerance: uutUpdate } : null);
+                // FIX: Save point with UUT updates applied to the TEST POINT (finalData), not session
+                if (uutUpdate) {
+                    finalData.uutTolerance = uutUpdate;
+                }
+                saveTestPoint(finalData, null); 
                 setAppNotification(null);
             },
             onClose: () => {
@@ -379,7 +383,7 @@ function App() {
                       }));
                  }
 
-                 saveTestPoint(revertPayload, null); // Pass null for sessionUpdates
+                 saveTestPoint(revertPayload, null); 
                  setAppNotification(null);
             }
         });
@@ -388,7 +392,6 @@ function App() {
     }
 
     // No changes detected (or they were minor), save normally.
-    // We pass uutUpdate just in case we want silent updates, but uutUpdate is only set if changes detected.
     saveTestPoint(finalData, null);
     setIsAddModalOpen(false);
     setEditingTestPoint(null);
@@ -483,9 +486,11 @@ function App() {
     const pointData = currentTestPoints.find((p) => p.id === selectedTestPointId);
     if (!pointData) return null;
 
-    let effectiveUutTolerance = currentSessionData.uutTolerance;
+    // FIX: Prioritize Test Point's own tolerance
+    let effectiveUutTolerance = pointData.uutTolerance; 
 
-    if (currentSessionData.uutInstrument && pointData.testPointInfo?.parameter?.value) {
+    // Fallback: Try auto-calculation from Session Instrument
+    if (!effectiveUutTolerance && currentSessionData.uutInstrument && pointData.testPointInfo?.parameter?.value) {
         const autoSpecs = recalculateTolerance(
             currentSessionData.uutInstrument, 
             pointData.testPointInfo.parameter.value, 
@@ -495,6 +500,11 @@ function App() {
         if (autoSpecs) {
             effectiveUutTolerance = autoSpecs;
         }
+    }
+    
+    // Fallback: Use Session Global Tolerance (Legacy support)
+    if (!effectiveUutTolerance) {
+        effectiveUutTolerance = currentSessionData.uutTolerance;
     }
 
     return {
@@ -621,13 +631,11 @@ function App() {
             onSave={(data) => {
               const { uutTolerance, ...testPointSpecificData } = data;
               if (uutTolerance) {
-                setSessions((prev) =>
-                  prev.map((s) =>
-                    s.id === selectedSessionId ? { ...s, uutTolerance } : s
-                  )
-                );
+                // FIX: Update the specific test point, NOT the session
+                updateTestPointData({ ...testPointSpecificData, uutTolerance });
+              } else {
+                updateTestPointData(testPointSpecificData);
               }
-              updateTestPointData(testPointSpecificData);
             }}
             testPointData={testPointData}
           />
