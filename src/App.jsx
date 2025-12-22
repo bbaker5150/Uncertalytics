@@ -525,9 +525,14 @@ function App() {
     const pointData = currentTestPoints.find((p) => p.id === selectedTestPointId);
     if (!pointData) return null;
 
-    let effectiveUutTolerance = currentSessionData.uutTolerance;
+    // FIX: Prioritize point-specific tolerance if it exists (even if empty)
+    // Only fall back to session/auto-calc if pointData.uutTolerance is explicitly null/undefined (Legacy/Default)
+    let effectiveUutTolerance = (pointData.uutTolerance !== null && pointData.uutTolerance !== undefined)
+        ? pointData.uutTolerance 
+        : currentSessionData.uutTolerance;
 
-    if (currentSessionData.uutInstrument && pointData.testPointInfo?.parameter?.value) {
+    // Only attempt auto-calculation/inheritance if we are using session defaults (i.e., pointData.uutTolerance was null)
+    if ((pointData.uutTolerance === null || pointData.uutTolerance === undefined) && currentSessionData.uutInstrument && pointData.testPointInfo?.parameter?.value) {
         const autoSpecs = recalculateTolerance(
             currentSessionData.uutInstrument, 
             pointData.testPointInfo.parameter.value, 
