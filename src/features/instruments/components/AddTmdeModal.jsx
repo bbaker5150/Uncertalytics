@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import Select from "react-select"; 
+import ReactDOM from "react-dom";
+import Select from "react-select";
 import ToleranceForm from "../../../components/common/ToleranceForm";
 import { unitSystem, findInstrumentTolerance, getToleranceSummary } from "../../../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -69,7 +70,7 @@ const AddTmdeModal = ({
   testPointData,
   initialTmdeData = null,
   hasParentOverlay = false,
-  instruments = [] 
+  instruments = []
 }) => {
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [selectedInstrument, setSelectedInstrument] = useState(null);
@@ -77,9 +78,9 @@ const AddTmdeModal = ({
 
   const [position, setPosition] = useState(() => {
     if (typeof window === 'undefined') return { x: 0, y: 0 };
-    return { 
-        x: Math.max(0, (window.innerWidth - 600) / 2), 
-        y: Math.max(0, (window.innerHeight - 700) / 2) 
+    return {
+      x: Math.max(0, (window.innerWidth - 600) / 2),
+      y: Math.max(0, (window.innerHeight - 700) / 2)
     };
   });
   const [isDragging, setIsDragging] = useState(false);
@@ -88,29 +89,29 @@ const AddTmdeModal = ({
   const handleMouseDown = (e) => {
     setIsDragging(true);
     setDragOffset({
-        x: e.clientX - position.x,
-        y: e.clientY - position.y
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
     });
   };
 
   useEffect(() => {
     const handleMouseMove = (e) => {
-        if (isDragging) {
-            setPosition({
-                x: e.clientX - dragOffset.x,
-                y: e.clientY - dragOffset.y
-            });
-        }
+      if (isDragging) {
+        setPosition({
+          x: e.clientX - dragOffset.x,
+          y: e.clientY - dragOffset.y
+        });
+      }
     };
     const handleMouseUp = () => setIsDragging(false);
 
     if (isDragging) {
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     }
     return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging, dragOffset]);
 
@@ -158,7 +159,7 @@ const AddTmdeModal = ({
   const [tmde, setTmde] = useState(getInitialState());
 
   const allUnits = useMemo(() => Object.keys(unitSystem.units), []);
-  
+
   const physicalUnitOptions = useMemo(() => {
     return getCategorizedUnitOptions(allUnits, tmde.measurementPoint?.unit);
   }, [allUnits, tmde.measurementPoint?.unit]);
@@ -167,9 +168,9 @@ const AddTmdeModal = ({
     if (isOpen) {
       setTmde(getInitialState());
       if (initialTmdeData && initialTmdeData.sourceInstrument) {
-          setSelectedInstrument(initialTmdeData.sourceInstrument);
+        setSelectedInstrument(initialTmdeData.sourceInstrument);
       } else {
-          setSelectedInstrument(null);
+        setSelectedInstrument(null);
       }
       setIsLookupOpen(false);
       setNotification(null);
@@ -186,7 +187,7 @@ const AddTmdeModal = ({
   }, [uutMeasurementPoint, isDerived]);
 
   const handleInstrumentImport = (instrument) => {
-    setSelectedInstrument(instrument); 
+    setSelectedInstrument(instrument);
 
     const currentVal = tmde.measurementPoint?.value;
     const currentUnit = tmde.measurementPoint?.unit;
@@ -198,36 +199,36 @@ const AddTmdeModal = ({
 
     const numericVal = parseFloat(currentVal);
     if (isNaN(numericVal)) {
-        alert("Invalid measurement value. Please enter a number.");
-        return;
+      alert("Invalid measurement value. Please enter a number.");
+      return;
     }
 
     const matchedData = findInstrumentTolerance(instrument, numericVal, currentUnit);
-    
+
     if (matchedData) {
       const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
-      let calculatedRangeMax = matchedData.rangeMax; 
+      let calculatedRangeMax = matchedData.rangeMax;
       if (!calculatedRangeMax) {
-          calculatedRangeMax = numericVal;
+        calculatedRangeMax = numericVal;
       }
-      
+
       const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
       compKeys.forEach(key => {
         if (specs[key]) {
-             if (!specs[key].unit) {
-                if (key === 'reading' || key === 'range') specs[key].unit = '%';
-                else if (key === 'floor' || key === 'readings_iv') specs[key].unit = currentUnit;
-             }
-             if (key === 'range') {
-                 specs[key].value = calculatedRangeMax;
-             }
-             if (specs[key].high) {
-                 const highVal = parseFloat(specs[key].high);
-                 if (!isNaN(highVal)) {
-                     specs[key].low = String(-Math.abs(highVal));
-                 }
-                 specs[key].symmetric = true; 
-             }
+          if (!specs[key].unit) {
+            if (key === 'reading' || key === 'range') specs[key].unit = '%';
+            else if (key === 'floor' || key === 'readings_iv') specs[key].unit = currentUnit;
+          }
+          if (key === 'range') {
+            specs[key].value = calculatedRangeMax;
+          }
+          if (specs[key].high) {
+            const highVal = parseFloat(specs[key].high);
+            if (!isNaN(highVal)) {
+              specs[key].low = String(-Math.abs(highVal));
+            }
+            specs[key].symmetric = true;
+          }
         }
       });
 
@@ -236,19 +237,19 @@ const AddTmdeModal = ({
       setNotification({
         title: "Confirm Specifications",
         message: `Found specifications for ${instrument.model}:\n\n` +
-                 `Range: ${matchedData.rangeMin ?? 'N/A'} to ${matchedData.rangeMax ?? 'N/A'} ${matchedData.unit || ""}\n` +
-                 `Tolerance: ${summary}\n\n` +
-                 `Do you want to apply these tolerances?`,
+          `Range: ${matchedData.rangeMin ?? 'N/A'} to ${matchedData.rangeMax ?? 'N/A'} ${matchedData.unit || ""}\n` +
+          `Tolerance: ${summary}\n\n` +
+          `Do you want to apply these tolerances?`,
         confirmText: "Apply Specs",
         cancelText: "Cancel",
         onConfirm: () => {
-             setTmde(prev => ({
-                ...prev,
-                name: `${instrument.manufacturer} ${instrument.model}`, 
-                ...specs,
-                measuringResolution: undefined, 
-              }));
-              setNotification(null);
+          setTmde(prev => ({
+            ...prev,
+            name: `${instrument.manufacturer} ${instrument.model}`,
+            ...specs,
+            measuringResolution: undefined,
+          }));
+          setNotification(null);
         }
       });
 
@@ -261,17 +262,17 @@ const AddTmdeModal = ({
     const cleanupTolerance = (tol) => {
       const cleaned = { ...tol };
       if (selectedInstrument) {
-          cleaned.sourceInstrument = selectedInstrument;
+        cleaned.sourceInstrument = selectedInstrument;
       }
-      
+
       const componentKeys = ["reading", "readings_iv", "range", "floor", "db"];
       componentKeys.forEach((key) => {
         const comp = cleaned[key];
         if (comp) {
-            const highVal = parseFloat(comp.high);
-            if (comp.high === "" || comp.high === null || isNaN(highVal)) {
-                 delete cleaned[key];
-            }
+          const highVal = parseFloat(comp.high);
+          if (comp.high === "" || comp.high === null || isNaN(highVal)) {
+            delete cleaned[key];
+          }
         }
       });
 
@@ -291,13 +292,13 @@ const AddTmdeModal = ({
 
   if (!isOpen) return null;
 
-  return (
+  return ReactDOM.createPortal(
     <>
-      <InstrumentLookupModal 
-         isOpen={isLookupOpen} 
-         onClose={() => setIsLookupOpen(false)} 
-         instruments={instruments}
-         onSelect={handleInstrumentImport} 
+      <InstrumentLookupModal
+        isOpen={isLookupOpen}
+        onClose={() => setIsLookupOpen(false)}
+        instruments={instruments}
+        onSelect={handleInstrumentImport}
       />
 
       <NotificationModal
@@ -310,208 +311,209 @@ const AddTmdeModal = ({
         cancelText={notification?.cancelText}
       />
 
-      <div 
+      <div
         className="modal-content floating-window-content"
         style={{
-            position: 'fixed',
-            top: position.y,
-            left: position.x,
-            margin: 0,
-            width: '600px',
-            maxWidth: '90vw',
-            maxHeight: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            zIndex: hasParentOverlay ? 2005 : 2000, 
-            overflow: 'hidden'
+          position: 'fixed',
+          top: position.y,
+          left: position.x,
+          margin: 0,
+          width: '600px',
+          maxWidth: '90vw',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: hasParentOverlay ? 2005 : 2000,
+          overflow: 'hidden'
         }}
       >
-        <div 
-            style={{
-                display:'flex', 
-                justifyContent:'space-between', 
-                alignItems:'center', 
-                paddingBottom: '10px', 
-                marginBottom: '10px', 
-                borderBottom: '1px solid var(--border-color)',
-                cursor: 'move',
-                userSelect: 'none'
-            }}
-            onMouseDown={handleMouseDown}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingBottom: '10px',
+            marginBottom: '10px',
+            borderBottom: '1px solid var(--border-color)',
+            cursor: 'move',
+            userSelect: 'none'
+          }}
+          onMouseDown={handleMouseDown}
         >
-            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                <h3 style={{margin:0, fontSize: '1.2rem'}}>
-                    {initialTmdeData ? (tmde.name || "Edit TMDE") : "Add New TMDE"}
-                </h3>
-            </div>
-            <button onClick={onClose} className="modal-close-button" style={{position:'static'}}>&times;</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>
+              {initialTmdeData ? (tmde.name || "Edit TMDE") : "Add New TMDE"}
+            </h3>
+          </div>
+          <button onClick={onClose} className="modal-close-button" style={{ position: 'static' }}>&times;</button>
         </div>
 
-        <div className="modal-body-scrollable" style={{flex: 1, paddingRight: '5px'}}>
-            <div className="tmde-header">
-                <div className="details-grid">
-                    <div className="form-section">
-                    <label>TMDE Name</label>
-                    <div style={{display: 'flex', gap: '10px'}}>
-                        <input
-                            type="text"
-                            value={tmde.name || ""}
-                            onChange={(e) => setTmde({ ...tmde, name: e.target.value })}
-                            placeholder="e.g., Standard DMM"
-                            style={{flex: 1}}
-                        />
-                        <button 
-                            className="btn-icon-only" 
-                            onClick={() => setIsLookupOpen(true)}
-                            title="Import from Instrument Library"
-                            style={{ width: '42px', height: '42px', fontSize: '1rem', flexShrink: 0 }}
-                        >
-                            <FontAwesomeIcon icon={faBookOpen} />
-                        </button>
-                    </div>
-                    </div>
-
-                    <div className="form-section">
-                    <label>Quantity</label>
-                    <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={tmde.quantity || 1}
-                        onChange={(e) =>
-                        setTmde({
-                            ...tmde,
-                            quantity: parseInt(e.target.value, 10) || 1,
-                        })
-                        }
-                    />
-                    </div>
+        <div className="modal-body-scrollable" style={{ flex: 1, paddingRight: '5px' }}>
+          <div className="tmde-header">
+            <div className="details-grid">
+              <div className="form-section">
+                <label>TMDE Name</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input
+                    type="text"
+                    value={tmde.name || ""}
+                    onChange={(e) => setTmde({ ...tmde, name: e.target.value })}
+                    placeholder="e.g., Standard DMM"
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    className="btn-icon-only"
+                    onClick={() => setIsLookupOpen(true)}
+                    title="Import from Instrument Library"
+                    style={{ width: '42px', height: '42px', fontSize: '1rem', flexShrink: 0 }}
+                  >
+                    <FontAwesomeIcon icon={faBookOpen} />
+                  </button>
                 </div>
+              </div>
 
-                {isDerived && availableTypes.length > 0 && (
-                    <div className="form-section">
-                    <label>Variable Type (Input to Equation)</label>
-                    <select
-                        value={tmde.variableType || ""}
-                        onChange={(e) =>
-                        setTmde({ ...tmde, variableType: e.target.value })
-                        }
-                    >
-                        <option value="">-- Select Type --</option>
-                        {availableTypes.map((type) => (
-                        <option key={type} value={type}>
-                            {type}
-                        </option>
-                        ))}
-                    </select>
-                    </div>
-                )}
-
-                <div className="form-section">
-                    <label>Measurement Point</label>
-                    
-                    {!isDerived ? (
-                        <div style={{ 
-                            padding: '10px 12px', 
-                            backgroundColor: 'var(--primary-color-light)', 
-                            color: 'var(--primary-color-dark)',
-                            fontSize: '0.9rem',
-                            fontWeight: '500',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                        }}>
-                            {uutMeasurementPoint.value} {uutMeasurementPoint.unit}
-                        </div>
-                    ) : (
-                        <div className="manual-input-container" style={{marginTop: '5px', borderTop: 'none', paddingTop: 0}}>
-                            <div 
-                                className="input-with-unit"
-                                style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "1fr 120px",
-                                    gap: "10px",
-                                }}
-                            >
-                                <input
-                                    type="text"
-                                    placeholder="Value"
-                                    value={tmde.measurementPoint?.value || ""}
-                                    onChange={(e) =>
-                                        setTmde({
-                                            ...tmde,
-                                            measurementPoint: {
-                                                ...(tmde.measurementPoint || {}),
-                                                value: e.target.value,
-                                            },
-                                        })
-                                    }
-                                    style={{ width: '100%' }}
-                                />
-                                
-                                <Select
-                                    value={
-                                        physicalUnitOptions
-                                            .flatMap(g => g.options ? g.options : g)
-                                            .find(opt => opt.value === tmde.measurementPoint?.unit) || null
-                                    }
-                                    onChange={(option) =>
-                                        setTmde({
-                                            ...tmde,
-                                            measurementPoint: {
-                                                ...(tmde.measurementPoint || {}),
-                                                unit: option ? option.value : "",
-                                            },
-                                        })
-                                    }
-                                    options={physicalUnitOptions}
-                                    className="react-select-container"
-                                    classNamePrefix="react-select"
-                                    placeholder="Unit"
-                                    isSearchable={true}
-                                    menuPortalTarget={document.body}
-                                    menuPosition="fixed"
-                                    styles={portalStyle}
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
+              <div className="form-section">
+                <label>Quantity</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={tmde.quantity || 1}
+                  onChange={(e) =>
+                    setTmde({
+                      ...tmde,
+                      quantity: parseInt(e.target.value, 10) || 1,
+                    })
+                  }
+                />
+              </div>
             </div>
-            <ToleranceForm
-                tolerance={tmde}
-                setTolerance={setTmde}
-                isUUT={false}
-                referencePoint={tmde.measurementPoint}
-            />
+
+            {isDerived && availableTypes.length > 0 && (
+              <div className="form-section">
+                <label>Variable Type (Input to Equation)</label>
+                <select
+                  value={tmde.variableType || ""}
+                  onChange={(e) =>
+                    setTmde({ ...tmde, variableType: e.target.value })
+                  }
+                >
+                  <option value="">-- Select Type --</option>
+                  {availableTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="form-section">
+              <label>Measurement Point</label>
+
+              {!isDerived ? (
+                <div style={{
+                  padding: '10px 12px',
+                  backgroundColor: 'var(--primary-color-light)',
+                  color: 'var(--primary-color-dark)',
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  {uutMeasurementPoint.value} {uutMeasurementPoint.unit}
+                </div>
+              ) : (
+                <div className="manual-input-container" style={{ marginTop: '5px', borderTop: 'none', paddingTop: 0 }}>
+                  <div
+                    className="input-with-unit"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 120px",
+                      gap: "10px",
+                    }}
+                  >
+                    <input
+                      type="text"
+                      placeholder="Value"
+                      value={tmde.measurementPoint?.value || ""}
+                      onChange={(e) =>
+                        setTmde({
+                          ...tmde,
+                          measurementPoint: {
+                            ...(tmde.measurementPoint || {}),
+                            value: e.target.value,
+                          },
+                        })
+                      }
+                      style={{ width: '100%' }}
+                    />
+
+                    <Select
+                      value={
+                        physicalUnitOptions
+                          .flatMap(g => g.options ? g.options : g)
+                          .find(opt => opt.value === tmde.measurementPoint?.unit) || null
+                      }
+                      onChange={(option) =>
+                        setTmde({
+                          ...tmde,
+                          measurementPoint: {
+                            ...(tmde.measurementPoint || {}),
+                            unit: option ? option.value : "",
+                          },
+                        })
+                      }
+                      options={physicalUnitOptions}
+                      className="react-select-container"
+                      classNamePrefix="react-select"
+                      placeholder="Unit"
+                      isSearchable={true}
+                      menuPortalTarget={document.body}
+                      menuPosition="fixed"
+                      styles={portalStyle}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <ToleranceForm
+            tolerance={tmde}
+            setTolerance={setTmde}
+            isUUT={false}
+            referencePoint={tmde.measurementPoint}
+          />
         </div>
 
         <div
-            className="modal-actions"
-            style={{ justifyContent: "flex-end", alignItems: "center" }}
+          className="modal-actions"
+          style={{ justifyContent: "flex-end", alignItems: "center" }}
         >
-            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             {!initialTmdeData && (
-                <button
+              <button
                 className="modal-icon-button primary"
-                onClick={() => handleSave(false)} 
+                onClick={() => handleSave(false)}
                 title="Save this TMDE and add another"
-                >
+              >
                 <FontAwesomeIcon icon={faPlus} />
-                </button>
+              </button>
             )}
 
             <button
-                className="modal-icon-button primary"
-                onClick={() => handleSave(true)} 
-                title={initialTmdeData ? "Save Changes" : "Save and Close"}
+              className="modal-icon-button primary"
+              onClick={() => handleSave(true)}
+              title={initialTmdeData ? "Save Changes" : "Save and Close"}
             >
-                <FontAwesomeIcon icon={faCheck} />
+              <FontAwesomeIcon icon={faCheck} />
             </button>
-            </div>
+          </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 };
 

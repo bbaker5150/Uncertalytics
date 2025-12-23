@@ -12,7 +12,7 @@ const NotificationModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 2000 }}>
+    <div className="modal-overlay" style={{ zIndex: 9999 }}>
       <div className="modal-content">
         <button onClick={onClose} className="modal-close-button">
           &times;

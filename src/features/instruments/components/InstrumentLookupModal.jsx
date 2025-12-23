@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSearch,
@@ -9,6 +10,7 @@ import {
   faInfoCircle,
   faGripHorizontal // Added for drag handle
 } from "@fortawesome/free-solid-svg-icons";
+import { useFloatingWindow } from "../../../hooks/useFloatingWindow";
 
 const InstrumentLookupModal = ({
   isOpen,
@@ -20,35 +22,13 @@ const InstrumentLookupModal = ({
   const [selectedInst, setSelectedInst] = useState(null);
   const [expandedDetail, setExpandedDetail] = useState(null);
 
-  // --- Drag & Float State ---
-  const containerRef = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-
-  // 1. Calculate Center Position Synchronously (Lazy Init)
-  // This runs ONCE when the component mounts to determine the center x/y
-  const [position, setPosition] = useState(() => {
-    if (typeof window === 'undefined') return { x: 0, y: 0 };
-    
-    // Matches the styling dimensions defined in the return statement (900px width, 80vh height)
-    const modalWidth = 900;
-    const modalHeightPercent = 0.80; 
-    
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    // Calculate expected pixel height
-    const modalHeight = viewportHeight * modalHeightPercent;
-
-    // Calculate center
-    const x = (viewportWidth - Math.min(modalWidth, viewportWidth * 0.9)) / 2;
-    const y = (viewportHeight - modalHeight) / 2;
-
-    return { 
-        x: Math.max(0, x), 
-        y: Math.max(0, y) 
-    };
+  // Floating Window Logic
+  const { position, handleMouseDown } = useFloatingWindow({
+    isOpen,
+    defaultWidth: 900,
+    defaultHeight: 700
   });
+  const containerRef = useRef(null);
 
   // Reset internal state on open (but keep position)
   useEffect(() => {
@@ -58,38 +38,6 @@ const InstrumentLookupModal = ({
       setExpandedDetail(null);
     }
   }, [isOpen]);
-
-  // --- Drag Handlers ---
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    setDragOffset({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
-    });
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (isDragging) {
-        setPosition({
-          x: e.clientX - dragOffset.x,
-          y: e.clientY - dragOffset.y
-        });
-      }
-    };
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, dragOffset]);
 
   // --- Filter Logic ---
   const filteredInstruments = useMemo(() => {
@@ -142,7 +90,7 @@ const InstrumentLookupModal = ({
   if (!isOpen) return null;
 
   // --- RENDER ---
-  return (
+  return ReactDOM.createPortal(
     <div
       ref={containerRef}
       className="modal-content floating-window-content"
@@ -324,9 +272,8 @@ const InstrumentLookupModal = ({
                               onClick={(e) =>
                                 toggleFunctionDetails(e, inst.id, f.id)
                               }
-                              className={`status-pill ${
-                                isFuncActive ? "active" : ""
-                              }`}
+                              className={`status-pill ${isFuncActive ? "active" : ""
+                                }`}
                               style={{
                                 border: isFuncActive
                                   ? "1px solid var(--primary-color)"
@@ -581,7 +528,8 @@ const InstrumentLookupModal = ({
           Import Selected
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
