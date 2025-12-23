@@ -313,7 +313,7 @@ function App() {
                           id: checkId, 
                           originalTmde: tmde,
                           instrument: tmde.sourceInstrument,
-                          name: tmde.name,
+                          name: tmde.name, // Pass the name for reference
                           targetValue: tmdeVal,
                           targetUnit: tmdeUnit
                       });
@@ -423,13 +423,21 @@ function App() {
                                 });
                            }
                            
-                           return {
+                           // Create the new TMDE object
+                           const tmdeObj = {
                                ...newSpecs,
                                measurementPoint: { value: check.targetValue, unit: check.targetUnit },
                                id: Date.now() + Math.random() + i,
-                               name: check.name, // FIX: Ensure Name is preserved
-                               isTmde: true      // FIX: Flag as TMDE to suppress resolution in budget
+                               // FIX: Robust Naming Fallback
+                               name: check.name || check.originalTmde?.name || `${check.instrument.manufacturer} ${check.instrument.model}`, 
+                               isTmde: true 
                            };
+
+                           // FIX: Explicitly DELETE resolution from TMDEs so it never calculates
+                           // This overrides any property added by recalculateTolerance
+                           delete tmdeObj.measuringResolution;
+
+                           return tmdeObj;
                        }
                   } 
                   
@@ -444,13 +452,17 @@ function App() {
                   // Clean fallback for missing/failed
                   const cleanTmde = { ...check.originalTmde };
                   ['reading', 'range', 'floor', 'readings_iv', 'db', 'tolerance', 'tolerances', 'measuringResolution', 'uncertainty', 'k'].forEach(k => delete cleanTmde[k]);
-                  return {
+                  
+                  const fallbackObj = {
                      ...cleanTmde,
                      measurementPoint: { value: check.targetValue, unit: check.targetUnit },
                      id: Date.now() + Math.random() + i,
                      rangeMax: "",
-                     isTmde: true // Ensure flag exists on fallback too
+                     name: check.name || cleanTmde.name || "TMDE", // Ensure fallback name
+                     isTmde: true
                   };
+                  delete fallbackObj.measuringResolution; // Ensure fallback also has no resolution
+                  return fallbackObj;
               });
               
               finalData.tmdeTolerances = newTmdes;

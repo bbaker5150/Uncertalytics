@@ -390,9 +390,10 @@ export const getToleranceSummary = (toleranceData) => {
 
 export const calculateUncertaintyFromToleranceObject = (
     toleranceObject,
-    referenceMeasurementPoint
+    referenceMeasurementPoint,
+    excludeResolution = false
   ) => {
-
+  
     if (
       !toleranceObject ||
       !referenceMeasurementPoint ||
@@ -486,7 +487,7 @@ export const calculateUncertaintyFromToleranceObject = (
   
     addComponent(toleranceObject.reading, "Reading", nominalValue);
     addComponent(toleranceObject.readings_iv, "Reading (IV)", nominalValue);
-
+  
     addComponent(
       toleranceObject.range,
       "Range",
@@ -549,7 +550,11 @@ export const calculateUncertaintyFromToleranceObject = (
       }
     }
   
-    if (parseFloat(toleranceObject.measuringResolution) > 0) {
+    // --- UPDATED RESOLUTION LOGIC ---
+    // Only include resolution if excludeResolution is false AND toleranceObject is NOT marked as a TMDE
+    const shouldSkipResolution = excludeResolution || toleranceObject.isTmde;
+
+    if (!shouldSkipResolution && parseFloat(toleranceObject.measuringResolution) > 0) {
       const res = parseFloat(toleranceObject.measuringResolution);
       const resUnit = toleranceObject.measuringResolutionUnit || nominalUnit;
       const halfSpan = res / 2;
@@ -580,7 +585,7 @@ export const calculateUncertaintyFromToleranceObject = (
       totalToleranceForTar: totalLinearTolerance,
       breakdown,
     };
-  };
+};
 
 export const getToleranceErrorSummary = (toleranceObject, referencePoint) => {
     if (
@@ -763,8 +768,12 @@ export const calculateDerivedUncertainty = (
           console.warn("Skipping TMDE due to invalid nominal value:", tmde);
           return;
         }
+        
+        // --- UPDATED CALL ---
+        // We pass 'true' as the 3rd argument to force exclusion of Resolution from TMDE uncertainty
         const { standardUncertainty: ui_ppm } =
-          calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint);
+          calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint, true);
+
         const nominalInBase = unitSystem.toBaseUnit(
           nominalValue,
           tmde.measurementPoint.unit
@@ -904,7 +913,7 @@ export const calculateDerivedUncertainty = (
         error: error.message,
       };
     }
-  };
+};
 
   /**
  * Smart Lookup for Instrument Specs
