@@ -269,260 +269,224 @@ function App() {
 
   // --- UPDATED: Handle Save Test Point with Confirmation Logic ---
   const handleSaveTestPoint = (formData) => {
-    const finalData = { ...formData }; 
-    const changes = [];
-    const missing = []; // Track instruments where we couldn't find new specs
+    const finalData = { ...formData };
     
-    // Helper to process saving after tolerance resolution
-    const processSave = (resolvedUutSpecs = null, resolvedTmdeSpecsMap = {}) => {
-        let uutUpdate = resolvedUutSpecs;
-        
-        // 1. Calculate UUT Changes (if not already resolved)
-        const targetValue = finalData.testPointInfo.parameter.value;
-        const targetUnit = finalData.testPointInfo.parameter.unit;
+    // 1. Identify what needs to be checked (UUT, TMDEs)
+    const checks = []; // Queue of items to resolve { type: 'uut'|'tmde', ... }
+    
+    // - Check UUT
+    const targetValue = finalData.testPointInfo.parameter.value;
+    const targetUnit = finalData.testPointInfo.parameter.unit;
+    
+    // Determine if we need to check UUT (only if uutInstrument exists and we have a value)
+    if (currentSessionData.uutInstrument && targetValue) {
+        checks.push({
+            type: 'uut',
+            instrument: currentSessionData.uutInstrument,
+            name: currentSessionData.uutDescription || "Unit Under Test",
+            targetValue,
+            targetUnit,
+            existingSpec: finalData.uutTolerance || currentSessionData.uutTolerance
+        });
+    }
 
-        if (currentSessionData.uutInstrument && targetValue && !uutUpdate) {
-             // NOTE: If we already have uutUpdate passed in (from modal selection), use it.
-             // Otherwise, check for matches.
-             
-             // Check for Matches (ALL)
-             const matches = findMatchingTolerances(currentSessionData.uutInstrument, targetValue, targetUnit);
-
-             if (matches && matches.length > 1) {
-                 // MULTIPLE MATCHES - Prompt User
-                 setUnresolvedToleranceModal({
-                     instrumentName: currentSessionData.uutDescription || "Unit Under Test",
-                     matches: matches,
-                     onSelect: (selected) => {
-                         // Recursive call with resolved spec
-                         processSave(selected, resolvedTmdeSpecsMap);
-                     }
-                 });
-                 return; // STOP execution, wait for user
-             } else if (matches && matches.length === 1) {
-                 // SINGLE MATCH
-                 const newUutSpecs = recalculateTolerance(
-                    currentSessionData.uutInstrument, 
-                    targetValue, 
-                    targetUnit, 
-                    finalData.uutTolerance || currentSessionData.uutTolerance
-                );
-
-                 // We know it matches, so we just use the recalculate wrapper or directly construct
-                 // Since recalculateTolerance uses findInstrumentTolerance (which now uses BEST match), 
-                 // and we have 1 match, it's safe. 
+    // - Check TMDEs (Only if copying from previous or explicitly needed)
+    // Logic: If new point (no ID) and copyTmdes is true, we look at previous point's TMDEs
+    if (!formData.id && currentTestPoints.length > 0 && finalData.copyTmdes) {
+        const previousPoint = currentTestPoints[currentTestPoints.length - 1];
+        if ((!finalData.tmdeTolerances || finalData.tmdeTolerances.length === 0) && previousPoint.tmdeTolerances) {
+             previousPoint.tmdeTolerances.forEach((tmde, idx) => {
+                 let tmdeVal = targetValue;
+                 let tmdeUnit = targetUnit;
                  
-                 if (newUutSpecs) {
-                     const oldSummary = getToleranceSummary(finalData.uutTolerance || currentSessionData.uutTolerance);
-                     const newSummary = getToleranceSummary(newUutSpecs);
+                 if (finalData.measurementType === 'derived') {
+                     tmdeVal = tmde.measurementPoint?.value;
+                     tmdeUnit = tmde.measurementPoint?.unit;
+                 }
+                 
+                 // Reuse ID if available, or generate a check ID
+                 const checkId = tmde.id || `tmde-check-${idx}`;
+
+                 if (tmde.sourceInstrument && tmdeVal) {
+                      checks.push({
+                          type: 'tmde',
+                          id: checkId, 
+                          originalTmde: tmde,
+                          instrument: tmde.sourceInstrument,
+                          name: tmde.name,
+                          targetValue: tmdeVal,
+                          targetUnit: tmdeUnit
+                      });
+                 }
+             });
+        }
+    }
+    
+    // 2. Recursive function to process the queue
+    const processNextCheck = (index, resolvedSpecsMap) => { 
+        if (index >= checks.length) {
+            // ALL DONE -> Final Save
+            performFinalSave(resolvedSpecsMap, checks);
+            return;
+        }
+
+        const check = checks[index];
+        const { instrument, targetValue, targetUnit, name } = check;
+
+        // Find matches
+        const matches = findMatchingTolerances(instrument, targetValue, targetUnit);
+
+        const mapKey = check.type === 'uut' ? 'uut' : check.id;
+
+        if (matches && matches.length > 1) {
+            // AMBIGUITY -> Prompt User
+            setUnresolvedToleranceModal({
+                instrumentName: name,
+                matches: matches,
+                onSelect: (selectedSpec) => {
+                     setUnresolvedToleranceModal(null);
+                     // Recursive call with resolved spec
+                     processNextCheck(index + 1, { ...resolvedSpecsMap, [mapKey]: selectedSpec });
+                }
+            });
+            // Stop execution here. Modal callback handles the rest.
+            return; 
+
+        } else if (matches && matches.length === 1) {
+            // SINGLE MATCH -> Auto-select
+            processNextCheck(index + 1, { ...resolvedSpecsMap, [mapKey]: matches[0] });
+
+        } else {
+             // NO MATCH -> Record as missing
+             processNextCheck(index + 1, { ...resolvedSpecsMap, [mapKey]: null });
+        }
+    };
+
+    // 3. Final Save Logic
+    const performFinalSave = (resolvedMap, checksProcessed) => {
+         const changes = [];
+         const missing = [];
+         let uutFinal = null;
+         
+         // Apply UUT Results
+         const uutCheck = checksProcessed.find(c => c.type === 'uut');
+         if (uutCheck) {
+             const resolved = resolvedMap['uut'];
+             if (resolved) {
+                 const newSpecs = recalculateTolerance(uutCheck.instrument, uutCheck.targetValue, uutCheck.targetUnit, resolved);
+                 if (newSpecs) {
+                     const oldSummary = getToleranceSummary(uutCheck.existingSpec);
+                     const newSummary = getToleranceSummary(newSpecs);
                      
-                     if (oldSummary !== newSummary) {
-                        changes.push({
-                            name: currentSessionData.uutDescription || "Unit Under Test",
-                            oldSpec: oldSummary,
-                            newSpec: newSummary
-                        });
-                        uutUpdate = newUutSpecs;
+                     // Only register change if actually different (and valid)
+                     if (oldSummary && newSummary && oldSummary !== newSummary) {
+                         changes.push({ 
+                             name: uutCheck.name, 
+                             oldSpec: oldSummary, 
+                             newSpec: newSummary 
+                         });
                      }
+                     uutFinal = newSpecs;
                  }
              } else {
-                 // NO MATCHES
-                 missing.push({
-                    name: currentSessionData.uutDescription || "Unit Under Test",
-                    target: `${targetValue} ${targetUnit}`
+                 // Missing
+                 missing.push({ 
+                     name: uutCheck.name, 
+                     target: `${uutCheck.targetValue} ${uutCheck.targetUnit}` 
                  });
-                 // FIX: Completely reset UUT tolerance to empty object when missing
-                 finalData.uutTolerance = {}; 
+                 // Reset if missing
+                 finalData.uutTolerance = {};
              }
-        } else if (uutUpdate) {
-             // We came from the modal selection
-             // We need to shape it like recalculateTolerance does
-             const cleanSpecs = recalculateTolerance(
-                currentSessionData.uutInstrument, 
-                targetValue, 
-                targetUnit, 
-                { ...uutUpdate, ...finalData.uutTolerance } // Merge selected with existing structure
-            );
-            
-            if (cleanSpecs) {
-                 const oldSummary = getToleranceSummary(finalData.uutTolerance || currentSessionData.uutTolerance);
-                 const newSummary = getToleranceSummary(cleanSpecs);
-                 
-                 if (oldSummary !== newSummary) {
-                    changes.push({
-                        name: currentSessionData.uutDescription || "Unit Under Test",
-                        oldSpec: oldSummary,
-                        newSpec: newSummary
-                    });
-                 }
-                 uutUpdate = cleanSpecs;
-            }
-        }
-        
-        // 2. Calculate TMDE Changes (For New Points with Copy active)
-        if (!formData.id && currentTestPoints.length > 0 && finalData.copyTmdes) {
-            const previousPoint = currentTestPoints[currentTestPoints.length - 1];
-            
-            if (!finalData.tmdeTolerances || finalData.tmdeTolerances.length === 0) {
-                if (previousPoint.tmdeTolerances && previousPoint.tmdeTolerances.length > 0) {
-                    
-                    const newTmdes = previousPoint.tmdeTolerances.map((tmde, index) => {
-                        let tmdeTargetValue = targetValue;
-                        let tmdeTargetUnit = targetUnit;
-    
-                        if (finalData.measurementType === 'derived') {
-                           tmdeTargetValue = tmde.measurementPoint?.value;
-                           tmdeTargetUnit = tmde.measurementPoint?.unit;
-                        }
+         }
+         
+         if (uutFinal) {
+             finalData.uutTolerance = uutFinal;
+         }
 
-                        // Check if we have a resolved spec from a previous modal interaction for this TMDE
-                        if (resolvedTmdeSpecsMap[tmde.id]) {
-                             const selectedSpec = resolvedTmdeSpecsMap[tmde.id];
-                             const newSpecs = recalculateTolerance(tmde.sourceInstrument, tmdeTargetValue, tmdeTargetUnit, { ...selectedSpec });
-                             
-                             if (newSpecs) {
-                                  changes.push({
-                                      name: tmde.name,
-                                      oldSpec: getToleranceSummary(tmde),
-                                      newSpec: getToleranceSummary(newSpecs)
-                                  });
-                                  return { 
-                                     ...newSpecs, 
-                                     measurementPoint: { value: tmdeTargetValue, unit: tmdeTargetUnit },
-                                     id: Date.now() + Math.random() + index
-                                 };
-                             }
-                        }
-    
-                        if (tmde.sourceInstrument && tmdeTargetValue) {
-                            // Check Matches
-                            const matches = findMatchingTolerances(tmde.sourceInstrument, tmdeTargetValue, tmdeTargetUnit);
+         // Apply TMDE Results
+         const tmdeChecks = checksProcessed.filter(c => c.type === 'tmde');
+         if (tmdeChecks.length > 0) {
+              const newTmdes = tmdeChecks.map((check, i) => {
+                  const resolved = resolvedMap[check.id];
+                  
+                  if (resolved) {
+                       const newSpecs = recalculateTolerance(check.instrument, check.targetValue, check.targetUnit, resolved);
+                       if (newSpecs) {
+                           const oldSummary = getToleranceSummary(check.originalTmde);
+                           const newSummary = getToleranceSummary(newSpecs);
+                           
+                           if (oldSummary && newSummary && oldSummary !== newSummary) {
+                                changes.push({ 
+                                    name: check.name, 
+                                    oldSpec: oldSummary, 
+                                    newSpec: newSummary 
+                                });
+                           }
+                           
+                           return {
+                               ...newSpecs,
+                               measurementPoint: { value: check.targetValue, unit: check.targetUnit },
+                               id: Date.now() + Math.random() + i,
+                               name: check.name, // FIX: Ensure Name is preserved
+                               isTmde: true      // FIX: Flag as TMDE to suppress resolution in budget
+                           };
+                       }
+                  } 
+                  
+                  // If resolved is null OR recalculate failed
+                  if (!resolved && check.instrument) {
+                       missing.push({ 
+                           name: check.name, 
+                           target: `${check.targetValue} ${check.targetUnit}` 
+                       });
+                  }
+                  
+                  // Clean fallback for missing/failed
+                  const cleanTmde = { ...check.originalTmde };
+                  ['reading', 'range', 'floor', 'readings_iv', 'db', 'tolerance', 'tolerances', 'measuringResolution', 'uncertainty', 'k'].forEach(k => delete cleanTmde[k]);
+                  return {
+                     ...cleanTmde,
+                     measurementPoint: { value: check.targetValue, unit: check.targetUnit },
+                     id: Date.now() + Math.random() + i,
+                     rangeMax: "",
+                     isTmde: true // Ensure flag exists on fallback too
+                  };
+              });
+              
+              finalData.tmdeTolerances = newTmdes;
+         }
 
-                            if (matches && matches.length > 1) {
-                                // MULTIPLE MATCHES FOR TMDE
-                                // We need to pause and ask for THIS specific TMDE
-                                // Problem: We are in a loop.
-                                // Solution: We can't block inside map. We have to break out or handle sequentially.
-                                // Since this is a tricky recursive flow, for now let's use the NotificationModal to warn 
-                                // about ambiguity if we can't easily recurse for multiple items.
-                                // BETTER: Just pick the first one? No, requirement is to prompt.
-                                
-                                // TO HANDLE MULTIPLE TMDE PROMPTS:
-                                // We can just skip auto-update for ambiguous ones and warn the user.
-                                // OR triggers a sequence of modals.
-                                // FOR NOW: Let's pick the legacy behavior (best match) but warn the user they might want to check it.
-                                // Or simpler: Just warn "Multiple ranges found for TMDE X, selecting best fit."
-                                
-                                // COMPROMISE for complex multiple TMDE flows: use findInstrumentTolerance (Best Fit)
-                                // Only Prompt for UUT as that's the primary one usually being edited.
-                                // If the user wants to fix TMDEs, they can edit them.
-                                // Re-reading requirement: "user would select which range tolerance to use for that given uut or tmde"
-
-                                // Given the synchronous nature of the loop, fully supporting n-TMDE interruptions is complex.
-                                // Implementation: Use BEST fit, but add to changes list.
-                                const bestFit = findInstrumentTolerance(tmde.sourceInstrument, tmdeTargetValue, tmdeTargetUnit);
-                                const newSpecs = recalculateTolerance(tmde.sourceInstrument, tmdeTargetValue, tmdeTargetUnit, tmde);
-
-                                if (newSpecs) {
-                                     const oldSummary = getToleranceSummary(tmde);
-                                     const newSummary = getToleranceSummary(newSpecs);
-                                     if (oldSummary !== newSummary) {
-                                        changes.push({
-                                            name: tmde.name,
-                                            oldSpec: oldSummary,
-                                            newSpec: newSummary
-                                        });
-                                     }
-                                     return { 
-                                         ...newSpecs, 
-                                         measurementPoint: { value: tmdeTargetValue, unit: tmdeTargetUnit },
-                                         id: Date.now() + Math.random() + index
-                                     };
-                                }
-                            } else if (matches && matches.length === 1) {
-                                 // Single Logic
-                                 const newSpecs = recalculateTolerance(tmde.sourceInstrument, tmdeTargetValue, tmdeTargetUnit, tmde);
-                                 if (newSpecs) {
-                                     const oldSummary = getToleranceSummary(tmde);
-                                     const newSummary = getToleranceSummary(newSpecs);
-                                     if (oldSummary !== newSummary) {
-                                        changes.push({
-                                            name: tmde.name,
-                                            oldSpec: oldSummary,
-                                            newSpec: newSummary
-                                        });
-                                     }
-                                     return { 
-                                         ...newSpecs, 
-                                         measurementPoint: { value: tmdeTargetValue, unit: tmdeTargetUnit },
-                                         id: Date.now() + Math.random() + index
-                                     };
-                                }
-                            } else {
-                                 // No Match
-                                 missing.push({
-                                    name: tmde.name,
-                                    target: `${tmdeTargetValue} ${tmdeTargetUnit}`
-                                 });
-                                 
-                                 const cleanTmde = { ...tmde };
-                                 ['reading', 'range', 'floor', 'readings_iv', 'db', 'tolerance', 'tolerances', 'measuringResolution', 'uncertainty', 'k'].forEach(k => delete cleanTmde[k]);
-    
-                                 return {
-                                    ...cleanTmde,
-                                    measurementPoint: { value: tmdeTargetValue, unit: tmdeTargetUnit },
-                                    id: Date.now() + Math.random() + index,
-                                    rangeMax: "", 
-                                 };
-                            }
-                        }
-                        
-                        return { ...tmde, measurementPoint: { value: tmdeTargetValue, unit: tmdeTargetUnit }, id: Date.now() + Math.random() + index };
-                    });
-    
-                    finalData.tmdeTolerances = newTmdes;
-                }
-            }
-        }
-    
-        // Trigger Notification if there are Changes OR Missing items
-        if (changes.length > 0 || missing.length > 0) {
+         // Notification / Final Save Logic
+         if (changes.length > 0 || missing.length > 0) {
             setAppNotification({
                 title: missing.length > 0 ? "Manual Entry Required" : "Update Tolerances?",
                 message: generateDiffMessage(changes, missing),
                 confirmText: missing.length > 0 ? "Save & Edit Specs" : "Update & Save",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    if (uutUpdate) {
-                        finalData.uutTolerance = uutUpdate;
-                    }
-                    saveTestPoint(finalData, null); 
-                    setAppNotification(null);
-    
-                    if (missing.length > 0) {
-                        setTimeout(() => {
-                            setIsToleranceModalOpen(true);
-                        }, 200);
-                    }
+                   saveTestPoint(finalData, null);
+                   setAppNotification(null);
+                   setIsAddModalOpen(false); // Close the Add Modal
+                   setEditingTestPoint(null); // Clear editing state
+                   
+                   if (missing.length > 0) {
+                       setTimeout(() => {
+                           setIsToleranceModalOpen(true);
+                       }, 200);
+                   }
                 },
-                onClose: () => {
-                     setAppNotification(null);
-                }
+                onClose: () => setAppNotification(null)
             });
-            setIsAddModalOpen(false);
-            return; 
-        }
-    
-        if (uutUpdate) {
-            finalData.uutTolerance = uutUpdate;
-        }
-        saveTestPoint(finalData, null);
-        setIsAddModalOpen(false);
-        setEditingTestPoint(null);
+         } else {
+             saveTestPoint(finalData, null);
+             setAppNotification(null);
+             setIsAddModalOpen(false);
+             setEditingTestPoint(null);
+         }
     };
 
-    // Kick off the process
-    processSave();
+    // Kick off the queue processing
+    processNextCheck(0, {});
   };
 
   const handleDeleteTestPoint = (idToDelete) => {
@@ -681,7 +645,6 @@ function App() {
             instrumentName={unresolvedToleranceModal?.instrumentName}
             onSelect={(selected) => {
                 unresolvedToleranceModal.onSelect(selected);
-                setUnresolvedToleranceModal(null);
             }}
             onClose={() => setUnresolvedToleranceModal(null)}
         />

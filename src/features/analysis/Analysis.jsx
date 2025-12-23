@@ -77,7 +77,6 @@ function Analysis({
     [testPointData?.testPointInfo?.parameter]
   );
   
-  // FIX: Read from testPointData first (which App.jsx enriches), then fallback to session
   const uutToleranceData = useMemo(
     () => testPointData.uutTolerance || sessionData.uutTolerance || {},
     [testPointData.uutTolerance, sessionData.uutTolerance]
@@ -132,17 +131,25 @@ function Analysis({
 
   // --- 5. Handlers ---
   const handleSaveUut = ({ description, tolerance, instrument }) => {
-    // FIX: Save specific tolerance to the Test Point (isolating it)
+    // 1. Save specific tolerance to the Test Point (isolating it)
     onDataSave({ uutTolerance: tolerance });
 
     if (onSessionSave) {
-        // Update global description and instrument definition
+        // FIX: We must manually update the testPoints array in the session object
+        // before saving. Otherwise, the 'sessionData' prop (which contains the OLD testPoints)
+        // will overwrite the update we just made in step 1 when App.js processes the full session update.
+        
+        const updatedTestPoint = { ...testPointData, uutTolerance: tolerance };
+        const updatedTestPointsList = (sessionData.testPoints || []).map(tp => 
+            tp.id === testPointData.id ? updatedTestPoint : tp
+        );
+
+        // Update global description and instrument definition, AND the test points list
         onSessionSave({
             ...sessionData,
+            testPoints: updatedTestPointsList, // Explicitly include the updated list
             uutDescription: description,
-            // We can update the session default here too, but the TP specific 
-            // value will always override it thanks to the memo above.
-            uutTolerance: tolerance, 
+            uutTolerance: tolerance, // Update session default as well
             uutInstrument: instrument || sessionData.uutInstrument 
         });
     } else {

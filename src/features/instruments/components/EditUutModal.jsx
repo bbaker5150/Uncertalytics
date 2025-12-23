@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faBookOpen, faEdit, faTimes } from "@fortawesome/free-solid-svg-icons";
 import InstrumentLookupModal from "./InstrumentLookupModal";
 import NotificationModal from "../../../components/modals/NotificationModal"; //
-import { findInstrumentTolerance, findMatchingTolerances, getToleranceSummary } from "../../../utils/uncertaintyMath";
+import { findInstrumentTolerance, findMatchingTolerances, getToleranceSummary, recalculateTolerance } from "../../../utils/uncertaintyMath";
 import { useFloatingWindow } from "../../../hooks/useFloatingWindow";
 import UnresolvedToleranceModal from "../../testPoints/components/UnresolvedToleranceModal";
 
@@ -48,49 +48,36 @@ const EditUutModal = ({
 
 
     const applySpecs = (matchedData, rangeValue, rangeUnit) => {
-        const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
+        // Use the centralized recalculateTolerance logic.
+        // We explicitly pass {} as existingData to ensure we generate a FRESH tolerance object
+        // based on the new match, rather than merging with potentially stale state.
+        const specs = recalculateTolerance(
+             pendingInstrument || selectedInstrument, 
+             rangeValue, 
+             rangeUnit, 
+             matchedData
+        );
 
-        let calculatedRangeMax = matchedData.rangeMax;
-        if (!calculatedRangeMax) {
-            const promptVal = parseFloat(rangeValue);
-            if (!isNaN(promptVal)) calculatedRangeMax = promptVal;
+        if (!specs) {
+            setNotification({
+                title: "Error",
+                message: "Could not apply specifications. Please check the instrument definition.",
+            });
+            return;
         }
-
-        const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
-
-        compKeys.forEach(key => {
-            if (specs[key]) {
-                if (!specs[key].unit) {
-                    if (key === 'reading' || key === 'range') specs[key].unit = '%';
-                    else if (key === 'floor' || key === 'readings_iv') specs[key].unit = rangeUnit;
-                }
-                if (key === 'range') {
-                    specs[key].value = calculatedRangeMax;
-                }
-                if (specs[key].high) {
-                    const highVal = parseFloat(specs[key].high);
-                    if (!isNaN(highVal)) {
-                        specs[key].low = String(-Math.abs(highVal));
-                    }
-                    specs[key].symmetric = true;
-                }
-            }
-        });
 
         // Use Custom Notification Modal
         const summary = getToleranceSummary(specs);
         setNotification({
             title: "Confirm Specifications",
-            message: `Found specifications for ${matchedData.model || "Instrument"}:\n\n` +
+            message: `Found specifications for ${pendingInstrument?.model || selectedInstrument?.model || "Instrument"}:\n\n` +
                 `Tolerance: ${summary}\n\n` +
                 `Do you want to apply these tolerances?`,
             confirmText: "Apply Specs",
             cancelText: "Cancel",
             onConfirm: () => {
-                setTolerance({
-                    ...specs,
-                    measuringResolution: matchedData.resolution
-                });
+                // Force a fresh object reference to ensure React re-renders the form
+                setTolerance({ ...specs }); 
                 setShowRangePrompt(false);
                 setPendingInstrument(null);
                 setNotification(null);
@@ -102,6 +89,9 @@ const EditUutModal = ({
         setDescription(`${instrument.manufacturer} ${instrument.model} ${instrument.description}`);
         setSelectedInstrument(instrument);
 
+        // If uutNominal exists, we usually auto-match. 
+        // However, if the user explicitly opened the lookup, they might want to change it.
+        // For now, we keep the auto-match logic but ensure it updates if found.
         if (uutNominal && uutNominal.value && uutNominal.unit) {
             const matches = findMatchingTolerances(
                 instrument,
@@ -125,6 +115,7 @@ const EditUutModal = ({
             }
         }
 
+        // If no nominal or no match found for nominal, open prompt for manual entry
         setPendingInstrument(instrument);
         setRangePromptData({
             value: uutNominal?.value || "",
@@ -145,7 +136,13 @@ const EditUutModal = ({
         if (matchedData) {
             applySpecs(matchedData, rangePromptData.value, rangePromptData.unit);
         } else {
-            alert("No matching range found for the values entered. Specs were not imported.");
+            // If no match, we just set the description but don't apply specs
+            setNotification({
+                title: "No Match Found",
+                message: "No matching range found for the values entered. Description updated, but specs were not imported."
+            });
+            setShowRangePrompt(false);
+            setPendingInstrument(null);
         }
     };
 
@@ -159,7 +156,6 @@ const EditUutModal = ({
     const modalZIndex = hasParentOverlay ? 2100 : 2000;
     const overlayZIndex = modalZIndex + 100;
 
-    // PORTAL
     return ReactDOM.createPortal(
         <>
             <InstrumentLookupModal

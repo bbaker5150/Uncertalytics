@@ -980,14 +980,27 @@ export const findInstrumentTolerance = (instrument, value, unit) => {
 // ==========================================
 
 export const recalculateTolerance = (instrument, value, unit, existingData = {}) => {
-    const matchedData = findInstrumentTolerance(instrument, parseFloat(value), unit);
+    let matchedData = null;
+
+    // CHECK: Did we pass a specific resolved match (from the Ambiguity Modal or Range Lookup)?
+    // A "Match Object" typically has { tolerance: {...}, rangeMax: ..., id: ... }
+    if (existingData && existingData.tolerance && existingData.rangeInfo) {
+        matchedData = existingData;
+    } else {
+        // Fallback to auto-detection (Best Fit) if we just passed an old tolerance object
+        matchedData = findInstrumentTolerance(instrument, parseFloat(value), unit);
+    }
+
     if (!matchedData) return null;
 
+    // Deep copy the raw specs from the matched range
     const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
     
+    // Determine Range Max for 'range' specs
     let calculatedRangeMax = matchedData.rangeMax; 
     if (!calculatedRangeMax) calculatedRangeMax = parseFloat(value);
     
+    // Apply updates to the specs structure (units, range values, etc.)
     const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
     
     compKeys.forEach(key => {
@@ -1009,8 +1022,13 @@ export const recalculateTolerance = (instrument, value, unit, existingData = {})
         }
     });
     
+    // Return a CLEAN object. 
+    // We do NOT spread 'existingData' directly because it might contain the raw 'tolerance' object 
+    // or other metadata from the lookup that we don't want polluting the actual tolerance state.
+    // We only preserve specific keys if 'existingData' was actually a previous Tolerance State, 
+    // but in the "Edit UUT" flow, we usually want to Replace, not Merge, when switching ranges.
+    
     return {
-        ...existingData,
         ...specs,
         measuringResolution: matchedData.resolution
     };
