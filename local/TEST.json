@@ -10,30 +10,30 @@
   "noteImages": [],
   "uutTolerance": {
     "reading": {
-      "high": 0.05,
-      "low": "-0.05",
+      "high": 0.7,
+      "low": "-0.7",
       "unit": "%",
       "distribution": "1.960",
       "symmetric": true
     },
     "range": {
-      "high": 0.01,
-      "low": "-0.01",
+      "high": 0.02,
+      "low": "-0.02",
       "unit": "%",
       "distribution": "1.960",
       "symmetric": true,
-      "value": "6"
+      "value": "1000"
     },
-    "measuringResolution": 0.001
+    "measuringResolution": 1
   },
   "testPoints": [
     {
-      "id": 1766508653063,
-      "section": "1.1",
+      "id": 1766521446068,
+      "section": "1",
       "tmdeDescription": "",
       "tmdeTolerances": [
         {
-          "id": 1766509883000,
+          "id": 1766521472326,
           "name": "Fluke 87V",
           "measurementPoint": {
             "name": "DC Voltage",
@@ -54,7 +54,7 @@
             "unit": "%",
             "distribution": "1.960",
             "symmetric": true,
-            "value": "6"
+            "value": "60"
           },
           "sourceInstrument": {
             "id": 1766359701740,
@@ -512,7 +512,24 @@
           }
         }
       ],
-      "uutTolerance": null,
+      "uutTolerance": {
+        "reading": {
+          "high": 0.05,
+          "low": "-0.05",
+          "unit": "%",
+          "distribution": "1.960",
+          "symmetric": true
+        },
+        "range": {
+          "high": 0.01,
+          "low": "-0.01",
+          "unit": "%",
+          "distribution": "1.960",
+          "symmetric": true,
+          "value": "6"
+        },
+        "measuringResolution": 0.001
+      },
       "specifications": {
         "mfg": {
           "uncertainty": "",
@@ -592,7 +609,7 @@
         "LLow": 0.9989,
         "LUp": 1.0010999999999999,
         "tur": 1.44627559085658,
-        "tar": 1,
+        "tar": 0.16923076923076044,
         "pfa": 3.574972951748402,
         "pfr": 8.60467860725566,
         "pfa_term1": 1.7874864758739784,
@@ -606,9 +623,9 @@
         "ALow": 0.9989,
         "AUp": 1.0010999999999999,
         "expandedUncertainty": 0.0007605742688006243,
-        "tmdeToleranceSpan": 0.0021999999999998687,
-        "tmdeToleranceHigh": 0.0010999999999998789,
-        "tmdeToleranceLow": -0.0010999999999999899,
+        "tmdeToleranceSpan": 0.0129999999999999,
+        "tmdeToleranceHigh": 0.00649999999999995,
+        "tmdeToleranceLow": -0.00649999999999995,
         "uutBreakdownForTar": [
           {
             "name": "Fluke 87V Digital Multimeter - Reading",
@@ -626,7 +643,7 @@
           },
           {
             "name": "Fluke 87V - Range",
-            "span": 0.0011999999999999789
+            "span": 0.01200000000000001
           }
         ],
         "nativeUnit": "V",
@@ -634,8 +651,8 @@
           "nominal": 1,
           "uutLower": 0.9989,
           "uutUpper": 1.0010999999999999,
-          "tmdeLower": 0.9989,
-          "tmdeUpper": 1.0010999999999999,
+          "tmdeLower": 0.9935,
+          "tmdeUpper": 1.0065,
           "combUnc": 0.00038861080245774794,
           "turVal": 1.44627559085658,
           "measRelTarget": 0.85,
@@ -674,37 +691,37 @@
       }
     },
     {
-      "id": 1766513214676,
-      "section": "1.1",
+      "id": 1766521863750,
+      "section": "1",
       "tmdeDescription": "",
       "tmdeTolerances": [
         {
-          "id": 1766513214676.628,
-          "name": "Fluke 87V",
+          "id": 1766521857855.5046,
+          "name": "Fluke 117",
           "measurementPoint": {
             "value": "5",
             "unit": "V"
           },
           "quantity": 1,
           "reading": {
-            "high": 0.05,
-            "low": "-0.05",
+            "high": 1,
+            "low": "-1",
             "unit": "%",
             "distribution": "1.960",
             "symmetric": true
           },
           "range": {
-            "high": 0.01,
-            "low": "-0.01",
+            "high": 0.05,
+            "low": "-0.05",
             "unit": "%",
             "distribution": "1.960",
             "symmetric": true,
-            "value": "6"
+            "value": "1000"
           },
           "sourceInstrument": {
-            "id": 1766359701740,
+            "id": 1766360423994,
             "manufacturer": "Fluke",
-            "model": "87V",
+            "model": "117",
             "description": "Digital Multimeter",
             "functions": [
               {
@@ -719,15 +736,15 @@
                     "resolution": 0.0001,
                     "tolerances": {
                       "reading": {
-                        "high": 0.05,
-                        "low": -0.05,
+                        "high": 0.09,
+                        "low": -0.09,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.01,
-                        "low": -0.01,
+                        "high": 0.03,
+                        "low": -0.03,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -741,15 +758,15 @@
                     "resolution": 0.001,
                     "tolerances": {
                       "reading": {
-                        "high": 0.05,
-                        "low": -0.05,
+                        "high": 0.09,
+                        "low": -0.09,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.01,
-                        "low": -0.01,
+                        "high": 0.03,
+                        "low": -0.03,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -763,15 +780,15 @@
                     "resolution": 0.01,
                     "tolerances": {
                       "reading": {
-                        "high": 0.05,
-                        "low": -0.05,
+                        "high": 0.09,
+                        "low": -0.09,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.01,
-                        "low": -0.01,
+                        "high": 0.03,
+                        "low": -0.03,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -785,15 +802,15 @@
                     "resolution": 0.1,
                     "tolerances": {
                       "reading": {
-                        "high": 0.05,
-                        "low": -0.05,
+                        "high": 0.09,
+                        "low": -0.09,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.01,
-                        "low": -0.01,
+                        "high": 0.03,
+                        "low": -0.03,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -807,15 +824,15 @@
                     "resolution": 1,
                     "tolerances": {
                       "reading": {
-                        "high": 0.05,
-                        "low": -0.05,
+                        "high": 0.09,
+                        "low": -0.09,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.01,
-                        "low": -0.01,
+                        "high": 0.03,
+                        "low": -0.03,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -836,15 +853,15 @@
                     "resolution": 0.0001,
                     "tolerances": {
                       "reading": {
-                        "high": 0.7,
-                        "low": -0.7,
+                        "high": 1,
+                        "low": -1,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.02,
-                        "low": -0.02,
+                        "high": 0.05,
+                        "low": -0.05,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -858,15 +875,15 @@
                     "resolution": 0.001,
                     "tolerances": {
                       "reading": {
-                        "high": 0.7,
-                        "low": -0.7,
+                        "high": 1,
+                        "low": -1,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.02,
-                        "low": -0.02,
+                        "high": 0.05,
+                        "low": -0.05,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -880,15 +897,15 @@
                     "resolution": 0.1,
                     "tolerances": {
                       "reading": {
-                        "high": 0.7,
-                        "low": -0.7,
+                        "high": 1,
+                        "low": -1,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.02,
-                        "low": -0.02,
+                        "high": 0.05,
+                        "low": -0.05,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -902,15 +919,15 @@
                     "resolution": 1,
                     "tolerances": {
                       "reading": {
-                        "high": 0.7,
-                        "low": -0.7,
+                        "high": 1,
+                        "low": -1,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.02,
-                        "low": -0.02,
+                        "high": 0.05,
+                        "low": -0.05,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -931,15 +948,15 @@
                     "resolution": 0.1,
                     "tolerances": {
                       "reading": {
-                        "high": 0.2,
-                        "low": -0.2,
+                        "high": 0.9,
+                        "low": -0.9,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.01,
-                        "low": -0.01,
+                        "high": 0.02,
+                        "low": -0.02,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -953,15 +970,15 @@
                     "resolution": 1,
                     "tolerances": {
                       "reading": {
-                        "high": 0.2,
-                        "low": -0.2,
+                        "high": 0.9,
+                        "low": -0.9,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.01,
-                        "low": -0.01,
+                        "high": 0.02,
+                        "low": -0.02,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -975,15 +992,15 @@
                     "resolution": 10,
                     "tolerances": {
                       "reading": {
-                        "high": 0.2,
-                        "low": -0.2,
+                        "high": 0.9,
+                        "low": -0.9,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.01,
-                        "low": -0.01,
+                        "high": 0.02,
+                        "low": -0.02,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -997,15 +1014,15 @@
                     "resolution": 100,
                     "tolerances": {
                       "reading": {
-                        "high": 0.2,
-                        "low": -0.2,
+                        "high": 0.9,
+                        "low": -0.9,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.01,
-                        "low": -0.01,
+                        "high": 0.02,
+                        "low": -0.02,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -1019,15 +1036,15 @@
                     "resolution": 1000,
                     "tolerances": {
                       "reading": {
-                        "high": 0.2,
-                        "low": -0.2,
+                        "high": 0.9,
+                        "low": -0.9,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.01,
-                        "low": -0.01,
+                        "high": 0.02,
+                        "low": -0.02,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -1041,15 +1058,15 @@
                     "resolution": 10000,
                     "tolerances": {
                       "reading": {
-                        "high": 0.2,
-                        "low": -0.2,
+                        "high": 0.9,
+                        "low": -0.9,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.01,
-                        "low": -0.01,
+                        "high": 0.02,
+                        "low": -0.02,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -1070,15 +1087,15 @@
                     "resolution": 0.00001,
                     "tolerances": {
                       "reading": {
-                        "high": 0.2,
-                        "low": -0.2,
+                        "high": 1,
+                        "low": -1,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.02,
-                        "low": -0.02,
+                        "high": 0.05,
+                        "low": -0.05,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -1092,15 +1109,15 @@
                     "resolution": 0.0001,
                     "tolerances": {
                       "reading": {
-                        "high": 0.2,
-                        "low": -0.2,
+                        "high": 1,
+                        "low": -1,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.02,
-                        "low": -0.02,
+                        "high": 0.05,
+                        "low": -0.05,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -1114,15 +1131,15 @@
                     "resolution": 0.001,
                     "tolerances": {
                       "reading": {
-                        "high": 0.2,
-                        "low": -0.2,
+                        "high": 1,
+                        "low": -1,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.02,
-                        "low": -0.02,
+                        "high": 0.05,
+                        "low": -0.05,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -1136,15 +1153,15 @@
                     "resolution": 0.01,
                     "tolerances": {
                       "reading": {
-                        "high": 0.2,
-                        "low": -0.2,
+                        "high": 1,
+                        "low": -1,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
                       },
                       "range": {
-                        "high": 0.02,
-                        "low": -0.02,
+                        "high": 0.05,
+                        "low": -0.05,
                         "unit": "%",
                         "distribution": "1.960",
                         "symmetric": true
@@ -1154,11 +1171,48 @@
                 ]
               }
             ]
-          },
-          "measuringResolution": 0.001
+          }
         }
       ],
-      "uutTolerance": null,
+      "uutTolerance": {
+        "tolerance": {
+          "reading": {
+            "high": 0.7,
+            "low": -0.7,
+            "unit": "%",
+            "distribution": "1.960",
+            "symmetric": true
+          },
+          "range": {
+            "high": 0.02,
+            "low": -0.02,
+            "unit": "%",
+            "distribution": "1.960",
+            "symmetric": true
+          }
+        },
+        "rangeMax": "6",
+        "rangeUnit": "V",
+        "resolution": 0.001,
+        "rangeInfo": "0-6 V",
+        "id": 1766521848187.424,
+        "reading": {
+          "high": 0.05,
+          "low": "-0.05",
+          "unit": "%",
+          "distribution": "1.960",
+          "symmetric": true
+        },
+        "range": {
+          "high": 0.01,
+          "low": "-0.01",
+          "unit": "%",
+          "distribution": "1.960",
+          "symmetric": true,
+          "value": "6"
+        },
+        "measuringResolution": 0.001
+      },
       "specifications": {
         "mfg": {
           "uncertainty": "",
@@ -1182,14 +1236,14 @@
         },
         "qualifier": null
       },
-      "combined_uncertainty": 96.82077840957666,
-      "combined_uncertainty_absolute_base": 0.0004841038920478833,
+      "combined_uncertainty": 1023.3129680640152,
+      "combined_uncertainty_absolute_base": 0.005116564840320076,
       "combined_uncertainty_inputs_native": 0,
       "combined_uncertainty_inputs_base": 0,
       "effective_dof": null,
       "k_value": 1.9571619316560775,
-      "expanded_uncertainty": 189.49394169653212,
-      "expanded_uncertainty_absolute_base": 0.0009474697084826605,
+      "expanded_uncertainty": 2002.789185264882,
+      "expanded_uncertainty_absolute_base": 0.010013945926324411,
       "calculatedBudgetComponents": [
         {
           "id": "UUT_resolution",
@@ -1205,8 +1259,22 @@
           "contribution": 0.0002886836027713626
         },
         {
-          "id": "Fluke 87V_reading",
-          "name": "Fluke 87V - Reading",
+          "id": "Fluke 117_reading",
+          "name": "Fluke 117 - Reading",
+          "type": "B",
+          "value": 1020.4081632653061,
+          "value_native": 0.005102040816326531,
+          "unit_native": "V",
+          "dof": null,
+          "isCore": true,
+          "distribution": "Normal (95%)",
+          "sourcePointLabel": "5 V",
+          "quantity": 1,
+          "contribution": 0.005102040816326531
+        },
+        {
+          "id": "Fluke 117_range",
+          "name": "Fluke 117 - Range",
           "type": "B",
           "value": 51.02040816326531,
           "value_native": 0.00025510204081632655,
@@ -1217,58 +1285,30 @@
           "sourcePointLabel": "5 V",
           "quantity": 1,
           "contribution": 0.00025510204081632655
-        },
-        {
-          "id": "Fluke 87V_range",
-          "name": "Fluke 87V - Range",
-          "type": "B",
-          "value": 10.204081632653061,
-          "value_native": 0.00005102040816326531,
-          "unit_native": "V",
-          "dof": null,
-          "isCore": true,
-          "distribution": "Normal (95%)",
-          "sourcePointLabel": "5 V",
-          "quantity": 1,
-          "contribution": 0.00005102040816326531
-        },
-        {
-          "id": "Fluke 87V_resolution",
-          "name": "Fluke 87V - Resolution",
-          "type": "B",
-          "value": 57.736720554272516,
-          "value_native": 0.0002886836027713626,
-          "unit_native": "V",
-          "dof": null,
-          "isCore": true,
-          "distribution": "Rectangular",
-          "sourcePointLabel": "5 V",
-          "quantity": 1,
-          "contribution": 0.0002886836027713626
         }
       ],
       "calculatedNominalValue": null,
       "riskMetrics": {
         "LLow": 4.996899999999999,
         "LUp": 5.003100000000001,
-        "tur": 3.271872411589084,
-        "tar": 1,
-        "pfa": 2.021571129469778,
-        "pfr": 3.055374112358887,
-        "pfa_term1": 1.010785564734889,
-        "pfa_term2": 1.010785564734889,
-        "pfr_term1": 1.5276870561794436,
-        "pfr_term2": 1.5276870561794436,
-        "uCal": 0.0004841038920478833,
-        "uUUT": 0.0021167588550858748,
-        "uDev": 0.0021714107462385765,
-        "correlation": 0.974831159306284,
+        "tur": 0.30956827835983874,
+        "tar": 0.005636363636365036,
+        "pfa": 4.926548367525986,
+        "pfr": 48.17866547175447,
+        "pfa_term1": 2.463274183762993,
+        "pfa_term2": 2.463274183762993,
+        "pfr_term1": 24.089332735877235,
+        "pfr_term2": 24.089332735877235,
+        "uCal": 0.005116564840320076,
+        "uUUT": 0.002116758855085882,
+        "uDev": 0.005537138594597764,
+        "correlation": 0.3822838852455436,
         "ALow": 4.996899999999999,
         "AUp": 5.003100000000001,
-        "expandedUncertainty": 0.0009474697084826605,
-        "tmdeToleranceSpan": 0.006200000000001538,
-        "tmdeToleranceHigh": 0.003100000000000769,
-        "tmdeToleranceLow": -0.003100000000000769,
+        "expandedUncertainty": 0.010013945926324411,
+        "tmdeToleranceSpan": 1.0999999999999996,
+        "tmdeToleranceHigh": 0.5499999999999998,
+        "tmdeToleranceLow": -0.5499999999999998,
         "uutBreakdownForTar": [
           {
             "name": "Fluke 87V Digital Multimeter - Reading",
@@ -1281,12 +1321,12 @@
         ],
         "tmdeBreakdownForTar": [
           {
-            "name": "Fluke 87V - Reading",
-            "span": 0.005000000000000782
+            "name": "Fluke 117 - Reading",
+            "span": 0.09999999999999964
           },
           {
-            "name": "Fluke 87V - Range",
-            "span": 0.001200000000000756
+            "name": "Fluke 117 - Range",
+            "span": 1
           }
         ],
         "nativeUnit": "V",
@@ -1294,10 +1334,10 @@
           "nominal": 5,
           "uutLower": 4.996899999999999,
           "uutUpper": 5.003100000000001,
-          "tmdeLower": 4.996899999999999,
-          "tmdeUpper": 5.003100000000001,
-          "combUnc": 0.0004841038920478833,
-          "turVal": 3.271872411589084,
+          "tmdeLower": 4.45,
+          "tmdeUpper": 5.55,
+          "combUnc": 0.005116564840320076,
+          "turVal": 0.30956827835983874,
           "measRelTarget": 0.85,
           "calibrationInt": 12,
           "measrelCalcAssumed": 0.85,
@@ -1307,28 +1347,1416 @@
           "safeRes": 0.001
         },
         "gbResults": {
-          "GBLOW": 4.997000000000001,
-          "GBLOWMULT": 1,
-          "GBUP": 5.003,
-          "GBUPMULT": 1,
-          "GBMULT": 96.77419354836675,
-          "GBPFA": 1.4576800505694245,
-          "GBPFAT1": 0.7288400252838403,
-          "GBPFAT2": 0.7288400252855841,
-          "GBPFAUUUT": 0.0020270044273116555,
-          "GBPFAUDEV": 0.0020840114027127973,
-          "GBPFACOR": 0.972645554949011,
-          "GBPFR": 3.8399195165409092,
-          "GBPFRT1": 1.9199597582725991,
-          "GBPFRT2": 1.9199597582683101,
-          "GBCALINT": 10.607698038583635,
-          "GBCALINTOBS": 0.8466054457195376,
-          "GBCALINTPRED": 0.8631213806942637,
-          "NOGBCALINT": 11.711632728752242,
-          "NOGBCALINTOBS": 0.8466054457195376,
-          "NOGBCALINTPRED": 0.85,
-          "NOGBMEASREL": 85,
-          "NOGBMEASRELOBS": 84.66054457195375
+          "GBLOW": null,
+          "GBUP": null,
+          "GBMULT": 0,
+          "GBPFA": 0,
+          "GBPFAT1": 0,
+          "GBPFAT2": 0,
+          "GBPFR": 0,
+          "GBPFRT1": 0,
+          "GBPFRT2": 0,
+          "NOGBCALINT": "",
+          "NOGBCALINTOBS": "",
+          "NOGBCALINTPRED": "",
+          "NOGBMEASREL": null,
+          "NOGBMEASRELOBS": null
+        },
+        "uutResolution": 0
+      }
+    },
+    {
+      "id": 1766522113925,
+      "section": "1",
+      "tmdeDescription": "",
+      "tmdeTolerances": [
+        {
+          "id": 1766522101389.7322,
+          "name": "Fluke 117",
+          "measurementPoint": {
+            "value": "10",
+            "unit": "V"
+          },
+          "quantity": 1,
+          "reading": {
+            "high": 0.09,
+            "low": "-0.09",
+            "unit": "%",
+            "distribution": "1.960",
+            "symmetric": true
+          },
+          "range": {
+            "high": 0.03,
+            "low": "-0.03",
+            "unit": "%",
+            "distribution": "1.960",
+            "symmetric": true,
+            "value": "60"
+          },
+          "sourceInstrument": {
+            "id": 1766360423994,
+            "manufacturer": "Fluke",
+            "model": "117",
+            "description": "Digital Multimeter",
+            "functions": [
+              {
+                "id": 1766360292741,
+                "name": "DC Voltage",
+                "unit": "V",
+                "ranges": [
+                  {
+                    "id": 1766360200038,
+                    "min": -0.6,
+                    "max": "0.6",
+                    "resolution": 0.0001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.09,
+                        "low": -0.09,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.03,
+                        "low": -0.03,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766359672242,
+                    "min": -6,
+                    "max": "6",
+                    "resolution": 0.001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.09,
+                        "low": -0.09,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.03,
+                        "low": -0.03,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360200244,
+                    "min": -60,
+                    "max": "60",
+                    "resolution": 0.01,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.09,
+                        "low": -0.09,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.03,
+                        "low": -0.03,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766359924280,
+                    "min": -600,
+                    "max": "600",
+                    "resolution": 0.1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.09,
+                        "low": -0.09,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.03,
+                        "low": -0.03,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766359974491,
+                    "min": -1000,
+                    "max": "1000",
+                    "resolution": 1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.09,
+                        "low": -0.09,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.03,
+                        "low": -0.03,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": 1766359862687,
+                "name": "AC Voltage",
+                "unit": "V",
+                "ranges": [
+                  {
+                    "id": 1766360379437,
+                    "min": 0,
+                    "max": "0.6",
+                    "resolution": 0.0001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360430747,
+                    "min": 0,
+                    "max": "6",
+                    "resolution": 0.001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360311888,
+                    "min": 0,
+                    "max": "600",
+                    "resolution": 0.1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360501728,
+                    "min": 0,
+                    "max": "1000",
+                    "resolution": 1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": 1766360444277,
+                "name": "Resistance",
+                "unit": "Ohm",
+                "ranges": [
+                  {
+                    "id": 1766360408824,
+                    "min": 0,
+                    "max": "600",
+                    "resolution": 0.1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360448553,
+                    "min": 0,
+                    "max": "6000",
+                    "resolution": 1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360073623,
+                    "min": 0,
+                    "max": "60000",
+                    "resolution": 10,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766359749010,
+                    "min": 0,
+                    "max": "600000",
+                    "resolution": 100,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360048702,
+                    "min": 0,
+                    "max": "6000000",
+                    "resolution": 1000,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360086769,
+                    "min": 0,
+                    "max": "50000000",
+                    "resolution": 10000,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": 1766359611913,
+                "name": "DC Current",
+                "unit": "A",
+                "ranges": [
+                  {
+                    "id": 1766360547910,
+                    "min": -0.06,
+                    "max": "0.06",
+                    "resolution": 0.00001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360088549,
+                    "min": -0.4,
+                    "max": "0.4",
+                    "resolution": 0.0001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766359575842,
+                    "min": -6,
+                    "max": "6",
+                    "resolution": 0.001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360281507,
+                    "min": -10,
+                    "max": "10",
+                    "resolution": 0.01,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "measuringResolution": 0.01
+        }
+      ],
+      "uutTolerance": {
+        "tolerance": {
+          "reading": {
+            "high": 0.7,
+            "low": -0.7,
+            "unit": "%",
+            "distribution": "1.960",
+            "symmetric": true
+          },
+          "range": {
+            "high": 0.02,
+            "low": -0.02,
+            "unit": "%",
+            "distribution": "1.960",
+            "symmetric": true
+          }
+        },
+        "rangeMax": "1000",
+        "rangeUnit": "V",
+        "resolution": 1,
+        "rangeInfo": "0-1000 V",
+        "id": 1766522097693.5276,
+        "reading": {
+          "high": 0.05,
+          "low": "-0.05",
+          "unit": "%",
+          "distribution": "1.960",
+          "symmetric": true
+        },
+        "range": {
+          "high": 0.01,
+          "low": "-0.01",
+          "unit": "%",
+          "distribution": "1.960",
+          "symmetric": true,
+          "value": "60"
+        },
+        "measuringResolution": 0.01
+      },
+      "specifications": {
+        "mfg": {
+          "uncertainty": "",
+          "k": 2
+        },
+        "navy": {
+          "uncertainty": "",
+          "k": 2
+        }
+      },
+      "components": [],
+      "is_detailed_uncertainty_calculated": true,
+      "measurementType": "direct",
+      "equationString": "",
+      "variableMappings": {},
+      "testPointInfo": {
+        "parameter": {
+          "name": "DC Voltage",
+          "value": "10",
+          "unit": "V"
+        },
+        "qualifier": null
+      },
+      "combined_uncertainty": 411.119470303146,
+      "combined_uncertainty_absolute_base": 0.00411119470303146,
+      "combined_uncertainty_inputs_native": 0,
+      "combined_uncertainty_inputs_base": 0,
+      "effective_dof": null,
+      "k_value": 1.9571619316560775,
+      "expanded_uncertainty": 804.6273766399286,
+      "expanded_uncertainty_absolute_base": 0.008046273766399286,
+      "calculatedBudgetComponents": [
+        {
+          "id": "UUT_resolution",
+          "name": "DC Voltage - Resolution",
+          "type": "B",
+          "value": 288.6836027713626,
+          "value_native": 0.002886836027713626,
+          "unit_native": "V",
+          "dof": null,
+          "isCore": true,
+          "distribution": "Rectangular",
+          "sourcePointLabel": "10 V",
+          "contribution": 0.002886836027713626
+        },
+        {
+          "id": "Fluke 117_reading",
+          "name": "Fluke 117 - Reading",
+          "type": "B",
+          "value": 45.918367346938766,
+          "value_native": 0.00045918367346938773,
+          "unit_native": "V",
+          "dof": null,
+          "isCore": true,
+          "distribution": "Normal (95%)",
+          "sourcePointLabel": "10 V",
+          "quantity": 1,
+          "contribution": 0.0004591836734693877
+        },
+        {
+          "id": "Fluke 117_range",
+          "name": "Fluke 117 - Range",
+          "type": "B",
+          "value": 15.30612244897959,
+          "value_native": 0.0001530612244897959,
+          "unit_native": "V",
+          "dof": null,
+          "isCore": true,
+          "distribution": "Normal (95%)",
+          "sourcePointLabel": "10 V",
+          "quantity": 1,
+          "contribution": 0.0001530612244897959
+        },
+        {
+          "id": "Fluke 117_resolution",
+          "name": "Fluke 117 - Resolution",
+          "type": "B",
+          "value": 288.6836027713626,
+          "value_native": 0.002886836027713626,
+          "unit_native": "V",
+          "dof": null,
+          "isCore": true,
+          "distribution": "Rectangular",
+          "sourcePointLabel": "10 V",
+          "quantity": 1,
+          "contribution": 0.002886836027713626
+        }
+      ],
+      "calculatedNominalValue": null,
+      "riskMetrics": {
+        "LLow": 9.988999999999999,
+        "LUp": 10.011000000000001,
+        "tur": 1.3670924354993104,
+        "tar": 0.4074074074074293,
+        "pfa": 3.6927406174038833,
+        "pfr": 9.278359366566283,
+        "pfa_term1": 1.8463703087019416,
+        "pfa_term2": 1.8463703087019416,
+        "pfr_term1": 4.639179683283142,
+        "pfr_term2": 4.639179683283142,
+        "uCal": 0.00411119470303146,
+        "uUUT": 0.007511079808368059,
+        "uDev": 0.00856260718320701,
+        "correlation": 0.8771954204671204,
+        "ALow": 9.988999999999999,
+        "AUp": 10.011000000000001,
+        "expandedUncertainty": 0.008046273766399286,
+        "tmdeToleranceSpan": 0.054000000000002046,
+        "tmdeToleranceHigh": 0.027000000000001023,
+        "tmdeToleranceLow": -0.027000000000001023,
+        "uutBreakdownForTar": [
+          {
+            "name": "Fluke 87V Digital Multimeter - Reading",
+            "span": 0.010000000000001563
+          },
+          {
+            "name": "Fluke 87V Digital Multimeter - Range",
+            "span": 0.012000000000000455
+          }
+        ],
+        "tmdeBreakdownForTar": [
+          {
+            "name": "Fluke 117 - Reading",
+            "span": 0.018000000000000682
+          },
+          {
+            "name": "Fluke 117 - Range",
+            "span": 0.036000000000001364
+          }
+        ],
+        "nativeUnit": "V",
+        "gbInputs": {
+          "nominal": 10,
+          "uutLower": 9.988999999999999,
+          "uutUpper": 10.011000000000001,
+          "tmdeLower": 9.972999999999999,
+          "tmdeUpper": 10.027000000000001,
+          "combUnc": 0.00411119470303146,
+          "turVal": 1.3670924354993104,
+          "measRelTarget": 0.85,
+          "calibrationInt": 12,
+          "measrelCalcAssumed": 0.85,
+          "reqTUR": 4,
+          "reqPFA": 0.02,
+          "nominalUnit": "V",
+          "safeRes": 0.01
+        },
+        "gbResults": {
+          "GBLOW": 9.99,
+          "GBLOWMULT": 0.9655273437499999,
+          "GBUP": 10.01,
+          "GBUPMULT": 0.9655273437499999,
+          "GBMULT": 90.90909090908063,
+          "GBPFA": 1.224779518370471,
+          "GBPFAT1": 0.6123897591852355,
+          "GBPFAT2": 0.6123897591852355,
+          "GBPFAUUUT": 0.005599534263248723,
+          "GBPFAUDEV": 0.006946704675709941,
+          "GBPFACOR": 0.8060705794544895,
+          "GBPFR": 11.276976071736794,
+          "GBPFRT1": 5.638488035868397,
+          "GBPFRT2": 5.638488035868397,
+          "GBCALINT": 6.506887504501927,
+          "GBCALINTOBS": 0.8010872880568047,
+          "GBCALINTPRED": 0.8866889501227084,
+          "NOGBCALINT": 7.417446995271962,
+          "NOGBCALINTOBS": 0.8010872880568047,
+          "NOGBCALINTPRED": 0.8718916664779908,
+          "NOGBMEASREL": 87.18916664779908,
+          "NOGBMEASRELOBS": 80.10872880568047
+        },
+        "uutResolution": 0
+      }
+    },
+    {
+      "id": 1766522476926,
+      "section": "1",
+      "tmdeDescription": "",
+      "tmdeTolerances": [
+        {
+          "id": 1766522472641.0178,
+          "name": "Fluke 117",
+          "measurementPoint": {
+            "value": "13",
+            "unit": "V"
+          },
+          "quantity": 1,
+          "reading": {
+            "high": 0.09,
+            "low": "-0.09",
+            "unit": "%",
+            "distribution": "1.960",
+            "symmetric": true
+          },
+          "range": {
+            "high": 0.03,
+            "low": "-0.03",
+            "unit": "%",
+            "distribution": "1.960",
+            "symmetric": true,
+            "value": "60"
+          },
+          "sourceInstrument": {
+            "id": 1766360423994,
+            "manufacturer": "Fluke",
+            "model": "117",
+            "description": "Digital Multimeter",
+            "functions": [
+              {
+                "id": 1766360292741,
+                "name": "DC Voltage",
+                "unit": "V",
+                "ranges": [
+                  {
+                    "id": 1766360200038,
+                    "min": -0.6,
+                    "max": "0.6",
+                    "resolution": 0.0001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.09,
+                        "low": -0.09,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.03,
+                        "low": -0.03,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766359672242,
+                    "min": -6,
+                    "max": "6",
+                    "resolution": 0.001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.09,
+                        "low": -0.09,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.03,
+                        "low": -0.03,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360200244,
+                    "min": -60,
+                    "max": "60",
+                    "resolution": 0.01,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.09,
+                        "low": -0.09,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.03,
+                        "low": -0.03,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766359924280,
+                    "min": -600,
+                    "max": "600",
+                    "resolution": 0.1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.09,
+                        "low": -0.09,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.03,
+                        "low": -0.03,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766359974491,
+                    "min": -1000,
+                    "max": "1000",
+                    "resolution": 1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.09,
+                        "low": -0.09,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.03,
+                        "low": -0.03,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": 1766359862687,
+                "name": "AC Voltage",
+                "unit": "V",
+                "ranges": [
+                  {
+                    "id": 1766360379437,
+                    "min": 0,
+                    "max": "0.6",
+                    "resolution": 0.0001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360430747,
+                    "min": 0,
+                    "max": "6",
+                    "resolution": 0.001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360311888,
+                    "min": 0,
+                    "max": "600",
+                    "resolution": 0.1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360501728,
+                    "min": 0,
+                    "max": "1000",
+                    "resolution": 1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": 1766360444277,
+                "name": "Resistance",
+                "unit": "Ohm",
+                "ranges": [
+                  {
+                    "id": 1766360408824,
+                    "min": 0,
+                    "max": "600",
+                    "resolution": 0.1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360448553,
+                    "min": 0,
+                    "max": "6000",
+                    "resolution": 1,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360073623,
+                    "min": 0,
+                    "max": "60000",
+                    "resolution": 10,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766359749010,
+                    "min": 0,
+                    "max": "600000",
+                    "resolution": 100,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360048702,
+                    "min": 0,
+                    "max": "6000000",
+                    "resolution": 1000,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360086769,
+                    "min": 0,
+                    "max": "50000000",
+                    "resolution": 10000,
+                    "tolerances": {
+                      "reading": {
+                        "high": 0.9,
+                        "low": -0.9,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.02,
+                        "low": -0.02,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": 1766359611913,
+                "name": "DC Current",
+                "unit": "A",
+                "ranges": [
+                  {
+                    "id": 1766360547910,
+                    "min": -0.06,
+                    "max": "0.06",
+                    "resolution": 0.00001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360088549,
+                    "min": -0.4,
+                    "max": "0.4",
+                    "resolution": 0.0001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766359575842,
+                    "min": -6,
+                    "max": "6",
+                    "resolution": 0.001,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  },
+                  {
+                    "id": 1766360281507,
+                    "min": -10,
+                    "max": "10",
+                    "resolution": 0.01,
+                    "tolerances": {
+                      "reading": {
+                        "high": 1,
+                        "low": -1,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      },
+                      "range": {
+                        "high": 0.05,
+                        "low": -0.05,
+                        "unit": "%",
+                        "distribution": "1.960",
+                        "symmetric": true
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "measuringResolution": 0.01
+        }
+      ],
+      "uutTolerance": {
+        "tolerance": {
+          "reading": {
+            "high": 0.7,
+            "low": -0.7,
+            "unit": "%",
+            "distribution": "1.960",
+            "symmetric": true
+          },
+          "range": {
+            "high": 0.02,
+            "low": -0.02,
+            "unit": "%",
+            "distribution": "1.960",
+            "symmetric": true
+          }
+        },
+        "rangeMax": "1000",
+        "rangeUnit": "V",
+        "resolution": 1,
+        "rangeInfo": "0-1000 V",
+        "id": 1766522457523.1294,
+        "reading": {
+          "high": 0.05,
+          "low": "-0.05",
+          "unit": "%",
+          "distribution": "1.960",
+          "symmetric": true
+        },
+        "range": {
+          "high": 0.01,
+          "low": "-0.01",
+          "unit": "%",
+          "distribution": "1.960",
+          "symmetric": true,
+          "value": "60"
+        },
+        "measuringResolution": 0.01
+      },
+      "specifications": {
+        "mfg": {
+          "uncertainty": "",
+          "k": 2
+        },
+        "navy": {
+          "uncertainty": "",
+          "k": 2
+        }
+      },
+      "components": [],
+      "is_detailed_uncertainty_calculated": true,
+      "measurementType": "direct",
+      "equationString": "",
+      "variableMappings": {},
+      "testPointInfo": {
+        "parameter": {
+          "name": "DC Voltage",
+          "value": "13",
+          "unit": "V"
+        },
+        "qualifier": null
+      },
+      "combined_uncertainty": 316.24574638703535,
+      "combined_uncertainty_absolute_base": 0.00411119470303146,
+      "combined_uncertainty_inputs_native": 0,
+      "combined_uncertainty_inputs_base": 0,
+      "effective_dof": null,
+      "k_value": 1.9571619316560775,
+      "expanded_uncertainty": 618.9441358768681,
+      "expanded_uncertainty_absolute_base": 0.008046273766399286,
+      "calculatedBudgetComponents": [
+        {
+          "id": "UUT_resolution",
+          "name": "DC Voltage - Resolution",
+          "type": "B",
+          "value": 222.06430982412508,
+          "value_native": 0.002886836027713626,
+          "unit_native": "V",
+          "dof": null,
+          "isCore": true,
+          "distribution": "Rectangular",
+          "sourcePointLabel": "13 V",
+          "contribution": 0.002886836027713626
+        },
+        {
+          "id": "Fluke 117_reading",
+          "name": "Fluke 117 - Reading",
+          "type": "B",
+          "value": 35.32182103610675,
+          "value_native": 0.00045918367346938773,
+          "unit_native": "V",
+          "dof": null,
+          "isCore": true,
+          "distribution": "Normal (95%)",
+          "sourcePointLabel": "13 V",
+          "quantity": 1,
+          "contribution": 0.00045918367346938773
+        },
+        {
+          "id": "Fluke 117_range",
+          "name": "Fluke 117 - Range",
+          "type": "B",
+          "value": 11.773940345368917,
+          "value_native": 0.0001530612244897959,
+          "unit_native": "V",
+          "dof": null,
+          "isCore": true,
+          "distribution": "Normal (95%)",
+          "sourcePointLabel": "13 V",
+          "quantity": 1,
+          "contribution": 0.00015306122448979594
+        },
+        {
+          "id": "Fluke 117_resolution",
+          "name": "Fluke 117 - Resolution",
+          "type": "B",
+          "value": 222.06430982412508,
+          "value_native": 0.002886836027713626,
+          "unit_native": "V",
+          "dof": null,
+          "isCore": true,
+          "distribution": "Rectangular",
+          "sourcePointLabel": "13 V",
+          "quantity": 1,
+          "contribution": 0.002886836027713626
+        }
+      ],
+      "calculatedNominalValue": null,
+      "riskMetrics": {
+        "LLow": 12.987499999999999,
+        "LUp": 13.012500000000001,
+        "tur": 1.5535141312492065,
+        "tar": 0.42087542087545593,
+        "pfa": 3.4258390374243857,
+        "pfr": 7.822951586378629,
+        "pfa_term1": 1.7129195187121928,
+        "pfa_term2": 1.7129195187121928,
+        "pfr_term1": 3.9114757931893145,
+        "pfr_term2": 3.9114757931893145,
+        "uCal": 0.00411119470303146,
+        "uUUT": 0.00853531796405456,
+        "uDev": 0.00947383632082307,
+        "correlation": 0.9009357640361921,
+        "ALow": 12.987499999999999,
+        "AUp": 13.012500000000001,
+        "expandedUncertainty": 0.008046273766399286,
+        "tmdeToleranceSpan": 0.05940000000000012,
+        "tmdeToleranceHigh": 0.02970000000000006,
+        "tmdeToleranceLow": -0.02970000000000006,
+        "uutBreakdownForTar": [
+          {
+            "name": "Fluke 87V Digital Multimeter - Reading",
+            "span": 0.013000000000001677
+          },
+          {
+            "name": "Fluke 87V Digital Multimeter - Range",
+            "span": 0.012000000000000455
+          }
+        ],
+        "tmdeBreakdownForTar": [
+          {
+            "name": "Fluke 117 - Reading",
+            "span": 0.023399999999998755
+          },
+          {
+            "name": "Fluke 117 - Range",
+            "span": 0.036000000000001364
+          }
+        ],
+        "nativeUnit": "V",
+        "gbInputs": {
+          "nominal": 13,
+          "uutLower": 12.987499999999999,
+          "uutUpper": 13.012500000000001,
+          "tmdeLower": 12.9703,
+          "tmdeUpper": 13.0297,
+          "combUnc": 0.00411119470303146,
+          "turVal": 1.5535141312492065,
+          "measRelTarget": 0.85,
+          "calibrationInt": 12,
+          "measrelCalcAssumed": 0.85,
+          "reqTUR": 4,
+          "reqPFA": 0.02,
+          "nominalUnit": "V",
+          "safeRes": 0.01
+        },
+        "gbResults": {
+          "GBLOW": 12.99,
+          "GBLOWMULT": 0.9566894531250002,
+          "GBUP": 13.01,
+          "GBUPMULT": 0.9566894531250002,
+          "GBMULT": 79.99999999999147,
+          "GBPFA": 0.4074388551513569,
+          "GBPFAT1": 0.20371942757567846,
+          "GBPFAT2": 0.20371942757567846,
+          "GBPFAUUUT": 0.005599534263248723,
+          "GBPFAUDEV": 0.006946704675709941,
+          "GBPFACOR": 0.8060705794544895,
+          "GBPFR": 12.848112988732163,
+          "GBPFRT1": 6.424056494366082,
+          "GBPFRT2": 6.424056494366082,
+          "GBCALINT": 4.327657670375597,
+          "GBCALINTOBS": 0.8129723500588861,
+          "GBCALINTPRED": 0.9280468369096804,
+          "NOGBCALINT": 7.330233292526265,
+          "NOGBCALINTOBS": 0.8129723500588861,
+          "NOGBCALINTPRED": 0.8811899547981499,
+          "NOGBMEASREL": 88.11899547981498,
+          "NOGBMEASRELOBS": 81.29723500588861
         },
         "uutResolution": 0
       }

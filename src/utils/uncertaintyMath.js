@@ -913,57 +913,111 @@ export const calculateDerivedUncertainty = (
  * 3. Finds the specific Range where value falls between Min/Max
  * 4. Returns the tolerance object for that range
  */
-export const findInstrumentTolerance = (instrument, value, unit) => {
-  if (!instrument || !value || !unit) return null;
-
-  const numValue = parseFloat(value);
-  if (isNaN(numValue)) return null;
-
-  // 1. Find Matching Function
-  // Simple heuristic: Look for unit match. In production, this might need more metadata.
-  const matchedFunction = instrument.functions.find(f => {
-      // Check exact match or if the instrument base unit is related (e.g. instrument is V, input is mV)
-      const funcUnit = unitSystem.units[f.unit];
-      const inputUnit = unitSystem.units[unit];
-      return funcUnit && inputUnit && funcUnit.quantity === inputUnit.quantity;
-  });
-
-  if (!matchedFunction) return null;
-
-  // 2. Convert Input Value to Function's Base Unit
-  // e.g. Input: 500 mV. Function Base: V.  500 * 1e-3 / 1 = 0.5 V
-  const inputToSi = unitSystem.units[unit].to_si;
-  const funcToSi = unitSystem.units[matchedFunction.unit].to_si;
-  const valueInBase = (numValue * inputToSi) / funcToSi;
-
-  // 3. Find Range
-  // Range is usually inclusive of max, exclusive of min, or vice versa depending on manufacturer.
-  // We'll use simple <= max logic here.
-  // We sort ranges to find the smallest range that fits the value (best practice for autoranging)
-  const sortedRanges = [...matchedFunction.ranges].sort((a, b) => parseFloat(a.max) - parseFloat(b.max));
+/**
+ * Smart Lookup for Instrument Specs (ALL Matches)
+ * Returns ARRAY of matches or NULL if none found.
+ */
+export const findMatchingTolerances = (instrument, value, unit) => {
+    if (!instrument || !value || !unit) return null;
   
-  const matchedRange = sortedRanges.find(r => {
-      const min = parseFloat(r.min);
-      const max = parseFloat(r.max);
-      // Absolute value check handles negative readings (e.g. -5V fits in 10V range)
-      const absVal = Math.abs(valueInBase); 
-      return absVal >= min && absVal <= max;
-  });
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return null;
+  
+    // 1. Find Matching Functions
+    const matchedFunctions = instrument.functions.filter(f => {
+        const funcUnit = unitSystem.units[f.unit];
+        const inputUnit = unitSystem.units[unit];
+        return funcUnit && inputUnit && funcUnit.quantity === inputUnit.quantity;
+    });
+  
+    if (matchedFunctions.length === 0) return null;
 
-  if (!matchedRange) return null;
+    const allMatches = [];
 
-  // 4. Return Tolerance & Resolution
-  return {
-      tolerance: matchedRange.tolerances,
-      rangeMax: matchedRange.max,
-      rangeUnit: matchedFunction.unit,
-      resolution: matchedRange.resolution,
-      rangeInfo: `${matchedRange.min}-${matchedRange.max} ${matchedFunction.unit}`
-  };
+    matchedFunctions.forEach(func => {
+        // 2. Convert Input Value to Function's Base Unit
+        const inputToSi = unitSystem.units[unit].to_si;
+        const funcToSi = unitSystem.units[func.unit].to_si;
+        const valueInBase = (numValue * inputToSi) / funcToSi;
+
+        // 3. Find Ranges
+        func.ranges.forEach(r => {
+            const min = parseFloat(r.min);
+            const max = parseFloat(r.max);
+            const absVal = Math.abs(valueInBase); 
+            
+            if (absVal >= min && absVal <= max) {
+                allMatches.push({
+                    tolerance: r.tolerances,
+                    rangeMax: r.max,
+                    rangeUnit: func.unit,
+                    resolution: r.resolution,
+                    rangeInfo: `${r.min}-${r.max} ${func.unit}`,
+                    id: Date.now() + Math.random() // Unique ID for selection
+                });
+            }
+        });
+    });
+
+    return allMatches.length > 0 ? allMatches : null;
+};
+
+/**
+ * Legacy Wrapper: Returns the BEST match (smallest range usually)
+ * Preserves existing behavior for parts of the app not yet updated.
+ */
+export const findInstrumentTolerance = (instrument, value, unit) => {
+    const matches = findMatchingTolerances(instrument, value, unit);
+    if (!matches) return null;
+
+    // improved heuristic: prefer smallest rangeMax (tightest fit)
+    // The previous logic sorted by ranges.max before finding, so we replicate that preference.
+    return matches.sort((a, b) => parseFloat(a.rangeMax) - parseFloat(b.rangeMax))[0];
 };
 
 // ==========================================
-// 4. Bivariate & Normal Distributions
+// 4. Instrument Logic
+// ==========================================
+
+export const recalculateTolerance = (instrument, value, unit, existingData = {}) => {
+    const matchedData = findInstrumentTolerance(instrument, parseFloat(value), unit);
+    if (!matchedData) return null;
+
+    const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
+    
+    let calculatedRangeMax = matchedData.rangeMax; 
+    if (!calculatedRangeMax) calculatedRangeMax = parseFloat(value);
+    
+    const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
+    
+    compKeys.forEach(key => {
+        if (specs[key]) {
+            if (!specs[key].unit) {
+                if (key === 'reading' || key === 'range') specs[key].unit = '%';
+                else if (key === 'floor' || key === 'readings_iv') specs[key].unit = unit;
+            }
+            if (key === 'range') {
+                specs[key].value = calculatedRangeMax;
+            }
+            if (specs[key].high) {
+                const highVal = parseFloat(specs[key].high);
+                if (!isNaN(highVal)) {
+                    specs[key].low = String(-Math.abs(highVal));
+                }
+                specs[key].symmetric = true; 
+            }
+        }
+    });
+    
+    return {
+        ...existingData,
+        ...specs,
+        measuringResolution: matchedData.resolution
+    };
+};
+
+// ==========================================
+// 5. Bivariate & Normal Distributions
 // ==========================================
 
 export function CumNorm(x) {

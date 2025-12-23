@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import ReactDOM from "react-dom";
 import Select from "react-select";
 import ToleranceForm from "../../../components/common/ToleranceForm";
-import { unitSystem, findInstrumentTolerance, getToleranceSummary } from "../../../utils/uncertaintyMath";
+import { unitSystem, findInstrumentTolerance, findMatchingTolerances, getToleranceSummary } from "../../../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faPlus, faBookOpen, faGripHorizontal } from "@fortawesome/free-solid-svg-icons";
 import InstrumentLookupModal from "./InstrumentLookupModal";
 import NotificationModal from "../../../components/modals/NotificationModal"; //
+import UnresolvedToleranceModal from "../../testPoints/components/UnresolvedToleranceModal";
 
 const unitCategories = {
   Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
@@ -75,6 +76,7 @@ const AddTmdeModal = ({
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [selectedInstrument, setSelectedInstrument] = useState(null);
   const [notification, setNotification] = useState(null); // Local notification state
+  const [unresolvedToleranceModal, setUnresolvedToleranceModal] = useState(null);
 
   const [position, setPosition] = useState(() => {
     if (typeof window === 'undefined') return { x: 0, y: 0 };
@@ -193,68 +195,91 @@ const AddTmdeModal = ({
     const currentUnit = tmde.measurementPoint?.unit;
 
     if (!currentVal || !currentUnit) {
-      alert("Please ensure the Measurement Point has a value and unit before importing specifications.");
+      setNotification({
+          title: "Missing Measurement Point",
+          message: "Please ensure the Measurement Point has a value and unit before importing specifications."
+      });
       return;
     }
 
     const numericVal = parseFloat(currentVal);
     if (isNaN(numericVal)) {
-      alert("Invalid measurement value. Please enter a number.");
+      setNotification({
+          title: "Invalid Value",
+          message: "Invalid measurement value. Please enter a number."
+      });
       return;
     }
 
-    const matchedData = findInstrumentTolerance(instrument, numericVal, currentUnit);
-
-    if (matchedData) {
-      const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
-      let calculatedRangeMax = matchedData.rangeMax;
-      if (!calculatedRangeMax) {
-        calculatedRangeMax = numericVal;
-      }
-
-      const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
-      compKeys.forEach(key => {
-        if (specs[key]) {
-          if (!specs[key].unit) {
-            if (key === 'reading' || key === 'range') specs[key].unit = '%';
-            else if (key === 'floor' || key === 'readings_iv') specs[key].unit = currentUnit;
-          }
-          if (key === 'range') {
-            specs[key].value = calculatedRangeMax;
-          }
-          if (specs[key].high) {
-            const highVal = parseFloat(specs[key].high);
-            if (!isNaN(highVal)) {
-              specs[key].low = String(-Math.abs(highVal));
+    // Helper to apply specs once resolved
+    const applySpecs = (matchedData) => {
+        const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
+        let calculatedRangeMax = matchedData.rangeMax;
+        if (!calculatedRangeMax) {
+          calculatedRangeMax = numericVal;
+        }
+  
+        const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
+        compKeys.forEach(key => {
+          if (specs[key]) {
+            if (!specs[key].unit) {
+              if (key === 'reading' || key === 'range') specs[key].unit = '%';
+              else if (key === 'floor' || key === 'readings_iv') specs[key].unit = currentUnit;
             }
-            specs[key].symmetric = true;
+            if (key === 'range') {
+              specs[key].value = calculatedRangeMax;
+            }
+            if (specs[key].high) {
+              const highVal = parseFloat(specs[key].high);
+              if (!isNaN(highVal)) {
+                specs[key].low = String(-Math.abs(highVal));
+              }
+              specs[key].symmetric = true;
+            }
           }
-        }
-      });
+        });
+  
+        // Use Custom Notification Modal
+        const summary = getToleranceSummary(specs);
+        setNotification({
+          title: "Confirm Specifications",
+          message: `Found specifications for ${instrument.model}:\n\n` +
+            `Range: ${matchedData.rangeMin ?? 'N/A'} to ${matchedData.rangeMax ?? 'N/A'} ${matchedData.unit || ""}\n` +
+            `Tolerance: ${summary}\n\n` +
+            `Do you want to apply these tolerances?`,
+          confirmText: "Apply Specs",
+          cancelText: "Cancel",
+          onConfirm: () => {
+            setTmde(prev => ({
+              ...prev,
+              name: `${instrument.manufacturer} ${instrument.model}`,
+              ...specs,
+              measuringResolution: undefined,
+            }));
+            setNotification(null);
+          }
+        });
+    };
 
-      // Use Custom Notification Modal instead of window.confirm
-      const summary = getToleranceSummary(specs);
-      setNotification({
-        title: "Confirm Specifications",
-        message: `Found specifications for ${instrument.model}:\n\n` +
-          `Range: ${matchedData.rangeMin ?? 'N/A'} to ${matchedData.rangeMax ?? 'N/A'} ${matchedData.unit || ""}\n` +
-          `Tolerance: ${summary}\n\n` +
-          `Do you want to apply these tolerances?`,
-        confirmText: "Apply Specs",
-        cancelText: "Cancel",
-        onConfirm: () => {
-          setTmde(prev => ({
-            ...prev,
-            name: `${instrument.manufacturer} ${instrument.model}`,
-            ...specs,
-            measuringResolution: undefined,
-          }));
-          setNotification(null);
-        }
-      });
+    // Find Matches
+    const matches = findMatchingTolerances(instrument, numericVal, currentUnit);
 
+    if (matches && matches.length > 1) {
+        setUnresolvedToleranceModal({
+            instrumentName: instrument.model,
+            matches: matches,
+            onSelect: (selected) => {
+                applySpecs(selected);
+                setUnresolvedToleranceModal(null);
+            }
+        });
+    } else if (matches && matches.length === 1) {
+        applySpecs(matches[0]);
     } else {
-      alert(`Could not find a matching range in ${instrument.model} for ${currentVal} ${currentUnit}.`);
+        setNotification({
+            title: "No Match Found",
+            message: `Could not find a matching range in ${instrument.model} for ${currentVal} ${currentUnit}.`
+        });
     }
   };
 
@@ -309,6 +334,14 @@ const AddTmdeModal = ({
         onConfirm={notification?.onConfirm}
         confirmText={notification?.confirmText}
         cancelText={notification?.cancelText}
+      />
+
+      <UnresolvedToleranceModal
+        isOpen={!!unresolvedToleranceModal}
+        matches={unresolvedToleranceModal?.matches}
+        instrumentName={unresolvedToleranceModal?.instrumentName}
+        onSelect={unresolvedToleranceModal?.onSelect}
+        onClose={() => setUnresolvedToleranceModal(null)}
       />
 
       <div

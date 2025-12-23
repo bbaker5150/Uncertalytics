@@ -5,8 +5,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faBookOpen, faEdit, faTimes } from "@fortawesome/free-solid-svg-icons";
 import InstrumentLookupModal from "./InstrumentLookupModal";
 import NotificationModal from "../../../components/modals/NotificationModal"; //
-import { findInstrumentTolerance, getToleranceSummary } from "../../../utils/uncertaintyMath";
+import { findInstrumentTolerance, findMatchingTolerances, getToleranceSummary } from "../../../utils/uncertaintyMath";
 import { useFloatingWindow } from "../../../hooks/useFloatingWindow";
+import UnresolvedToleranceModal from "../../testPoints/components/UnresolvedToleranceModal";
 
 const EditUutModal = ({
     isOpen,
@@ -27,6 +28,7 @@ const EditUutModal = ({
     const [pendingInstrument, setPendingInstrument] = useState(null);
     const [showRangePrompt, setShowRangePrompt] = useState(false);
     const [rangePromptData, setRangePromptData] = useState({ value: "", unit: "" });
+    const [unresolvedToleranceModal, setUnresolvedToleranceModal] = useState(null);
 
     // Floating Window Logic
     const { position, handleMouseDown } = useFloatingWindow({
@@ -101,14 +103,24 @@ const EditUutModal = ({
         setSelectedInstrument(instrument);
 
         if (uutNominal && uutNominal.value && uutNominal.unit) {
-            const matchedData = findInstrumentTolerance(
+            const matches = findMatchingTolerances(
                 instrument,
                 uutNominal.value,
                 uutNominal.unit
             );
 
-            if (matchedData) {
-                applySpecs(matchedData, uutNominal.value, uutNominal.unit);
+            if (matches && matches.length > 1) {
+                setUnresolvedToleranceModal({
+                    instrumentName: instrument.model,
+                    matches: matches,
+                    onSelect: (selected) => {
+                        applySpecs(selected, uutNominal.value, uutNominal.unit);
+                        setUnresolvedToleranceModal(null);
+                    }
+                });
+                return;
+            } else if (matches && matches.length === 1) {
+                applySpecs(matches[0], uutNominal.value, uutNominal.unit);
                 return;
             }
         }
@@ -165,6 +177,14 @@ const EditUutModal = ({
                 onConfirm={notification?.onConfirm}
                 confirmText={notification?.confirmText}
                 cancelText={notification?.cancelText}
+            />
+
+            <UnresolvedToleranceModal
+                isOpen={!!unresolvedToleranceModal}
+                matches={unresolvedToleranceModal?.matches}
+                instrumentName={unresolvedToleranceModal?.instrumentName}
+                onSelect={unresolvedToleranceModal?.onSelect}
+                onClose={() => setUnresolvedToleranceModal(null)}
             />
 
             {showRangePrompt && (
