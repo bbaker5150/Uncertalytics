@@ -13,6 +13,7 @@ import FullBreakdownModal from "./features/analysis/components/BreakdownModals/F
 import TestPointInfoModal from "./features/testPoints/components/TestPointInfoModal";
 import InstrumentBuilderModal from "./features/instruments/components/InstrumentBuilderModal";
 import UnresolvedToleranceModal from "./features/testPoints/components/UnresolvedToleranceModal";
+import Tutorial from "./components/common/Tutorial";
 
 // --- Floating Tools ---
 import FloatingNotepad from "./components/tools/FloatingNotepad";
@@ -42,7 +43,8 @@ import {
   faRightLeft,
   faRadio,
   faHistory,
-  faList
+  faList,
+  faQuestionCircle,
 } from "@fortawesome/free-solid-svg-icons";
 
 const ThemeContext = React.createContext(false);
@@ -154,6 +156,7 @@ function App() {
   const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
   const [isInstrumentBuilderOpen, setIsInstrumentBuilderOpen] = useState(false);
+  const [runTutorial, setRunTutorial] = useState(false);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("default");
@@ -634,7 +637,7 @@ function App() {
           isIconConfirm={appNotification?.isIconConfirm}
           onConfirm={appNotification?.onConfirm}
         />
-
+        <Tutorial run={runTutorial} setRun={setRunTutorial} />
         {currentSessionData && (
           <>
             <FloatingNotepad
@@ -862,6 +865,15 @@ function App() {
               </div>
 
               <div className="header-divider"></div>
+              <button
+                  className={`icon-action-btn ${runTutorial ? "active" : ""}`}
+                  onClick={() => setRunTutorial(true)}
+                  title="Help & Tutorial"
+                >
+                  <FontAwesomeIcon icon={faQuestionCircle} />
+                </button>
+              <div className="header-divider"></div>
+              
 
               <div className="action-group">
                 {showThemeSelector && (
