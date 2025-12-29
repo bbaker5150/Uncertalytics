@@ -13,7 +13,7 @@ import FullBreakdownModal from "./features/analysis/components/BreakdownModals/F
 import TestPointInfoModal from "./features/testPoints/components/TestPointInfoModal";
 import InstrumentBuilderModal from "./features/instruments/components/InstrumentBuilderModal";
 import UnresolvedToleranceModal from "./features/testPoints/components/UnresolvedToleranceModal";
-import Tutorial from "./components/common/Tutorial";
+import HelpModal from "./components/common/HelpModal";
 
 // --- Floating Tools ---
 import FloatingNotepad from "./components/tools/FloatingNotepad";
@@ -156,7 +156,9 @@ function App() {
   const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
   const [isInstrumentBuilderOpen, setIsInstrumentBuilderOpen] = useState(false);
-  const [runTutorial, setRunTutorial] = useState(false);
+  
+  // Replaced runTutorial with isHelpOpen
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("default");
@@ -637,7 +639,10 @@ function App() {
           isIconConfirm={appNotification?.isIconConfirm}
           onConfirm={appNotification?.onConfirm}
         />
-        <Tutorial run={runTutorial} setRun={setRunTutorial} />
+        
+        {/* Replaced Tutorial with HelpModal */}
+        <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+
         {currentSessionData && (
           <>
             <FloatingNotepad
@@ -866,8 +871,8 @@ function App() {
 
               <div className="header-divider"></div>
               <button
-                  className={`icon-action-btn ${runTutorial ? "active" : ""}`}
-                  onClick={() => setRunTutorial(true)}
+                  className={`icon-action-btn ${isHelpOpen ? "active" : ""}`}
+                  onClick={() => setIsHelpOpen(true)}
                   title="Help & Tutorial"
                 >
                   <FontAwesomeIcon icon={faQuestionCircle} />
