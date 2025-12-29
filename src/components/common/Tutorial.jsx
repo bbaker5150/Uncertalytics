@@ -45,120 +45,132 @@ const Tutorial = ({ run, setRun }) => {
       content: 'Step 1: Start by configuring your session. Click this button to open the Session Editor.',
       spotlightClicks: true,
       placement: 'right',
-      disableScroll: true, // Sidebar is usually visible, prevent jumpiness
+      disableScroll: true,
     },
     {
-      target: '.modal-content', // Generic modal target
+      target: '.modal-content',
       content: 'In the "Session Details" tab, enter the metadata for your report (Analyst, Organization, Document ID).',
       placement: 'right', 
-      disableScroll: true, // CRITICAL: Prevents body scroll from moving fixed modal
+      disableScroll: true,
     },
     {
-      target: '#session-tab-requirements', // Updated ID to target the specific tab
+      target: '#session-tab-requirements',
       content: 'Click the "Uncertainty Requirements" tab to define your confidence levels (e.g., 95%) and reliability targets.',
       spotlightClicks: true,
       placement: 'bottom',
-      disableScroll: true, // CRITICAL
+      disableScroll: true,
     },
     {
-      target: '.modal-icon-button.primary', // Save button
+      target: '.modal-icon-button.primary',
       content: 'Click here to save your session changes.',
       placement: 'left',
       spotlightClicks: true,
-      disableScroll: true, // CRITICAL
+      disableScroll: true,
     },
 
     // --- Step 2 & 3: UUT Definition ---
     {
-      target: 'button[title="Edit UUT Specifications"]', // In UncertaintyPanel
+      target: 'button[title="Edit UUT Specifications"]',
       content: 'Step 2: Define your Unit Under Test (UUT). Click this button to open the UUT specification modal.',
       spotlightClicks: true,
       placement: 'bottom',
-      // No disableScroll here because we might need to scroll the main page to see this button
     },
     {
-      target: 'input[placeholder*="e.g., Fluke"]', // Manual Entry inside Modal
+      target: 'input[placeholder*="e.g., Fluke"]',
       content: 'You can manually enter the UUT description here...',
       placement: 'bottom',
-      disableScroll: true, // CRITICAL: Target is inside fixed modal
+      disableScroll: true,
+      spotlightClicks: true,
     },
     {
-      target: 'button[title="Import from Instrument Library"]', // Library Button
+      target: 'button[title="Import from Instrument Library"]',
       content: '...OR use the Library button to auto-fill specifications from saved instruments.',
       placement: 'left',
-      disableScroll: true, // CRITICAL
+      disableScroll: true,
+      spotlightClicks: true,
     },
     {
-      target: '.add-component-button', // Add Tolerance
+      target: '.add-component-button',
       content: 'Step 3: If defining manually, click "Add Tolerance" to add components like Reading, Range, or Floor specifications.',
       placement: 'top',
-      disableScroll: true, // CRITICAL
+      disableScroll: true,
+      spotlightClicks: true,
     },
     {
-      target: '.modal-icon-button.primary', // Save UUT
+      target: '.modal-icon-button.primary',
       content: 'Save your UUT specifications to continue.',
       placement: 'left',
       spotlightClicks: true,
-      disableScroll: true, // CRITICAL
+      disableScroll: true,
     },
 
     // --- Step 4: Measurement Points & Equations ---
     {
       target: '.add-point-button',
-      content: 'Step 4: Now, let\'s add a Measurement Point. Click here to begin.',
-      spotlightClicks: true,
-      placement: 'right',
+      content: 'Step 4: Now, let\'s add a Measurement Point. Click the button to begin.',
+      spotlightClicks: true, 
+      placement: 'bottom', // UPDATED: Prevents tooltip from overlapping the small button
+      disableBeacon: true, // UPDATED: Removes beacon layer which can block clicks
+      styles: {
+        spotlight: {
+          borderRadius: 8, // Matches the button's shape
+        }
+      }
     },
     {
-      target: 'input[value="derived"]', // Radio button inside modal
+      target: 'input[value="derived"]',
       content: 'Choose "Direct" for simple readings. Choose "Derived" if the result is calculated (e.g., Power = V * I).',
       placement: 'right',
-      disableScroll: true, // CRITICAL
+      disableScroll: true,
+      spotlightClicks: true,
     },
     {
-      target: 'input[name="equationString"]', // Equation Input inside modal
+      target: 'input[name="equationString"]',
       content: 'For Derived points, enter your equation here (e.g., "V / R").',
       placement: 'bottom',
-      disableScroll: true, // CRITICAL
+      disableScroll: true,
+      spotlightClicks: true,
     },
     {
-      target: '.modal-icon-button.primary', // Save
+      target: '.modal-icon-button.primary',
       content: 'Save your measurement point to proceed.',
       placement: 'left',
       spotlightClicks: true,
-      disableScroll: true, // CRITICAL
+      disableScroll: true,
     },
 
     // --- Step 5 & 6: TMDEs & Mapping ---
     {
-      target: 'button[title*="Add"][title*="TMDE"]', // Add TMDE Button (Main Panel)
+      target: 'button[title*="Add"][title*="TMDE"]',
       content: 'Step 5: Add the equipment (TMDE) used for this measurement.',
       spotlightClicks: true,
       placement: 'bottom',
     },
     {
-      target: '.tmde-header', // Header area of TMDE modal
+      target: '.tmde-header',
       content: 'If this is a Derived point, map this TMDE to one of your equation variables (e.g., select "V").',
       placement: 'bottom',
-      disableScroll: true, // CRITICAL
+      disableScroll: true,
+      spotlightClicks: true,
     },
     {
-      target: '.add-component-button', // Tolerance form in TMDE modal
+      target: '.add-component-button',
       content: 'Step 6: Define the tolerance for this standard using the Library or manual components.',
       placement: 'top',
-      disableScroll: true, // CRITICAL
+      disableScroll: true,
+      spotlightClicks: true,
     },
     {
-      target: '.modal-icon-button.primary', // Save TMDE
+      target: '.modal-icon-button.primary',
       content: 'Save this TMDE.',
       placement: 'left',
       spotlightClicks: true,
-      disableScroll: true, // CRITICAL
+      disableScroll: true,
     },
 
     // --- Step 7: Risk Metrics ---
     {
-      target: '.analysis-tabs button:nth-of-type(2)', // Risk Tab
+      target: '.analysis-tabs button:nth-of-type(2)',
       content: 'Step 7: Once calculated, click the "Risk Analysis" tab.',
       spotlightClicks: true,
       placement: 'top',
@@ -171,13 +183,13 @@ const Tutorial = ({ run, setRun }) => {
 
     // --- Step 8: Risk Mitigation ---
     {
-      target: '.analysis-tabs button:nth-of-type(3)', // Mitigation Tab
+      target: '.analysis-tabs button:nth-of-type(3)',
       content: 'Step 8: Click "Risk Mitigation" to access Guard Banding tools.',
       spotlightClicks: true,
       placement: 'top',
     },
     {
-      target: '.risk-analysis-dashboard', // Re-use class for dashboard area
+      target: '.risk-analysis-dashboard',
       content: 'This view calculates necessary Guard Bands to achieve your required PFA targets.',
       placement: 'left',
     },
@@ -215,7 +227,7 @@ const Tutorial = ({ run, setRun }) => {
       callback={handleJoyrideCallback}
       spotlightClicks={true} 
       disableOverlayClose={true}
-      disableScrollParentFix={true} // Add this as an extra safety measure
+      disableScrolling={true}
       styles={{
         options: {
           zIndex: 10000,

@@ -30,13 +30,14 @@ const EditSessionModal = ({
   const [viewingImageSrc, setViewingImageSrc] = useState(null);
 
   // Floating Window Logic
+  // UPDATED: defaultHeight increased to 900 to force the centering logic to place the modal higher up on the screen
   const { position, handleMouseDown } = useFloatingWindow({
     isOpen,
     defaultWidth: 1000,
-    defaultHeight: 800,
+    defaultHeight: 900, 
     initialPosition: typeof window !== 'undefined' ? {
       x: Math.max(0, (window.innerWidth - 1000) / 2),
-      y: Math.max(0, (window.innerHeight - 800) / 2)
+      y: Math.max(0, (window.innerHeight - (window.innerHeight * 0.85)) / 2) // Explicitly center based on 85vh target
     } : null
   });
 
@@ -213,21 +214,21 @@ const EditSessionModal = ({
           display: 'flex',
           flexDirection: 'column',
           zIndex: 2000,
-          overflow: 'hidden'
+          overflow: 'hidden',
+          padding: 0 // Reset padding to handle layout manually
         }}
       >
-        {/* --- Draggable Header --- */}
+        {/* --- 1. Fixed Header (Draggable) --- */}
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            paddingBottom: '10px',
-            marginBottom: '0px',
+            padding: '20px 30px 10px 30px',
             borderBottom: '1px solid var(--border-color)',
             cursor: 'move',
             userSelect: 'none',
-            padding: '20px 30px 10px 30px'
+            flexShrink: 0 // Prevent shrinking
           }}
           onMouseDown={handleMouseDown}
         >
@@ -240,235 +241,247 @@ const EditSessionModal = ({
           <button onClick={onClose} className="modal-close-button" style={{ position: 'static' }}>&times;</button>
         </div>
 
-        {/* --- Scrollable Content --- */}
-        {/* FIX: Remove padding here to allow manual layout management */}
-        <div className="modal-main-content" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 0, display: 'flex', flexDirection: 'column' }}>
-          
-          {/* TABS: Explicit padding, no margins */}
-          <div className="modal-tabs" style={{ 
-            margin: 0, 
-            padding: '10px 30px 0 30px', 
-            borderBottom: '1px solid var(--border-color)' 
-          }}>
-            <button
-              id="session-tab-details" // ID Added for Tutorial
-              className={`modal-tab ${activeSection === "details" ? "active" : ""}`}
-              onClick={() => setActiveSection("details")}
-            >
-              Session Details
-            </button>
-            <button
-              id="session-tab-requirements" // ID Added for Tutorial
-              className={`modal-tab ${activeSection === "requirements" ? "active" : ""}`}
-              onClick={() => setActiveSection("requirements")}
-            >
-              Uncertainty Requirements
-            </button>
-          </div>
+        {/* --- 2. Fixed Tabs (Outside Scroll Area) --- */}
+        <div className="modal-tabs" style={{ 
+          margin: 0, 
+          padding: '10px 30px 0 30px', 
+          borderBottom: '1px solid var(--border-color)',
+          flexShrink: 0 // Prevent shrinking
+        }}>
+          <button
+            id="session-tab-details" 
+            className={`modal-tab ${activeSection === "details" ? "active" : ""}`}
+            onClick={() => setActiveSection("details")}
+          >
+            Session Details
+          </button>
+          <button
+            id="session-tab-requirements" 
+            className={`modal-tab ${activeSection === "requirements" ? "active" : ""}`}
+            onClick={() => setActiveSection("requirements")}
+          >
+            Uncertainty Requirements
+          </button>
+        </div>
 
-          {/* CONTENT WRAPPER: Adds padding back to the content area */}
-          <div style={{ padding: '30px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {activeSection === "details" && (
-              <div className="details-grid">
-                <div className="form-section full-span">
-                  <label>Session Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name || ""}
-                    onChange={handleChange}
-                    placeholder="e.g., Fluke 8588A Verification"
-                  />
-                </div>
+        {/* --- 3. Scrollable Body (Form Content Only) --- */}
+        <div className="modal-main-content" style={{ 
+            flex: 1, 
+            overflowY: 'auto', 
+            overflowX: 'hidden', 
+            padding: '30px', 
+            display: 'flex', 
+            flexDirection: 'column' 
+        }}>
+          {activeSection === "details" && (
+            <div className="details-grid">
+              <div className="form-section full-span">
+                <label>Session Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name || ""}
+                  onChange={handleChange}
+                  placeholder="e.g., Fluke 8588A Verification"
+                />
+              </div>
 
-                <div className="form-section">
-                  <label>Analyst</label>
-                  <input
-                    type="text"
-                    name="analyst"
-                    value={formData.analyst || ""}
-                    onChange={handleChange}
-                    placeholder="Your Name"
-                  />
-                </div>
-                <div className="form-section">
-                  <label>Organization</label>
-                  <input
-                    type="text"
-                    name="organization"
-                    value={formData.organization || ""}
-                    onChange={handleChange}
-                    placeholder="Your Organization"
-                  />
-                </div>
-                <div className="form-section">
-                  <label>Document</label>
-                  <input
-                    type="text"
-                    name="document"
-                    value={formData.document || ""}
-                    onChange={handleChange}
-                    placeholder="Document ID or Name"
-                  />
-                </div>
-                <div className="form-section">
-                  <label>Document Date</label>
-                  <input
-                    type="date"
-                    name="documentDate"
-                    value={formData.documentDate || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="form-section full-span">
-                  <label>Analysis Notes</label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes || ""}
-                    onChange={handleChange}
-                    rows="8"
-                    placeholder="Record analysis notes here..."
-                  ></textarea>
-                </div>
+              <div className="form-section">
+                <label>Analyst</label>
+                <input
+                  type="text"
+                  name="analyst"
+                  value={formData.analyst || ""}
+                  onChange={handleChange}
+                  placeholder="Your Name"
+                />
+              </div>
+              <div className="form-section">
+                <label>Organization</label>
+                <input
+                  type="text"
+                  name="organization"
+                  value={formData.organization || ""}
+                  onChange={handleChange}
+                  placeholder="Your Organization"
+                />
+              </div>
+              <div className="form-section">
+                <label>Document</label>
+                <input
+                  type="text"
+                  name="document"
+                  value={formData.document || ""}
+                  onChange={handleChange}
+                  placeholder="Document ID or Name"
+                />
+              </div>
+              <div className="form-section">
+                <label>Document Date</label>
+                <input
+                  type="date"
+                  name="documentDate"
+                  value={formData.documentDate || ""}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="form-section full-span">
+                <label>Analysis Notes</label>
+                <textarea
+                  name="notes"
+                  value={formData.notes || ""}
+                  onChange={handleChange}
+                  rows="8"
+                  placeholder="Record analysis notes here..."
+                ></textarea>
+              </div>
 
-                <div className="form-section full-span">
-                  <label>Attached Images</label>
-                  <div className="image-gallery-container">
-                    {(formData.noteImages || []).map((imageRef) => {
-                      const src = getImageSrc(imageRef);
-                      return (
-                        <div
-                          key={imageRef.id}
-                          className="image-thumbnail"
-                          onClick={() => src && setViewingImageSrc(src)}
-                          style={{ cursor: src ? 'pointer' : 'default', border: src ? '1px solid #ccc' : '2px dashed red' }}
-                          title={src ? `Click to view ${imageRef.fileName}` : 'Image not found in cache'}
+              <div className="form-section full-span">
+                <label>Attached Images</label>
+                <div className="image-gallery-container">
+                  {(formData.noteImages || []).map((imageRef) => {
+                    const src = getImageSrc(imageRef);
+                    return (
+                      <div
+                        key={imageRef.id}
+                        className="image-thumbnail"
+                        onClick={() => src && setViewingImageSrc(src)}
+                        style={{ cursor: src ? 'pointer' : 'default', border: src ? '1px solid #ccc' : '2px dashed red' }}
+                        title={src ? `Click to view ${imageRef.fileName}` : 'Image not found in cache'}
+                      >
+                        {src ? (
+                          <img src={src} alt={imageRef.fileName} />
+                        ) : (
+                          <div style={{ color: 'red', fontSize: '10px', padding: '5px', textAlign: 'center' }}>
+                            Missing Image Data
+                          </div>
+                        )}
+                        <button
+                          className="remove-image-btn"
+                          onClick={(e) => handleRemoveImage(e, imageRef.id)}
+                          title="Remove Image"
                         >
-                          {src ? (
-                            <img src={src} alt={imageRef.fileName} />
-                          ) : (
-                            <div style={{ color: 'red', fontSize: '10px', padding: '5px', textAlign: 'center' }}>
-                              Missing Image Data
-                            </div>
-                          )}
-                          <button
-                            className="remove-image-btn"
-                            onClick={(e) => handleRemoveImage(e, imageRef.id)}
-                            title="Remove Image"
-                          >
-                            <FontAwesomeIcon icon={faTimes} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                    <label htmlFor="image-upload-input" className="image-add-button">
-                      <FontAwesomeIcon icon={faPlus} />
-                    </label>
-                    <input
-                      id="image-upload-input"
-                      type="file"
-                      accept="image/png, image/jpeg"
-                      multiple
-                      onChange={handleImageUpload}
-                      style={{ display: "none" }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSection === "requirements" && (
-              <div className="details-grid">
-                <div className="form-section">
-                  <label>Uncertainty Confidence (%)</label>
+                          <FontAwesomeIcon icon={faTimes} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <label htmlFor="image-upload-input" className="image-add-button">
+                    <FontAwesomeIcon icon={faPlus} />
+                  </label>
                   <input
-                    type="number"
-                    name="uncertaintyConfidence"
-                    value={formData.uncReq?.uncertaintyConfidence || ""}
-                    onChange={handleReqChange}
-                    placeholder="e.g., 95"
-                    min="0"
-                    max="99.999"
-                    step="0.01"
-                  />
-                </div>
-                <div className="form-section">
-                  <label>Meas Rel Target (%)</label>
-                  <input
-                    type="number"
-                    step="1"
-                    max="100"
-                    min="0"
-                    name="reliability"
-                    placeholder="e.g., 85"
-                    value={formData.uncReq?.reliability || ""}
-                    onChange={handleReqChange}
-                  />
-                </div>
-                <div className="form-section">
-                  <label>Calibration Interval</label>
-                  <input
-                    type="number"
-                    name="calInt"
-                    value={formData.uncReq?.calInt || ""}
-                    onChange={handleReqChange}
-                    placeholder="e.g., 12"
-                    min="1"
-                    max="1000"
-                    step="1"
-                  />
-                </div>
-                <div className="form-section">
-                  <label>Meas Rel Calc/Assumed (%)</label>
-                  <input
-                    type="number"
-                    name="measRelCalcAssumed"
-                    value={formData.uncReq?.measRelCalcAssumed || ""}
-                    onChange={handleReqChange}
-                    placeholder="e.g., 85"
-                    min="1"
-                    max="99.999"
-                    step="0.01"
-                  />
-                </div>
-                <div className="form-section">
-                  <label>TUR Needed For Assumed Meas Rel</label>
-                  <input
-                    type="number"
-                    name="neededTUR"
-                    value={formData.uncReq?.neededTUR || ""}
-                    onChange={handleReqChange}
-                    placeholder="e.g., 4"
-                    min="1"
-                    max="100"
-                    step="1"
-                  />
-                </div>
-                <div className="form-section">
-                  <label>PFA Required (%)</label>
-                  <input
-                    type="number"
-                    name="reqPFA"
-                    value={formData.uncReq?.reqPFA || ""}
-                    onChange={handleReqChange}
-                    placeholder="e.g., 2"
-                    min="1"
-                    max="99.999"
-                    step="0.01"
+                    id="image-upload-input"
+                    type="file"
+                    accept="image/png, image/jpeg"
+                    multiple
+                    onChange={handleImageUpload}
+                    style={{ display: "none" }}
                   />
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            <div className="modal-actions" style={{ justifyContent: "flex-end", alignItems: "center", marginTop: "auto", paddingTop: "20px" }}>
-              <div style={{ display: "flex", gap: "10px" }}>
+          {activeSection === "requirements" && (
+            <div className="details-grid">
+              <div className="form-section">
+                <label>Uncertainty Confidence (%)</label>
+                <input
+                  type="number"
+                  name="uncertaintyConfidence"
+                  value={formData.uncReq?.uncertaintyConfidence || ""}
+                  onChange={handleReqChange}
+                  placeholder="e.g., 95"
+                  min="0"
+                  max="99.999"
+                  step="0.01"
+                />
+              </div>
+              <div className="form-section">
+                <label>Meas Rel Target (%)</label>
+                <input
+                  type="number"
+                  step="1"
+                  max="100"
+                  min="0"
+                  name="reliability"
+                  placeholder="e.g., 85"
+                  value={formData.uncReq?.reliability || ""}
+                  onChange={handleReqChange}
+                />
+              </div>
+              <div className="form-section">
+                <label>Calibration Interval</label>
+                <input
+                  type="number"
+                  name="calInt"
+                  value={formData.uncReq?.calInt || ""}
+                  onChange={handleReqChange}
+                  placeholder="e.g., 12"
+                  min="1"
+                  max="1000"
+                  step="1"
+                />
+              </div>
+              <div className="form-section">
+                <label>Meas Rel Calc/Assumed (%)</label>
+                <input
+                  type="number"
+                  name="measRelCalcAssumed"
+                  value={formData.uncReq?.measRelCalcAssumed || ""}
+                  onChange={handleReqChange}
+                  placeholder="e.g., 85"
+                  min="1"
+                  max="99.999"
+                  step="0.01"
+                />
+              </div>
+              <div className="form-section">
+                <label>TUR Needed For Assumed Meas Rel</label>
+                <input
+                  type="number"
+                  name="neededTUR"
+                  value={formData.uncReq?.neededTUR || ""}
+                  onChange={handleReqChange}
+                  placeholder="e.g., 4"
+                  min="1"
+                  max="100"
+                  step="1"
+                />
+              </div>
+              <div className="form-section">
+                <label>PFA Required (%)</label>
+                <input
+                  type="number"
+                  name="reqPFA"
+                  value={formData.uncReq?.reqPFA || ""}
+                  onChange={handleReqChange}
+                  placeholder="e.g., 2"
+                  min="1"
+                  max="99.999"
+                  step="0.01"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* --- 4. Fixed Footer (Actions Always Visible) --- */}
+        <div style={{ 
+            padding: '20px 30px', 
+            borderTop: '1px solid var(--border-color)', 
+            flexShrink: 0,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            backgroundColor: 'var(--content-background)' // Ensure solid background behind buttons
+        }}>
+            <div className="modal-actions" style={{ marginTop: 0, gap: "10px", display: 'flex' }}>
                 <button className="modal-icon-button primary" onClick={handleSave} title="Save Changes">
                   <FontAwesomeIcon icon={faCheck} />
                 </button>
-              </div>
             </div>
-          </div>
         </div>
+
       </div>
     </>,
     document.body

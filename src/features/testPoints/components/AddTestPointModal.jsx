@@ -1,5 +1,6 @@
 import * as math from 'mathjs';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import ReactDOM from 'react-dom'; // Import ReactDOM for Portals
 import Select from 'react-select';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faPlus, faTrashAlt, faGripHorizontal } from '@fortawesome/free-solid-svg-icons';
@@ -456,7 +457,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
 
     const isEditing = !!initialData;
 
-    return (
+    return ReactDOM.createPortal(
         <>
             {notification && <NotificationModal isOpen={!!notification} onClose={() => setNotification(null)} title={notification.title} message={notification.message} />}
             
@@ -713,7 +714,8 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                     <button className="modal-icon-button primary" onClick={handleSave} title="Save Changes"><FontAwesomeIcon icon={faCheck} /></button>
                 </div>
             </div>
-        </>
+        </>,
+        document.body
     );
 };
 
