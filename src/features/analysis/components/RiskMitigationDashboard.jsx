@@ -1,10 +1,12 @@
 import React from "react";
 
-const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
+const RiskMitigationDashboard = ({ results, onShowBreakdown, activeModals = [] }) => {
   if (!results) return null;
 
   const guardBandInputs = results.gbInputs;
   const guardBand = results.gbResults;
+
+  const isActive = (key) => activeModals.includes(key);
 
   const nativeUnit = results.nativeUnit || "units";
 
@@ -12,7 +14,7 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
     <div className="risk-analysis-container">
       <div className="risk-analysis-dashboard">
         <div
-          className="risk-card clickable"
+          className={`risk-card clickable ${isActive("gbinputs") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("gbinputs")}
         >
           <div
@@ -101,7 +103,7 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           </ul>
         </div>
         <div
-          className="risk-card gblow-card clickable"
+          className={`risk-card gblow-card clickable ${isActive("gblow") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("gblow")}
         >
           <div className="risk-value">{guardBand.GBLOW.toFixed(results.uutResolution+1)}</div>
@@ -111,7 +113,7 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           </div>
         </div>
         <div
-          className="risk-card gbhigh-card clickable"
+          className={`risk-card gbhigh-card clickable ${isActive("gbhigh") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("gbhigh")}
         >
           <div className="risk-value">{guardBand.GBUP.toFixed(results.uutResolution+1)}</div>
@@ -122,7 +124,7 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
         </div>
 
         <div
-          className={`risk-card gbpfa-card clickable`}
+          className={`risk-card gbpfa-card clickable ${isActive("gbpfa") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("gbpfa")}
         >
           <div className="risk-value">{guardBand.GBPFA.toFixed(4)} %</div>
@@ -141,7 +143,7 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           </ul>
         </div>
         <div
-          className="risk-card gbpfr-card clickable"
+          className={`risk-card gbpfr-card clickable ${isActive("gbpfr") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("gbpfr")}
         >
           <div className="risk-value">{guardBand.GBPFR.toFixed(4)} %</div>
@@ -160,7 +162,7 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           </ul>
         </div>
         <div
-          className="risk-card gbmult-card clickable"
+          className={`risk-card gbmult-card clickable ${isActive("gbmult") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("gbmult")}
         >
           <div className="risk-value">{guardBand.GBMULT.toFixed(4)} %</div>
@@ -171,7 +173,7 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           </div>
         </div>
         <div
-          className="risk-card gbcalint-card clickable"
+          className={`risk-card gbcalint-card clickable ${isActive("gbcalint") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("gbcalint")}
         >
           <div className="risk-value">{guardBand.GBCALINT.toFixed(4)}</div>
@@ -183,7 +185,7 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           </div>
         </div>
         <div
-          className="risk-card calint-card clickable"
+          className={`risk-card calint-card clickable ${isActive("calint") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("calint")}
         >
           <div className="risk-value">{guardBand.NOGBCALINT.toFixed(4)}</div>
@@ -194,7 +196,7 @@ const RiskMitigationDashboard = ({ results, onShowBreakdown }) => {
           </div>
         </div>
         <div
-          className="risk-card measrel-card clickable"
+          className={`risk-card measrel-card clickable ${isActive("measrel") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("measrel")}
         >
           <div className="risk-value">{guardBand.NOGBMEASREL.toFixed(4)} %</div>

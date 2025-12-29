@@ -1,7 +1,9 @@
 import * as math from 'mathjs';
 import React, { useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import Latex from "../../../../components/common/Latex";
 import { unitSystem, calculateUncertaintyFromToleranceObject } from "../../../../utils/uncertaintyMath";
+import useFloatingWindow from '../../../../hooks/useFloatingWindow';
 
 // Helper to format numbers for LaTeX display
 const formatNumberForLatex = (num, precision = 4) => {
@@ -16,6 +18,12 @@ const formatNumberForLatex = (num, precision = 4) => {
 
 
 const DerivedBreakdownModal = ({ isOpen, onClose, breakdownData }) => {
+    
+    const { style: windowStyle, handleMouseDown } = useFloatingWindow({
+        isOpen,
+        defaultWidth: 700,
+        defaultHeight: 600
+    });
 
     // --- This hook now rebuilds the formula from individual TMDEs ---
     const formulaTerms = useMemo(() => {
@@ -134,84 +142,97 @@ const DerivedBreakdownModal = ({ isOpen, onClose, breakdownData }) => {
     const sumOfVariancesDerivedUnits = formulaTerms.reduce((sum, term) => sum + (isNaN(term.varianceDerivedSq) ? 0 : term.varianceDerivedSq), 0);
     const combinedUncertaintyInDerivedUnit = Math.sqrt(sumOfVariancesDerivedUnits);
 
-    return (
-        <div className="modal-overlay">
-            <div className="modal-content breakdown-modal-content" style={{ maxWidth: '700px' }}>
-                <button onClick={onClose} className="modal-close-button">&times;</button>
-                <h3>Derived Uncertainty Calculation Breakdown</h3>
+    return ReactDOM.createPortal(
+        <div 
+            className="modal-content breakdown-modal-content" 
+            style={{ 
+                ...windowStyle, 
+                width: '700px',
+                zIndex: 2000,
+                display: 'flex',
+                flexDirection: 'column'
+            }}
+        >
+            <button onClick={onClose} className="modal-close-button">&times;</button>
+            <h3 
+                onMouseDown={handleMouseDown} 
+                style={{ cursor: 'move', userSelect: 'none', margin: '0 0 15px 0', paddingRight: '30px' }}
+            >
+                Derived Uncertainty Calculation Breakdown
+            </h3>
 
-                <div className="modal-body-scrollable">
-                    {/* Equation Display */}
-                    <div className="breakdown-step">
-                        <h5>Measurement Equation (<Latex>$y = f(x_1, x_2, ...)$</Latex>)</h5>
-                        <div style={{ fontSize: '1.1em', textAlign: 'center' }}> <Latex>{`$$ ${equationTex} $$`}</Latex> </div>
-                    </div>
+            <div className="modal-body-scrollable">
+                {/* Equation Display */}
+                <div className="breakdown-step">
+                    <h5>Measurement Equation (<Latex>$y = f(x_1, x_2, ...)$</Latex>)</h5>
+                    <div style={{ fontSize: '1.1em', textAlign: 'center' }}> <Latex>{`$$ ${equationTex} $$`}</Latex> </div>
+                </div>
 
-                    {/* Component Breakdown Loop */}
-                    {formulaTerms.map((term, index) => {
-                         const formattedValueUi = formatNumberForLatex(term.ui_native);
-                         const displayValueUnitUi = term.ui_unit_native;
-                         const formattedCi = formatNumberForLatex(term.ci);
-                         const formattedContribution = (term && !isNaN(term.contribution)) ? formatNumberForLatex(term.contribution) : 'N/A';
+                {/* Component Breakdown Loop */}
+                {formulaTerms.map((term, index) => {
+                     const formattedValueUi = formatNumberForLatex(term.ui_native);
+                     const displayValueUnitUi = term.ui_unit_native;
+                     const formattedCi = formatNumberForLatex(term.ci);
+                     const formattedContribution = (term && !isNaN(term.contribution)) ? formatNumberForLatex(term.contribution) : 'N/A';
 
-                        let derivativeDisplay = '';
-                        let derivativeTex = '';
-                        // Find the original budget component to get the derivative string
-                        const budgetComp = breakdownData.results.calculatedBudgetComponents.find(c => c.name.includes(`(${term.varSymbol})`));
-                        if (budgetComp) {
-                            derivativeDisplay = budgetComp.derivativeString;
-                            if(derivativeDisplay){ try { derivativeTex = math.parse(derivativeDisplay).toTex(); } catch (e) { derivativeTex = derivativeDisplay; } }
-                        } else if (term.varSymbol === 'res') {
-                            derivativeTex = "1"; // Ci for resolution is 1
-                        }
+                    let derivativeDisplay = '';
+                    let derivativeTex = '';
+                    // Find the original budget component to get the derivative string
+                    const budgetComp = breakdownData.results.calculatedBudgetComponents.find(c => c.name.includes(`(${term.varSymbol})`));
+                    if (budgetComp) {
+                        derivativeDisplay = budgetComp.derivativeString;
+                        if(derivativeDisplay){ try { derivativeTex = math.parse(derivativeDisplay).toTex(); } catch (e) { derivativeTex = derivativeDisplay; } }
+                    } else if (term.varSymbol === 'res') {
+                        derivativeTex = "1"; // Ci for resolution is 1
+                    }
 
-                        let evaluationStepTex = '';
-                        if (derivativeDisplay && Object.keys(nominalScopeForDisplay).length > 0) {
-                            try { const derivativeNode = math.parse(derivativeDisplay); evaluationStepTex = derivativeNode.toTex({ handler: (node, options) => { if (node.isSymbolNode && nominalScopeForDisplay.hasOwnProperty(node.name)) { return formatNumberForLatex(nominalScopeForDisplay[node.name]); } } }); evaluationStepTex = `${evaluationStepTex} = ${formattedCi}`; } catch (e) { evaluationStepTex = `${formattedCi}`; }
-                        } else if (derivativeTex) { evaluationStepTex = `${derivativeTex} = ${formattedCi}`; }
-                        
-                        const symbol = term.varSymbol;
+                    let evaluationStepTex = '';
+                    if (derivativeDisplay && Object.keys(nominalScopeForDisplay).length > 0) {
+                        try { const derivativeNode = math.parse(derivativeDisplay); evaluationStepTex = derivativeNode.toTex({ handler: (node, options) => { if (node.isSymbolNode && nominalScopeForDisplay.hasOwnProperty(node.name)) { return formatNumberForLatex(nominalScopeForDisplay[node.name]); } } }); evaluationStepTex = `${evaluationStepTex} = ${formattedCi}`; } catch (e) { evaluationStepTex = `${formattedCi}`; }
+                    } else if (derivativeTex) { evaluationStepTex = `${derivativeTex} = ${formattedCi}`; }
+                    
+                    const symbol = term.varSymbol;
 
-                        return (
-                            <div className="breakdown-step" key={term.name || index}>
-                                <h5>{term.name} {term.quantity > 1 ? `(x${term.quantity})` : ''}</h5>
-                                <ul>
-                                    <li><strong>Std. Uncertainty (<Latex>{`$u_{${symbol}}$`}</Latex>):</strong> {formattedValueUi} {displayValueUnitUi} (per instance)</li>
-                                    
-                                    <li>
-                                        <strong>Sensitivity Coeffcient (<Latex>{`$c_{${symbol}}$`}</Latex>):</strong>
-                                        <ul style={{ listStyleType: 'none', paddingLeft: '10px' }}>
-                                            {expressionTex && term.varSymbol !== 'res' && ( <li><Latex>{`$$ \\text{Calculate } c_{${symbol}} = \\frac{\\partial}{\\partial ${symbol}} \\left( ${expressionTex} \\right) $$`}</Latex></li> )}
-                                            {derivativeTex && term.varSymbol !== 'res' && ( <li><Latex>{`$$ \\rightarrow c_{${symbol}} = ${derivativeTex} $$`}</Latex></li> )}
-                                            {evaluationStepTex && ( <li><Latex>{`$$ \\text{Evaluate: } c_{${symbol}} = ${evaluationStepTex} $$`}</Latex></li> )}
-                                        </ul>
-                                    </li>
+                    return (
+                        <div className="breakdown-step" key={term.name || index}>
+                            <h5>{term.name} {term.quantity > 1 ? `(x${term.quantity})` : ''}</h5>
+                            <ul>
+                                <li><strong>Std. Uncertainty (<Latex>{`$u_{${symbol}}$`}</Latex>):</strong> {formattedValueUi} {displayValueUnitUi} (per instance)</li>
+                                
+                                <li>
+                                    <strong>Sensitivity Coeffcient (<Latex>{`$c_{${symbol}}$`}</Latex>):</strong>
+                                    <ul style={{ listStyleType: 'none', paddingLeft: '10px' }}>
+                                        {expressionTex && term.varSymbol !== 'res' && ( <li><Latex>{`$$ \\text{Calculate } c_{${symbol}} = \\frac{\\partial}{\\partial ${symbol}} \\left( ${expressionTex} \\right) $$`}</Latex></li> )}
+                                        {derivativeTex && term.varSymbol !== 'res' && ( <li><Latex>{`$$ \\rightarrow c_{${symbol}} = ${derivativeTex} $$`}</Latex></li> )}
+                                        {evaluationStepTex && ( <li><Latex>{`$$ \\text{Evaluate: } c_{${symbol}} = ${evaluationStepTex} $$`}</Latex></li> )}
+                                    </ul>
+                                </li>
 
-                                    <li><strong>Contribution (<Latex>{`$|c_{${symbol}} \\times u_{${symbol}}|$`}</Latex>):</strong> {formattedContribution} {derivedUnit} (per instance)</li>
-                                    {term.quantity > 1 && (
-                                        <li><strong>Total Variance Term (<Latex>{`$${term.quantity} \\cdot (c_{${symbol}} u_{${symbol}})^2$`}</Latex>):</strong> {formatNumberForLatex(term.varianceDerivedSq, 5)}</li>
-                                    )}
-                                </ul>
-                            </div>
-                        );
-                    })}
+                                <li><strong>Contribution (<Latex>{`$|c_{${symbol}} \\times u_{${symbol}}|$`}</Latex>):</strong> {formattedContribution} {derivedUnit} (per instance)</li>
+                                {term.quantity > 1 && (
+                                    <li><strong>Total Variance Term (<Latex>{`$${term.quantity} \\cdot (c_{${symbol}} u_{${symbol}})^2$`}</Latex>):</strong> {formatNumberForLatex(term.varianceDerivedSq, 5)}</li>
+                                )}
+                            </ul>
+                        </div>
+                    );
+                })}
 
-                    <div className="breakdown-step">
-                        <h5>Combined Uncertainty Calculation (<Latex>{`$u_y$`}</Latex> in {derivedUnit})</h5>
-                        <p>Using the formula:</p>
-                        <Latex>{`$$ u_y = \\sqrt{\\sum_{i} (c_i u_i)^2 + \\sum_{j} u_j^2} $$`}</Latex>
-                        <Latex>{`$$ u_y = \\sqrt{${formulaTerms.map(t => t.symbolLatex).join(" + ")}} $$`}</Latex>
+                <div className="breakdown-step">
+                    <h5>Combined Uncertainty Calculation (<Latex>{`$u_y$`}</Latex> in {derivedUnit})</h5>
+                    <p>Using the formula:</p>
+                    <Latex>{`$$ u_y = \\sqrt{\\sum_{i} (c_i u_i)^2 + \\sum_{j} u_j^2} $$`}</Latex>
+                    <Latex>{`$$ u_y = \\sqrt{${formulaTerms.map(t => t.symbolLatex).join(" + ")}} $$`}</Latex>
 
-                        <p>Plugging in values (showing total variance for each term):</p>
-                        <Latex>{`$$ u_y = \\sqrt{${formulaTerms.map(t => isNaN(t.varianceDerivedSq) ? 'NaN' : formatNumberForLatex(t.varianceDerivedSq, 5)).join(" + ")}} $$`}</Latex>
-                        <Latex>{`$$ u_y = \\sqrt{${formatNumberForLatex(sumOfVariancesDerivedUnits, 5)}} = \\mathbf{${formatNumberForLatex(combinedUncertaintyInDerivedUnit, 5)}} \\text{ (${derivedUnit})} $$`}</Latex>
+                    <p>Plugging in values (showing total variance for each term):</p>
+                    <Latex>{`$$ u_y = \\sqrt{${formulaTerms.map(t => isNaN(t.varianceDerivedSq) ? 'NaN' : formatNumberForLatex(t.varianceDerivedSq, 5)).join(" + ")}} $$`}</Latex>
+                    <Latex>{`$$ u_y = \\sqrt{${formatNumberForLatex(sumOfVariancesDerivedUnits, 5)}} = \\mathbf{${formatNumberForLatex(combinedUncertaintyInDerivedUnit, 5)}} \\text{ (${derivedUnit})} $$`}</Latex>
 
-                        <hr style={{margin: '15px 0'}}/>
-                         <strong>Final Combined Uncertainty (<Latex>$u_y$</Latex>): {isNaN(combinedUncertaintyInDerivedUnit) ? 'N/A' : `${combinedUncertaintyInDerivedUnit.toPrecision(5)} ${derivedUnit}`}</strong>
-                    </div>
+                    <hr style={{margin: '15px 0'}}/>
+                     <strong>Final Combined Uncertainty (<Latex>$u_y$</Latex>): {isNaN(combinedUncertaintyInDerivedUnit) ? 'N/A' : `${combinedUncertaintyInDerivedUnit.toPrecision(5)} ${derivedUnit}`}</strong>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

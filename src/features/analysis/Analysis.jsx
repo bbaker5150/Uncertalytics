@@ -66,7 +66,9 @@ function Analysis({
   const [isRepeatabilityModalOpen, setRepeatabilityModalOpen] = useState(false);
   const [modalPosition, setModalPosition] = useState(null);
 
-  const [breakdownModalType, setBreakdownModalType] = useState(null);
+  // UPDATED: Changed from single string to array to support multiple open modals
+  const [activeRiskModals, setActiveRiskModals] = useState([]);
+  
   const [isDerivedBreakdownOpen, setIsDerivedBreakdownOpen] = useState(false);
   const [derivedBreakdownData, setDerivedBreakdownData] = useState(null);
 
@@ -276,6 +278,22 @@ function Analysis({
     setIsDerivedBreakdownOpen(true);
   };
 
+  // UPDATED: Logic to toggle the modal type in the array
+  const handleShowRiskBreakdown = (type) => {
+      setActiveRiskModals(prev => {
+          if (prev.includes(type)) {
+              // If already open, close it (toggle behavior)
+              return prev.filter(t => t !== type);
+          }
+          // Otherwise, add it
+          return [...prev, type];
+      });
+  };
+
+  const handleCloseRiskBreakdown = (type) => {
+      setActiveRiskModals(prev => prev.filter(t => t !== type));
+  };
+
   return (
     <div>
       {/* --- HEADER --- */}
@@ -332,21 +350,25 @@ function Analysis({
         breakdownData={derivedBreakdownData}
       />
 
-      <RiskBreakdownModal
-        isOpen={!!breakdownModalType}
-        onClose={() => setBreakdownModalType(null)}
-        modalType={breakdownModalType}
-        data={{
-          results: riskResults,
-          inputs: riskResults ? {
-            LLow: parseFloat(riskInputs.LLow),
-            LUp: parseFloat(riskInputs.LUp),
-            reliability: parseFloat(sessionData.uncReq.reliability),
-            guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
-            guardBandInputs: riskResults.gbInputs,
-          } : null,
-        }}
-      />
+      {/* RENDER ACTIVE RISK MODALS */}
+      {activeRiskModals.map(type => (
+          <RiskBreakdownModal
+            key={type}
+            isOpen={true}
+            onClose={() => handleCloseRiskBreakdown(type)}
+            modalType={type}
+            data={{
+              results: riskResults,
+              inputs: riskResults ? {
+                LLow: parseFloat(riskInputs.LLow),
+                LUp: parseFloat(riskInputs.LUp),
+                reliability: parseFloat(sessionData.uncReq.reliability),
+                guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
+                guardBandInputs: riskResults.gbInputs,
+              } : null,
+            }}
+          />
+      ))}
 
       {/* --- TABS --- */}
       <div className="analysis-tabs">
@@ -403,7 +425,7 @@ function Analysis({
           onShowDerivedBreakdown={() => {
             if(calcResults) handleBudgetRowContextMenu({ preventDefault: () => {} });
           }}
-          onShowRiskBreakdown={(type) => setBreakdownModalType(type)}
+          onShowRiskBreakdown={handleShowRiskBreakdown}
           onOpenRepeatability={(e) => { 
              if (e && e.clientY) setModalPosition({ top: e.clientY, left: e.clientX });
              setEditingComponent(null); 
@@ -424,7 +446,8 @@ function Analysis({
                 <>
                   <RiskAnalysisDashboard
                     results={riskResults}
-                    onShowBreakdown={(type) => setBreakdownModalType(type)}
+                    onShowBreakdown={handleShowRiskBreakdown}
+                    activeModals={activeRiskModals}
                   />
                   <RiskScatterplot
                     results={riskResults}
@@ -455,7 +478,8 @@ function Analysis({
               {riskResults ? (
                 <RiskMitigationDashboard
                   results={riskResults}
-                  onShowBreakdown={(type) => setBreakdownModalType(type)}
+                  onShowBreakdown={handleShowRiskBreakdown}
+                  activeModals={activeRiskModals}
                 />
               ) : (
                 <div className="placeholder-content" style={{ minHeight: "200px" }}>

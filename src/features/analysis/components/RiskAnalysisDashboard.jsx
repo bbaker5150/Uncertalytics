@@ -1,12 +1,15 @@
 import React from "react";
 
-const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
+const RiskAnalysisDashboard = ({ results, onShowBreakdown, activeModals = [] }) => {
   if (!results) return null;
+  
   const getPfaClass = (pfa) => {
     if (pfa > 5) return "status-bad";
     if (pfa > 2) return "status-warning";
     return "status-good";
   };
+
+  const isActive = (key) => activeModals.includes(key);
 
   const nativeUnit = results.nativeUnit || "units";
 
@@ -14,7 +17,7 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
     <div className="risk-analysis-container">
       <div className="risk-analysis-dashboard">
         <div
-          className="risk-card clickable"
+          className={`risk-card clickable ${isActive("inputs") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("inputs")}
         >
           <div
@@ -85,7 +88,7 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
           </ul>
         </div>
         <div
-          className="risk-card tur-card clickable"
+          className={`risk-card tur-card clickable ${isActive("tur") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("tur")}
         >
           <div className="risk-value">{results.tur.toFixed(2)} : 1</div>
@@ -95,7 +98,7 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
           </div>
         </div>
         <div
-          className="risk-card tur-card clickable"
+          className={`risk-card tur-card clickable ${isActive("tar") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("tar")}
         >
           <div className="risk-value">{results.tar.toFixed(2)} : 1</div>
@@ -106,7 +109,7 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
           </div>
         </div>
         <div
-          className={`risk-card pfa-card ${getPfaClass(results.pfa)} clickable`}
+          className={`risk-card pfa-card ${getPfaClass(results.pfa)} clickable ${isActive("pfa") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("pfa")}
         >
           <div className="risk-value">{results.pfa.toFixed(4)} %</div>
@@ -123,7 +126,7 @@ const RiskAnalysisDashboard = ({ results, onShowBreakdown }) => {
           </ul>
         </div>
         <div
-          className="risk-card pfr-card clickable"
+          className={`risk-card pfr-card clickable ${isActive("pfr") ? "active-card" : ""}`}
           onClick={() => onShowBreakdown("pfr")}
         >
           <div className="risk-value">{results.pfr.toFixed(4)} %</div>

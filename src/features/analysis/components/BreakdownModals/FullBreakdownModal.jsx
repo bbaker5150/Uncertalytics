@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from "react";
+import ReactDOM from "react-dom";
 import Latex from "../../../../components/common/Latex";
+import useFloatingWindow from "../../../../hooks/useFloatingWindow";
 import {
   calculateUncertaintyFromToleranceObject,
   unitSystem,
@@ -35,7 +37,6 @@ const BreakdownItem = ({ comp, nominal }) => {
     return (comp.ppm / 1_000_000) * Math.abs(nominalValue);
   }, [comp.ppm, nominal]);
 
-  // FIX 1: Create a LaTeX-safe version of the unit
   const safeDisplayUnit = displayUnit === "%" ? "\\%" : displayUnit;
 
   return (
@@ -93,7 +94,6 @@ const BreakdownItem = ({ comp, nominal }) => {
         </li>
         <li>
           <strong>Std. Uncertainty (uᵢ):</strong>
-          {/* Use safeDisplayUnit here */}
           <Latex>{`$$ u_i = \\frac{${
             typeof displayedValue === "number"
               ? displayedValue.toPrecision(4)
@@ -163,7 +163,6 @@ const BreakdownDetails = ({ title, toleranceObject, referencePoint }) => {
         ? displayedCombinedUncertainty.toPrecision(4)
         : displayedCombinedUncertainty;
 
-    // FIX 2: Create a LaTeX-safe version of the unit
     const safeCombinedUnit = combinedUnit === "%" ? "\\%" : combinedUnit;
 
     return `$$ u_c = \\sqrt{${sumString}} = \\mathbf{${finalValueString}} \\text{ ${safeCombinedUnit}} $$`;
@@ -195,7 +194,6 @@ const BreakdownDetails = ({ title, toleranceObject, referencePoint }) => {
         ? displayedExpandedUncertainty.toPrecision(4)
         : displayedExpandedUncertainty;
 
-    // FIX 3: Create a LaTeX-safe version of the unit
     const safeExpandedUnit = expandedUnit === "%" ? "\\%" : expandedUnit;
 
     return `$$ U = k \\times u_c = ${kFactor} \\times ${combinedInSelectedUnit.toPrecision(
@@ -303,30 +301,46 @@ const BreakdownDetails = ({ title, toleranceObject, referencePoint }) => {
 };
 
 const FullBreakdownModal = ({ isOpen, breakdownData, onClose }) => {
+  const { style: windowStyle, handleMouseDown } = useFloatingWindow({
+    isOpen,
+    defaultWidth: 800,
+    defaultHeight: 600,
+  });
+
   if (!isOpen || !breakdownData) return null;
 
-  return (
-    <div className="modal-overlay">
-      <div
-        className="modal-content breakdown-modal-content"
-        style={{ maxWidth: "800px" }}
+  return ReactDOM.createPortal(
+    <div
+      className="modal-content breakdown-modal-content"
+      style={{
+        ...windowStyle,
+        width: "800px",
+        zIndex: 2000,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <button onClick={onClose} className="modal-close-button">
+        &times;
+      </button>
+      <h3
+        onMouseDown={handleMouseDown}
+        style={{ cursor: "move", userSelect: "none", margin: "0 0 15px 0", paddingRight: "30px" }}
       >
-        <button onClick={onClose} className="modal-close-button">
-          &times;
-        </button>
-        <h3>Tolerance Calculation Breakdown</h3>
+        Tolerance Calculation Breakdown
+      </h3>
 
-        <div className="modal-body-scrollable">
-          <div className="full-breakdown-container-single">
-            <BreakdownDetails
-              title={breakdownData.title}
-              toleranceObject={breakdownData.toleranceObject}
-              referencePoint={breakdownData.referencePoint}
-            />
-          </div>
+      <div className="modal-body-scrollable">
+        <div className="full-breakdown-container-single">
+          <BreakdownDetails
+            title={breakdownData.title}
+            toleranceObject={breakdownData.toleranceObject}
+            referencePoint={breakdownData.referencePoint}
+          />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
