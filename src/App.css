@@ -5337,8 +5337,16 @@ body.theme-orbital.dark-mode .floating-window-content select:focus {
   border-color: var(--primary-color);
 }
 
+/* Light Mode: Darken slightly to stand out */
 .nav-btn.primary:hover:not(:disabled) {
-  filter: brightness(1.1);
+  filter: brightness(0.85); 
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Dark Mode: Brighten/Glow to stand out */
+body.dark-mode .nav-btn.primary:hover:not(:disabled) {
+  filter: brightness(1.15);
+  box-shadow: 0 0 12px var(--primary-color);
 }
 
 .nav-btn:disabled {

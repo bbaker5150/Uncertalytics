@@ -2,23 +2,23 @@ import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useFloatingWindow } from '../../hooks/useFloatingWindow'; // Import the hook
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faBookOpen, 
-  faChartLine, 
-  faCheck, 
-  faChevronLeft, 
-  faChevronRight, 
-  faEdit, 
-  faExchangeAlt, 
-  faFilePdf, 
-  faFolderOpen, 
-  faGripHorizontal, 
-  faHistory, 
-  faInfoCircle, 
-  faList, 
-  faMicroscope, 
-  faShieldAlt, 
-  faStickyNote, 
+import {
+  faBookOpen,
+  faChartLine,
+  faCheck,
+  faChevronLeft,
+  faChevronRight,
+  faEdit,
+  faExchangeAlt,
+  faFilePdf,
+  faFolderOpen,
+  faGripHorizontal,
+  faHistory,
+  faInfoCircle,
+  faList,
+  faMicroscope,
+  faShieldAlt,
+  faStickyNote,
   faTools
 } from '@fortawesome/free-solid-svg-icons';
 
@@ -34,10 +34,10 @@ const WORKFLOW_STEPS = [
         <p>Every analysis starts with the <strong>Edit Session</strong> modal.</p>
         <ul>
           <li><strong>Details Tab:</strong> Enter all general information of the analysis session (Analyst Name, Organization, Document ID, etc.). You may also add notes and images here.
-          <div className="help-tip">
-          <FontAwesomeIcon icon={faCheck} /> Tip: The Analysis Notes here will be automatically updated if you are utlizing the Floating Notepad Tool.
-        </div>
-        </li>
+            <div className="help-tip">
+              <FontAwesomeIcon icon={faCheck} /> Tip: The Analysis Notes here will be automatically updated if you are utlizing the Floating Notepad Tool.
+            </div>
+          </li>
           <li><strong>Uncertainty Requirements Tab:</strong> Define your risk targets here. Most of these values will not change unless otherwise authorized.
             <ul>
               <li><em>Confidence:</em> Typically 95% (k=2).</li>
@@ -105,15 +105,15 @@ const WORKFLOW_STEPS = [
         <p>For every Test Point, you must add the Equipment (TMDE) used to perform the calibration.</p>
         <ul>
           <li><strong>Standard Assignment:</strong> If using a <em>Direct</em> point, simply add the equipment.</li>
-          <li><strong>Variable Mapping:</strong> If using a <em>Derived</em> point, you will see a "Variable Type" dropdown. 
-            <br/><em>Example:</em> If your equation is <code>V / R</code>, add a Voltmeter and map it to <strong>V</strong>, then add a Resistor and map it to <strong>R</strong>.
+          <li><strong>Variable Mapping:</strong> If using a <em>Derived</em> point, you will see a "Variable Type" dropdown.
+            <br /><em>Example:</em> If your equation is <code>V / R</code>, add a Voltmeter and map it to <strong>V</strong>, then add a Resistor and map it to <strong>R</strong>.
           </li>
         </ul>
         <p>Like the UUT, you can import TMDE specs from the Library <FontAwesomeIcon icon={faBookOpen} /> or enter them manually.</p>
         <ul>
           <div className="help-tip">
-          <FontAwesomeIcon icon={faCheck} /> Tip: Utilize the "Use TMDEs from previous measurement point" toggle button when adding subsequent measurement points from the initial to automatically set TMDE information. This includes updated tolerances if new measurement point falls within a new tolerance range.
-        </div>
+            <FontAwesomeIcon icon={faCheck} /> Tip: Utilize the "Use TMDEs from previous measurement point" toggle button when adding subsequent measurement points from the initial to automatically set TMDE information. This includes updated tolerances if new measurement point falls within a new tolerance range.
+          </div>
         </ul>
       </div>
     )
@@ -127,17 +127,17 @@ const WORKFLOW_STEPS = [
         <h4>Reading the Uncertainty Budget</h4>
         <p>The budget table lists every factor contributing to measurement uncertainty.</p>
         <ul>
-            <li><strong>Uncertainty Component:</strong> Individual error sources (e.g., TMDE specs, resolution).</li>
-            <li><strong>Source / Nominal:</strong> Referenced measurement point.</li>
-            <li><strong>Type:</strong> The distribution type, or statistical shape of the error (e.g., Normal, Rectangular).</li>
-            <li><strong>Sensitivity Coefficient:</strong> For derived measurements, this shows how much a specific parameter affects the final result.
+          <li><strong>Uncertainty Component:</strong> Individual error sources (e.g., TMDE specs, resolution).</li>
+          <li><strong>Source / Nominal:</strong> Referenced measurement point.</li>
+          <li><strong>Type:</strong> The distribution type, or statistical shape of the error (e.g., Normal, Rectangular).</li>
+          <li><strong>Sensitivity Coefficient:</strong> For derived measurements, this shows how much a specific parameter affects the final result.
             <ul><div className="help-tip">
-          <FontAwesomeIcon icon={faCheck} /> <strong> Tip:</strong> Click on the calculator icon next to the Derived component to get a detailed breakdown of how the sensitivity coefficients are calculated.
-        </div></ul>
-            </li>
-            
-            <li><strong>Combined Uncertainty:</strong> The uncertainty value before expanded by given k-value.</li>
-            <li><strong>Expanded Uncertainty:</strong> The final "plus-or-minus" uncertainty value after expaned with given K-value (e.g. @ 95% Uncertainty Confidence, K=2)</li>
+              <FontAwesomeIcon icon={faCheck} /> <strong> Tip:</strong> Click on the calculator icon next to the Derived component to get a detailed breakdown of how the sensitivity coefficients are calculated.
+            </div></ul>
+          </li>
+
+          <li><strong>Combined Uncertainty:</strong> The uncertainty value before expanded by given k-value.</li>
+          <li><strong>Expanded Uncertainty:</strong> The final "plus-or-minus" uncertainty value after expaned with given K-value (e.g. @ 95% Uncertainty Confidence, K=2)</li>
         </ul>
 
         <h4>Show Contribution Toggle Button</h4>
@@ -154,14 +154,14 @@ const WORKFLOW_STEPS = [
           <div><strong>TUR (Test Uncertainty Ratio):</strong> Ratio of UUT tolerance to Calibration Uncertainty. Aim for 4:1.</div>
           <div><strong>TAR (Test Acceptance Ratio):</strong> Ratio of the UUT's tolerance span to the TMDE's (Standard's) tolerance span.</div>
         </div>
-        
+
         <div className="help-tip">
           <FontAwesomeIcon icon={faCheck} /> <strong> Tip:</strong> Click any colored risk metric pod (like PFA) in the table  to view detailed breakdown of the calculation.
         </div>
 
       </div>
 
-      
+
     )
   },
   {
@@ -182,40 +182,40 @@ const WORKFLOW_STEPS = [
 ];
 
 const TOOLS_INFO = [
-  { 
-    icon: faList, 
-    title: "Session Overview", 
-    desc: "Menu displaying full analysis session overview. Includes UUT/TMDE information for all measurement points, including all risk metrics calculated. " 
+  {
+    icon: faList,
+    title: "Session Overview",
+    desc: "Menu displaying full analysis session overview. Includes UUT/TMDE information for all measurement points, including all risk metrics calculated. "
   },
-  { 
-    icon: faExchangeAlt, 
-    title: "Unit Converter", 
-    desc: "Convert between units across categories (Voltage, Pressure, Torque, etc.)." 
+  {
+    icon: faExchangeAlt,
+    title: "Unit Converter",
+    desc: "Convert between units across categories (Voltage, Pressure, Torque, etc.)."
   },
-  { 
-    icon: faHistory, 
-    title: "Reverse Traceability", 
-    desc: "Analyze calibration intervals and instrument drift. Calculates Linear vs. Exponential failure dates based on historical OOT data." 
+  {
+    icon: faHistory,
+    title: "Reverse Traceability",
+    desc: "Analyze calibration intervals and instrument drift. Calculates Linear vs. Exponential failure dates based on historical OOT data."
   },
-  { 
-    icon: faTools, 
-    title: "Instrument Builder", 
-    desc: "Create and save custom instruments to your local library for quick reuse in future sessions." 
+  {
+    icon: faTools,
+    title: "Instrument Builder",
+    desc: "Create and save custom instruments to your local library for quick reuse in future sessions."
   },
-  { 
-    icon: faStickyNote, 
-    title: "Floating Notepad", 
-    desc: "A scratchpad for quick notes. Content persists during your current session. You will see that this automatically updates within the notes input of the Edit Session modal and vice versa." 
+  {
+    icon: faStickyNote,
+    title: "Floating Notepad",
+    desc: "A scratchpad for quick notes. Content persists during your current session. You will see that this automatically updates within the notes input of the Edit Session modal and vice versa."
   },
-  { 
-    icon: faFilePdf, 
-    title: "PDF Export", 
-    desc: "Generates a formatted compliance report containing all data, risk charts, and guard band recommendations. This contains all necessary meta data for the Import PDF tool to populate session data." 
+  {
+    icon: faFilePdf,
+    title: "PDF Export",
+    desc: "Generates a formatted compliance report containing all data, risk charts, and guard band recommendations. This contains all necessary meta data for the Import PDF tool to populate session data."
   },
-  { 
-    icon: faFolderOpen, 
-    title: "Import PDF", 
-    desc: "Import any PDF generated with the built-in PDF Export Tool to populate session data." 
+  {
+    icon: faFolderOpen,
+    title: "Import PDF",
+    desc: "Import any PDF generated with the built-in PDF Export Tool to populate session data."
   },
 ];
 
@@ -243,23 +243,23 @@ const HelpModal = ({ isOpen, onClose }) => {
   // Render via Portal to document.body (like other modals)
   return ReactDOM.createPortal(
     <>
-      <div 
+      <div
         className="help-modal floating-window-content"
-        style={{ 
+        style={{
           // Position managed by the hook
           position: 'fixed',
           top: position.y,
           left: position.x,
-          width: '900px', 
-          height: '700px', 
-          maxWidth: '95vw', 
+          width: '900px',
+          height: '700px',
+          maxWidth: '95vw',
           maxHeight: '90vh',
           zIndex: 3000, // Higher than standard modals
           margin: 0
         }}
       >
         {/* Header - Draggable Target */}
-        <div 
+        <div
           className="help-header"
           onMouseDown={handleMouseDown}
           style={{ cursor: 'move', userSelect: 'none' }}
@@ -270,16 +270,16 @@ const HelpModal = ({ isOpen, onClose }) => {
 
         {/* Layout: Sidebar + Content */}
         <div className="help-body">
-          
+
           {/* Sidebar Navigation */}
           <div className="help-sidebar">
-            <button 
+            <button
               className={`sidebar-btn ${activeTab === 'workflow' ? 'active' : ''}`}
               onClick={() => setActiveTab('workflow')}
             >
               <FontAwesomeIcon icon={faList} /> Workflow Guide
             </button>
-            <button 
+            <button
               className={`sidebar-btn ${activeTab === 'tools' ? 'active' : ''}`}
               onClick={() => setActiveTab('tools')}
             >
@@ -289,8 +289,8 @@ const HelpModal = ({ isOpen, onClose }) => {
             {activeTab === 'workflow' && (
               <div className="step-list">
                 {WORKFLOW_STEPS.map((step, index) => (
-                  <div 
-                    key={step.id} 
+                  <div
+                    key={step.id}
                     className={`step-item ${index === currentStep ? 'active-step' : ''} ${index < currentStep ? 'completed-step' : ''}`}
                     onClick={() => setCurrentStep(index)}
                   >
@@ -304,21 +304,21 @@ const HelpModal = ({ isOpen, onClose }) => {
 
           {/* Main Content Area */}
           <div className="help-content">
-            
+
             {activeTab === 'workflow' && (
               <div className="workflow-view">
                 <div className="workflow-header">
                   <h2>{WORKFLOW_STEPS[currentStep].title}</h2>
                   <FontAwesomeIcon icon={WORKFLOW_STEPS[currentStep].icon} className="step-big-icon" />
                 </div>
-                
+
                 <div className="workflow-text">
                   {WORKFLOW_STEPS[currentStep].content}
                 </div>
 
                 <div className="workflow-nav">
-                  <button 
-                    className="nav-btn" 
+                  <button
+                    className="nav-btn"
                     disabled={currentStep === 0}
                     onClick={handlePrev}
                   >
@@ -327,12 +327,16 @@ const HelpModal = ({ isOpen, onClose }) => {
                   <div className="step-indicator">
                     Step {currentStep + 1} of {WORKFLOW_STEPS.length}
                   </div>
-                  <button 
-                    className="nav-btn primary" 
-                    disabled={currentStep === WORKFLOW_STEPS.length - 1}
-                    onClick={handleNext}
+                  <button
+                    className="nav-btn primary"
+
+                    onClick={currentStep === WORKFLOW_STEPS.length - 1 ? onClose : handleNext}
                   >
-                    Next <FontAwesomeIcon icon={faChevronRight} />
+                    {currentStep === WORKFLOW_STEPS.length - 1 ? (
+                      <>Done <FontAwesomeIcon icon={faCheck} /></>
+                    ) : (
+                      <>Next <FontAwesomeIcon icon={faChevronRight} /></>
+                    )}
                   </button>
                 </div>
               </div>
