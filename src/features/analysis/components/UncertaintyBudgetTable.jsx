@@ -679,7 +679,7 @@ const UncertaintyBudgetTable = ({
                       </div>
 
                       {/* Optional Guardband Section */}
-                      {showGuardband && (
+                      {showGuardband && riskResults.gbResults ? (
                         <>
                           <div className="metrics-separator">
                             <span>Guardband Analysis</span>
@@ -693,9 +693,11 @@ const UncertaintyBudgetTable = ({
                             >
                               <span className="metric-pod-label">GB LOW</span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBLOW.toFixed(
-                                  riskResults.uutResolution + 1
-                                )}
+                                {typeof riskResults.gbResults.GBLOW === 'number'
+                                  ? riskResults.gbResults.GBLOW.toFixed(
+                                      (riskResults.uutResolution || 2) + 1
+                                    )
+                                  : "N/A"}
                               </span>
                             </div>
                             <div
@@ -704,9 +706,11 @@ const UncertaintyBudgetTable = ({
                             >
                               <span className="metric-pod-label">GB HIGH</span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBUP.toFixed(
-                                  riskResults.uutResolution + 1
-                                )}
+                                {typeof riskResults.gbResults.GBUP === 'number'
+                                  ? riskResults.gbResults.GBUP.toFixed(
+                                      (riskResults.uutResolution || 2) + 1
+                                    )
+                                  : "N/A"}
                               </span>
                             </div>
                             <div
@@ -717,7 +721,9 @@ const UncertaintyBudgetTable = ({
                                 GB Multiplier
                               </span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBMULT.toFixed(4)} %
+                                {typeof riskResults.gbResults.GBMULT === 'number'
+                                  ? riskResults.gbResults.GBMULT.toFixed(4) + " %"
+                                  : "N/A"}
                               </span>
                             </div>
                           </div>
@@ -732,7 +738,9 @@ const UncertaintyBudgetTable = ({
                                 PFA w/ GB
                               </span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBPFA.toPrecision(riskSigFigs)} %
+                                {typeof riskResults.gbResults.GBPFA === 'number'
+                                  ? riskResults.gbResults.GBPFA.toPrecision(riskSigFigs) + " %"
+                                  : "N/A"}
                               </span>
                             </div>
                             <div
@@ -743,7 +751,9 @@ const UncertaintyBudgetTable = ({
                                 PFR w/ GB
                               </span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBPFR.toPrecision(riskSigFigs)} %
+                                {typeof riskResults.gbResults.GBPFR === 'number'
+                                  ? riskResults.gbResults.GBPFR.toPrecision(riskSigFigs) + " %"
+                                  : "N/A"}
                               </span>
                             </div>
                           </div>
@@ -758,7 +768,9 @@ const UncertaintyBudgetTable = ({
                                 CAL INT w/ GB
                               </span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.GBCALINT.toFixed(4)}
+                                {typeof riskResults.gbResults.GBCALINT === 'number'
+                                  ? riskResults.gbResults.GBCALINT.toFixed(4)
+                                  : "N/A"}
                               </span>
                             </div>
                             <div
@@ -769,7 +781,9 @@ const UncertaintyBudgetTable = ({
                                 CAL INT w/o GB
                               </span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.NOGBCALINT.toFixed(4)}
+                                {typeof riskResults.gbResults.NOGBCALINT === 'number'
+                                  ? riskResults.gbResults.NOGBCALINT.toFixed(4)
+                                  : "N/A"}
                               </span>
                             </div>
                             <div
@@ -780,12 +794,18 @@ const UncertaintyBudgetTable = ({
                                 REL w/o GB
                               </span>
                               <span className="metric-pod-value">
-                                {riskResults.gbResults.NOGBMEASREL.toFixed(4)} %
+                                {typeof riskResults.gbResults.NOGBMEASREL === 'number'
+                                  ? riskResults.gbResults.NOGBMEASREL.toFixed(4) + " %"
+                                  : "N/A"}
                               </span>
                             </div>
                           </div>
                         </>
-                      )}
+                      ) : showGuardband ? (
+                         <div className="metrics-separator" style={{color: 'var(--status-bad)', fontSize: '0.85rem'}}>
+                            <span>Guardband Data Unavailable</span>
+                         </div>
+                      ) : null}
                     </div>
                   )}
                 </div>
