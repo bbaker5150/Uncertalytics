@@ -1712,7 +1712,7 @@ body.theme-cyberpunk .button {
 
 .modal-main-content {
     flex-grow: 1;
-    padding: 30px;
+    padding: 0;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -2412,8 +2412,10 @@ body.theme-stranger.dark-mode .add-component-dropdown {
 .modal-tabs {
   display: flex;
   border-bottom: 2px solid var(--border-color);
-  margin: 20px -30px 25px -30px;
-  padding: 0 25px;
+  margin: 0; /* CHANGED: Removed negative margins */
+  padding: 20px 30px 0 30px; /* Apply padding directly here */
+  background-color: var(--content-background); /* Ensure solid bg if needed */
+  flex-shrink: 0; /* Prevent tabs from squishing */
 }
 
 .modal-tab {
@@ -2437,6 +2439,10 @@ body.theme-stranger.dark-mode .add-component-dropdown {
 .modal-tab.active {
   color: var(--primary-color);
   border-bottom-color: var(--primary-color);
+}
+
+.modal-content-wrapper {
+  padding: 30px;
 }
 
 .modal-body-scrollable {
