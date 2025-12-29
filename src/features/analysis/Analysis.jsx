@@ -46,7 +46,6 @@ function Analysis({
   onDeleteTmdeDefinition,
   onDecrementTmdeQuantity,
   onDeleteUut,
-  onOpenOverview,
   // Shared State lifted from App.js
   riskResults: parentRiskResults, 
   setRiskResults: parentSetRiskResults 
@@ -282,7 +281,6 @@ function Analysis({
       {/* --- HEADER --- */}
       <AnalysisHeader 
         sessionData={sessionData} 
-        onOpenOverview={onOpenOverview} 
       />
 
       {/* --- MODALS --- */}

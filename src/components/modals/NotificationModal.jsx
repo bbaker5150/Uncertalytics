@@ -1,4 +1,6 @@
 import React from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 
 const NotificationModal = ({
   isOpen,
@@ -7,7 +9,8 @@ const NotificationModal = ({
   message,
   onConfirm,
   confirmText,
-  cancelText
+  cancelText,
+  isIconConfirm
 }) => {
   if (!isOpen) return null;
 
@@ -27,11 +30,17 @@ const NotificationModal = ({
           {/* Logic: If onConfirm exists, show Two Buttons. Otherwise, just show OK. */}
           {onConfirm ? (
             <>
-              <button className="button button-secondary" onClick={onClose}>
-                {cancelText || "Cancel"}
-              </button>
-              <button className="button button-primary" onClick={onConfirm}>
-                {confirmText || "Confirm"}
+              {cancelText !== null && (
+                <button className="button button-secondary" onClick={onClose}>
+                  {cancelText || "Cancel"}
+                </button>
+              )}
+              <button 
+                className={isIconConfirm ? "modal-icon-button primary" : "button button-primary"} 
+                onClick={onConfirm}
+                title={confirmText || "Confirm"}
+              >
+                {isIconConfirm ? <FontAwesomeIcon icon={faCheck} /> : (confirmText || "Confirm")}
               </button>
             </>
           ) : (

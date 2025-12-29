@@ -681,15 +681,29 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                     </div>
 
                     {!isEditing && hasExistingPoints && (
-                        <div className="copy-tmde-section">
-                            <input
+                        <div className="toggle-switch-container" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid var(--border-color)' }}>
+                             <input
                                 type="checkbox"
                                 id="copyTmdes"
                                 name="copyTmdes"
+                                className="toggle-switch-checkbox"
                                 checked={formData.copyTmdes}
                                 onChange={handleChange}
                             />
-                            <label htmlFor="copyTmdes">Use TMDEs from previous measurement point</label>
+                            <label
+                                className="toggle-switch-label"
+                                htmlFor="copyTmdes"
+                                style={{ transform: "scale(0.75)", margin: 0, border: '1px solid var(--border-color)' }}
+                            >
+                                <span className="toggle-switch-switch" />
+                            </label>
+                            <label
+                                htmlFor="copyTmdes"
+                                className="toggle-option-label"
+                                style={{ fontSize: "0.9rem", color: "var(--text-color)", cursor: "pointer", userSelect: 'none' }}
+                            >
+                                Use TMDEs from previous measurement point
+                            </label>
                         </div>
                     )}
                 </div>
