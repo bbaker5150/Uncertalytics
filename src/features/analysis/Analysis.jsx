@@ -386,7 +386,21 @@ function Analysis({
         </button>
         <button
           className={analysisMode === "riskmitigation" ? "active" : ""}
-          onClick={() => setAnalysisMode("riskmitigation")}
+          onClick={() => {
+            setAnalysisMode("riskmitigation");
+            const gbLowValid = riskResults?.gbResults?.GBLOW !== undefined && !isNaN(riskResults.gbResults.GBLOW);
+            const gbUpValid = riskResults?.gbResults?.GBUP !== undefined && !isNaN(riskResults.gbResults.GBUP);
+
+            if (!gbLowValid || !gbUpValid) {
+               setNotification({
+                    title: "Math Engine Convergence Failure",
+                    isFloating: true,
+                    message: `The mathematical engine could not converge on a solution beause the required TUR is so low, causing the calculated Uncertainty to exceed guard band limits.
+
+Please increase the required TUR or improve your uncertainty to allow for a viable solution.`
+                });
+            }
+          }}
         >
           Risk Mitigation
         </button>
@@ -431,6 +445,7 @@ function Analysis({
              setEditingComponent(null); 
              setRepeatabilityModalOpen(true); 
           }}
+          setNotification={setNotification}
         />
       )}
 

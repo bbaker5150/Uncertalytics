@@ -56,7 +56,8 @@ const UncertaintyPanel = ({
   showContribution,
   setShowContribution,
   onOpenRepeatability,
-  riskResults
+  riskResults,
+  setNotification
 }) => {
 
   // Determine if UUT is defined (has a description or specs)
@@ -318,6 +319,7 @@ const UncertaintyPanel = ({
             onAddManualComponent={onAddManualComponent}
             onEdit={onEditManualComponent}
             onOpenRepeatability={onOpenRepeatability}
+            setNotification={setNotification}
           />
           {showContribution && calcResults?.calculatedBudgetComponents?.length > 0 && (
             <PercentageBarGraph
