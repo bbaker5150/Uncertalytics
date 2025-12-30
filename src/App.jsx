@@ -205,6 +205,37 @@ function App() {
     }
   }, [isDarkMode, currentTheme]);
 
+  useEffect(() => {
+    const handleZoom = (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        if (window.require) {
+          try {
+            const { webFrame } = window.require("electron");
+            const currentZoom = webFrame.getZoomFactor();
+            // Scroll Up (deltaY < 0) -> Zoom In
+            // Scroll Down (deltaY > 0) -> Zoom Out
+            let newZoom = currentZoom;
+            if (e.deltaY < 0) {
+               newZoom += 0.1;
+            } else {
+               newZoom -= 0.1;
+            }
+            // Clamp zoom between 50% and 300%
+            newZoom = Math.max(0.5, Math.min(newZoom, 3.0));
+            webFrame.setZoomFactor(newZoom);
+          } catch (error) {
+            console.warn("Zoom adjustment failed", error);
+          }
+        }
+      }
+    };
+    
+    // Check if we are in an environment that supports wheel events (browser/electron always does)
+    window.addEventListener("wheel", handleZoom, { passive: false });
+    return () => window.removeEventListener("wheel", handleZoom);
+  }, []);
+
   const handleAddNewSession = () => {
     const newSession = addSession();
     setEditingSession(newSession);
