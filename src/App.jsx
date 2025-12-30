@@ -45,6 +45,8 @@ import {
   faHistory,
   faList,
   faQuestionCircle,
+  faChevronRight,
+  faChevronLeft,
 } from "@fortawesome/free-solid-svg-icons";
 
 const ThemeContext = React.createContext(false);
@@ -163,6 +165,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("default");
   const [showThemeSelector, setShowThemeSelector] = useState(false);
+  const [isToolboxCollapsed, setIsToolboxCollapsed] = useState(false);
 
   const [initialSessionTab, setInitialSessionTab] = useState("details");
   const [initialTmdeToEdit, setInitialTmdeToEdit] = useState(null);
@@ -828,135 +831,153 @@ function App() {
               </div>
             </div>
 
-            <div className="action-group">
-              <button
-                className={`icon-action-btn ${isOverviewOpen ? "active" : ""}`}
-                onClick={() => setIsOverviewOpen(!isOverviewOpen)}
-                title="Session Overview"
+            <div className={`header-toolbox ${isToolboxCollapsed ? "collapsed" : ""}`}>
+              <button 
+                className="toolbox-toggle-btn"
+                onClick={() => setIsToolboxCollapsed(!isToolboxCollapsed)}
+                title={isToolboxCollapsed ? "Expand Toolbar" : "Collapse Toolbar"}
               >
-                <FontAwesomeIcon icon={faList} />
+                <FontAwesomeIcon icon={isToolboxCollapsed ? faChevronLeft : faChevronRight} />
               </button>
-              <div className="header-divider"></div>
 
-              <div className="header-actions">
-                <button
-                  className={`icon-action-btn ${isInstrumentBuilderOpen ? "active" : ""}`}
-                  onClick={() => setIsInstrumentBuilderOpen(!isInstrumentBuilderOpen)}
-                  title="Instrument Builder"
-                >
-                  <FontAwesomeIcon icon={faRadio} />
-                </button>
-                <div className="header-divider"></div>
-
-                <button
-                  className={`icon-action-btn ${isTraceabilityOpen ? "active" : ""}`}
-                  onClick={() => setIsTraceabilityOpen(!isTraceabilityOpen)}
-                  title="Reverse Traceability Tool"
-                >
-                  <FontAwesomeIcon icon={faHistory} />
-                </button>
-
-                <button
-                  className={`icon-action-btn ${isNotepadOpen ? "active" : ""}`}
-                  onClick={() => setIsNotepadOpen(!isNotepadOpen)}
-                  title="Session Notes"
-                >
-                  <FontAwesomeIcon icon={faStickyNote} />
-                </button>
-
-                <button
-                  className={`icon-action-btn ${isConverterOpen ? "active" : ""}`}
-                  onClick={() => setIsConverterOpen(!isConverterOpen)}
-                  title="Unit Converter"
-                >
-                  <FontAwesomeIcon icon={faRightLeft} />
-                </button>
-              </div>
-
-              <div className="header-divider"></div>
-
-              <div className="action-group">
-                <button
-                  className="icon-action-btn"
-                  onClick={handleSaveToFile}
-                  title="Export to PDF"
-                >
-                  <FontAwesomeIcon icon={faSave} />
-                </button>
-
-                <label
-                  className="icon-action-btn"
-                  htmlFor="load-session-pdf-main"
-                  title="Import PDF"
-                >
-                  <FontAwesomeIcon icon={faFolderOpen} />
-                </label>
-                <input
-                  type="file"
-                  id="load-session-pdf-main"
-                  accept=".pdf"
-                  style={{ display: "none" }}
-                  onChange={handleLoadFromFile}
-                />
-              </div>
-
-              <div className="header-divider"></div>
-              <button
-                  className={`icon-action-btn ${isHelpOpen ? "active" : ""}`}
-                  onClick={() => setIsHelpOpen(true)}
-                  title="Help & Tutorial"
-                >
-                  <FontAwesomeIcon icon={faQuestionCircle} />
-                </button>
-              <div className="header-divider"></div>
-              
-
-              <div className="action-group">
-                {showThemeSelector && (
-                  <div className="theme-selector-minimal">
-                    <FontAwesomeIcon icon={faPalette} className="theme-icon" />
-                    <select
-                      value={currentTheme}
-                      onChange={(e) => setCurrentTheme(e.target.value)}
-                      className="theme-select-input"
-                      title="Change Theme"
-                    >
-                      <option value="default">Default</option>
-                      <option value="theme-cyberpunk">Cyberpunk</option>
-                      <option value="theme-stranger">Stranger Things</option>
-                      <option value="theme-orbital">Orbit</option>
-                    </select>
-                  </div>
-                )}
-                {currentTheme === 'theme-stranger' && !isDarkMode ? (
-                  <div
-                    className="stranger-hint"
-                    onClick={() => setIsDarkMode(true)}
-                    title="Enter the Upside Down"
-                  >
-                    <span>ENTER THE UPSIDE DOWN</span>
-                  </div>
-                ) : (
+              <div className="toolbox-content">
+                {/* Group 1: View / Overview */}
+                <div className="toolbox-group">
                   <button
-                    className={`icon-action-btn ${isDarkMode ? "active" : ""}`}
-                    onClick={() => setIsDarkMode(!isDarkMode)}
-                    title="Toggle Dark Mode"
+                    className={`toolbox-button ${isOverviewOpen ? "active" : ""}`}
+                    onClick={() => setIsOverviewOpen(!isOverviewOpen)}
+                    title="Session Overview"
                   >
-                    <div className={`moon-toggle ${isDarkMode ? "is-dark" : ""}`}></div>
+                    <FontAwesomeIcon icon={faList} />
                   </button>
-                )}
+                </div>
+
+                <div className="toolbox-divider"></div>
+
+                {/* Group 2: Instruments & Tools */}
+                <div className="toolbox-group">
+                  <button
+                    className={`toolbox-button ${isInstrumentBuilderOpen ? "active" : ""}`}
+                    onClick={() => setIsInstrumentBuilderOpen(!isInstrumentBuilderOpen)}
+                    title="Instrument Builder"
+                  >
+                    <FontAwesomeIcon icon={faRadio} />
+                  </button>
+                  <button
+                    className={`toolbox-button ${isTraceabilityOpen ? "active" : ""}`}
+                    onClick={() => setIsTraceabilityOpen(!isTraceabilityOpen)}
+                    title="Reverse Traceability Tool"
+                  >
+                    <FontAwesomeIcon icon={faHistory} />
+                  </button>
+                  <button
+                    className={`toolbox-button ${isNotepadOpen ? "active" : ""}`}
+                    onClick={() => setIsNotepadOpen(!isNotepadOpen)}
+                    title="Session Notes"
+                  >
+                    <FontAwesomeIcon icon={faStickyNote} />
+                  </button>
+                  <button
+                    className={`toolbox-button ${isConverterOpen ? "active" : ""}`}
+                    onClick={() => setIsConverterOpen(!isConverterOpen)}
+                    title="Unit Converter"
+                  >
+                    <FontAwesomeIcon icon={faRightLeft} />
+                  </button>
+                </div>
+
+                <div className="toolbox-divider"></div>
+
+                {/* Group 3: File Operations */}
+                <div className="toolbox-group">
+                  <button
+                    className="toolbox-button"
+                    onClick={handleSaveToFile}
+                    title="Export to PDF"
+                  >
+                    <FontAwesomeIcon icon={faSave} />
+                  </button>
+
+                  <label
+                    className="toolbox-button"
+                    htmlFor="load-session-pdf-main"
+                    title="Import PDF"
+                  >
+                    <FontAwesomeIcon icon={faFolderOpen} />
+                  </label>
+                  <input
+                    type="file"
+                    id="load-session-pdf-main"
+                    accept=".pdf"
+                    style={{ display: "none" }}
+                    onChange={handleLoadFromFile}
+                  />
+                </div>
+
+                <div className="toolbox-divider"></div>
+
+                {/* Group 4: System / Help / Theme */}
+                <div className="toolbox-group">
+                   <button
+                      className={`toolbox-button ${isHelpOpen ? "active" : ""}`}
+                      onClick={() => setIsHelpOpen(true)}
+                      title="Help & Tutorial"
+                    >
+                      <FontAwesomeIcon icon={faQuestionCircle} />
+                    </button>
+
+                  {showThemeSelector && (
+                    <div className="theme-selector-minimal">
+                      <FontAwesomeIcon icon={faPalette} className="theme-icon" />
+                      <select
+                        value={currentTheme}
+                        onChange={(e) => setCurrentTheme(e.target.value)}
+                        className="theme-select-input"
+                        title="Change Theme"
+                      >
+                        <option value="default">Default</option>
+                        <option value="theme-cyberpunk">Cyberpunk</option>
+                        <option value="theme-stranger">Stranger Things</option>
+                        <option value="theme-orbital">Orbit</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {currentTheme === 'theme-stranger' && !isDarkMode ? (
+                    <div
+                      className="stranger-hint"
+                      onClick={() => setIsDarkMode(true)}
+                      title="Enter the Upside Down"
+                    >
+                      <span>ENTER THE UPSIDE DOWN</span>
+                    </div>
+                  ) : (
+                    <button
+                      className={`toolbox-button ${isDarkMode ? "active" : ""}`}
+                      onClick={() => setIsDarkMode(!isDarkMode)}
+                      title="Toggle Dark Mode"
+                    >
+                      <div className={`moon-toggle ${isDarkMode ? "is-dark" : ""}`}></div>
+                    </button>
+                  )}
+                </div>
+                
+                <div className="toolbox-divider"></div>
+
+                {/* Group 5: Connection Status */}
+                <div className="toolbox-group">
+                    <button
+                      className={`status-pill ${dbPath ? "connected" : "disconnected"}`}
+                      onClick={dbPath ? disconnectDatabase : selectDatabaseFolder}
+                      title={dbPath ? `Connected: ${dbPath}` : "Connect to Database"}
+                    >
+                      <span className="status-dot"></span>
+                      <span className="status-text">
+                        {dbPath ? "Connected" : "Local"}
+                      </span>
+                    </button>
+                </div>
               </div>
-              <button
-                className={`status-pill ${dbPath ? "connected" : "disconnected"
-                  }`}
-                onClick={dbPath ? disconnectDatabase : selectDatabaseFolder}
-                title={dbPath ? `Connected: ${dbPath}` : "Connect to Database"}
-              >
-                <span className="status-dot"></span>
-                <span className="status-text">
-                  {dbPath ? "Database Connected" : "Local Mode"}
-                </span>
-              </button>
             </div>
           </div>
 

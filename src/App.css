@@ -4390,47 +4390,143 @@ body.theme-stranger.dark-mode ::-webkit-scrollbar-track {
 }
 
 /* --- RIGHT: ACTIONS --- */
-.header-actions {
+/* --- RIGHT: ACTIONS (TOOLBOX) --- */
+.header-toolbox {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 0;
+  padding: 4px;
+  background-color: var(--input-background);
+  border: 1px solid var(--border-color);
+  border-radius: 99px; /* Pill shape */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  backdrop-filter: var(--backdrop-filter);
+  -webkit-backdrop-filter: var(--backdrop-filter);
+  height: 48px;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  max-width: 100%; /* Implicitly wide enough */
 }
 
-/* Groups for Buttons (File Ops, Settings) */
-.action-group {
+/* Collapsed State */
+.header-toolbox.collapsed {
+  max-width: 48px; /* Shrinks to button size */
+  padding: 4px;
+  gap: 0;
+  border-radius: 50%; /* Circle when collapsed */
+  justify-content: center;
+}
+
+/* Internal Content Wrapper */
+.toolbox-content {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s;
+  will-change: opacity, transform;
 }
 
-.header-divider {
+.header-toolbox.collapsed .toolbox-content {
+  opacity: 0;
+  transform: translateX(10px);
+  pointer-events: none;
+  width: 0; /* Ensures it takes no space */
+  overflow: hidden;
+  position: absolute; /* Remove from flow */
+}
+
+/* Toggle Button */
+.toolbox-toggle-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-color-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 2; /* Keep above content */
+  flex-shrink: 0;
+}
+
+.toolbox-toggle-btn:hover {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+}
+
+/* Groups */
+.toolbox-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+}
+
+/* Divider */
+.toolbox-divider {
   width: 1px;
   height: 24px;
   background-color: var(--border-color);
-  margin: 0 5px;
+  margin: 0 4px;
+  opacity: 0.5;
 }
 
-/* Status Pill (Database) */
+/* Buttons */
+.toolbox-button {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-color-muted);
+  font-size: 1.0rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.toolbox-button:hover {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.toolbox-button.active {
+  background-color: var(--primary-color);
+  color: #ffffff; /* Force white for active consistency */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Status Pill (Adapted for Toolbox) */
 .status-pill {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 0 14px;
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 600;
-  border: 1px solid var(--border-color);
+  border: none;
   cursor: pointer;
   transition: all 0.2s ease;
-  background-color: var(--input-background);
+  background-color: transparent;
   color: var(--text-color-muted);
   white-space: nowrap;
+  height: 38px; /* Match button height */
 }
 
-.status-pill:hover {
-  background-color: var(--background-color);
-  border-color: var(--primary-color);
-  transform: translateY(-1px);
+.header-toolbox .status-pill:hover {
+  background-color: rgba(0,0,0,0.05);
 }
 
 .status-dot {
@@ -4441,35 +4537,12 @@ body.theme-stranger.dark-mode ::-webkit-scrollbar-track {
 }
 
 .status-pill.connected {
-  background-color: var(--status-good-bg);
   color: var(--status-good);
-  border-color: var(--status-good);
 }
 
 .status-pill.connected .status-dot {
   background-color: var(--status-good);
   box-shadow: 0 0 8px var(--status-good);
-}
-
-/* Icon Buttons (Ghost Style) */
-.icon-action-btn {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: var(--text-color-muted);
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.icon-action-btn:hover {
-  background-color: var(--primary-color-light);
-  color: var(--primary-color);
 }
 
 /* Theme Selector (Minimal) */
@@ -4521,7 +4594,8 @@ body.theme-stranger.dark-mode ::-webkit-scrollbar-track {
   transition: all 0.3s ease;
 }
 
-.icon-action-btn:hover .moon-toggle {
+/* Dark Mode Toggle inside Button */
+.toolbox-button:hover .moon-toggle {
   background-color: var(--primary-color);
   box-shadow: inset -3px -3px 0 0 var(--primary-color-light);
 }
@@ -4543,6 +4617,14 @@ body.dark-mode .moon-toggle {
   .header-actions {
     width: 100%;
     justify-content: space-between;
+  }
+  
+  /* Make Toolbox scrollable or wrap on very small screens */
+  .header-toolbox {
+    width: 100%;
+    overflow-x: auto;
+    justify-content: space-between;
+    padding: 0 10px;
   }
 }
 
@@ -5435,4 +5517,59 @@ body.theme-stranger .help-modal .help-header h3 {
 body.theme-stranger .nav-btn.primary {
   background-color: #c1121f; /* Stranger Things Red */
   border-color: #8a0e16;
+}
+
+/* --- TOOLBOX THEME OVERRIDES --- */
+
+/* Cyberpunk: Boxy, Neon */
+body.theme-cyberpunk .header-toolbox {
+  border-radius: 0;
+  border: 2px solid var(--primary-color);
+  background-color: var(--component-header-bg); /* Use theme bg (Cyan in light, dark in dark) */
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.8);
+}
+/* Cyberpunk Light Mode Specific Override if needed to be lighter than header */
+body.theme-cyberpunk:not(.dark-mode) .header-toolbox {
+  background-color: rgba(255, 255, 255, 0.9); /* Cleaner look for light mode */
+  border: 2px solid #d600c0; /* Magenta Border for contrast */
+}
+body.theme-cyberpunk:not(.dark-mode) .header-toolbox.collapsed {
+    background-color: #00eaff; /* Cyan when collapsed button */
+}
+body.theme-cyberpunk .toolbox-button {
+  border-radius: 0;
+}
+body.theme-cyberpunk .toolbox-button.active {
+  box-shadow: 2px 2px 0px rgba(255,255,255,0.5);
+}
+
+/* Stranger Things: Retro, Parchment */
+body.theme-stranger .header-toolbox {
+  border-radius: 4px; /* Slight rounded for 80s tech look */
+  border: 2px solid var(--border-color);
+  background-color: var(--content-background); /* Match parchment/dark */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+body.theme-stranger .toolbox-button {
+  border-radius: 4px;
+}
+body.theme-stranger .toolbox-divider {
+  background-color: var(--primary-color); /* Red lines */
+  opacity: 0.3;
+}
+body.theme-stranger .toolbox-button.active {
+    border: 1px solid var(--primary-color);
+    box-shadow: 0 0 8px var(--primary-color);
+}
+
+/* Orbital: Enhanced Glass */
+body.theme-orbital .header-toolbox {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1); 
+}
+body.theme-orbital.dark-mode .header-toolbox {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.3));
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
