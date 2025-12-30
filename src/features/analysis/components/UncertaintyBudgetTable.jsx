@@ -608,10 +608,36 @@ const UncertaintyBudgetTable = ({
 
                             if (!gbLowValid || !gbUpValid) {
                                 if (setNotification) {
+                                    const inputs = riskResults?.gbInputs || {};
+                                    const reqTUR = inputs.reqTUR || "N/A";
+                                    const achievedTUR = inputs.turVal ? inputs.turVal.toFixed(2) : "N/A";
+                                    const uCal = inputs.combUnc ? inputs.combUnc.toPrecision(4) : "N/A";
+                                    const unit = inputs.nominalUnit || "";
+
+                                    // Find Top Contributor
+                                    let topContributorString = "N/A";
+                                    if (calcResults && calcResults.calculatedBudgetComponents) {
+                                        const sortedComponents = [...calcResults.calculatedBudgetComponents].sort((a, b) => 
+                                            Math.abs(b.contribution || 0) - Math.abs(a.contribution || 0)
+                                        );
+                                        const topComp = sortedComponents[0];
+                                        if (topComp && typeof topComp.contribution === 'number') {
+                                            topContributorString = `${topComp.name} (${topComp.contribution.toPrecision(4)} ${unit})`;
+                                        }
+                                    }
+
                                     setNotification({
-                                        title: "Math Engine Convergence Failure",
+                                        title: "Convergence Failure",
                                         isFloating: true,
-                                        message: `The mathematical engine could not converge on a solution beause the required TUR is so low, causing the calculated Uncertainty to exceed guard band limits.
+                                        message: `The math engine could not converge on guard band limits because the calculated TUR is significantly lower than the required TUR, causing the calculated Uncertainty to exceed allowable limits.
+
+Diagnostic Data:
+• Required TUR: ${reqTUR}
+• Achieved TUR: ${achievedTUR}
+• Total Uncertainty (u_cal): ${uCal} ${unit}
+
+Primary Contributor:
+• ${topContributorString}
 
 Please increase the required TUR or improve your uncertainty to allow for a viable solution.`
                                     });

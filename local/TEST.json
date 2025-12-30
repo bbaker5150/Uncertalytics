@@ -510,485 +510,6 @@
               }
             ]
           }
-        },
-        {
-          "id": 1766526272309,
-          "name": "Fluke 87V TMDE 2",
-          "measurementPoint": {
-            "name": "DC Voltage",
-            "value": "1",
-            "unit": "V"
-          },
-          "quantity": 1,
-          "reading": {
-            "high": "0.7",
-            "low": "-0.7",
-            "unit": "%",
-            "distribution": "1.960",
-            "symmetric": true
-          },
-          "range": {
-            "high": "0.01",
-            "low": "-0.01",
-            "unit": "%",
-            "distribution": "1.960",
-            "symmetric": true,
-            "value": "1000"
-          },
-          "sourceInstrument": {
-            "id": 1766359701740,
-            "manufacturer": "Fluke",
-            "model": "87V",
-            "description": "Digital Multimeter",
-            "functions": [
-              {
-                "id": 1766360292741,
-                "name": "DC Voltage",
-                "unit": "V",
-                "ranges": [
-                  {
-                    "id": 1766360200038,
-                    "min": 0,
-                    "max": "0.6",
-                    "resolution": 0.0001,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.05",
-                        "low": "-0.05",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766359672242,
-                    "min": 0,
-                    "max": "6",
-                    "resolution": 0.001,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.05",
-                        "low": "-0.05",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766360200244,
-                    "min": 50,
-                    "max": "60",
-                    "resolution": 0.01,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.05",
-                        "low": "-0.05",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766359924280,
-                    "min": 0,
-                    "max": "600",
-                    "resolution": 0.1,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.05",
-                        "low": "-0.05",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766359974491,
-                    "min": 0,
-                    "max": "1000",
-                    "resolution": 1,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.05",
-                        "low": "-0.05",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "id": 1766359862687,
-                "name": "AC Voltage",
-                "unit": "V",
-                "ranges": [
-                  {
-                    "id": 1766360379437,
-                    "min": 0,
-                    "max": "0.6",
-                    "resolution": 0.0001,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.7",
-                        "low": "-0.7",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766360430747,
-                    "min": 0,
-                    "max": "6",
-                    "resolution": 0.001,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.7",
-                        "low": "-0.7",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766360311888,
-                    "min": 0,
-                    "max": "600",
-                    "resolution": 0.1,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.7",
-                        "low": "-0.7",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766360501728,
-                    "min": 0,
-                    "max": "1000",
-                    "resolution": 1,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.7",
-                        "low": "-0.7",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "id": 1766360444277,
-                "name": "Resistance",
-                "unit": "Ohm",
-                "ranges": [
-                  {
-                    "id": 1766360408824,
-                    "min": 0,
-                    "max": "600",
-                    "resolution": 0.1,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.2",
-                        "low": "-0.2",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766360448553,
-                    "min": 0,
-                    "max": "6000",
-                    "resolution": 1,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.2",
-                        "low": "-0.2",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766360073623,
-                    "min": 0,
-                    "max": "60000",
-                    "resolution": 10,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.2",
-                        "low": "-0.2",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766359749010,
-                    "min": 0,
-                    "max": "600000",
-                    "resolution": 100,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.6",
-                        "low": "-0.6",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766360048702,
-                    "min": 0,
-                    "max": "6000000",
-                    "resolution": 1000,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.6",
-                        "low": "-0.6",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766360086769,
-                    "min": 0,
-                    "max": "50000000",
-                    "resolution": 10000,
-                    "tolerances": {
-                      "reading": {
-                        "high": "1",
-                        "low": "-1",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "id": 1766359611913,
-                "name": "DC Current",
-                "unit": "A",
-                "ranges": [
-                  {
-                    "id": 1766360547910,
-                    "min": 0,
-                    "max": "0.06",
-                    "resolution": 0.00001,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.2",
-                        "low": "-0.2",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766360088549,
-                    "min": 0,
-                    "max": "0.4",
-                    "resolution": 0.0001,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.2",
-                        "low": "-0.2",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766359575842,
-                    "min": 0,
-                    "max": "6",
-                    "resolution": 0.001,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.2",
-                        "low": "-0.2",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  },
-                  {
-                    "id": 1766360281507,
-                    "min": 0,
-                    "max": "10",
-                    "resolution": 0.01,
-                    "tolerances": {
-                      "reading": {
-                        "high": "0.2",
-                        "low": "-0.2",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      },
-                      "range": {
-                        "high": "0.01",
-                        "low": "-0.01",
-                        "unit": "%",
-                        "distribution": "1.960",
-                        "symmetric": true
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          }
         }
       ],
       "uutTolerance": {
@@ -1033,14 +554,14 @@
         "qualifier": null
       },
       "uutDescription": "Torque",
-      "combined_uncertainty": 3592.871202625043,
-      "combined_uncertainty_absolute_base": 0.003592871202625043,
+      "combined_uncertainty": 388.6108024577479,
+      "combined_uncertainty_absolute_base": 0.00038861080245774794,
       "combined_uncertainty_inputs_native": 0,
       "combined_uncertainty_inputs_base": 0,
       "effective_dof": null,
       "k_value": 1.9571619316560775,
-      "expanded_uncertainty": 7031.830743121124,
-      "expanded_uncertainty_absolute_base": 0.007031830743121124,
+      "expanded_uncertainty": 760.5742688006243,
+      "expanded_uncertainty_absolute_base": 0.0007605742688006243,
       "calculatedBudgetComponents": [
         {
           "id": "UUT_resolution",
@@ -1082,58 +603,30 @@
           "sourcePointLabel": "1 V",
           "quantity": 1,
           "contribution": 0.00005102040816326531
-        },
-        {
-          "id": "Fluke 87V TMDE 2_reading",
-          "name": "Fluke 87V TMDE 2 - Reading",
-          "type": "B",
-          "value": 3571.428571428571,
-          "value_native": 0.0035714285714285713,
-          "unit_native": "V",
-          "dof": null,
-          "isCore": true,
-          "distribution": "Normal (95%)",
-          "sourcePointLabel": "1 V",
-          "quantity": 1,
-          "contribution": 0.0035714285714285713
-        },
-        {
-          "id": "Fluke 87V TMDE 2_range",
-          "name": "Fluke 87V TMDE 2 - Range",
-          "type": "B",
-          "value": 51.02040816326531,
-          "value_native": 0.00005102040816326531,
-          "unit_native": "V",
-          "dof": null,
-          "isCore": true,
-          "distribution": "Normal (95%)",
-          "sourcePointLabel": "1 V",
-          "quantity": 1,
-          "contribution": 0.00005102040816326531
         }
       ],
       "calculatedNominalValue": null,
       "riskMetrics": {
         "LLow": 0.9989,
         "LUp": 1.0010999999999999,
-        "tur": 0.1564315240488414,
-        "tar": 0.01017576318223807,
-        "pfa": 3.177118956019373,
-        "pfr": 65.31335009597963,
-        "pfa_term1": 1.5885594780094645,
-        "pfa_term2": 1.5885594780099086,
-        "pfr_term1": 32.656675047989545,
-        "pfr_term2": 32.656675047990085,
-        "uCal": 0.003592871202625043,
-        "uUUT": 0.0007511079808367168,
-        "uDev": 0.003670543103891975,
-        "correlation": 0.2046312928569881,
+        "tur": 1.44627559085658,
+        "tar": 1,
+        "pfa": 3.574972951748402,
+        "pfr": 8.60467860725566,
+        "pfa_term1": 1.7874864758739784,
+        "pfa_term2": 1.7874864758744238,
+        "pfr_term1": 4.302339303627492,
+        "pfr_term2": 4.30233930362817,
+        "uCal": 0.00038861080245774794,
+        "uUUT": 0.0007511079808366926,
+        "uDev": 0.0008456840749732893,
+        "correlation": 0.888166164013927,
         "ALow": 0.9989,
         "AUp": 1.0010999999999999,
-        "expandedUncertainty": 0.007031830743121124,
-        "tmdeToleranceSpan": 0.21619999999999984,
-        "tmdeToleranceHigh": 0.10809999999999986,
-        "tmdeToleranceLow": -0.10809999999999997,
+        "expandedUncertainty": 0.0007605742688006243,
+        "tmdeToleranceSpan": 0.0021999999999998687,
+        "tmdeToleranceHigh": 0.0010999999999998789,
+        "tmdeToleranceLow": -0.0010999999999999899,
         "uutBreakdownForTar": [
           {
             "name": "Fluke 87V Digital Multimeter - Reading",
@@ -1152,14 +645,6 @@
           {
             "name": "Fluke 87V TMDE 1 - Range",
             "span": 0.0011999999999999789
-          },
-          {
-            "name": "Fluke 87V TMDE 2 - Reading",
-            "span": 0.013999999999999901
-          },
-          {
-            "name": "Fluke 87V TMDE 2 - Range",
-            "span": 0.20000000000000007
           }
         ],
         "nativeUnit": "V",
@@ -1167,10 +652,10 @@
           "nominal": 1,
           "uutLower": 0.9989,
           "uutUpper": 1.0010999999999999,
-          "tmdeLower": 0.8919,
-          "tmdeUpper": 1.1080999999999999,
-          "combUnc": 0.003592871202625043,
-          "turVal": 0.1564315240488414,
+          "tmdeLower": 0.9989,
+          "tmdeUpper": 1.0010999999999999,
+          "combUnc": 0.00038861080245774794,
+          "turVal": 1.44627559085658,
           "measRelTarget": 0.85,
           "calibrationInt": 12,
           "measrelCalcAssumed": 0.85,
@@ -1180,20 +665,28 @@
           "safeRes": 0.001
         },
         "gbResults": {
-          "GBLOW": null,
-          "GBUP": null,
-          "GBMULT": 0,
-          "GBPFA": 0,
-          "GBPFAT1": 0,
-          "GBPFAT2": 0,
-          "GBPFR": 0,
-          "GBPFRT1": 0,
-          "GBPFRT2": 0,
-          "NOGBCALINT": "",
-          "NOGBCALINTOBS": "",
-          "NOGBCALINTPRED": "",
-          "NOGBMEASREL": null,
-          "NOGBMEASRELOBS": null
+          "GBLOW": 0.999,
+          "GBLOWMULT": 0.9603515625000001,
+          "GBUP": 1.0010000000000001,
+          "GBUPMULT": 0.9603515625000001,
+          "GBMULT": 90.90909090911109,
+          "GBPFA": 1.302470447677187,
+          "GBPFAT1": 0.6512352238382331,
+          "GBPFAT2": 0.6512352238389539,
+          "GBPFAUUUT": 0.0005758026595358203,
+          "GBPFAUDEV": 0.0006946704675710481,
+          "GBPFACOR": 0.8288860494518281,
+          "GBPFR": 10.693997929063299,
+          "GBPFRT1": 5.346998964533039,
+          "GBPFRT2": 5.346998964530259,
+          "GBCALINT": 6.716309518566269,
+          "GBCALINTOBS": 0.8066464189933559,
+          "GBCALINTPRED": 0.8866889501226258,
+          "NOGBCALINT": 7.3580951990083925,
+          "NOGBCALINTOBS": 0.8066464189933559,
+          "NOGBCALINTPRED": 0.8765577113446351,
+          "NOGBMEASREL": 87.6557711344635,
+          "NOGBMEASRELOBS": 80.66464189933559
         },
         "uutResolution": 0
       }
@@ -1225,30 +718,6 @@
           },
           "id": 1766526971190.0576,
           "name": "Fluke 87V TMDE 1",
-          "isTmde": true
-        },
-        {
-          "reading": {
-            "high": "0.05",
-            "low": "-0.05",
-            "unit": "%",
-            "distribution": "1.960",
-            "symmetric": true
-          },
-          "range": {
-            "high": "0.01",
-            "low": "-0.01",
-            "unit": "%",
-            "distribution": "1.960",
-            "symmetric": true,
-            "value": "600"
-          },
-          "measurementPoint": {
-            "value": "10",
-            "unit": "V"
-          },
-          "id": 1766526971191.7715,
-          "name": "Fluke 87V TMDE 2",
           "isTmde": true
         }
       ],
@@ -1293,14 +762,14 @@
         },
         "qualifier": null
       },
-      "combined_uncertainty": 2887.070462176312,
-      "combined_uncertainty_absolute_base": 0.028870704621763124,
+      "combined_uncertainty": 2886.9532473246195,
+      "combined_uncertainty_absolute_base": 0.028869532473246196,
       "combined_uncertainty_inputs_native": 0,
       "combined_uncertainty_inputs_base": 0,
       "effective_dof": null,
       "k_value": 1.9571619316560775,
-      "expanded_uncertainty": 5650.464402580195,
-      "expanded_uncertainty_absolute_base": 0.056504644025801964,
+      "expanded_uncertainty": 5650.234994134638,
+      "expanded_uncertainty_absolute_base": 0.05650234994134638,
       "calculatedBudgetComponents": [
         {
           "id": "UUT_resolution",
@@ -1342,58 +811,30 @@
           "sourcePointLabel": "10 V",
           "quantity": 1,
           "contribution": 0.00005102040816326531
-        },
-        {
-          "id": "Fluke 87V TMDE 2_reading",
-          "name": "Fluke 87V TMDE 2 - Reading",
-          "type": "B",
-          "value": 25.510204081632654,
-          "value_native": 0.00025510204081632655,
-          "unit_native": "V",
-          "dof": null,
-          "isCore": true,
-          "distribution": "Normal (95%)",
-          "sourcePointLabel": "10 V",
-          "quantity": 1,
-          "contribution": 0.00025510204081632655
-        },
-        {
-          "id": "Fluke 87V TMDE 2_range",
-          "name": "Fluke 87V TMDE 2 - Range",
-          "type": "B",
-          "value": 5.1020408163265305,
-          "value_native": 0.00005102040816326531,
-          "unit_native": "V",
-          "dof": null,
-          "isCore": true,
-          "distribution": "Normal (95%)",
-          "sourcePointLabel": "10 V",
-          "quantity": 1,
-          "contribution": 0.00005102040816326531
         }
       ],
       "calculatedNominalValue": null,
       "riskMetrics": {
         "LLow": 9.934999999999999,
         "LUp": 10.065000000000001,
-        "tur": 1.150347924859416,
-        "tar": 0.5,
-        "pfa": 4.052603244318346,
-        "pfr": 11.705402900572805,
-        "pfa_term1": 2.026301622159173,
-        "pfa_term2": 2.026301622159173,
-        "pfr_term1": 5.8527014502864025,
-        "pfr_term2": 5.8527014502864025,
-        "uCal": 0.028870704621763124,
-        "uUUT": 0.04438365341308081,
-        "uDev": 0.05294739158494566,
-        "correlation": 0.8382594889849163,
+        "tur": 1.1503946307981188,
+        "tar": 1,
+        "pfa": 4.052519259797716,
+        "pfr": 11.704762377040053,
+        "pfa_term1": 2.026259629898858,
+        "pfa_term2": 2.026259629898858,
+        "pfr_term1": 5.8523811885200265,
+        "pfr_term2": 5.8523811885200265,
+        "uCal": 0.028869532473246196,
+        "uUUT": 0.0443836534130808,
+        "uDev": 0.05294675245486068,
+        "correlation": 0.8382696077709341,
         "ALow": 9.934999999999999,
         "AUp": 10.065000000000001,
-        "expandedUncertainty": 0.056504644025801964,
-        "tmdeToleranceSpan": 0.2600000000000051,
-        "tmdeToleranceHigh": 0.13000000000000256,
-        "tmdeToleranceLow": -0.13000000000000256,
+        "expandedUncertainty": 0.05650234994134638,
+        "tmdeToleranceSpan": 0.13000000000000256,
+        "tmdeToleranceHigh": 0.06500000000000128,
+        "tmdeToleranceLow": -0.06500000000000128,
         "uutBreakdownForTar": [
           {
             "name": "Fluke 87V Digital Multimeter - Reading",
@@ -1412,14 +853,6 @@
           {
             "name": "Fluke 87V TMDE 1 - Range",
             "span": 0.120000000000001
-          },
-          {
-            "name": "Fluke 87V TMDE 2 - Reading",
-            "span": 0.010000000000001563
-          },
-          {
-            "name": "Fluke 87V TMDE 2 - Range",
-            "span": 0.120000000000001
           }
         ],
         "nativeUnit": "V",
@@ -1427,10 +860,10 @@
           "nominal": 10,
           "uutLower": 9.934999999999999,
           "uutUpper": 10.065000000000001,
-          "tmdeLower": 9.869999999999997,
-          "tmdeUpper": 10.130000000000003,
-          "combUnc": 0.028870704621763124,
-          "turVal": 1.150347924859416,
+          "tmdeLower": 9.934999999999999,
+          "tmdeUpper": 10.065000000000001,
+          "combUnc": 0.028869532473246196,
+          "turVal": 1.1503946307981188,
           "measRelTarget": 0.85,
           "calibrationInt": 12,
           "measrelCalcAssumed": 0.85,
@@ -1451,11 +884,11 @@
           "GBPFR": 0,
           "GBPFRT1": 0,
           "GBPFRT2": 0,
-          "NOGBCALINT": 7.756270704021386,
-          "NOGBCALINTOBS": 0.7804154789858839,
-          "NOGBCALINTPRED": 0.8519305549216337,
-          "NOGBMEASREL": 85.19305549216337,
-          "NOGBMEASRELOBS": 78.04154789858839
+          "NOGBCALINT": 7.756280591095203,
+          "NOGBCALINTOBS": 0.7804210443760053,
+          "NOGBCALINTPRED": 0.8519343077554996,
+          "NOGBMEASREL": 85.19343077554996,
+          "NOGBMEASRELOBS": 78.04210443760053
         },
         "uutResolution": 0
       }
@@ -1466,7 +899,7 @@
     "reliability": 85,
     "calInt": 12,
     "measRelCalcAssumed": 85,
-    "neededTUR": 4,
+    "neededTUR": "4",
     "reqPFA": 2,
     "guardBandMultiplier": 1
   },
