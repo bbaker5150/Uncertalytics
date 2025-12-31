@@ -347,17 +347,17 @@ function App() {
           // Reuse ID if available, or generate a check ID
           const checkId = tmde.id || `tmde-check-${idx}`;
 
-          if (tmde.sourceInstrument && tmdeVal) {
-            checks.push({
-              type: 'tmde',
-              id: checkId,
-              originalTmde: tmde,
-              instrument: tmde.sourceInstrument,
-              name: tmde.name, // Pass the name for reference
-              targetValue: tmdeVal,
-              targetUnit: tmdeUnit
-            });
-          }
+          // ALWAYS push to checks queue, even if instrument is missing. 
+          // If instrument is missing, it will fall through to "NO MATCH" logic and be cleared/flagged as manual.
+          checks.push({
+            type: 'tmde',
+            id: checkId,
+            originalTmde: tmde,
+            instrument: tmde.sourceInstrument || null, // Explicitly pass null if missing
+            name: tmde.name, // Pass the name for reference
+            targetValue: tmdeVal,
+            targetUnit: tmdeUnit
+          });
         });
       }
     }
@@ -482,26 +482,23 @@ function App() {
           }
 
           // If resolved is null OR recalculate failed
-          if (!resolved && check.instrument) {
+          if (!resolved) {
             missing.push({
               name: check.name,
               target: `${check.targetValue} ${check.targetUnit}`
             });
           }
 
-          // Clean fallback for missing/failed
-          const cleanTmde = { ...check.originalTmde };
-          ['reading', 'range', 'floor', 'readings_iv', 'db', 'tolerance', 'tolerances', 'measuringResolution', 'uncertainty', 'k'].forEach(k => delete cleanTmde[k]);
-
+          // Clean fallback for missing/failed: Strictly reconstruct to avoid old components persisting
           const fallbackObj = {
-            ...cleanTmde,
+            id: Date.now() + Math.random() + i, // Generate new ID to force distinct state
+            name: check.name || check.originalTmde?.name || "TMDE",
+            sourceInstrument: check.originalTmde?.sourceInstrument, // Preserve instrument definition for future checks
             measurementPoint: { value: check.targetValue, unit: check.targetUnit },
-            id: Date.now() + Math.random() + i,
-            rangeMax: "",
-            name: check.name || cleanTmde.name || "TMDE", // Ensure fallback name
-            isTmde: true
+            isTmde: true,
+            rangeMax: "" 
+            // Explicitly do NOT spread check.originalTmde to ensure 'reading', 'range', 'floor' etc. are gone.
           };
-          delete fallbackObj.measuringResolution; // Ensure fallback also has no resolution
           return fallbackObj;
         });
 

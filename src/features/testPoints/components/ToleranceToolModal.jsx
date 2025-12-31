@@ -90,9 +90,13 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
     if (activeTab === idToRemove) setActiveTab("UUT");
   };
 
-  const handleTmdeToleranceChange = (id, setter) => {
+  const handleTmdeToleranceChange = React.useCallback((id, setter) => {
     setTmdeTolerances((prev) => prev.map((t) => (t.id === id ? setter(t) : t)));
-  };
+  }, []);
+
+  const onActiveTmdeChange = React.useCallback((updater) => {
+    handleTmdeToleranceChange(activeTab, updater);
+  }, [activeTab, handleTmdeToleranceChange]);
 
   if (!isOpen) return null;
 
@@ -125,6 +129,8 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
   };
 
   const activeTmde = tmdeTolerances.find((t) => t.id === activeTab);
+
+
 
   return ReactDOM.createPortal(
     <>
@@ -198,7 +204,7 @@ const ToleranceToolModal = ({ isOpen, onClose, onSave, testPointData }) => {
             <ToleranceForm tolerance={uutTolerance} setTolerance={setUutTolerance} isUUT={true} referencePoint={testPointData.testPointInfo.parameter} />
           )}
           {activeTmde && (
-            <ToleranceForm tolerance={activeTmde} setTolerance={(setter) => handleTmdeToleranceChange(activeTmde.id, setter)} isUUT={false} referencePoint={activeTmde.measurementPoint} />
+            <ToleranceForm tolerance={activeTmde} setTolerance={onActiveTmdeChange} isUUT={false} referencePoint={activeTmde.measurementPoint} />
           )}
         </div>
 
