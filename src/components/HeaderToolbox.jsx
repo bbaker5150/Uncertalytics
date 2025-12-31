@@ -82,11 +82,19 @@ const HeaderToolbox = ({
     };
 
     if (isDragging) {
+      // Prevent text selection while dragging
+      document.body.style.userSelect = 'none';
+      document.body.style.webkitUserSelect = 'none';
+
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
     }
 
     return () => {
+      // Restore text selection
+      document.body.style.userSelect = '';
+      document.body.style.webkitUserSelect = '';
+
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
@@ -127,6 +135,48 @@ const HeaderToolbox = ({
     }
   };
 
+  /* Smart Menu Positioning Logic */
+  const [menuStyle, setMenuStyle] = useState({});
+
+  useEffect(() => {
+    if (showThemeSelector && toolboxRef.current) {
+        const rect = toolboxRef.current.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const newStyles = {};
+
+        if (isVertical) {
+            // Smart Check: If closer to the right edge, spawn menu to the LEFT
+            if (rect.left > viewportWidth / 2) {
+                newStyles.right = '100%';
+                newStyles.left = 'auto'; 
+                newStyles.top = '0';
+                newStyles.transform = 'none'; // No vertical centering needed if aligning top-to-top roughly
+                newStyles.marginRight = '12px'; // Gap between toolbar and menu
+                newStyles.marginLeft = '0';
+                newStyles.marginTop = '0';
+            } else {
+                // Otherwise spawn to the RIGHT
+                newStyles.left = '100%';
+                newStyles.right = 'auto';
+                newStyles.top = '0';
+                newStyles.transform = 'none';
+                newStyles.marginLeft = '12px';
+                newStyles.marginRight = '0';
+                newStyles.marginTop = '0';
+            }
+        } else {
+            // Horizontal Toolbar: Default to dropping down centered
+            newStyles.top = '100%';
+            newStyles.left = '50%';
+            newStyles.transform = 'translateX(-50%)';
+            newStyles.marginTop = '12px';
+            newStyles.marginLeft = '0';
+            newStyles.marginRight = '0';
+        }
+        setMenuStyle(newStyles);
+    }
+  }, [showThemeSelector, isVertical, position]);
+
   const handleThemeSelect = (themeValue) => {
     setCurrentTheme(themeValue);
     setShowThemeSelector(false);
@@ -144,13 +194,9 @@ const HeaderToolbox = ({
         ref={toolboxRef}
         className={`header-toolbox ${isToolboxCollapsed ? "collapsed" : ""} ${isVertical ? "vertical" : ""} ${isDragging ? "dragging" : ""}`}
         style={{
-            position: "absolute", // Changed from fixed to absolute to scroll with content
-            // If position is null:
-            // left: 50% (center of relative parent)
-            // top: 50% -> adjusted to 47% to visually center against bottom padding
+            position: "absolute", 
             left: position ? position.x : "50%",
             top: position ? position.y : "20%",
-            // Center itself perfectly initially
             transform: position ? "none" : "translate(-50%, -50%)",
             zIndex: 9999,
             cursor: isDragging ? "grabbing" : "grab",
@@ -269,10 +315,6 @@ const HeaderToolbox = ({
           {showThemeSelector && (
             <div className="theme-selector-minimal" style={{ 
                 position: 'absolute', 
-                top: isVertical ? '0' : '100%', 
-                left: isVertical ? '100%' : '50%',
-                transform: isVertical ? 'translateX(10px)' : 'translateX(-50%)',
-                marginTop: isVertical ? '0' : '10px',
                 zIndex: 10001,
                 background: 'var(--content-background)', 
                 padding: '8px', 
@@ -282,7 +324,8 @@ const HeaderToolbox = ({
                 flexDirection: 'column', 
                 gap: '4px',
                 boxShadow: 'var(--box-shadow-glow)',
-                minWidth: '150px'
+                minWidth: '150px',
+                ...menuStyle // Apply calculated positional styles
             }}>
               {themeOptions.map(option => (
                 <div 
