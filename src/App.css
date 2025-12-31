@@ -536,55 +536,318 @@ body.theme-orbital.dark-mode .btn-icon-only:hover {
   border-color: var(--orbital-cyan);
 }
 
-/* --- 1D. THEME: CYBERPUNK --- */
+/* --- 1D. THEME: CYBERPUNK (Night City & High-Tech) --- */
 body.theme-cyberpunk {
-  /* Coding/Terminal Font */
-  --main-font: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+  /* Font: Tech/Terminal */
+  --main-font: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
   --heading-font-weight: 800;
-  --letter-spacing: 0.5px;
+  --letter-spacing: 1px;
   
+  /* Geometry: Sharp, angular, aggressive */
   --border-radius: 0px;
   --modal-radius: 0px;
   --seal-radius: 0px;
   --border-width: 2px;
+  
+  /* Glass: Holographic, not frosted */
   --backdrop-filter: none;
   --sidebar-backdrop-filter: none;
   
-  --background-color: #f0f0f0;
-  --primary-color: #d600c0;
-  --content-background: #ffffff;
-  --sidebar-background: transparent;
-  --border-color: #000000;
-  --component-bg: #ffffff;
-  --component-header-bg: #00eaff;
-  --border-gradient: linear-gradient(90deg, #d600c0, #00eaff);
-  --box-shadow-glow: 5px 5px 0px rgba(0,0,0,1);
-  --toggle-bg-off: #999;
-
-  /* UPDATE: Match Magenta/Cyan Theme */
-  --seal-background-color: #d600c0;         /* Magenta */
-  --seal-background-color-derived: #00eaff; /* Cyan */
-  --seal-tmde-background-color: #000000;    /* Black (Hard contrast) */
-  --risk-value-color: #00eaff;
+  /* --- LIGHT MODE: "THE LAB" (Mirror's Edge inspired) --- */
+  --background-color: #f0f2f5; 
+  --content-background: rgba(255, 255, 255, 0.9);
+  --sidebar-background: rgba(240, 242, 245, 0.85); 
+  --input-background: #ffffff;
+  
+  --primary-color: #000000;      /* Stark Black Contrast */
+  --primary-color-dark: #333333;
+  --primary-color-light: #e0e0e0;
+  
+  --text-color: #000000;
+  --text-color-muted: #666666;
+  
+  --border-color: #000000;       /* Hard borders */
+  --toggle-bg-off: #cccccc;
+  
+  /* Accents */
+  --cyber-magenta: #ff00ff;
+  --cyber-cyan: #00ffff;
+  --cyber-yellow: #ffff00;
+  
+  /* Status Colors (Vibrant) */
+  --status-good: #00cc00;
+  --status-warning: #ffcc00;
+  --status-bad: #ff0033;
+  --status-good-bg: #ccffcc;
+  --status-bad-bg: #ffcccc;
+  --status-warning-bg: #ffffcc;
+  
+  /* Seals & Highlights */
+  --seal-background-color: #ff00ff;         /* Magenta */
+  --seal-background-color-derived: #00ffff; /* Cyan */
+  --seal-tmde-background-color: #000000;    
+  --risk-value-color: #ff00ff;
+  
+  /* Effects */
+  --box-shadow-glow: 4px 4px 0px rgba(0,0,0,0.2); 
+  --border-gradient: linear-gradient(90deg, #ff00ff, #00ffff);
+  
+  /* Background: Clean tech grid */
+  background-image: 
+    linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-attachment: fixed;
 }
 
+/* --- DARK MODE: "NIGHT CITY" (Neon/Grid) --- */
 body.theme-cyberpunk.dark-mode {
-  --background-color: #050505;
-  --content-background: #121212;
-  --sidebar-background: transparent;
+  --background-color: #050510;   /* Deep Tech Blue/Black */
+  --content-background: rgba(10, 10, 20, 0.9);
+  --header-background: rgba(20, 20, 40, 0.95);
+  --sidebar-background: rgba(5, 5, 10, 0.8);
   --input-background: #000000;
-  --component-bg: #000000;
-  --component-header-bg: #333;
   
-  --primary-color: #fcee0a;
+  --primary-color: #fcee0a;      /* Cyber Yellow */
   --primary-color-dark: #c5b800;
+  --primary-color-light: rgba(252, 238, 10, 0.15);
+  
+  --text-color: #e0e0e0;
+  --text-color-muted: #888888;
+  
   --border-color: #333333;
-  --box-shadow-glow: 3px 3px 0px rgba(252, 238, 10, 0.6);
+  --toggle-bg-off: #333333;
+  
+  /* Neon Accents */
+  --cyber-magenta: #ff0055;      /* Hot Pink/Red */
+  --cyber-cyan: #00f3ff;         /* Electric Blue */
+  --cyber-yellow: #fcee0a;
+  
+  /* Component Colors */
+  --component-bg: #000000;
+  --component-header-bg: #1a1a1a;
+  
+  /* Status */
+  --status-good: #00ff41;        /* Matrix Green */
+  --status-warning: #fcee0a;
+  --status-bad: #ff0055;
+  --status-good-bg: #003300;
+  
+  /* Seals */
+  --seal-background-color: var(--cyber-magenta); 
+  --seal-background-color-derived: var(--cyber-cyan); 
+  --seal-tmde-background-color: var(--cyber-yellow);    
+  
+  /* Effects */
+  --box-shadow-glow: 0 0 10px rgba(252, 238, 10, 0.4), inset 0 0 5px rgba(252, 238, 10, 0.1);
+  --border-gradient: linear-gradient(135deg, #ff0055, #00f3ff);
+  
+  /* 3D Grid Animation */
+  background-image:
+    linear-gradient(rgba(0, 243, 255, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 0, 85, 0.2) 1px, transparent 1px);
+  background-size: 60px 60px;
+  background-position: center center;
+  perspective: 1000px;
+  animation: cyberGridPan 20s linear infinite;
+}
 
-  /* UPDATE: Match Yellow/Matrix Theme */
-  --seal-background-color: #fcee0a;         /* Neon Yellow */
-  --seal-background-color-derived: #00ff00; /* Matrix Green */
-  --seal-tmde-background-color: #fcee0a;    /* Yellow */
+@keyframes cyberGridPan {
+  0% { background-position: 0px 0px; }
+  100% { background-position: 60px 60px; }
+}
+
+/* =================================================================== */
+/* CYBERPUNK COMPONENT OVERRIDES                                       */
+/* =================================================================== */
+
+/* 1. CONTENT AREA (The Main Deck) */
+body.theme-cyberpunk .content-area {
+  border: 2px solid var(--border-color);
+  clip-path: polygon(
+    0 0, 
+    20px 0, 
+    0 20px, 
+    0 100%, 
+    100% 100%, 
+    100% 20px, 
+    calc(100% - 20px) 0
+  ); /* Cut corners effect requires custom handling, simplifies to basic borders if clip-path fights layout */
+  /* Resetting clip-path for now as it cuts off scrollbars/content. Using pseudo-elements for corners instead. */
+  clip-path: none; 
+  position: relative;
+  
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.05) 3px
+    );
+  background-size: 100% 4px;
+}
+
+/* Corner Accents for Content Area */
+body.theme-cyberpunk .content-area::before,
+body.theme-cyberpunk .content-area::after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--primary-color);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+body.theme-cyberpunk .content-area::before {
+  top: -2px; left: -2px;
+  border-right: none; border-bottom: none;
+}
+body.theme-cyberpunk .content-area::after {
+  bottom: -2px; right: -2px;
+  border-left: none; border-top: none;
+}
+
+body.theme-cyberpunk.dark-mode .content-area {
+  border-color: var(--cyber-cyan);
+  box-shadow: 0 0 20px rgba(0, 243, 255, 0.15);
+}
+body.theme-cyberpunk.dark-mode .content-area::before,
+body.theme-cyberpunk.dark-mode .content-area::after {
+  border-color: var(--cyber-cyan);
+}
+
+/* 2. BUTTONS (Angled & Glitched) */
+body.theme-cyberpunk .button,
+body.theme-cyberpunk .sidebar-action-button {
+  clip-path: polygon(
+    10px 0, 100% 0, 
+    100% calc(100% - 10px), 
+    calc(100% - 10px) 100%, 
+    0 100%, 
+    0 10px
+  );
+  border: none; /* Borders handled by background trick or outline doesn't work well with clip-path */
+  position: relative;
+  background: var(--button-primary-bg);
+  color: #000 !important; /* Force black text */
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 2px;
+  transition: all 0.1s steps(2);
+}
+
+/* Button Glitch Hover */
+body.theme-cyberpunk .button:hover,
+body.theme-cyberpunk .sidebar-action-button:hover {
+  transform: translate(-2px, -2px);
+  background-color: var(--cyber-cyan);
+  box-shadow: 4px 4px 0px var(--cyber-magenta);
+  text-shadow: 2px 0px 0px rgba(255,0,255,0.5);
+}
+
+/* 3. INPUTS (Terminal Style) */
+body.theme-cyberpunk input,
+body.theme-cyberpunk select,
+body.theme-cyberpunk textarea {
+  border: 1px solid var(--border-color);
+  border-left: 5px solid var(--border-color);
+  background-color: var(--input-background);
+  font-family: 'Consolas', monospace;
+}
+
+body.theme-cyberpunk input:focus,
+body.theme-cyberpunk select:focus {
+  border-color: var(--primary-color);
+  border-left-color: var(--cyber-magenta);
+  box-shadow: 2px 2px 0px var(--primary-color);
+}
+
+body.theme-cyberpunk.dark-mode input,
+body.theme-cyberpunk.dark-mode select {
+  border-color: #444;
+  border-left-color: var(--cyber-cyan);
+  color: var(--cyber-cyan);
+}
+
+/* 4. METRIC PODS (Holo-Cards) */
+body.theme-cyberpunk .metric-pod {
+  background: transparent;
+  border: 2px solid var(--border-color);
+  box-shadow: none;
+  border-radius: 0;
+  position: relative;
+}
+
+body.theme-cyberpunk .metric-pod::before {
+  /* Angled corner decal */
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  border-width: 0 15px 15px 0;
+  border-style: solid;
+  border-color: transparent var(--border-color) transparent transparent;
+}
+
+body.theme-cyberpunk .metric-pod.status-good { border-color: var(--status-good); }
+body.theme-cyberpunk .metric-pod.status-warning { border-color: var(--status-warning); }
+body.theme-cyberpunk .metric-pod.status-bad { border-color: var(--status-bad); }
+
+body.theme-cyberpunk.dark-mode .metric-pod {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+body.theme-cyberpunk.dark-mode .metric-pod.status-good { 
+  border-color: var(--status-good); 
+  box-shadow: 0 0 10px var(--status-good);
+} 
+body.theme-cyberpunk.dark-mode .metric-pod.status-bad { 
+  border-color: var(--status-bad); 
+  box-shadow: 0 0 15px var(--status-bad);
+  animation: badWiring 0.5s infinite;
+}
+
+/* 5. SEALS (Data Chips) */
+body.theme-cyberpunk .uut-seal, 
+body.theme-cyberpunk .tmde-seal {
+  border: none;
+  border-left: 4px solid var(--seal-background-color);
+  background: linear-gradient(90deg, rgba(0,0,0,0.05) 0%, transparent 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+body.theme-cyberpunk.dark-mode .uut-seal, 
+body.theme-cyberpunk.dark-mode .tmde-seal {
+  background: rgba(20, 20, 20, 0.8);
+  border-left: 4px solid var(--seal-background-color);
+  box-shadow: 4px 0 0 rgba(0,0,0,0.5); /* Hard shadow */
+}
+
+/* "Barcode" Deco on Seals */
+body.theme-cyberpunk .uut-seal::after {
+  content: "|| ||| | |||";
+  position: absolute;
+  top: 5px; right: 5px;
+  font-family: monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--seal-background-color);
+  opacity: 0.5;
+}
+
+/* 6. TYPOGRAPHY GLITCH HEADERS */
+body.theme-cyberpunk h1,
+body.theme-cyberpunk h2 {
+  text-transform: uppercase;
+  position: relative;
+}
+
+body.theme-cyberpunk.dark-mode h1,
+body.theme-cyberpunk.dark-mode h2 {
+  color: #fff;
+  text-shadow: 2px 2px 0px var(--cyber-magenta), -1px -1px 0 var(--cyber-cyan);
 }
 
 /* =================================================================== */

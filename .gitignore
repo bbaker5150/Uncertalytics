@@ -17,6 +17,7 @@ release/
 
 # --- Testing ---
 coverage/
+local/
 
 # --- Local Environment & Secrets ---
 .env
