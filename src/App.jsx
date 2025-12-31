@@ -783,15 +783,8 @@ function App() {
             isOpen={isToleranceModalOpen}
             onClose={() => setIsToleranceModalOpen(false)}
             onSave={(data) => {
-              const { uutTolerance, ...testPointSpecificData } = data;
-              if (uutTolerance) {
-                setSessions((prev) =>
-                  prev.map((s) =>
-                    s.id === selectedSessionId ? { ...s, uutTolerance } : s
-                  )
-                );
-              }
-              updateTestPointData(testPointSpecificData);
+              // FIX: Save UUT tolerance directly to the test point, NOT the session default
+              updateTestPointData(data);
             }}
             testPointData={testPointData}
           />

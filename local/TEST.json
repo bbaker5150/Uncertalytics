@@ -15,7 +15,9 @@
       "unit": "%",
       "distribution": "1.960",
       "symmetric": true
-    }
+    },
+    "measuringResolution": "0.0001",
+    "measuringResolutionUnit": "V"
   },
   "testPoints": [
     {
@@ -885,12 +887,12 @@
       }
     },
     {
-      "id": 1767152089427,
+      "id": 1767152603339,
       "section": "1",
       "tmdeDescription": "",
       "tmdeTolerances": [
         {
-          "id": 1767152088521.4565,
+          "id": 1767152600981.4194,
           "name": "Fluke 87V TMDE 1",
           "measurementPoint": {
             "value": "1500",
@@ -899,8 +901,8 @@
           "isTmde": true,
           "rangeMax": "",
           "reading": {
-            "high": "0.0001",
-            "low": "-0.0001",
+            "high": "0.001",
+            "low": "-0.001",
             "unit": "%",
             "distribution": "1.960",
             "symmetric": true
@@ -914,7 +916,9 @@
           "unit": "%",
           "distribution": "1.960",
           "symmetric": true
-        }
+        },
+        "measuringResolution": "0.0001",
+        "measuringResolutionUnit": "V"
       },
       "specifications": {
         "mfg": {
@@ -939,53 +943,65 @@
         },
         "qualifier": null
       },
-      "combined_uncertainty": 0.00034013605442176874,
-      "combined_uncertainty_absolute_base": 5.102040816326531e-7,
+      "combined_uncertainty": 0.01954383159956103,
+      "combined_uncertainty_absolute_base": 0.000029315747399341547,
       "combined_uncertainty_inputs_native": 0,
       "combined_uncertainty_inputs_base": 0,
       "effective_dof": null,
       "k_value": 1.9571619316560775,
-      "expanded_uncertainty": 0.0006657013372979856,
-      "expanded_uncertainty_absolute_base": 9.985520059469785e-7,
+      "expanded_uncertainty": 0.038250443205357955,
+      "expanded_uncertainty_absolute_base": 0.000057375664808036935,
       "calculatedBudgetComponents": [
+        {
+          "id": "UUT_resolution",
+          "name": "DC Voltage - Resolution",
+          "type": "B",
+          "value": 0.01924557351809084,
+          "value_native": 0.00002886836027713626,
+          "unit_native": "V",
+          "dof": null,
+          "isCore": true,
+          "distribution": "Rectangular",
+          "sourcePointLabel": "1500 V",
+          "contribution": 0.00002886836027713626
+        },
         {
           "id": "Fluke 87V TMDE 1_reading",
           "name": "Fluke 87V TMDE 1 - Reading",
           "type": "B",
-          "value": 0.00034013605442176874,
-          "value_native": 5.102040816326531e-7,
+          "value": 0.0034013605442176874,
+          "value_native": 0.0000051020408163265315,
           "unit_native": "V",
           "dof": null,
           "isCore": true,
           "distribution": "Normal (95%)",
           "sourcePointLabel": "1500 V",
           "quantity": 1,
-          "contribution": 5.102040816326531e-7
+          "contribution": 0.0000051020408163265315
         }
       ],
       "calculatedNominalValue": null,
-      "uutDescription": "Fluke 87V Digital Multimeter",
       "riskMetrics": {
         "LLow": 1499.985,
         "LUp": 1500.015,
-        "tur": 15021.751406803063,
-        "tar": 9.999999999545253,
-        "pfa": 0.0005425533907005287,
-        "pfr": 0.0005426029991373316,
-        "pfa_term1": 0.00027127669535026433,
-        "pfa_term2": 0.00027127669535026433,
-        "pfr_term1": 0.0002713014995686658,
-        "pfr_term2": 0.0002713014995686658,
-        "uCal": 5.102040816326531e-7,
-        "uUUT": 0.010242381556932911,
-        "uDev": 0.010242381569640318,
-        "correlation": 0.9999999987593309,
+        "tur": 261.4348792347049,
+        "tar": 1,
+        "pfa": 0.031094132603731728,
+        "pfr": 0.03125791562707536,
+        "pfa_term1": 0.015547066301865864,
+        "pfa_term2": 0.015547066301865864,
+        "pfr_term1": 0.01562895781353768,
+        "pfr_term2": 0.01562895781353768,
+        "uCal": 0.000029315747399341547,
+        "uUUT": 0.01024238155693291,
+        "uDev": 0.01024242351061725,
+        "correlation": 0.9999959039299344,
         "ALow": 1499.985,
         "AUp": 1500.015,
-        "expandedUncertainty": 9.985520059469785e-7,
-        "tmdeToleranceSpan": 0.003000000000156433,
-        "tmdeToleranceHigh": 0.0015000000000782165,
-        "tmdeToleranceLow": -0.0015000000000782165,
+        "expandedUncertainty": 0.000057375664808036935,
+        "tmdeToleranceSpan": 0.03000000000020009,
+        "tmdeToleranceHigh": 0.015000000000100044,
+        "tmdeToleranceLow": -0.015000000000100044,
         "uutBreakdownForTar": [
           {
             "name": "Fluke 87V Digital Multimeter - Reading",
@@ -995,7 +1011,7 @@
         "tmdeBreakdownForTar": [
           {
             "name": "Fluke 87V TMDE 1 - Reading",
-            "span": 0.003000000000156433
+            "span": 0.03000000000020009
           }
         ],
         "nativeUnit": "V",
@@ -1003,44 +1019,45 @@
           "nominal": 1500,
           "uutLower": 1499.985,
           "uutUpper": 1500.015,
-          "tmdeLower": 1499.9985,
-          "tmdeUpper": 1500.0015,
-          "combUnc": 5.102040816326531e-7,
-          "turVal": 15021.751406803063,
+          "tmdeLower": 1499.985,
+          "tmdeUpper": 1500.015,
+          "combUnc": 0.000029315747399341547,
+          "turVal": 261.4348792347049,
           "measRelTarget": 0.85,
           "calibrationInt": 12,
           "measrelCalcAssumed": 0.85,
           "reqTUR": 4,
           "reqPFA": 0.02,
           "nominalUnit": "V",
-          "safeRes": 0
+          "safeRes": 0.0001
         },
         "gbResults": {
-          "GBLOW": 1499.985,
+          "GBLOW": 1499.9850000000001,
           "GBLOWMULT": 1,
           "GBUP": 1500.015,
           "GBUPMULT": 1,
           "GBMULT": 100,
-          "GBPFA": 0.0005529949913540833,
-          "GBPFAT1": 0.0002764974956770416,
-          "GBPFAT2": 0.0002764974956770416,
-          "GBPFAUUUT": 0.010420057001143903,
-          "GBPFAUDEV": 0.01042005701363463,
-          "GBPFACOR": 0.9999999988012803,
-          "GBPFR": 0.0005530438448114738,
-          "GBPFRT1": 0.0002765219224057369,
-          "GBPFRT2": 0.0002765219224057369,
-          "GBCALINT": 12.632369627136184,
-          "GBCALINTOBS": 0.8569434750523444,
-          "GBCALINTPRED": 0.8500000000000003,
-          "NOGBCALINT": 12.632369627136216,
-          "NOGBCALINTOBS": 0.8569434750523444,
+          "GBPFA": 0.03169517874789807,
+          "GBPFAT1": 0.01584758929697727,
+          "GBPFAT2": 0.015847589450920796,
+          "GBPFAUUUT": 0.010420015775069865,
+          "GBPFAUDEV": 0.010420057013555657,
+          "GBPFACOR": 0.9999960423934593,
+          "GBPFR": 0.03185647008942666,
+          "GBPFRT1": 0.01592823512218261,
+          "GBPFRT2": 0.015928234967244048,
+          "GBCALINT": 12.632213288824126,
+          "GBCALINTOBS": 0.8569418377181952,
+          "GBCALINTPRED": 0.8500000000030892,
+          "NOGBCALINT": 12.632213289106613,
+          "NOGBCALINTOBS": 0.8569418377181952,
           "NOGBCALINTPRED": 0.85,
           "NOGBMEASREL": 85,
-          "NOGBMEASRELOBS": 85.69434750523443
+          "NOGBMEASRELOBS": 85.69418377181952
         },
-        "uutResolution": 0
-      }
+        "uutResolution": 6
+      },
+      "uutDescription": "Fluke 87V Digital Multimeter"
     }
   ],
   "uncReq": {
