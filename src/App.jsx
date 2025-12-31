@@ -813,6 +813,38 @@ function App() {
               </div>
             </div>
 
+            <button
+               className="toolbox-button" 
+               style={{ 
+                 width: '40px', 
+                 height: '40px', 
+                 border: '1px solid var(--border-color)', 
+                 background: 'var(--input-background)',
+                 borderRadius: '50%',
+                 cursor: 'pointer',
+                 color: 'var(--text-color-muted)',
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'center',
+                 transition: 'all 0.2s ease',
+                 marginLeft: 'auto'
+               }}
+               onClick={() => setIsHelpOpen(true)}
+               title="Help & Tutorial"
+               onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--primary-color)';
+                  e.currentTarget.style.borderColor = 'var(--primary-color)';
+                  e.currentTarget.style.backgroundColor = 'var(--primary-color-light)';
+               }}
+               onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--text-color-muted)';
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.backgroundColor = 'var(--input-background)';
+               }}
+            >
+              <FontAwesomeIcon icon={faQuestionCircle} />
+            </button>
+
             <HeaderToolbox 
               isToolboxCollapsed={isToolboxCollapsed}
               setIsToolboxCollapsed={setIsToolboxCollapsed}

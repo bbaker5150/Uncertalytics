@@ -11,7 +11,8 @@ import {
   faSave,
   faFolderOpen,
   faQuestionCircle,
-  faPalette
+  faPalette,
+  faRotate
 } from "@fortawesome/free-solid-svg-icons";
 
 const HeaderToolbox = ({
@@ -171,9 +172,9 @@ const HeaderToolbox = ({
             <button
                 className="toolbox-button"
                 onClick={() => setIsVertical(!isVertical)}
-                title={isVertical ? "Switch to Horizontal" : "Switch to Vertical"}
+                title={isVertical ? "Puntata Orizzontale (Switch to Horizontal)" : "Puntata Verticale (Switch to Vertical)"}
             >
-                <FontAwesomeIcon icon={faRightLeft} style={{ transform: isVertical ? "rotate(90deg)" : "none" }} />
+                <FontAwesomeIcon icon={faRotate} style={{ transform: isVertical ? "rotate(90deg)" : "none" }} />
             </button>
         </div>
 
@@ -256,13 +257,6 @@ const HeaderToolbox = ({
 
         {/* Group 4: System / Help / Theme */}
         <div className="toolbox-group" style={{ position: 'relative' }}> 
-           <button
-              className={`toolbox-button ${isHelpOpen ? "active" : ""}`}
-              onClick={() => setIsHelpOpen(true)}
-              title="Help & Tutorial"
-            >
-              <FontAwesomeIcon icon={faQuestionCircle} />
-            </button>
 
           <button 
              className={`toolbox-button ${showThemeSelector ? "active" : ""}`}
