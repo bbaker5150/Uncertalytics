@@ -4848,6 +4848,66 @@ body.theme-stranger.dark-mode ::-webkit-scrollbar-track {
   box-shadow: 0 0 8px var(--status-good);
 }
 
+/* =================================================================== */
+/* 15a. VERTICAL TOOLBOX STYLES                                        */
+/* =================================================================== */
+
+.header-toolbox.vertical {
+  flex-direction: column;
+  height: auto;
+  width: 48px;
+  border-radius: 99px;
+  padding: 4px;
+}
+
+.header-toolbox.vertical.collapsed {
+  height: 48px; /* Collapsed circle size */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header-toolbox.vertical .toolbox-content {
+  flex-direction: column;
+  width: 100%;
+}
+
+.header-toolbox.vertical.collapsed .toolbox-content {
+  opacity: 0;
+  transform: translateY(10px); /* Slide down instead of right */
+  pointer-events: none;
+  height: 0;
+  overflow: hidden;
+  position: absolute;
+}
+
+.header-toolbox.vertical .toolbox-group {
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+.header-toolbox.vertical .toolbox-divider {
+  width: 24px;
+  height: 1px;
+  margin: 4px 0;
+}
+
+.header-toolbox.vertical .toolbox-toggle-btn {
+  margin-bottom: 2px;
+}
+
+/* Ensure status pill adapts to vertical */
+.header-toolbox.vertical .status-pill {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  justify-content: center;
+}
+
+.header-toolbox.vertical .status-text {
+  display: none;
+}
+
+
 /* Theme Selector (Minimal) */
 .theme-selector-minimal {
   position: relative;

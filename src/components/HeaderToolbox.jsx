@@ -47,6 +47,8 @@ const HeaderToolbox = ({
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const toolboxRef = useRef(null);
 
+  const [isVertical, setIsVertical] = useState(false);
+
   useEffect(() => {
     const handleThemeKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 't') {
@@ -139,7 +141,7 @@ const HeaderToolbox = ({
   return (
     <div 
         ref={toolboxRef}
-        className={`header-toolbox ${isToolboxCollapsed ? "collapsed" : ""} ${isDragging ? "dragging" : ""}`}
+        className={`header-toolbox ${isToolboxCollapsed ? "collapsed" : ""} ${isVertical ? "vertical" : ""} ${isDragging ? "dragging" : ""}`}
         style={{
             position: "absolute", // Changed from fixed to absolute to scroll with content
             // If position is null:
@@ -160,10 +162,23 @@ const HeaderToolbox = ({
         onClick={() => setIsToolboxCollapsed(!isToolboxCollapsed)}
         title={isToolboxCollapsed ? "Expand Toolbar" : "Collapse Toolbar"}
       >
-        <FontAwesomeIcon icon={isToolboxCollapsed ? faChevronLeft : faChevronRight} />
+        <FontAwesomeIcon icon={isToolboxCollapsed ? (isVertical ? faChevronRight : faChevronLeft) : (isVertical ? faChevronLeft : faChevronRight)} />
       </button>
 
       <div className="toolbox-content">
+        {/* Group 0: Orientation Toggle */}
+        <div className="toolbox-group">
+            <button
+                className="toolbox-button"
+                onClick={() => setIsVertical(!isVertical)}
+                title={isVertical ? "Switch to Horizontal" : "Switch to Vertical"}
+            >
+                <FontAwesomeIcon icon={faRightLeft} style={{ transform: isVertical ? "rotate(90deg)" : "none" }} />
+            </button>
+        </div>
+
+        <div className="toolbox-divider"></div>
+
         {/* Group 1: View / Overview */}
         <div className="toolbox-group">
           <button
@@ -240,7 +255,7 @@ const HeaderToolbox = ({
         <div className="toolbox-divider"></div>
 
         {/* Group 4: System / Help / Theme */}
-        <div className="toolbox-group">
+        <div className="toolbox-group" style={{ position: 'relative' }}> 
            <button
               className={`toolbox-button ${isHelpOpen ? "active" : ""}`}
               onClick={() => setIsHelpOpen(true)}
@@ -260,8 +275,10 @@ const HeaderToolbox = ({
           {showThemeSelector && (
             <div className="theme-selector-minimal" style={{ 
                 position: 'absolute', 
-                top: '100%', 
-                left: '20%', /* Align roughly with button */
+                top: isVertical ? '0' : '100%', 
+                left: isVertical ? '100%' : '50%',
+                transform: isVertical ? 'translateX(10px)' : 'translateX(-50%)',
+                marginTop: isVertical ? '0' : '10px',
                 zIndex: 10001,
                 background: 'var(--content-background)', 
                 padding: '8px', 
@@ -340,7 +357,7 @@ const HeaderToolbox = ({
             >
               <span className="status-dot"></span>
               <span className="status-text">
-                {dbPath ? "Connected" : "Local"}
+                {dbPath ? isVertical ? "" : "Connected" : isVertical ? "" : "Local"}
               </span>
             </button>
         </div>
