@@ -4585,6 +4585,7 @@ body.theme-stranger.dark-mode ::-webkit-scrollbar-track {
 /* =================================================================== */
 
 .app-pro-header {
+  position: relative; /* Anchor for absolute objects */
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -4700,8 +4701,14 @@ body.theme-stranger.dark-mode ::-webkit-scrollbar-track {
   -webkit-backdrop-filter: var(--backdrop-filter);
   height: 48px;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
+  overflow: visible; /* changed from hidden to allow popups */
   max-width: 100%; /* Implicitly wide enough */
+}
+
+.header-toolbox.dragging {
+  box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+  opacity: 0.95;
+  z-index: 10000 !important; /* Ensure it stays on top */
 }
 
 /* Collapsed State */

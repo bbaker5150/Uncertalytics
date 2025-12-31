@@ -19,6 +19,7 @@ import HelpModal from "./components/common/HelpModal";
 import FloatingNotepad from "./components/tools/FloatingNotepad";
 import UnitConverter from "./components/tools/UnitConverter";
 import ReverseTraceabilityTool from "./components/tools/ReverseTraceabilityTool";
+import HeaderToolbox from "./components/HeaderToolbox";
 
 // --- Utils & Hooks ---
 import useSessionManager from "./hooks/useSessionManager";
@@ -164,7 +165,7 @@ function App() {
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("default");
-  const [showThemeSelector, setShowThemeSelector] = useState(false);
+  // const [showThemeSelector, setShowThemeSelector] = useState(false); // Moved to HeaderToolbox
   const [isToolboxCollapsed, setIsToolboxCollapsed] = useState(false);
 
   const [initialSessionTab, setInitialSessionTab] = useState("details");
@@ -183,16 +184,7 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [migrateToDisk]);
 
-  useEffect(() => {
-    const handleThemeKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 't') {
-        e.preventDefault();
-        setShowThemeSelector(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleThemeKey);
-    return () => window.removeEventListener('keydown', handleThemeKey);
-  }, []);
+  /* Theme shortcut moved to HeaderToolbox */
 
   useEffect(() => {
     const body = document.body;
@@ -821,154 +813,31 @@ function App() {
               </div>
             </div>
 
-            <div className={`header-toolbox ${isToolboxCollapsed ? "collapsed" : ""}`}>
-              <button 
-                className="toolbox-toggle-btn"
-                onClick={() => setIsToolboxCollapsed(!isToolboxCollapsed)}
-                title={isToolboxCollapsed ? "Expand Toolbar" : "Collapse Toolbar"}
-              >
-                <FontAwesomeIcon icon={isToolboxCollapsed ? faChevronLeft : faChevronRight} />
-              </button>
-
-              <div className="toolbox-content">
-                {/* Group 1: View / Overview */}
-                <div className="toolbox-group">
-                  <button
-                    className={`toolbox-button ${isOverviewOpen ? "active" : ""}`}
-                    onClick={() => setIsOverviewOpen(!isOverviewOpen)}
-                    title="Session Overview"
-                  >
-                    <FontAwesomeIcon icon={faList} />
-                  </button>
-                </div>
-
-                <div className="toolbox-divider"></div>
-
-                {/* Group 2: Instruments & Tools */}
-                <div className="toolbox-group">
-                  <button
-                    className={`toolbox-button ${isInstrumentBuilderOpen ? "active" : ""}`}
-                    onClick={() => setIsInstrumentBuilderOpen(!isInstrumentBuilderOpen)}
-                    title="Instrument Builder"
-                  >
-                    <FontAwesomeIcon icon={faRadio} />
-                  </button>
-                  <button
-                    className={`toolbox-button ${isTraceabilityOpen ? "active" : ""}`}
-                    onClick={() => setIsTraceabilityOpen(!isTraceabilityOpen)}
-                    title="Reverse Traceability Tool"
-                  >
-                    <FontAwesomeIcon icon={faHistory} />
-                  </button>
-                  <button
-                    className={`toolbox-button ${isNotepadOpen ? "active" : ""}`}
-                    onClick={() => setIsNotepadOpen(!isNotepadOpen)}
-                    title="Session Notes"
-                  >
-                    <FontAwesomeIcon icon={faStickyNote} />
-                  </button>
-                  <button
-                    className={`toolbox-button ${isConverterOpen ? "active" : ""}`}
-                    onClick={() => setIsConverterOpen(!isConverterOpen)}
-                    title="Unit Converter"
-                  >
-                    <FontAwesomeIcon icon={faRightLeft} />
-                  </button>
-                </div>
-
-                <div className="toolbox-divider"></div>
-
-                {/* Group 3: File Operations */}
-                <div className="toolbox-group">
-                  <button
-                    className="toolbox-button"
-                    onClick={handleSaveToFile}
-                    title="Export to PDF"
-                  >
-                    <FontAwesomeIcon icon={faSave} />
-                  </button>
-
-                  <label
-                    className="toolbox-button"
-                    htmlFor="load-session-pdf-main"
-                    title="Import PDF"
-                  >
-                    <FontAwesomeIcon icon={faFolderOpen} />
-                  </label>
-                  <input
-                    type="file"
-                    id="load-session-pdf-main"
-                    accept=".pdf"
-                    style={{ display: "none" }}
-                    onChange={handleLoadFromFile}
-                  />
-                </div>
-
-                <div className="toolbox-divider"></div>
-
-                {/* Group 4: System / Help / Theme */}
-                <div className="toolbox-group">
-                   <button
-                      className={`toolbox-button ${isHelpOpen ? "active" : ""}`}
-                      onClick={() => setIsHelpOpen(true)}
-                      title="Help & Tutorial"
-                    >
-                      <FontAwesomeIcon icon={faQuestionCircle} />
-                    </button>
-
-                  {showThemeSelector && (
-                    <div className="theme-selector-minimal">
-                      <FontAwesomeIcon icon={faPalette} className="theme-icon" />
-                      <select
-                        value={currentTheme}
-                        onChange={(e) => setCurrentTheme(e.target.value)}
-                        className="theme-select-input"
-                        title="Change Theme"
-                      >
-                        <option value="default">Default</option>
-                        <option value="theme-cyberpunk">Cyberpunk</option>
-                        <option value="theme-stranger">Stranger Things</option>
-                        <option value="theme-orbital">Orbit</option>
-                      </select>
-                    </div>
-                  )}
-
-                  {currentTheme === 'theme-stranger' && !isDarkMode ? (
-                    <div
-                      className="stranger-hint"
-                      onClick={() => setIsDarkMode(true)}
-                      title="Enter the Upside Down"
-                    >
-                      <span>ENTER THE UPSIDE DOWN</span>
-                    </div>
-                  ) : (
-                    <button
-                      className={`toolbox-button ${isDarkMode ? "active" : ""}`}
-                      onClick={() => setIsDarkMode(!isDarkMode)}
-                      title="Toggle Dark Mode"
-                    >
-                      <div className={`moon-toggle ${isDarkMode ? "is-dark" : ""}`}></div>
-                    </button>
-                  )}
-                </div>
-                
-                <div className="toolbox-divider"></div>
-
-                {/* Group 5: Connection Status */}
-                <div className="toolbox-group">
-                    <button
-                      className={`status-pill ${dbPath ? "connected" : "disconnected"}`}
-                      onClick={dbPath ? disconnectDatabase : selectDatabaseFolder}
-                      title={dbPath ? `Connected: ${dbPath}` : "Connect to Database"}
-                    >
-                      <span className="status-dot"></span>
-                      <span className="status-text">
-                        {dbPath ? "Connected" : "Local"}
-                      </span>
-                    </button>
-                </div>
-              </div>
-            </div>
+            <HeaderToolbox 
+              isToolboxCollapsed={isToolboxCollapsed}
+              setIsToolboxCollapsed={setIsToolboxCollapsed}
+              isOverviewOpen={isOverviewOpen}
+              setIsOverviewOpen={setIsOverviewOpen}
+              isInstrumentBuilderOpen={isInstrumentBuilderOpen}
+              setIsInstrumentBuilderOpen={setIsInstrumentBuilderOpen}
+              isTraceabilityOpen={isTraceabilityOpen}
+              setIsTraceabilityOpen={setIsTraceabilityOpen}
+              isNotepadOpen={isNotepadOpen}
+              setIsNotepadOpen={setIsNotepadOpen}
+              isConverterOpen={isConverterOpen}
+              setIsConverterOpen={setIsConverterOpen}
+              handleSaveToFile={handleSaveToFile}
+              handleLoadFromFile={handleLoadFromFile}
+              isHelpOpen={isHelpOpen}
+              setIsHelpOpen={setIsHelpOpen}
+              currentTheme={currentTheme}
+              setCurrentTheme={setCurrentTheme}
+              isDarkMode={isDarkMode}
+              setIsDarkMode={setIsDarkMode}
+              dbPath={dbPath}
+              disconnectDatabase={disconnectDatabase}
+              selectDatabaseFolder={selectDatabaseFolder}
+            />
           </div>
 
           <div className="results-workflow-container">
