@@ -648,7 +648,6 @@ body.theme-cyberpunk.dark-mode {
     linear-gradient(90deg, rgba(255, 0, 85, 0.2) 1px, transparent 1px);
   background-size: 60px 60px;
   background-position: center center;
-  perspective: 1000px;
   animation: cyberGridPan 20s linear infinite;
 }
 
@@ -848,6 +847,29 @@ body.theme-cyberpunk.dark-mode h1,
 body.theme-cyberpunk.dark-mode h2 {
   color: #fff;
   text-shadow: 2px 2px 0px var(--cyber-magenta), -1px -1px 0 var(--cyber-cyan);
+}
+
+/* =================================================================== */
+/* CYBERPUNK DARK MODE: HEADER & TOOLBOX OVERRIDES */
+body.theme-cyberpunk.dark-mode .app-pro-header {
+  border-bottom-color: var(--cyber-magenta);
+  box-shadow: 0 4px 6px -6px var(--cyber-magenta);
+}
+
+body.theme-cyberpunk.dark-mode .header-toolbox {
+  border-color: var(--cyber-magenta);
+  box-shadow: 0 0 10px rgba(255, 0, 85, 0.3);
+}
+
+body.theme-cyberpunk.dark-mode .toolbox-button.active {
+  background-color: var(--cyber-magenta);
+  color: #000000;
+  box-shadow: 0 0 10px var(--cyber-magenta);
+}
+
+body.theme-cyberpunk.dark-mode .toolbox-button:hover,
+body.theme-cyberpunk.dark-mode .toolbox-toggle-btn:hover {
+  color: var(--cyber-magenta);
 }
 
 /* =================================================================== */
