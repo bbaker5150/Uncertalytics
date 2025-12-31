@@ -172,7 +172,7 @@ const HeaderToolbox = ({
             <button
                 className="toolbox-button"
                 onClick={() => setIsVertical(!isVertical)}
-                title={isVertical ? "Puntata Orizzontale (Switch to Horizontal)" : "Puntata Verticale (Switch to Vertical)"}
+                title={isVertical ? "Switch to Horizontal" : "Switch to Vertical"}
             >
                 <FontAwesomeIcon icon={faRotate} style={{ transform: isVertical ? "rotate(90deg)" : "none" }} />
             </button>

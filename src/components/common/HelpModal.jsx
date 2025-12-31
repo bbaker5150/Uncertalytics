@@ -19,7 +19,9 @@ import {
   faMicroscope,
   faShieldAlt,
   faStickyNote,
-  faTools
+  faTools,
+  faPalette,
+  faMoon
 } from '@fortawesome/free-solid-svg-icons';
 
 // --- Content Definitions (Same as before) ---
@@ -217,6 +219,16 @@ const TOOLS_INFO = [
     title: "Import PDF",
     desc: "Import any PDF generated with the built-in PDF Export Tool to populate session data."
   },
+  {
+    icon: faPalette,
+    title: "Theme Selector",
+    desc: "Customize the application appearence with a variety of pre-set themes, including Cyberpunk and Orbital Command."
+  },
+  {
+    icon: faMoon,
+    title: "Dark/Light Mode",
+    desc: "Toggle between light and dark modes for any selected theme to suit your viewing preference."
+  }
 ];
 
 const HelpModal = ({ isOpen, onClose }) => {
