@@ -185,8 +185,7 @@ const HeaderToolbox = ({
   const themeOptions = [
     { value: 'default', label: 'Default' },
     { value: 'theme-cyberpunk', label: 'Cyberpunk' },
-    { value: 'theme-stranger', label: 'Stranger Things' },
-    { value: 'theme-orbital', label: 'Orbit' }
+    { value: 'theme-orbital', label: 'Orbital' }
   ];
 
   return (
@@ -363,24 +362,13 @@ const HeaderToolbox = ({
             </div>
           )}
 
-          {currentTheme === 'theme-stranger' && !isDarkMode ? (
-            <div
-              className="stranger-hint"
-              onClick={() => setIsDarkMode(true)}
-              title="Enter the Upside Down"
-              style={{ marginLeft: '10px' }}
-            >
-              <span>ENTER THE UPSIDE DOWN</span>
-            </div>
-          ) : (
-            <button
+          <button
               className={`toolbox-button ${isDarkMode ? "active" : ""}`}
               onClick={() => setIsDarkMode(!isDarkMode)}
               title="Toggle Dark Mode"
             >
               <div className={`moon-toggle ${isDarkMode ? "is-dark" : ""}`}></div>
             </button>
-          )}
         </div>
         
         <div className="toolbox-divider"></div>

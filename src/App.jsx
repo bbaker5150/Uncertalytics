@@ -188,7 +188,7 @@ function App() {
 
   useEffect(() => {
     const body = document.body;
-    body.classList.remove("theme-orbital", "theme-cyberpunk", "theme-stranger");
+    body.classList.remove("theme-orbital", "theme-cyberpunk");
     if (currentTheme !== "default") body.classList.add(currentTheme);
     if (isDarkMode) body.classList.add("dark-mode");
     else body.classList.remove("dark-mode");
