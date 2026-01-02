@@ -650,7 +650,6 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
 
               {/* FOOTER ACTIONS */}
               <div className="editor-actions">
-                 <button className="button" style={{ backgroundColor: 'var(--button-secondary-bg)' }} onClick={() => setViewMode("list")}>Cancel</button>
                  <button className="button primary" onClick={handleSaveAndExit}>
                    <FontAwesomeIcon icon={faCheck} style={{ marginRight: '8px' }} /> 
                    Save Instrument
