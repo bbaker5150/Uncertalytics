@@ -21,7 +21,7 @@ const AnalysisHeader = ({ sessionData, onEditSession }) => {
       style={{ 
         cursor: "pointer", 
       }}
-      title="Click to edit session details"
+      title="Edit Session"
     >
       <div className="session-info-item">
         <span className="session-info-label">UUT</span>
