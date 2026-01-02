@@ -5,11 +5,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheck, faTimes, faPlus, faTrashAlt, faEdit, faRadio,
   faLayerGroup, faArrowLeft, faSearch, faChevronDown, faChevronUp, faInfoCircle,
-  faGripHorizontal
+  faCalculator, faCube
 } from "@fortawesome/free-solid-svg-icons";
 import { unitSystem } from "../../../utils/uncertaintyMath";
 import ToleranceForm from "../../../components/common/ToleranceForm";
 import { useFloatingWindow } from "../../../hooks/useFloatingWindow";
+import "./InstrumentBuilderModal.css"; // Import the new CSS
 
 // --- Configuration for Unit Grouping ---
 const unitCategories = {
@@ -30,6 +31,8 @@ const unitCategories = {
 const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
   const options = [];
   const usedUnits = new Set();
+  
+  // Prioritize current unit's category
   if (referenceUnit && allUnits.includes(referenceUnit)) {
     let refCategory = "Suggested";
     for (const [cat, units] of Object.entries(unitCategories)) {
@@ -47,6 +50,8 @@ const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
       });
     options.push({ label: refCategory, options: prioritizedOptions });
   }
+
+  // Add remaining categories
   Object.entries(unitCategories).forEach(([label, units]) => {
     if (options.some((opt) => opt.label === label)) return;
     const groupOptions = units
@@ -59,6 +64,8 @@ const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
       options.push({ label, options: groupOptions });
     }
   });
+
+  // Leftovers
   const leftovers = allUnits
     .filter((u) => !usedUnits.has(u) && !["%", "ppm", "dB", "ppb"].includes(u))
     .map((u) => ({ value: u, label: u }));
@@ -68,10 +75,22 @@ const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
   return options;
 };
 
-// Styles for React Select
+// Styles for React Select (Minimal overrides, relies on theme vars where possible)
 const portalStyle = {
   menuPortal: (base) => ({ ...base, zIndex: 99999 }),
-  menu: (base) => ({ ...base, zIndex: 99999 }),
+  menu: (base) => ({ ...base, zIndex: 99999, backgroundColor: 'var(--input-background)', color: 'var(--text-color)' }),
+  control: (base) => ({
+    ...base,
+    backgroundColor: 'var(--input-background)',
+    borderColor: 'var(--border-color)',
+    color: 'var(--text-color)',
+  }),
+  singleValue: (base) => ({ ...base, color: 'var(--text-color)' }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isFocused ? 'var(--primary-color)' : 'transparent',
+    color: state.isFocused ? '#fff' : 'var(--text-color)',
+  })
 };
 
 const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData = null, instruments = [] }) => {
@@ -105,7 +124,7 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
   const containerRef = useRef(null);
 
   // --- Init ---
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       if (initialData) {
         setInstrument(initialData);
@@ -164,7 +183,7 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
   };
 
   const formatToleranceSummary = (tolerances) => {
-    return <span style={{ fontSize: '0.85rem' }}>{renderToleranceString(tolerances)}</span>;
+    return <span className="tolerance-badge">{renderToleranceString(tolerances)}</span>;
   };
 
   // --- Actions ---
@@ -273,7 +292,7 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
     <>
       {/* 1. Global Overlay for critical confirmations only */}
       {deleteConfirmation && (
-        <div className="modal-overlay" style={{ zIndex: 3000, backgroundColor: 'rgba(0,0,0,0.7)' }}>
+        <div className="modal-overlay" style={{ zIndex: 3000, backgroundColor: 'var(--modal-overlay-color)' }}>
           <div className="modal-content" style={{ maxWidth: "400px" }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h3 style={{ margin: 0 }}>{deleteConfirmation.title}</h3>
@@ -290,7 +309,7 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
       {/* 2. Floating Window Container */}
       <div
         ref={containerRef}
-        className="modal-content floating-window-content"
+        className="modal-content floating-window-content instrument-builder-wrapper"
         style={{
           position: 'fixed',
           top: position.y,
@@ -299,29 +318,30 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
           width: '1000px',
           maxWidth: '90vw',
           height: '85vh',
-          display: 'flex',
-          flexDirection: 'column',
           zIndex: 2000,
-          overflow: 'hidden' /* Critical for resize */
         }}
       >
         {/* --- Header Area (Draggable) --- */}
         <div
+          className="modal-header"
           style={{
+            cursor: 'move',
+            userSelect: 'none',
+            padding: '10px 15px',
+            borderBottom: '1px solid var(--border-color)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            paddingBottom: '10px',
-            marginBottom: '10px',
-            borderBottom: '1px solid var(--border-color)',
-            cursor: 'move',
-            userSelect: 'none'
+            backgroundColor: 'var(--header-background)'
           }}
           onMouseDown={handleMouseDown}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {viewMode === 'edit' && <button className="icon-action-btn" onClick={() => setViewMode("list")} title="Back to Library"><FontAwesomeIcon icon={faArrowLeft} /></button>}
-            <h3 style={{ margin: 0, fontSize: '1.2rem' }}><FontAwesomeIcon icon={faRadio} style={{ marginRight: '10px' }} /> {viewMode === 'list' ? 'Instrument Library' : 'Edit Instrument'}</h3>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <FontAwesomeIcon icon={faRadio} /> 
+              {viewMode === 'list' ? 'Instrument Library' : 'Edit Instrument'}
+            </h3>
           </div>
           <button onClick={onClose} className="modal-close-button" style={{ position: 'static' }}>&times;</button>
         </div>
@@ -329,34 +349,35 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
         {/* --- Content Area --- */}
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
 
-          {/* SUB-MODAL: Range Editor (Overlays the content area but stays inside window) */}
+          {/* SUB-MODAL: Range Tolerance Editor (Slide-over) */}
           {editingRange && (
-            <div style={{
-              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-              backgroundColor: 'var(--content-background)',
-              zIndex: 10,
-              display: 'flex', flexDirection: 'column',
-              padding: '20px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h3 style={{ margin: 0 }}>Edit Tolerances</h3>
-                <button onClick={() => setEditingRange(null)} className="modal-icon-button secondary" style={{ border: 'none', background: 'transparent', padding: '0 5px' }}><FontAwesomeIcon icon={faTimes} size="lg" /></button>
+            <div className="tolerance-slide-over">
+              <div className="slide-over-header">
+                <div className="slide-over-title">
+                  <h3><FontAwesomeIcon icon={faCalculator} /> Edit Tolerances</h3>
+                  <div className="slide-over-subtitle">
+                     Range: {editingRange.min} - {editingRange.max} {activeFunction.unit}
+                  </div>
+                </div>
+                <button onClick={() => setEditingRange(null)} className="modal-icon-button secondary" title="Close"><FontAwesomeIcon icon={faTimes} size="lg" /></button>
               </div>
-              <div style={{ marginBottom: '10px', fontSize: '0.9rem', color: 'var(--text-color-muted)' }}>
-                Range: <strong>{editingRange.min} - {editingRange.max} {activeFunction.unit}</strong>
+              
+              <div className="slide-over-body">
+                <ToleranceForm tolerance={editingRange.tolerances || {}} setTolerance={handleToleranceUpdate} isUUT={false} referencePoint={{ unit: activeFunction.unit }} />
               </div>
-              <div className="modal-body-scrollable" style={{ flex: 1 }}>
-                <ToleranceForm tolerance={editingRange.tolerances} setTolerance={handleToleranceUpdate} isUUT={false} referencePoint={{ unit: activeFunction.unit }} />
-              </div>
-              <div className="modal-actions" style={{ justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button className="modal-icon-button primary" onClick={saveRangeSpecs} title="Save Specifications"><FontAwesomeIcon icon={faCheck} /></button>
+              
+              <div className="slide-over-footer">
+                <button className="button primary" onClick={saveRangeSpecs}>
+                  <FontAwesomeIcon icon={faCheck} style={{ marginRight: '8px' }} />
+                  Save Specs
+                </button>
               </div>
             </div>
           )}
 
           {/* VIEW: List */}
           {viewMode === "list" && (
-            <>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '20px' }}>
               <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                 <div style={{ position: 'relative', flex: 1 }}>
                   <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-color-muted)' }} />
@@ -365,11 +386,11 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
                     placeholder="Search library..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ width: '100%', padding: '10px 10px 10px 35px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                    style={{ width: '100%', padding: '10px 10px 10px 35px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--input-background)', color: 'var(--text-color)' }}
                   />
                 </div>
                 <button className="button" onClick={handleCreateNew} title="Create New Instrument" style={{ padding: '0 15px' }}>
-                  <FontAwesomeIcon icon={faPlus} />
+                  <FontAwesomeIcon icon={faPlus} style={{ marginRight: '5px' }} /> New
                 </button>
               </div>
 
@@ -377,11 +398,11 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--component-header-bg)', zIndex: 1 }}>
                     <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--border-color)' }}>
-                      <th style={{ padding: '12px', width: '20%' }}>Manufacturer</th>
-                      <th style={{ padding: '12px', width: '15%' }}>Model</th>
-                      <th style={{ padding: '12px', width: '30%' }}>Description</th>
-                      <th style={{ padding: '12px', width: '25%' }}>Functions</th>
-                      <th style={{ padding: '12px', width: '10%', textAlign: 'center' }}>Actions</th>
+                      <th style={{ padding: '12px', width: '20%', color: 'var(--text-color)' }}>Manufacturer</th>
+                      <th style={{ padding: '12px', width: '15%', color: 'var(--text-color)' }}>Model</th>
+                      <th style={{ padding: '12px', width: '30%', color: 'var(--text-color)' }}>Description</th>
+                      <th style={{ padding: '12px', width: '25%', color: 'var(--text-color)' }}>Functions</th>
+                      <th style={{ padding: '12px', width: '10%', textAlign: 'center', color: 'var(--text-color)' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -393,8 +414,9 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
                             style={{
                               borderBottom: isExpanded ? 'none' : '1px solid var(--border-color)',
                               cursor: 'pointer',
-                              backgroundColor: isExpanded ? 'var(--background-secondary)' : 'transparent',
-                              transition: 'background 0.2s'
+                              backgroundColor: isExpanded ? 'var(--primary-color-light)' : 'transparent',
+                              transition: 'background 0.2s',
+                              color: 'var(--text-color)'
                             }}
                             onClick={() => setExpandedDetail(prev => prev?.instId === inst.id ? null : { instId: inst.id, funcId: inst.functions[0]?.id })}
                           >
@@ -408,13 +430,12 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
                                   return (
                                     <button
                                       key={f.id}
-                                      className={`status-pill ${isFuncActive ? "active" : ""}`}
                                       onClick={(e) => toggleFunctionDetails(e, inst.id, f.id)}
                                       style={{
                                         marginRight: '0',
                                         fontSize: '0.75rem',
                                         border: isFuncActive ? "1px solid var(--primary-color)" : "1px solid var(--border-color)",
-                                        backgroundColor: isFuncActive ? "var(--input-background)" : "transparent",
+                                        backgroundColor: isFuncActive ? "var(--background-color)" : "transparent",
                                         color: "var(--text-color)",
                                         cursor: 'pointer',
                                         padding: '2px 8px',
@@ -435,9 +456,9 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
                             </td>
                           </tr>
                           {isExpanded && (
-                            <tr style={{ backgroundColor: "var(--background-secondary)", borderBottom: "1px solid var(--border-color)" }}>
+                            <tr style={{ backgroundColor: "var(--primary-color-light)", borderBottom: "1px solid var(--border-color)" }}>
                               <td colSpan="5" style={{ padding: "0" }}>
-                                <div style={{ padding: "15px 20px", borderLeft: "4px solid var(--primary-color-dim)" }}>
+                                <div style={{ padding: "15px 20px", borderLeft: "4px solid var(--primary-color)" }}>
                                   {(() => {
                                     const func = inst.functions.find(f => f.id === expandedDetail.funcId);
                                     if (!func) return <div style={{ fontStyle: 'italic', color: 'var(--text-color-muted)' }}>Select a function to view details.</div>;
@@ -447,7 +468,7 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
                                           <FontAwesomeIcon icon={faInfoCircle} color="var(--primary-color)" />
                                           Specifications: {func.name} (Base Unit: {func.unit})
                                         </h5>
-                                        <table style={{ width: "100%", fontSize: "0.85rem", backgroundColor: "var(--input-background)", color: "var(--text-color)", borderRadius: "4px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", border: "1px solid var(--border-color)" }}>
+                                        <table style={{ width: "100%", fontSize: "0.85rem", backgroundColor: "var(--content-background)", color: "var(--text-color)", borderRadius: "4px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", border: "1px solid var(--border-color)" }}>
                                           <thead>
                                             <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border-color)", backgroundColor: "var(--component-header-bg)" }}>
                                               <th style={{ padding: "8px", color: "var(--text-color)", fontWeight: "600" }}>Range Min</th>
@@ -480,43 +501,73 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
                   </tbody>
                 </table>
               </div>
-            </>
+            </div>
           )}
 
           {/* VIEW: Editor */}
-          {viewMode === "edit" && !editingRange && (
+          {viewMode === "edit" && (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-              <div className="instrument-meta-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '15px', marginBottom: '20px', padding: '15px', backgroundColor: 'var(--input-background)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                <div><label>Manufacturer</label><input type="text" value={instrument.manufacturer} onChange={e => setInstrument({ ...instrument, manufacturer: e.target.value })} /></div>
-                <div><label>Model</label><input type="text" value={instrument.model} onChange={e => setInstrument({ ...instrument, model: e.target.value })} /></div>
-                <div><label>Description</label><input type="text" value={instrument.description} onChange={e => setInstrument({ ...instrument, description: e.target.value })} /></div>
+              
+              {/* TOP IDENTITY CARD */}
+              <div className="instrument-identity-card">
+                <div className="instrument-field-group">
+                  <label>Manufacturer</label>
+                  <input type="text" value={instrument.manufacturer} onChange={e => setInstrument({ ...instrument, manufacturer: e.target.value })} placeholder="e.g. Fluke" />
+                </div>
+                <div className="instrument-field-group">
+                   <label>Model</label>
+                   <input type="text" value={instrument.model} onChange={e => setInstrument({ ...instrument, model: e.target.value })} placeholder="e.g. 87V" />
+                </div>
+                <div className="instrument-field-group">
+                   <label>Description</label>
+                   <input type="text" value={instrument.description} onChange={e => setInstrument({ ...instrument, description: e.target.value })} placeholder="e.g. Industrial Multimeter" />
+                </div>
               </div>
 
-              <div style={{ flex: 1, display: 'flex', gap: '20px', overflow: 'hidden', minHeight: 0 }}>
-                {/* Sidebar */}
-                <div className="function-sidebar" style={{ width: '250px', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-color)', paddingRight: '15px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <h5 style={{ margin: 0 }}>Functions</h5>
-                    <button className="icon-action-btn" onClick={handleAddFunction}><FontAwesomeIcon icon={faPlus} /></button>
+              {/* EDITOR BODY */}
+              <div className="instrument-editor-body">
+                
+                {/* SIDEBAR: FUNCTIONS */}
+                <div className="function-nav-rail">
+                  <div className="rail-header">
+                    <h5><FontAwesomeIcon icon={faCube} /> Functions</h5>
+                    <button className="icon-action-btn" onClick={handleAddFunction} title="Add Function"><FontAwesomeIcon icon={faPlus} /></button>
                   </div>
-                  <div style={{ flex: 1, overflowY: 'auto' }}>
+                  <div className="rail-list">
                     {instrument.functions.map(f => (
-                      <div key={f.id} onClick={() => setActiveFunctionId(f.id)}
-                        style={{ padding: '10px', borderRadius: '6px', cursor: 'pointer', backgroundColor: activeFunctionId === f.id ? 'var(--primary-color-light)' : 'transparent', border: activeFunctionId === f.id ? '1px solid var(--primary-color)' : '1px solid transparent', marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: activeFunctionId === f.id ? '700' : '400' }}>{f.name}</span>
-                        <button onClick={(e) => { e.stopPropagation(); handleDeleteFunction(f.id); }} style={{ background: 'none', border: 'none', color: 'var(--text-color-muted)', cursor: 'pointer' }}><FontAwesomeIcon icon={faTrashAlt} size="sm" /></button>
+                      <div 
+                        key={f.id} 
+                        className={`rail-item ${activeFunctionId === f.id ? 'active' : ''}`}
+                        onClick={() => setActiveFunctionId(f.id)}
+                      >
+                        <span>{f.name}</span>
+                        <button 
+                          className="delete-btn"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteFunction(f.id); }}
+                          title="Delete Function"
+                        >
+                          <FontAwesomeIcon icon={faTrashAlt} size="sm" />
+                        </button>
                       </div>
                     ))}
+                    {instrument.functions.length === 0 && (
+                      <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-color-muted)', fontSize: '0.8rem' }}>
+                        No functions added. Click + to start.
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Range Editor */}
-                <div className="range-editor" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                {/* MAIN: RANGES */}
+                <div className="function-workspace">
                   {activeFunction ? (
                     <>
-                      <div style={{ display: 'flex', gap: '15px', marginBottom: '15px', alignItems: 'flex-end' }}>
-                        <div style={{ flex: 1 }}><label>Function Name</label><input type="text" value={activeFunction.name} onChange={e => updateActiveFunction('name', e.target.value)} /></div>
-                        <div style={{ width: '150px' }}>
+                      <div className="workspace-header">
+                        <div className="instrument-field-group main-input">
+                          <label>Function Name</label>
+                          <input type="text" value={activeFunction.name} onChange={e => updateActiveFunction('name', e.target.value)} />
+                        </div>
+                        <div className="instrument-field-group unit-select">
                           <label>Base Unit</label>
                           <Select
                             value={
@@ -528,44 +579,84 @@ const InstrumentBuilderModal = ({ isOpen, onClose, onSave, onDelete, initialData
                             options={categorizedUnitOptions}
                             menuPortalTarget={document.body}
                             styles={portalStyle}
-                            className="react-select-container"
                             classNamePrefix="react-select"
                           />
                         </div>
                       </div>
-                      <div style={{ flex: 1, backgroundColor: 'var(--input-background)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                        <div style={{ padding: '10px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--component-header-bg)' }}>
-                          <h5 style={{ margin: 0 }}><FontAwesomeIcon icon={faLayerGroup} /> Ranges</h5>
-                          <button className="icon-action-btn" onClick={handleAddRange}><FontAwesomeIcon icon={faPlus} /></button>
+
+                      <div className="ranges-panel">
+                        <div className="panel-toolbar">
+                          <h5><FontAwesomeIcon icon={faLayerGroup} /> Measurement Ranges</h5>
+                          <button className="button small" onClick={handleAddRange}>
+                            <FontAwesomeIcon icon={faPlus} /> Add Range
+                          </button>
                         </div>
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead><tr style={{ textAlign: 'left', borderBottom: '2px solid var(--border-color)' }}><th>Min</th><th>Max</th><th>Res</th><th>Tol</th><th></th><th></th></tr></thead>
+                        <div className="ranges-table-container">
+                          <table className="ranges-table">
+                            <thead>
+                              <tr>
+                                <th style={{width: '20%'}}>Min</th>
+                                <th style={{width: '20%'}}>Max</th>
+                                <th style={{width: '20%'}}>Resolution</th>
+                                <th style={{width: '30%'}}>Tolerance Spec</th>
+                                <th style={{width: '10%'}}>Actions</th>
+                              </tr>
+                            </thead>
                             <tbody>
                               {activeFunction.ranges.map(range => (
-                                <tr key={range.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                  <td><input type="number" step="any" value={range.min} onChange={e => updateRangeBounds(range.id, 'min', e.target.value)} style={{ width: '80px' }} /></td>
-                                  <td><input type="number" step="any" value={range.max} onChange={e => updateRangeBounds(range.id, 'max', e.target.value)} style={{ width: '80px' }} /></td>
-                                  <td><input type="number" step="any" value={range.resolution} onChange={e => updateRangeBounds(range.id, 'resolution', e.target.value)} style={{ width: '80px' }} /></td>
-                                  <td style={{ fontSize: '0.85rem' }}>{formatToleranceSummary(range.tolerances)}</td>
-                                  <td><button className="btn-icon-only" onClick={() => setEditingRange({ ...range })}><FontAwesomeIcon icon={faEdit} /></button></td>
-                                  <td><button className="btn-icon-only danger" onClick={() => handleDeleteRange(range.id)}><FontAwesomeIcon icon={faTrashAlt} /></button></td>
+                                <tr key={range.id}>
+                                  <td>
+                                    <input type="number" step="any" value={range.min} onChange={e => updateRangeBounds(range.id, 'min', e.target.value)} />
+                                  </td>
+                                  <td>
+                                    <input type="number" step="any" value={range.max} onChange={e => updateRangeBounds(range.id, 'max', e.target.value)} />
+                                  </td>
+                                  <td>
+                                    <input type="number" step="any" value={range.resolution} onChange={e => updateRangeBounds(range.id, 'resolution', e.target.value)} />
+                                  </td>
+                                  <td>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setEditingRange({ ...range })}>
+                                      {formatToleranceSummary(range.tolerances)}
+                                      <FontAwesomeIcon icon={faEdit} style={{ color: 'var(--text-color-muted)', fontSize: '0.8rem' }} />
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <button className="btn-icon-only danger" onClick={() => handleDeleteRange(range.id)} title="Delete Range">
+                                      <FontAwesomeIcon icon={faTrashAlt} />
+                                    </button>
+                                  </td>
                                 </tr>
                               ))}
+                              {activeFunction.ranges.length === 0 && (
+                                <tr>
+                                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-color-muted)' }}>
+                                    No ranges defined for this function.
+                                  </td>
+                                </tr>
+                              )}
                             </tbody>
                           </table>
                         </div>
                       </div>
                     </>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-color-muted)' }}>Select or create a function.</div>
+                    <div className="empty-state">
+                      <FontAwesomeIcon icon={faCube} className="empty-state-icon" />
+                      <p>Select a function from the sidebar<br/>or create a new one to edit specifications.</p>
+                    </div>
                   )}
                 </div>
               </div>
 
-              <div className="modal-actions" style={{ marginTop: '20px' }}>
-                <button className="modal-icon-button primary" onClick={handleSaveAndExit} title="Save Instrument"><FontAwesomeIcon icon={faCheck} /></button>
+              {/* FOOTER ACTIONS */}
+              <div className="editor-actions">
+                 <button className="button" style={{ backgroundColor: 'var(--button-secondary-bg)' }} onClick={() => setViewMode("list")}>Cancel</button>
+                 <button className="button primary" onClick={handleSaveAndExit}>
+                   <FontAwesomeIcon icon={faCheck} style={{ marginRight: '8px' }} /> 
+                   Save Instrument
+                 </button>
               </div>
+
             </div>
           )}
         </div>
