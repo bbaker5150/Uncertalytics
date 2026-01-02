@@ -299,6 +299,7 @@ function Analysis({
       {/* --- HEADER --- */}
       <AnalysisHeader 
         sessionData={sessionData} 
+        onEditSession={handleOpenSessionEditor}
       />
 
       {/* --- MODALS --- */}

@@ -7,7 +7,7 @@
 
 import React from "react";
 
-const AnalysisHeader = ({ sessionData }) => {
+const AnalysisHeader = ({ sessionData, onEditSession }) => {
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const [year, month, day] = dateString.split("-");
@@ -15,7 +15,14 @@ const AnalysisHeader = ({ sessionData }) => {
   };
 
   return (
-    <div className="analysis-session-header">
+    <div 
+      className="analysis-session-header"
+      onClick={() => onEditSession && onEditSession("details")}
+      style={{ 
+        cursor: "pointer", 
+      }}
+      title="Click to edit session details"
+    >
       <div className="session-info-item">
         <span className="session-info-label">UUT</span>
         <span className="session-info-value">
