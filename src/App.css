@@ -3700,6 +3700,12 @@ body.dark-mode .final-result-display {
   font-weight: 500;
 }
 
+/* Fix for Orbital Dark Mode Session Selector Readability */
+body.theme-orbital.dark-mode .session-selector option {
+  background-color: #050509; /* Solid deep space black */
+  color: var(--orbital-cyan);
+}
+
 .session-actions {
   display: flex;
   gap: 0.5rem;
