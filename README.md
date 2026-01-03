@@ -1,59 +1,113 @@
-# Uncertainty Analysis Application
+# Uncertalytics
 
-This is a standalone React application designed for uncertainty analysis, risk analysis, and specification comparison. It provides a professional and intuitive interface for metrology and engineering professionals.
+**Uncertalytics** is a professional-grade Measurement Uncertainty Analysis and Risk Assessment tool designed for metrology and calibration laboratories. Built on a modern technology stack (Electron, React 19, Vite), it provides a comprehensive suite for calculating uncertainty budgets, analyzing risk (PFA/PFR), and managing instrument specifications with precision and ease.
 
-## Getting Started
+<p align="center">
+  <img src="public/icon.png" alt="Uncertalytics Logo" width="120" />
+</p>
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+## 🚀 Key Features
+
+### 📊 Advanced Uncertainty Analysis
+
+- **Uncertainty Budget Tables**: Complete breakdown of uncertainty components with support for various distributions (Normal, Rectangular, U-Shaped, etc.).
+- **Auto-Calculations**: detailed sensitivity coefficients, degrees of freedom (Welch-Satterthwaite), and expanded uncertainty ($k=2$, $k=3$, custom).
+- **Math Engine**: Powered by `mathjs` and `simple-statistics` for high-precision scientific computing.
+
+### 🛡️ Risk Assessment & Mitigation
+
+- **Risk Dashboards**: Visualize Probability of False Accept (PFA) and Probability of False Reject (PFR) in real-time.
+- **Guard Banding**: Apply and visualize guard bands (ANSI/NCSL Z540.3 Method 5 & 6) to mitigate decision risk.
+- **Monte Carlo Simulation**: (Planned/Integration ready) for validating GUM budgets.
+
+### 🛠️ Instrument & Asset Management
+
+- **Instrument Builder**: Create and edit complex instrument specifications with custom ranges and tolerance functions.
+- **TMDE Management**: distinct handling of Test and Measurement Diagnostic Equipment (TMDE) vs. Unit Under Test (UUT).
+- **Database Architecture**: Local database management for portable and secure data storage.
+
+### 🎨 Modern & Responsive UI/UX
+
+- **Theming Engine**: Switch between professional **Default**, data-centric **Orbital** (Dark Mode), and high-contrast **Cyberpunk** themes.
+- **Visualizations**: Interactive Scatterplots, Contribution Charts, and Histograms using `recharts` and `plotly.js`.
+- **Session Management**: Export/Import full analysis sessions to PDF/JSON for reporting and archiving.
+
+---
+
+## 💻 Technology Stack
+
+Uncertalytics is built with cutting-edge web and desktop technologies:
+
+- **Core**: [Electron](https://www.electronjs.org/), [React 19](https://react.dev/), [Vite](https://vitejs.dev/)
+- **Visualizations**: [Plotly.js](https://plotly.com/javascript/), [Recharts](https://recharts.org/)
+- **Math & Science**: [Math.js](https://mathjs.org/), [Simple Statistics](https://simple-statistics.github.io/)
+- **PDF Generation**: [PDF-Lib](https://pdf-lib.js.org/)
+- **Testing**: [Vitest](https://vitest.dev/), [React Testing Library](https://testing-library.com/)
+
+---
+
+## 🛠️ Installation & Development
 
 ### Prerequisites
 
-Before you begin, ensure you have the following software installed on your machine:
+- **Node.js**: (Version 18+ recommended)
+- **npm**: (Included with Node.js)
 
-  * **Node.js**: This project requires Node.js to run. You can download it from [nodejs.org](https://nodejs.org/).
-  * **npm**: The Node Package Manager is included with the Node.js installation.
+### fast setup
 
-### Installation
+1.  **Clone the repository**
 
-1.  **Clone the repository** (if you haven't already):
-
-    ```sh
-    git clone <repository-url>
+    ```bash
+    git clone https://github.com/your-org/uncertalytics.git
+    cd uncertalytics
     ```
 
-2.  **Navigate to the project directory**:
+2.  **Install dependencies**
 
-    ```sh
-    cd <project-directory>
+    ```bash
+    npm install
     ```
 
-3.  **Install the dependencies**:
+3.  **Run in Development Mode** (Recommended)
+    This runs React in a browser tab AND the Electron container simultaneously with hot-reloading.
 
-    ```sh
-    npm install --legacy-peer-deps 
+    ```bash
+    npm run electron:dev
     ```
 
-### Running the Application
+4.  **Build for Production**
+    Creates a distributable installer in the `release/` directory.
+    ```bash
+    npm run electron:build
+    ```
 
-Once the dependencies are installed, you can run the application in development mode:
+### Other Scripts
 
-```sh
-npm start
+- `npm start`: Run the Vite dev server (Browser only).
+- `npm test`: Run unit tests with Vitest.
+- `npm run coverage`: Generate test coverage report.
+
+---
+
+## 📂 Project Structure
+
+```
+Uncertalytics/
+├── electron/           # Main process code (Electron)
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── features/       # Core domain logic (Analysis, Instruments, etc.)
+│   │   ├── analysis/   # Uncertainty & Risk engines
+│   │   ├── instruments/# Instrument Builder & Management
+│   │   └── session/    # Session state & persistence
+│   ├── hooks/          # Custom React hooks
+│   ├── utils/          # Math helpers, File I/O, Formatters
+│   └── App.jsx         # Main Application Entry
+└── ...
 ```
 
-This will run the app in development mode and open it in your default browser at [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000). The page will reload if you make edits, and you will see any lint errors in the console. **WE WILL UPDATE THIS LATER -> COULD BE HOSTED ON NEW NPSL RAN DOMAIN**
+---
 
------
+## 📝 License
 
-## Available Scripts
-
-In the project directory, you can run:
-
-  * `npm start`: Runs the app in development mode.
-  * `npm test`: Launches the test runner in interactive watch mode.
-  * `npm run build`: Builds the app for production to the `build` folder.
-  * `npm run eject`: **Note**: this is a one-way operation. Once you `eject`, you can’t go back\!
-
-## Learn More
-
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app). You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Proprietary Software. All rights reserved.
