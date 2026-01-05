@@ -140,10 +140,26 @@ const UncertaintyBudgetTable = ({
           const displayName =
             quantity > 1 ? `${c.name} (Qty: ${quantity})` : c.name;
 
-          if (c.value_native !== undefined && c.unit_native) {
+          // --- UNIT MISMATCH FIX START ---
+          // Determine if we can recalculate the native value from SI to ensure it matches unit_native.
+          let calculatedNativeValue = null;
+          if (c.isBaseUnitValue && !isNaN(c.value) && c.unit_native) {
+            const nativeUnitInfo = unitSystem.units[c.unit_native];
+            if (nativeUnitInfo && nativeUnitInfo.to_si) {
+              calculatedNativeValue = c.value / nativeUnitInfo.to_si;
+            }
+          }
+
+          if (calculatedNativeValue !== null) {
+            // Priority 1: Recalculated value matches the label (Fixes in-lb vs ft-lb issue)
+            formattedValueUi = calculatedNativeValue.toPrecision(uiSigFigs);
+            displayValueUnitUi = c.unit_native;
+          } else if (c.value_native !== undefined && c.unit_native) {
+            // Priority 2: Use provided native value
             formattedValueUi = c.value_native.toPrecision(uiSigFigs);
             displayValueUnitUi = c.unit_native;
           } else if (c.isBaseUnitValue && !isNaN(c.value) && c.unit) {
+            // Priority 3: Fallback to base unit conversion
             const inputUnitInfo = unitSystem.units[c.unit];
             if (inputUnitInfo?.to_si) {
               const valueInOriginalUnit = c.value / inputUnitInfo.to_si;
@@ -153,9 +169,11 @@ const UncertaintyBudgetTable = ({
               formattedValueUi = "Conv Err";
             }
           } else if (!c.isBaseUnitValue && !isNaN(c.value)) {
+            // Priority 4: PPM or Dimensionless
             formattedValueUi = c.value.toPrecision(uiSigFigs);
             displayValueUnitUi = "ppm";
           }
+          // --- UNIT MISMATCH FIX END ---
 
           const formattedCi =
             typeof c.sensitivityCoefficient === "number"

@@ -90,6 +90,7 @@ export const getBudgetComponentsFromTolerance = (
       const unit = tolComp.unit;
       let valueInNominalUnits;
 
+      // --- FIX: Added else block to prevent overwrite ---
       if (["%", "ppm", "ppb"].includes(unit)) {
         let multiplier = 0;
         if (unit === "%") multiplier = 0.01;
@@ -102,11 +103,12 @@ export const getBudgetComponentsFromTolerance = (
         }
 
         valueInNominalUnits = halfSpan * multiplier * baseValueForRelative;
+      } else {
+        // Physical Unit Logic (Now isolated in else block)
+        const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
+        const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
+        valueInNominalUnits = valueInBase / nominalUnitInBase;
       }
-      const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
-      const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
-      valueInNominalUnits = valueInBase / nominalUnitInBase;
-
 
       halfSpanPPM = convertToPPM(
         valueInNominalUnits,

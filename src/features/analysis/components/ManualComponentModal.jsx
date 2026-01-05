@@ -112,9 +112,12 @@ const ManualComponentModal = ({
 
   const unitOptions = useMemo(() => {
     const nominalUnit = uutNominal?.unit;
-    if (!nominalUnit) return ["ppm", "ppb"];
+    // UPDATED: Added "%" to the default relative units list
+    if (!nominalUnit) return ["%", "ppm", "ppb"];
+    
     const relevant = unitSystem.getRelevantUnits(nominalUnit);
-    return ["ppm", "ppb", ...relevant.filter((u) => u !== "ppm" && u !== "ppb" && u !== "dB")];
+    // UPDATED: Explicitly include "%" at the start along with ppm/ppb
+    return ["%", "ppm", "ppb", ...relevant.filter((u) => u !== "%" && u !== "ppm" && u !== "ppb" && u !== "dB")];
   }, [uutNominal]);
 
   const handleChange = (e) => {
