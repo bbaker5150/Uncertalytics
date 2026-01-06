@@ -20,21 +20,23 @@ const NotificationModal = ({
   isIconConfirm = false
 }) => {
   
-  // Center the modal roughly on screen (400px width)
-  const defaultX = window.innerWidth / 2 - 200;
-  const defaultY = window.innerHeight / 3;
+  // Explicitly calculate initial position to ensure it spawns in a visible, safe area
+  // (e.g., 1/3 down the screen, centered horizontally)
+  const safeInitialPosition = {
+      x: window.innerWidth / 2 - 200, // Center based on 400px width
+      y: Math.max(100, window.innerHeight / 3) // Ensure at least 100px from top
+  };
 
   const { position, handleMouseDown } = useFloatingWindow({
     isOpen,
     defaultWidth: 400,
     defaultHeight: "auto",
-    defaultX,
-    defaultY
+    initialPosition: safeInitialPosition // <--- FIXED: Passed correctly now
   });
 
   if (!isOpen) return null;
 
-  // Determine Icon & Color based on Title keywords (heuristic)
+  // Determine Icon & Color based on Title keywords
   let icon = faInfoCircle;
   let headerColor = "var(--primary-color)";
   
@@ -55,10 +57,10 @@ const NotificationModal = ({
         top: position.y,
         left: position.x,
         width: "400px",
-        zIndex: 3001, // Higher than other windows
+        zIndex: 3001, 
         display: "flex",
         flexDirection: "column",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.5)" // Stronger shadow for popups
+        boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
       }}
     >
       {/* --- Draggable Header --- */}
@@ -74,7 +76,7 @@ const NotificationModal = ({
           cursor: "move",
           backgroundColor: "var(--background-secondary)",
           userSelect: "none",
-          borderTop: `3px solid ${headerColor}` // Color coded top border
+          borderTop: `3px solid ${headerColor}`
         }}
       >
         <h3 style={{ margin: 0, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "8px", color: "var(--text-color)" }}>
@@ -85,7 +87,7 @@ const NotificationModal = ({
           onClick={onClose}
           className="modal-close-button"
           style={{ position: "static", fontSize: "1.1rem" }}
-          title="Close / Cancel"
+          title="Close"
         >
           &times;
         </button>
@@ -105,7 +107,6 @@ const NotificationModal = ({
 
         {/* --- Actions --- */}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-          {/* Only showing Confirm button as requested. 'X' handles cancel. */}
           {onConfirm && (
             <button
               className="button"
@@ -125,7 +126,6 @@ const NotificationModal = ({
             </button>
           )}
           
-          {/* If no confirm action exists (just an info alert), show a generic "Close" or "OK" */}
           {!onConfirm && (
             <button className="button button-secondary" onClick={onClose}>
                 Close

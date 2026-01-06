@@ -2,11 +2,10 @@ import { useState, useLayoutEffect, useEffect } from 'react';
 
 /**
  * Hook to manage floating window state + dragging logic.
- * 
- * @param {Object} config
- * @param {boolean} config.isOpen - Whether the window is currently open (triggers recentering if needed).
- * @param {number} config.defaultWidth - Width in pixels used for centering calculation.
- * @param {number} config.defaultHeight - Height in pixels used for centering calculation.
+ * * @param {Object} config
+ * @param {boolean} config.isOpen - Whether the window is currently open (triggers recentering).
+ * @param {number|string} config.defaultWidth - Width in pixels (or "auto").
+ * @param {number|string} config.defaultHeight - Height in pixels (or "auto").
  * @param {Object} [config.initialPosition] - Optional override {x,y}.
  */
 export const useFloatingWindow = ({
@@ -20,14 +19,27 @@ export const useFloatingWindow = ({
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-    // Initialize Position (Center of Viewport)
+    // Initialize Position (Center of Viewport with Header Safety)
     useLayoutEffect(() => {
         if (isOpen) {
             if (initialPosition) {
                 setPosition(initialPosition);
             } else if (typeof window !== 'undefined') {
-                const x = Math.max(0, (window.innerWidth - defaultWidth) / 2);
-                const y = Math.max(0, (window.innerHeight - defaultHeight) / 2);
+                // Parse dimensions safely (handle "auto")
+                const w = typeof defaultWidth === 'number' ? defaultWidth : 400; 
+                const h = typeof defaultHeight === 'number' ? defaultHeight : 400;
+
+                const x = Math.max(0, (window.innerWidth - w) / 2);
+                
+                // Calculate Y, but ensure it never spawns in the top 10% or top 80px (Header Safety)
+                let y = (window.innerHeight - h) / 2;
+                const headerSafety = 80; // Approximate header height
+                
+                // If centered Y is too high (or calculation failed), force it down
+                if (isNaN(y) || y < headerSafety) {
+                    y = headerSafety + 20; 
+                }
+
                 setPosition({ x, y });
             }
         }
@@ -48,10 +60,20 @@ export const useFloatingWindow = ({
     useEffect(() => {
         const handleMouseMove = (e) => {
             if (isDragging) {
-                setPosition({
-                    x: e.clientX - dragOffset.x,
-                    y: e.clientY - dragOffset.y
-                });
+                // Calculate new position
+                let newX = e.clientX - dragOffset.x;
+                let newY = e.clientY - dragOffset.y;
+
+                // BOUNDARY CHECK: Prevent dragging under the header (top of screen)
+                // Assuming header is ~60px, we stop at 0 or a safe padding
+                if (newY < 0) newY = 0; 
+                
+                // Optional: Prevent dragging completely off screen horizontally
+                const windowWidth = window.innerWidth;
+                if (newX + 50 > windowWidth) newX = windowWidth - 50; // Keep at least 50px visible right
+                if (newX < -((typeof defaultWidth === 'number' ? defaultWidth : 400) - 50)) newX = -100; // Keep left edge somewhat visible
+
+                setPosition({ x: newX, y: newY });
             }
         };
         const handleMouseUp = () => setIsDragging(false);
@@ -64,13 +86,12 @@ export const useFloatingWindow = ({
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
         };
-    }, [isDragging, dragOffset]);
+    }, [isDragging, dragOffset, defaultWidth]);
 
     return {
         position,
-        setPosition, // Expose setter if manual adjustment needed
+        setPosition, 
         handleMouseDown,
-        // Helper style object
         style: {
             position: 'fixed',
             top: position.y,

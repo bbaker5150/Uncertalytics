@@ -5418,3 +5418,68 @@ body.dark-mode .bug-report-window .window-header {
 body.dark-mode .bug-card {
   background-color: rgba(255, 255, 255, 0.03) !important;
 }
+
+/* =================================================================== */
+/* NOTIFICATION FLOATING WINDOW                                        */
+/* =================================================================== */
+
+.notification-window {
+  /* Default Solid Backgrounds (prevents transparency) */
+  background-color: #ffffff; 
+  color: var(--text-color);
+  animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 15px 50px rgba(0,0,0,0.3);
+}
+
+.notification-window .window-header {
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+  /* Ensure header is also solid/opaque if needed, or matches theme */
+}
+
+.notification-window p {
+  user-select: text;
+}
+
+/* Animation for smooth appearance */
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* --- DARK MODE SOLID BACKGROUND --- */
+body.dark-mode .notification-window {
+  background-color: #1e1e1e; /* Solid Dark Grey */
+  box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+}
+
+/* --- ORBITAL THEME SOLID OVERRIDES (Fixes Transparency) --- */
+body.theme-orbital .notification-window {
+  background-color: #ffffff !important; /* Force Solid White */
+  border: 1px solid var(--primary-color);
+  backdrop-filter: none; /* Disable glass effect */
+}
+
+body.theme-orbital.dark-mode .notification-window {
+  background-color: #0f172a !important; /* Solid Dark Slate (matches theme palette) */
+  border-color: var(--primary-color);
+}
+
+/* --- CYBERPUNK THEME SOLID OVERRIDES --- */
+body.theme-cyberpunk .notification-window {
+  background-color: #ffffff !important; /* Solid White */
+  box-shadow: 6px 6px 0px rgba(0,0,0,1);
+  border: 2px solid var(--border-color);
+}
+
+body.theme-cyberpunk.dark-mode .notification-window {
+  background-color: #000000 !important; /* Solid Black */
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+body.theme-cyberpunk .notification-window .window-header {
+  border-top-width: 1px !important; /* Reset color bar width for cyberpunk */
+  background: transparent; /* Header blends into the solid body */
+  border-bottom: 1px solid var(--border-color);
+}

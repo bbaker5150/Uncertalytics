@@ -38,23 +38,12 @@ import {
   faTrashAlt,
   faPencilAlt,
   faSlidersH,
-  faSave,
-  faFolderOpen,
-  faPalette,
-  faStickyNote,
-  faRightLeft,
-  faRadio,
-  faHistory,
-  faList,
-  faQuestionCircle,
-  faChevronRight,
-  faChevronLeft,
-  faBug 
+  faBug,
+  faQuestionCircle
 } from "@fortawesome/free-solid-svg-icons";
 
 const ThemeContext = React.createContext(false);
 export const useTheme = () => React.useContext(ThemeContext);
-
 
 const generateDiffMessage = (changes, missing) => (
   <div>
@@ -245,14 +234,13 @@ function App() {
     });
   };
 
-  // --- BUG REPORT DELETE WRAPPER ---
   const handleDeleteBugReport = (reportId) => {
       setAppNotification({
           title: "Delete Report",
           message: "Are you sure you want to delete this report? This action cannot be undone.",
           confirmText: "Delete",
           cancelText: "Cancel",
-          isIconConfirm: false, // Use standard button style
+          isIconConfirm: false,
           onConfirm: () => {
               deleteBugReport(reportId);
               setAppNotification(null);
@@ -312,7 +300,6 @@ function App() {
     }
   };
 
-  // --- UPDATED: Handle Save Test Point with Confirmation Logic ---
   const handleSaveTestPoint = (formData) => {
     const finalData = { ...formData };
     const checks = []; 
@@ -619,23 +606,25 @@ function App() {
   return (
     <ThemeContext.Provider value={isDarkMode}>
       <div className="App">
-        <NotificationModal
-          isOpen={!!appNotification}
-          onClose={() => {
-            if (appNotification?.onClose) appNotification.onClose();
-            setAppNotification(null);
-          }}
-          title={appNotification?.title}
-          message={appNotification?.message}
-          confirmText={appNotification?.confirmText}
-          cancelText={appNotification?.cancelText}
-          isIconConfirm={appNotification?.isIconConfirm}
-          onConfirm={appNotification?.onConfirm}
-        />
+        {/* CONDITIONAL RENDER: Force remount to reset position */}
+        {appNotification && (
+          <NotificationModal
+            isOpen={true}
+            onClose={() => {
+              if (appNotification?.onClose) appNotification.onClose();
+              setAppNotification(null);
+            }}
+            title={appNotification.title}
+            message={appNotification.message}
+            confirmText={appNotification.confirmText}
+            cancelText={appNotification.cancelText}
+            isIconConfirm={appNotification.isIconConfirm}
+            onConfirm={appNotification.onConfirm}
+          />
+        )}
         
         <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
         
-        {/* Pass the WRAPPED delete handler here */}
         <BugReportModal 
           isOpen={isBugReportOpen}
           onClose={() => setIsBugReportOpen(false)}
