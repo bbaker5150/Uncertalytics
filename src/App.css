@@ -5297,8 +5297,6 @@ body.theme-cyberpunk .toolbox-button.active {
   box-shadow: 2px 2px 0px rgba(255,255,255,0.5);
 }
 
-
-
 /* Orbital: Enhanced Glass */
 body.theme-orbital .header-toolbox {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
@@ -5309,4 +5307,114 @@ body.theme-orbital.dark-mode .header-toolbox {
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.3));
   border: 1px solid rgba(148, 163, 184, 0.1);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* =================================================================== */
+/* BUG REPORT FLOATING WINDOW                                          */
+/* =================================================================== */
+
+/* 1. Base Window & Header */
+.bug-report-window {
+  background-color: var(--content-background);
+  color: var(--text-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.bug-report-window .window-header {
+  background-color: var(--background-secondary); 
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* 2. Form Labels (The "Titles" of input boxes) */
+.bug-report-window .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  /* Use theme font variable to ensure it matches (Inter vs JetBrains Mono) */
+  font-family: var(--main-font); 
+  color: var(--text-color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color 0.3s ease;
+}
+
+/* 3. Inputs & Textareas */
+.bug-report-window input,
+.bug-report-window select,
+.bug-report-window textarea {
+  background-color: var(--input-background);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  font-family: var(--main-font); /* Essential for Cyberpunk mono-space look */
+  border-radius: var(--border-radius);
+  padding: 10px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.bug-report-window input:focus,
+.bug-report-window select:focus,
+.bug-report-window textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-color-light);
+  outline: none;
+}
+
+/* 4. Bug Card (History List) */
+.bug-card {
+  transition: all 0.2s ease;
+  background-color: var(--input-background);
+  border: 1px solid var(--border-color);
+}
+
+.bug-card:hover {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transform: translateY(-2px);
+}
+
+/* =================================================================== */
+/* THEME-SPECIFIC OVERRIDES                                            */
+/* =================================================================== */
+
+/* --- Cyberpunk Theme (Neon/Terminal Look) --- */
+body.theme-cyberpunk .bug-report-window {
+  border-width: 2px;
+  border-radius: 0;
+}
+
+body.theme-cyberpunk .bug-report-window .form-group label {
+  color: var(--primary-color); /* Neon color for labels */
+  font-family: 'Courier New', monospace; /* Force tech font */
+  letter-spacing: 1px;
+  text-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+body.theme-cyberpunk .bug-report-window input,
+body.theme-cyberpunk .bug-report-window textarea {
+  border-radius: 0;
+  border-left-width: 4px; /* Tech accent on left */
+}
+
+/* --- Orbital Theme (Clean/Sci-Fi Look) --- */
+body.theme-orbital .bug-report-window .form-group label {
+  font-weight: 800;
+  color: var(--text-color-muted);
+  letter-spacing: 0.1em;
+}
+
+body.theme-orbital .bug-report-window input:focus,
+body.theme-orbital .bug-report-window textarea:focus {
+  background-color: var(--primary-color-light);
+}
+
+/* --- Dark Mode General --- */
+body.dark-mode .bug-report-window .window-header {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .bug-card {
+  background-color: rgba(255, 255, 255, 0.03) !important;
 }

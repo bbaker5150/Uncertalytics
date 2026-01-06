@@ -14,6 +14,7 @@ import TestPointInfoModal from "./features/testPoints/components/TestPointInfoMo
 import InstrumentBuilderModal from "./features/instruments/components/InstrumentBuilderModal";
 import UnresolvedToleranceModal from "./features/testPoints/components/UnresolvedToleranceModal";
 import HelpModal from "./components/common/HelpModal";
+import BugReportModal from "./components/modals/BugReportModal";
 
 // --- Floating Tools ---
 import FloatingNotepad from "./components/tools/FloatingNotepad";
@@ -48,6 +49,7 @@ import {
   faQuestionCircle,
   faChevronRight,
   faChevronLeft,
+  faBug 
 } from "@fortawesome/free-solid-svg-icons";
 
 const ThemeContext = React.createContext(false);
@@ -115,7 +117,10 @@ function App() {
   const {
     sessions,
     instruments,
+    bugReports, 
     saveInstrument,
+    saveBugReport, 
+    deleteBugReport,
     deleteInstrument,
     selectedSessionId,
     setSelectedSessionId,
@@ -160,12 +165,11 @@ function App() {
   const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
   const [isInstrumentBuilderOpen, setIsInstrumentBuilderOpen] = useState(false);
   
-  // Replaced runTutorial with isHelpOpen
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isBugReportOpen, setIsBugReportOpen] = useState(false);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("default");
-  // const [showThemeSelector, setShowThemeSelector] = useState(false); // Moved to HeaderToolbox
   const [isToolboxCollapsed, setIsToolboxCollapsed] = useState(false);
 
   const [initialSessionTab, setInitialSessionTab] = useState("details");
@@ -183,8 +187,6 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [migrateToDisk]);
-
-  /* Theme shortcut moved to HeaderToolbox */
 
   useEffect(() => {
     const body = document.body;
@@ -208,15 +210,12 @@ function App() {
           try {
             const { webFrame } = window.require("electron");
             const currentZoom = webFrame.getZoomFactor();
-            // Scroll Up (deltaY < 0) -> Zoom In
-            // Scroll Down (deltaY > 0) -> Zoom Out
             let newZoom = currentZoom;
             if (e.deltaY < 0) {
                newZoom += 0.1;
             } else {
                newZoom -= 0.1;
             }
-            // Clamp zoom between 50% and 300%
             newZoom = Math.max(0.5, Math.min(newZoom, 3.0));
             webFrame.setZoomFactor(newZoom);
           } catch (error) {
@@ -226,7 +225,6 @@ function App() {
       }
     };
     
-    // Check if we are in an environment that supports wheel events (browser/electron always does)
     window.addEventListener("wheel", handleZoom, { passive: false });
     return () => window.removeEventListener("wheel", handleZoom);
   }, []);
@@ -245,6 +243,21 @@ function App() {
         setConfirmationModal(null);
       },
     });
+  };
+
+  // --- BUG REPORT DELETE WRAPPER ---
+  const handleDeleteBugReport = (reportId) => {
+      setAppNotification({
+          title: "Delete Report",
+          message: "Are you sure you want to delete this report? This action cannot be undone.",
+          confirmText: "Delete",
+          cancelText: "Cancel",
+          isIconConfirm: false, // Use standard button style
+          onConfirm: () => {
+              deleteBugReport(reportId);
+              setAppNotification(null);
+          }
+      });
   };
 
   const handleSessionChange = async (updatedSession, newImageFiles = []) => {
@@ -302,15 +315,10 @@ function App() {
   // --- UPDATED: Handle Save Test Point with Confirmation Logic ---
   const handleSaveTestPoint = (formData) => {
     const finalData = { ...formData };
-
-    // 1. Identify what needs to be checked (UUT, TMDEs)
-    const checks = []; // Queue of items to resolve { type: 'uut'|'tmde', ... }
-
-    // - Check UUT
+    const checks = []; 
     const targetValue = finalData.testPointInfo.parameter.value;
     const targetUnit = finalData.testPointInfo.parameter.unit;
 
-    // Determine if we need to check UUT (only if uutInstrument exists and we have a value)
     if (currentSessionData.uutInstrument && targetValue) {
       checks.push({
         type: 'uut',
@@ -322,8 +330,6 @@ function App() {
       });
     }
 
-    // - Check TMDEs (Only if copying from previous or explicitly needed)
-    // Logic: If new point (no ID) and copyTmdes is true, we look at previous point's TMDEs
     if (!formData.id && currentTestPoints.length > 0 && finalData.copyTmdes) {
       const previousPoint = currentTestPoints[currentTestPoints.length - 1];
       if ((!finalData.tmdeTolerances || finalData.tmdeTolerances.length === 0) && previousPoint.tmdeTolerances) {
@@ -336,17 +342,13 @@ function App() {
             tmdeUnit = tmde.measurementPoint?.unit;
           }
 
-          // Reuse ID if available, or generate a check ID
           const checkId = tmde.id || `tmde-check-${idx}`;
-
-          // ALWAYS push to checks queue, even if instrument is missing. 
-          // If instrument is missing, it will fall through to "NO MATCH" logic and be cleared/flagged as manual.
           checks.push({
             type: 'tmde',
             id: checkId,
             originalTmde: tmde,
-            instrument: tmde.sourceInstrument || null, // Explicitly pass null if missing
-            name: tmde.name, // Pass the name for reference
+            instrument: tmde.sourceInstrument || null, 
+            name: tmde.name, 
             targetValue: tmdeVal,
             targetUnit: tmdeUnit
           });
@@ -354,53 +356,39 @@ function App() {
       }
     }
 
-    // 2. Recursive function to process the queue
     const processNextCheck = (index, resolvedSpecsMap) => {
       if (index >= checks.length) {
-        // ALL DONE -> Final Save
         performFinalSave(resolvedSpecsMap, checks);
         return;
       }
 
       const check = checks[index];
       const { instrument, targetValue, targetUnit, name } = check;
-
-      // Find matches
       const matches = findMatchingTolerances(instrument, targetValue, targetUnit);
-
       const mapKey = check.type === 'uut' ? 'uut' : check.id;
 
       if (matches && matches.length > 1) {
-        // AMBIGUITY -> Prompt User
         setUnresolvedToleranceModal({
           instrumentName: name,
           matches: matches,
           onSelect: (selectedSpec) => {
             setUnresolvedToleranceModal(null);
-            // Recursive call with resolved spec
             processNextCheck(index + 1, { ...resolvedSpecsMap, [mapKey]: selectedSpec });
           }
         });
-        // Stop execution here. Modal callback handles the rest.
         return;
-
       } else if (matches && matches.length === 1) {
-        // SINGLE MATCH -> Auto-select
         processNextCheck(index + 1, { ...resolvedSpecsMap, [mapKey]: matches[0] });
-
       } else {
-        // NO MATCH -> Record as missing
         processNextCheck(index + 1, { ...resolvedSpecsMap, [mapKey]: null });
       }
     };
 
-    // 3. Final Save Logic
     const performFinalSave = (resolvedMap, checksProcessed) => {
       const changes = [];
       const missing = [];
       let uutFinal = null;
 
-      // Apply UUT Results
       const uutCheck = checksProcessed.find(c => c.type === 'uut');
       if (uutCheck) {
         const resolved = resolvedMap['uut'];
@@ -410,7 +398,6 @@ function App() {
             const oldSummary = getToleranceSummary(uutCheck.existingSpec);
             const newSummary = getToleranceSummary(newSpecs);
 
-            // Only register change if actually different (and valid)
             if (oldSummary && newSummary && oldSummary !== newSummary) {
               changes.push({
                 name: uutCheck.name,
@@ -421,12 +408,10 @@ function App() {
             uutFinal = newSpecs;
           }
         } else {
-          // Missing
           missing.push({
             name: uutCheck.name,
             target: `${uutCheck.targetValue} ${uutCheck.targetUnit}`
           });
-          // Reset if missing
           finalData.uutTolerance = {};
         }
       }
@@ -435,7 +420,6 @@ function App() {
         finalData.uutTolerance = uutFinal;
       }
 
-      // Apply TMDE Results
       const tmdeChecks = checksProcessed.filter(c => c.type === 'tmde');
       if (tmdeChecks.length > 0) {
         const newTmdes = tmdeChecks.map((check, i) => {
@@ -455,25 +439,18 @@ function App() {
                 });
               }
 
-              // Create the new TMDE object
               const tmdeObj = {
                 ...newSpecs,
                 measurementPoint: { value: check.targetValue, unit: check.targetUnit },
                 id: Date.now() + Math.random() + i,
-                // FIX: Robust Naming Fallback
                 name: check.name || check.originalTmde?.name || `${check.instrument.manufacturer} ${check.instrument.model}`,
                 isTmde: true
               };
-
-              // FIX: Explicitly DELETE resolution from TMDEs so it never calculates
-              // This overrides any property added by recalculateTolerance
               delete tmdeObj.measuringResolution;
-
               return tmdeObj;
             }
           }
 
-          // If resolved is null OR recalculate failed
           if (!resolved) {
             missing.push({
               name: check.name,
@@ -481,15 +458,13 @@ function App() {
             });
           }
 
-          // Clean fallback for missing/failed: Strictly reconstruct to avoid old components persisting
           const fallbackObj = {
-            id: Date.now() + Math.random() + i, // Generate new ID to force distinct state
+            id: Date.now() + Math.random() + i, 
             name: check.name || check.originalTmde?.name || "TMDE",
-            sourceInstrument: check.originalTmde?.sourceInstrument, // Preserve instrument definition for future checks
+            sourceInstrument: check.originalTmde?.sourceInstrument, 
             measurementPoint: { value: check.targetValue, unit: check.targetUnit },
             isTmde: true,
             rangeMax: "" 
-            // Explicitly do NOT spread check.originalTmde to ensure 'reading', 'range', 'floor' etc. are gone.
           };
           return fallbackObj;
         });
@@ -497,7 +472,6 @@ function App() {
         finalData.tmdeTolerances = newTmdes;
       }
 
-      // Notification / Final Save Logic
       if (changes.length > 0 || missing.length > 0) {
         setAppNotification({
           title: missing.length > 0 ? "Manual Entry Required" : "Update Tolerances?",
@@ -508,8 +482,8 @@ function App() {
           onConfirm: () => {
             saveTestPoint(finalData, null);
             setAppNotification(null);
-            setIsAddModalOpen(false); // Close the Add Modal
-            setEditingTestPoint(null); // Clear editing state
+            setIsAddModalOpen(false); 
+            setEditingTestPoint(null); 
 
             if (missing.length > 0) {
               setTimeout(() => {
@@ -527,7 +501,6 @@ function App() {
       }
     };
 
-    // Kick off the queue processing
     processNextCheck(0, {});
   };
 
@@ -620,13 +593,10 @@ function App() {
     const pointData = currentTestPoints.find((p) => p.id === selectedTestPointId);
     if (!pointData) return null;
 
-    // FIX: Prioritize point-specific tolerance if it exists (even if empty)
-    // Only fall back to session/auto-calc if pointData.uutTolerance is explicitly null/undefined (Legacy/Default)
     let effectiveUutTolerance = (pointData.uutTolerance !== null && pointData.uutTolerance !== undefined)
       ? pointData.uutTolerance
       : currentSessionData.uutTolerance;
 
-    // Only attempt auto-calculation/inheritance if we are using session defaults (i.e., pointData.uutTolerance was null)
     if ((pointData.uutTolerance === null || pointData.uutTolerance === undefined) && currentSessionData.uutInstrument && pointData.testPointInfo?.parameter?.value) {
       const autoSpecs = recalculateTolerance(
         currentSessionData.uutInstrument,
@@ -663,8 +633,16 @@ function App() {
           onConfirm={appNotification?.onConfirm}
         />
         
-        {/* Replaced Tutorial with HelpModal */}
         <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+        
+        {/* Pass the WRAPPED delete handler here */}
+        <BugReportModal 
+          isOpen={isBugReportOpen}
+          onClose={() => setIsBugReportOpen(false)}
+          reports={bugReports} 
+          onSave={saveBugReport}
+          onDelete={handleDeleteBugReport} 
+        />
 
         {currentSessionData && (
           <>
@@ -775,7 +753,6 @@ function App() {
             isOpen={isToleranceModalOpen}
             onClose={() => setIsToleranceModalOpen(false)}
             onSave={(data) => {
-              // FIX: Save UUT tolerance directly to the test point, NOT the session default
               updateTestPointData(data);
             }}
             testPointData={testPointData}
@@ -813,37 +790,69 @@ function App() {
               </div>
             </div>
 
-            <button
-               className="toolbox-button" 
-               style={{ 
-                 width: '40px', 
-                 height: '40px', 
-                 border: '1px solid var(--border-color)', 
-                 background: 'var(--input-background)',
-                 borderRadius: '50%',
-                 cursor: 'pointer',
-                 color: 'var(--text-color-muted)',
-                 display: 'flex',
-                 alignItems: 'center',
-                 justifyContent: 'center',
-                 transition: 'all 0.2s ease',
-                 marginLeft: 'auto'
-               }}
-               onClick={() => setIsHelpOpen(true)}
-               title="Help & Tutorial"
-               onMouseEnter={(e) => {
-                  e.currentTarget.style.color = 'var(--primary-color)';
-                  e.currentTarget.style.borderColor = 'var(--primary-color)';
-                  e.currentTarget.style.backgroundColor = 'var(--primary-color-light)';
-               }}
-               onMouseLeave={(e) => {
-                  e.currentTarget.style.color = 'var(--text-color-muted)';
-                  e.currentTarget.style.borderColor = 'var(--border-color)';
-                  e.currentTarget.style.backgroundColor = 'var(--input-background)';
-               }}
-            >
-              <FontAwesomeIcon icon={faQuestionCircle} />
-            </button>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                   className="toolbox-button"
+                   style={{ 
+                     width: '40px', 
+                     height: '40px', 
+                     border: '1px solid var(--border-color)', 
+                     background: 'var(--input-background)',
+                     borderRadius: '50%',
+                     cursor: 'pointer',
+                     color: 'var(--text-color-muted)',
+                     display: 'flex',
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     transition: 'all 0.2s ease',
+                   }}
+                   onClick={() => setIsBugReportOpen(true)}
+                   title="Report Bug / Request Feature"
+                   onMouseEnter={(e) => {
+                      e.currentTarget.style.color = 'var(--status-warning)';
+                      e.currentTarget.style.borderColor = 'var(--status-warning)';
+                      e.currentTarget.style.backgroundColor = 'var(--status-warning-bg)';
+                   }}
+                   onMouseLeave={(e) => {
+                      e.currentTarget.style.color = 'var(--text-color-muted)';
+                      e.currentTarget.style.borderColor = 'var(--border-color)';
+                      e.currentTarget.style.backgroundColor = 'var(--input-background)';
+                   }}
+                >
+                  <FontAwesomeIcon icon={faBug} />
+                </button>
+
+                <button
+                   className="toolbox-button" 
+                   style={{ 
+                     width: '40px', 
+                     height: '40px', 
+                     border: '1px solid var(--border-color)', 
+                     background: 'var(--input-background)',
+                     borderRadius: '50%',
+                     cursor: 'pointer',
+                     color: 'var(--text-color-muted)',
+                     display: 'flex',
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     transition: 'all 0.2s ease',
+                   }}
+                   onClick={() => setIsHelpOpen(true)}
+                   title="Help & Tutorial"
+                   onMouseEnter={(e) => {
+                      e.currentTarget.style.color = 'var(--primary-color)';
+                      e.currentTarget.style.borderColor = 'var(--primary-color)';
+                      e.currentTarget.style.backgroundColor = 'var(--primary-color-light)';
+                   }}
+                   onMouseLeave={(e) => {
+                      e.currentTarget.style.color = 'var(--text-color-muted)';
+                      e.currentTarget.style.borderColor = 'var(--border-color)';
+                      e.currentTarget.style.backgroundColor = 'var(--input-background)';
+                   }}
+                >
+                  <FontAwesomeIcon icon={faQuestionCircle} />
+                </button>
+            </div>
 
             <HeaderToolbox 
               isToolboxCollapsed={isToolboxCollapsed}

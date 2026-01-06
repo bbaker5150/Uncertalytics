@@ -57,6 +57,7 @@ const useSessionManager = () => {
   // --- State ---
   const [sessions, setSessions] = useState([]);
   const [instruments, setInstruments] = useState([]); 
+  const [bugReports, setBugReports] = useState([]); // NEW STATE
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [selectedTestPointId, setSelectedTestPointId] = useState(null);
   const [dbPath, setDbPath] = useState(null);
@@ -114,22 +115,23 @@ const useSessionManager = () => {
     loadData();
   }, [loadData]);
 
-  // --- 1.1 Load Data (Instruments) ---
-  const loadInstruments = useCallback(async () => {
-    let loaded = false;
+  // --- 1.1 Load Shared Data (Instruments & Bugs) ---
+  const loadSharedData = useCallback(async () => {
+    // 1. Instruments
+    let instLoaded = false;
     if (ipcRenderer && dbPath) {
         try {
             const dbInstruments = await ipcRenderer.invoke('load-instruments');
             if (dbInstruments) {
                 setInstruments(dbInstruments);
-                loaded = true;
+                instLoaded = true;
             }
         } catch (e) {
             console.error("Failed to load instruments from DB", e);
         }
     }
     
-    if (!loaded) {
+    if (!instLoaded) {
         const localInst = localStorage.getItem("uncertaintyInstruments");
         if (localInst) {
             try {
@@ -137,14 +139,27 @@ const useSessionManager = () => {
             } catch (e) { console.error("Failed to load instruments from LS", e); }
         }
     }
+
+    // 2. Bug Reports
+    if (ipcRenderer && dbPath) {
+        try {
+            const dbBugs = await ipcRenderer.invoke('load-bug-reports');
+            if (dbBugs) {
+                setBugReports(dbBugs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+            }
+        } catch (e) {
+            console.error("Failed to load bugs from DB", e);
+        }
+    }
+
   }, [ipcRenderer, dbPath]);
 
   useEffect(() => {
-    loadInstruments();
-  }, [loadInstruments]);
+    loadSharedData();
+  }, [loadSharedData]);
 
 
-  // --- 2. Persistence Logic ---
+  // --- 2. Persistence Logic (Sessions) ---
   const persistSession = async (sessionToSave, newImages = []) => {
     if (ipcRenderer && dbPath) {
         try {
@@ -218,9 +233,8 @@ const useSessionManager = () => {
     }
   };
 
-  // --- 2.2 Delete Instrument (NEW) ---
+  // --- 2.2 Delete Instrument ---
   const deleteInstrument = async (instrumentId) => {
-    // 1. Update State & LocalStorage
     setInstruments(prev => {
         const newInstruments = prev.filter(i => i.id !== instrumentId);
         try {
@@ -229,7 +243,6 @@ const useSessionManager = () => {
         return newInstruments;
     });
 
-    // 2. Update DB
     if (ipcRenderer && dbPath) {
         try {
             await ipcRenderer.invoke('delete-instrument', instrumentId);
@@ -238,6 +251,43 @@ const useSessionManager = () => {
         }
     }
   };
+
+  // --- 2.3 Save/Update Bug Report ---
+  const saveBugReport = async (report) => {
+    // Optimistic Update: Check if it exists, if so replace, else prepend
+    setBugReports(prev => {
+        const idx = prev.findIndex(r => r.id === report.id);
+        if (idx > -1) {
+            const updated = [...prev];
+            updated[idx] = report;
+            return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
+        return [report, ...prev].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    });
+
+    if (ipcRenderer && dbPath) {
+        try {
+            await ipcRenderer.invoke('save-bug-report', report);
+        } catch (e) {
+            console.error("Failed to save bug report", e);
+        }
+    }
+  };
+
+  // --- 2.4 Delete Bug Report ---
+  const deleteBugReport = async (reportId) => {
+    // Optimistic Delete
+    setBugReports(prev => prev.filter(r => r.id !== reportId));
+
+    if (ipcRenderer && dbPath) {
+        try {
+            await ipcRenderer.invoke('delete-bug-report', reportId);
+        } catch (e) {
+            console.error("Failed to delete bug report", e);
+        }
+    }
+  };
+
 
   // --- 3. Image Actions ---
   const loadSessionImages = async (sessionId) => {
@@ -293,7 +343,7 @@ const useSessionManager = () => {
           if (path) {
               setDbPath(path);
               loadData(); 
-              loadInstruments(); 
+              loadSharedData(); // Load instruments AND bugs
           }
       }
   };
@@ -303,7 +353,7 @@ const useSessionManager = () => {
           await ipcRenderer.invoke('disconnect-db');
           setDbPath(null);
           loadData(); 
-          loadInstruments(); 
+          loadSharedData(); 
       }
   };
 
@@ -329,7 +379,7 @@ const useSessionManager = () => {
             }
             alert(`Successfully saved ${count} sessions and ${instruments.length} instruments to disk!`);
             loadData(); 
-            loadInstruments();
+            loadSharedData();
         }
       }
   };
@@ -518,9 +568,12 @@ const useSessionManager = () => {
   return {
     sessions,
     instruments,
+    bugReports, // EXPORTED
     saveInstrument,
+    saveBugReport, // EXPORTED
+    deleteBugReport, // EXPORTED
     deleteInstrument, 
-    loadInstruments,
+    loadInstruments: loadSharedData, // FIX: Map loadInstruments to loadSharedData to resolve ReferenceError
     selectedSessionId,
     setSelectedSessionId,
     selectedTestPointId,

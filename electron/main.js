@@ -155,8 +155,12 @@ ipcMain.handle('load-sessions', async () => {
   if (!dbPath || !fs.existsSync(dbPath)) return []; 
 
   try {
-    // Filter out instruments.json so it doesn't appear as a session
-    const files = fs.readdirSync(dbPath).filter(file => file.endsWith('.json') && file !== 'instruments.json');
+    // Filter out instruments.json and bugs.json so they don't appear as sessions
+    const files = fs.readdirSync(dbPath).filter(file => 
+      file.endsWith('.json') && 
+      file !== 'instruments.json' && 
+      file !== 'bugs.json'
+    );
     
     // We use Promise.all to load files in parallel, but handle individual errors gracefully
     const sessions = await Promise.all(files.map(async (file) => {
@@ -210,7 +214,7 @@ ipcMain.handle('save-session', async (event, sessionData) => {
 
   // Cleanup: Delete old files with DIFFERENT names but SAME ID (Renaming logic)
   try {
-    const files = fs.readdirSync(dbPath).filter(f => f.endsWith('.json') && f !== 'instruments.json');
+    const files = fs.readdirSync(dbPath).filter(f => f.endsWith('.json') && f !== 'instruments.json' && f !== 'bugs.json');
     for (const file of files) {
       if (file === newFileName) continue; // Don't delete target
       
@@ -285,8 +289,6 @@ ipcMain.handle('save-instrument', async (event, instrument) => {
       if (!Array.isArray(instruments)) instruments = [];
     } catch(e) { 
       console.error("Error reading instruments DB:", e);
-      // If file is corrupted, we might start fresh or throw. 
-      // Safe option: Initialize empty array but log error.
       instruments = [];
     }
   }
@@ -321,6 +323,30 @@ ipcMain.handle('load-instruments', async () => {
     }
   }
   return [];
+});
+
+// 12. DELETE INSTRUMENT
+ipcMain.handle('delete-instrument', async (event, instrumentId) => {
+  const { dbPath } = getAppConfig();
+  if (!dbPath) return false;
+  
+  const instPath = path.join(dbPath, 'instruments.json');
+  if (fs.existsSync(instPath)) {
+    try {
+      const raw = await safeReadFile(instPath);
+      let instruments = JSON.parse(raw);
+      if (!Array.isArray(instruments)) return false;
+      
+      const newInstruments = instruments.filter(i => i.id !== instrumentId);
+      
+      await safeWriteFile(instPath, JSON.stringify(newInstruments, null, 2));
+      return true;
+    } catch(e) {
+      console.error("Failed to delete instrument:", e);
+      return false;
+    }
+  }
+  return false;
 });
 
 // ==========================================
@@ -376,26 +402,78 @@ ipcMain.handle('delete-image', async (event, { sessionId, imageId }) => {
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 });
 
-// main.js - Add this new handler
+// ==========================================
+// BUG REPORT IPC HANDLERS (NEW)
+// ==========================================
 
-// 12. DELETE INSTRUMENT
-ipcMain.handle('delete-instrument', async (event, instrumentId) => {
+// 13. SAVE/UPDATE BUG REPORT
+ipcMain.handle('save-bug-report', async (event, report) => {
+  const { dbPath } = getAppConfig();
+  if (!dbPath) throw new Error("Database path not set");
+  
+  const bugsPath = path.join(dbPath, 'bugs.json');
+  let bugs = [];
+  
+  if (fs.existsSync(bugsPath)) {
+    try {
+      const raw = await safeReadFile(bugsPath);
+      bugs = JSON.parse(raw);
+      if (!Array.isArray(bugs)) bugs = [];
+    } catch(e) { 
+      console.error("Error reading bugs DB:", e);
+      bugs = [];
+    }
+  }
+  
+  // CHECK FOR EXISTING ID TO UPDATE
+  const existingIdx = bugs.findIndex(b => b.id === report.id);
+  if (existingIdx > -1) {
+    bugs[existingIdx] = report; // Update
+  } else {
+    bugs.push(report); // Insert
+  }
+  
+  await safeWriteFile(bugsPath, JSON.stringify(bugs, null, 2));
+  return true;
+});
+
+// 14. LOAD BUG REPORTS
+ipcMain.handle('load-bug-reports', async () => {
+  const { dbPath } = getAppConfig();
+  if (!dbPath) return [];
+  
+  const bugsPath = path.join(dbPath, 'bugs.json');
+  if (fs.existsSync(bugsPath)) {
+    try {
+      const data = await safeReadFile(bugsPath);
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch(e) { 
+      console.error("Failed to load bugs:", e);
+      return []; 
+    }
+  }
+  return [];
+});
+
+// 15. DELETE BUG REPORT (NEW)
+ipcMain.handle('delete-bug-report', async (event, reportId) => {
   const { dbPath } = getAppConfig();
   if (!dbPath) return false;
   
-  const instPath = path.join(dbPath, 'instruments.json');
-  if (fs.existsSync(instPath)) {
+  const bugsPath = path.join(dbPath, 'bugs.json');
+  if (fs.existsSync(bugsPath)) {
     try {
-      const raw = await safeReadFile(instPath);
-      let instruments = JSON.parse(raw);
-      if (!Array.isArray(instruments)) return false;
+      const raw = await safeReadFile(bugsPath);
+      let bugs = JSON.parse(raw);
+      if (!Array.isArray(bugs)) return false;
       
-      const newInstruments = instruments.filter(i => i.id !== instrumentId);
+      const newBugs = bugs.filter(b => b.id !== reportId);
       
-      await safeWriteFile(instPath, JSON.stringify(newInstruments, null, 2));
+      await safeWriteFile(bugsPath, JSON.stringify(newBugs, null, 2));
       return true;
     } catch(e) {
-      console.error("Failed to delete instrument:", e);
+      console.error("Failed to delete bug:", e);
       return false;
     }
   }

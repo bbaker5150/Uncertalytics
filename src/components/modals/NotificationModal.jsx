@@ -1,115 +1,140 @@
+import React from "react";
 import ReactDOM from "react-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { useFloatingWindow } from "../../hooks/useFloatingWindow";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { 
+  faInfoCircle, 
+  faExclamationTriangle, 
+  faCheck, 
+  faTimes, 
+  faBell 
+} from "@fortawesome/free-solid-svg-icons";
 
-const NotificationModal = ({
-  isOpen,
-  onClose,
-  title,
-  message,
-  onConfirm,
-  confirmText,
-  cancelText,
-  isIconConfirm,
-  isFloating = false // New prop
+const NotificationModal = ({ 
+  isOpen, 
+  onClose, 
+  title = "Notification", 
+  message, 
+  onConfirm, 
+  confirmText = "OK",
+  isIconConfirm = false
 }) => {
-  // --- Floating Logic ---
+  
+  // Center the modal roughly on screen (400px width)
+  const defaultX = window.innerWidth / 2 - 200;
+  const defaultY = window.innerHeight / 3;
+
   const { position, handleMouseDown } = useFloatingWindow({
-      isOpen,
-      defaultWidth: 400,
-      defaultHeight: 250
+    isOpen,
+    defaultWidth: 400,
+    defaultHeight: "auto",
+    defaultX,
+    defaultY
   });
 
   if (!isOpen) return null;
 
-  // --- Render Content Helper ---
-  const modalContent = (
-      <div 
-        className={isFloating ? "modal-content floating-window-content" : "modal-content"}
-        style={isFloating ? {
-            position: 'fixed',
-            top: position.y,
-            left: position.x,
-            margin: 0,
-            zIndex: 9999,
-            width: '400px',
-            maxWidth: '90vw',
-            boxShadow: 'var(--box-shadow-glow)',
-            border: '1px solid var(--border-color)'
-        } : {}}
+  // Determine Icon & Color based on Title keywords (heuristic)
+  let icon = faInfoCircle;
+  let headerColor = "var(--primary-color)";
+  
+  const lowerTitle = title.toLowerCase();
+  if (lowerTitle.includes("delete") || lowerTitle.includes("warning") || lowerTitle.includes("error")) {
+    icon = faExclamationTriangle;
+    headerColor = "var(--status-bad)";
+  } else if (lowerTitle.includes("success") || lowerTitle.includes("saved")) {
+    icon = faCheck;
+    headerColor = "var(--status-good)";
+  }
+
+  return ReactDOM.createPortal(
+    <div
+      className="notification-window floating-window-content"
+      style={{
+        position: "fixed",
+        top: position.y,
+        left: position.x,
+        width: "400px",
+        zIndex: 3001, // Higher than other windows
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.5)" // Stronger shadow for popups
+      }}
+    >
+      {/* --- Draggable Header --- */}
+      <div
+        className="window-header"
+        onMouseDown={handleMouseDown}
+        style={{
+          padding: "10px 15px",
+          borderBottom: "1px solid var(--border-color)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          cursor: "move",
+          backgroundColor: "var(--background-secondary)",
+          userSelect: "none",
+          borderTop: `3px solid ${headerColor}` // Color coded top border
+        }}
       >
-        {isFloating && (
-            <div
-                onMouseDown={handleMouseDown}
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    marginBottom: '10px',
-                    paddingBottom: '10px',
-                    borderBottom: '1px solid var(--border-color)',
-                    cursor: 'move',
-                    userSelect: 'none'
-                }}
-            >
-                <FontAwesomeIcon icon={faExclamationTriangle} style={{ color: 'var(--status-warning)' }} />
-                <h3 style={{ margin: 0, fontSize: '1rem' }}>{title}</h3>
-                <button onClick={onClose} className="modal-close-button" style={{ position: 'static', marginLeft: 'auto', transform: 'none' }}>
-                  &times;
-                </button>
-            </div>
-        )}
+        <h3 style={{ margin: 0, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "8px", color: "var(--text-color)" }}>
+          <FontAwesomeIcon icon={icon} style={{ color: headerColor }} />
+          {title}
+        </h3>
+        <button
+          onClick={onClose}
+          className="modal-close-button"
+          style={{ position: "static", fontSize: "1.1rem" }}
+          title="Close / Cancel"
+        >
+          &times;
+        </button>
+      </div>
 
-        {!isFloating && (
-            <>
-                <button onClick={onClose} className="modal-close-button">
-                &times;
-                </button>
-                <h3>{title}</h3>
-            </>
-        )}
-
-        <div style={{ textAlign: "left", whiteSpace: "pre-wrap", fontSize: '0.95rem', lineHeight: '1.5' }}>
+      {/* --- Body --- */}
+      <div className="window-body" style={{ padding: "20px" }}>
+        <p style={{ 
+            marginTop: 0, 
+            marginBottom: "20px", 
+            lineHeight: "1.5", 
+            color: "var(--text-color)",
+            fontSize: "0.95rem"
+        }}>
           {message}
-        </div>
+        </p>
 
-        <div className="modal-actions" style={{ justifyContent: "flex-end", marginTop: '20px', gap: '10px' }}>
-          {/* Logic: If onConfirm exists, show Two Buttons. Otherwise, just show OK. */}
-          {onConfirm ? (
-            <>
-              {cancelText !== null && (
-                <button className="button button-secondary" onClick={onClose}>
-                  {cancelText || "Cancel"}
-                </button>
-              )}
-              <button 
-                className={isIconConfirm ? "modal-icon-button primary" : "button button-primary"} 
-                onClick={onConfirm}
-                title={confirmText || "Confirm"}
-              >
-                {isIconConfirm ? <FontAwesomeIcon icon={faCheck} /> : (confirmText || "Confirm")}
-              </button>
-            </>
-          ) : (
-             // Only show OK button for non-floating or if explicitly desired. 
-             // For floating, we have the 'X', but 'OK' is also good for acknowledgment.
-            <button className="button" onClick={onClose}>
-              OK
+        {/* --- Actions --- */}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+          {/* Only showing Confirm button as requested. 'X' handles cancel. */}
+          {onConfirm && (
+            <button
+              className="button"
+              onClick={onConfirm}
+              style={{
+                backgroundColor: headerColor === "var(--status-bad)" ? "var(--status-bad)" : "var(--primary-color)",
+                borderColor: headerColor === "var(--status-bad)" ? "var(--status-bad)" : "var(--primary-color)",
+                minWidth: isIconConfirm ? "auto" : "100px",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+               {confirmText} 
+               {isIconConfirm && <FontAwesomeIcon icon={faCheck} />}
+            </button>
+          )}
+          
+          {/* If no confirm action exists (just an info alert), show a generic "Close" or "OK" */}
+          {!onConfirm && (
+            <button className="button button-secondary" onClick={onClose}>
+                Close
             </button>
           )}
         </div>
       </div>
-  );
-
-  if (isFloating) {
-      return ReactDOM.createPortal(modalContent, document.body);
-  }
-
-  return (
-    <div className="modal-overlay" style={{ zIndex: 9999 }}>
-      {modalContent}
-    </div>
+    </div>,
+    document.body
   );
 };
 
