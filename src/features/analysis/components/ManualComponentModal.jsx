@@ -1,12 +1,3 @@
-/**
- * * A form modal used to Add or Edit manual uncertainty components.
- * * Features:
- * - Dynamic fields based on Type A (Std Dev) vs Type B (Tolerance).
- * - Real-time conversion preview via ConversionInfo.
- * - Handles both "New" and "Edit" modes based on props.
- * - Draggable floating window design.
- */
-
 import React, { useState, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom"; // <--- 1. Import ReactDOM
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -63,7 +54,8 @@ const ManualComponentModal = ({
           standardUncertainty: existingComponent.originalInput?.standardUncertainty || "",
           toleranceLimit: existingComponent.originalInput?.toleranceLimit || "",
           errorDistributionDivisor: existingComponent.originalInput?.errorDistributionDivisor || "1.732",
-          unit: existingComponent.unit_native || existingComponent.unit || "ppm",
+          // UPDATED: Check originalInput.unit first to preserve user selection (e.g. %)
+          unit: existingComponent.originalInput?.unit || existingComponent.unit_native || existingComponent.unit || "ppm",
           dof: existingComponent.dof === Infinity ? "Infinity" : String(existingComponent.dof),
         });
       } else {
@@ -72,13 +64,14 @@ const ManualComponentModal = ({
           type: "B",
           errorDistributionDivisor: "1.732",
           toleranceLimit: "",
-          unit: "ppm",
+          // UPDATED: Default to the UUT Nominal unit if available (e.g. "V"), else "ppm"
+          unit: uutNominal?.unit || "ppm",
           standardUncertainty: "",
           dof: "Infinity",
         });
       }
     }
-  }, [isOpen, existingComponent]);
+  }, [isOpen, existingComponent, uutNominal]);
 
   // --- Drag Handlers ---
   const handleMouseDown = (e) => {
@@ -128,10 +121,12 @@ const ManualComponentModal = ({
     let valueInPPM = NaN;
     let dof = component.dof === "Infinity" ? Infinity : parseFloat(component.dof);
 
+    // UPDATED: Added unit to originalInputData so editing works correctly
     const originalInputData = {
       standardUncertainty: component.standardUncertainty,
       toleranceLimit: component.toleranceLimit,
       errorDistributionDivisor: component.errorDistributionDivisor,
+      unit: component.unit 
     };
 
     let valueNative = NaN;
@@ -194,11 +189,30 @@ const ManualComponentModal = ({
       (d) => d.value === component.errorDistributionDivisor
     )?.label;
 
+    // --- FIX START: Handle Relative Unit Display ---
+    // If unit is relative (%, ppm, ppb), calculate the absolute value in the nominal unit
+    // so the table displays consistent units (e.g. Volts instead of %).
+    let finalValueNative = valueNative;
+    let finalUnitNative = component.unit;
+
+    const isRelative = ["%", "ppm", "ppb"].includes(component.unit);
+    
+    if (isRelative && uutNominal?.value && uutNominal?.unit) {
+        const nominalVal = parseFloat(uutNominal.value);
+        if (!isNaN(nominalVal)) {
+            // valueInPPM is the standard uncertainty (u_i) in PPM.
+            // Convert it to absolute uncertainty in nominal units.
+            finalValueNative = (valueInPPM / 1000000) * Math.abs(nominalVal);
+            finalUnitNative = uutNominal.unit;
+        }
+    }
+    // --- FIX END ---
+
     const finalData = {
       ...component,
       value: valueInPPM,
-      value_native: valueNative,
-      unit_native: component.unit,
+      value_native: finalValueNative, // Use the calculated absolute value
+      unit_native: finalUnitNative,   // Use the absolute unit (if converted)
       dof,
       distribution: distributionLabel,
       originalInput: originalInputData

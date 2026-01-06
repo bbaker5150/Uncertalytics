@@ -147,7 +147,22 @@ const EditUutModal = ({
     };
 
     const handleSave = () => {
-        onSave({ description, tolerance, instrument: selectedInstrument });
+        // 1. Ensure resolution is a power of 10 (e.g., 0.1, 0.01)
+        let sanitizedTolerance = { ...tolerance };
+        if (sanitizedTolerance.measuringResolution) {
+            const res = parseFloat(sanitizedTolerance.measuringResolution);
+            if (res > 0) {
+                // Find the magnitude: e.g., 0.003 -> -3 -> 0.001
+                const exponent = Math.floor(Math.log10(res));
+                sanitizedTolerance.measuringResolution = Math.pow(10, exponent).toString();
+            }
+        }
+
+        onSave({
+            description,
+            tolerance: sanitizedTolerance,
+            instrument: selectedInstrument
+        });
         onClose();
     };
 
@@ -277,7 +292,8 @@ const EditUutModal = ({
                         tolerance={tolerance}
                         setTolerance={setTolerance}
                         isUUT={true}
-                        referencePoint={null}
+                        /* UPDATED: Pass uutNominal so ToleranceForm knows the default unit */
+                        referencePoint={uutNominal}
                         hideDistribution={true}
                     />
                 </div>

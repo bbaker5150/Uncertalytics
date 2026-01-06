@@ -2,27 +2,12 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import ReactDOM from "react-dom";
 import Select from "react-select";
 import ToleranceForm from "../../../components/common/ToleranceForm";
-import { unitSystem, findInstrumentTolerance, findMatchingTolerances, getToleranceSummary } from "../../../utils/uncertaintyMath";
+import { unitSystem, findInstrumentTolerance, findMatchingTolerances, getToleranceSummary, unitCategories } from "../../../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faPlus, faBookOpen, faGripHorizontal } from "@fortawesome/free-solid-svg-icons";
 import InstrumentLookupModal from "./InstrumentLookupModal";
 import NotificationModal from "../../../components/modals/NotificationModal"; //
 import UnresolvedToleranceModal from "../../testPoints/components/UnresolvedToleranceModal";
-
-const unitCategories = {
-  Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
-  Current: ["A", "mA", "uA", "nA", "pA", "kA"],
-  Resistance: ["Ohm", "kOhm", "MOhm", "mOhm", "GOhm", "TOhm"],
-  Capacitance: ["F", "uF", "nF", "pF", "mF"],
-  Inductance: ["H", "mH", "uH"],
-  Frequency: ["Hz", "kHz", "MHz", "GHz", "THz"],
-  Time: ["s", "ms", "us", "ns", "ps", "min", "hr", "day"],
-  Temperature: ["Cel", "degF", "degC", "K"],
-  Pressure: ["Pa", "kPa", "MPa", "psi", "bar", "mbar", "torr", "inHg"],
-  Length: ["m", "cm", "mm", "um", "nm", "km", "in", "ft", "yd", "mi"],
-  Mass: ["kg", "g", "mg", "ug", "lb", "oz"],
-  Power: ["W", "mW", "kW", "MW", "dBm"],
-};
 
 const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
   const options = [];

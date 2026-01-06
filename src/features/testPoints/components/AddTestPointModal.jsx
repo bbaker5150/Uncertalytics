@@ -4,29 +4,8 @@ import ReactDOM from 'react-dom'; // Import ReactDOM for Portals
 import Select from 'react-select';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faPlus, faTrashAlt, faGripHorizontal } from '@fortawesome/free-solid-svg-icons';
-import { unitSystem } from '../../../utils/uncertaintyMath';
+import { unitSystem, unitCategories } from '../../../utils/uncertaintyMath';
 import NotificationModal from '../../../components/modals/NotificationModal';
-
-// --- Unit Categories (Updated to include Torque and others) ---
-const unitCategories = {
-    Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
-    Current: ["A", "mA", "uA", "nA", "pA", "kA"],
-    Resistance: ["Ohm", "kOhm", "MOhm", "mOhm", "GOhm", "TOhm"],
-    Capacitance: ["F", "uF", "nF", "pF", "mF"],
-    Inductance: ["H", "mH", "uH"],
-    Frequency: ["Hz", "kHz", "MHz", "GHz", "THz"],
-    Time: ["s", "ms", "us", "ns", "ps", "min", "hr", "day"],
-    Temperature: ["Cel", "degF", "degC", "K"],
-    Pressure: ["Pa", "kPa", "MPa", "psi", "bar", "mbar", "torr", "inHg"],
-    Length: ["m", "cm", "mm", "um", "nm", "km", "in", "ft", "yd", "mi"],
-    Mass: ["kg", "g", "mg", "ug", "lb", "oz"],
-    Force: ["N", "kN", "lbf", "kgf"],
-    Torque: ["N-m", "in-ozf", "in-lbf", "ft-lbf"], // Added Torque category
-    Power: ["W", "mW", "kW", "MW", "dBm"],
-    Ratio: ["dB", "ppm", "%"],
-    Angle: ["deg", "rad", "grad", "arcmin", "arcsec"],
-    Digital: ["bit", "byte", "kB", "MB", "GB", "TB"],
-};
 
 // --- Custom Styles ---
 const customSelectStyles = {

@@ -3,26 +3,11 @@ import ReactDOM from "react-dom";
 import Select from "react-select";
 import {
   unitSystem,
+  unitCategories,
   errorDistributions,
 } from "../../utils/uncertaintyMath";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrashAlt, faPlus } from "@fortawesome/free-solid-svg-icons";
-
-// --- Configuration for Unit Grouping ---
-const unitCategories = {
-  Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
-  Current: ["A", "mA", "uA", "nA", "pA", "kA"],
-  Resistance: ["Ohm", "kOhm", "MOhm", "mOhm", "GOhm", "TOhm"],
-  Capacitance: ["F", "uF", "nF", "pF", "mF"],
-  Inductance: ["H", "mH", "uH"],
-  Frequency: ["Hz", "kHz", "MHz", "GHz", "THz"],
-  Time: ["s", "ms", "us", "ns", "ps", "min", "hr", "day"],
-  Temperature: ["Cel", "degF", "degC", "K"],
-  Pressure: ["Pa", "kPa", "MPa", "psi", "bar", "mbar", "torr", "inHg"],
-  Length: ["m", "cm", "mm", "um", "nm", "km", "in", "ft", "yd", "mi"],
-  Mass: ["kg", "g", "mg", "ug", "lb", "oz"],
-  Power: ["W", "mW", "kW", "MW", "dBm"],
-};
 
 // Helper to transform flat unit list into React-Select Grouped Options
 const getCategorizedUnitOptions = (allUnits, referenceUnit) => {

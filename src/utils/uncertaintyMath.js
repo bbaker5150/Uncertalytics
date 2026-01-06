@@ -170,6 +170,16 @@ export const unitSystem = {
     "%": { to_si: 0.01, quantity: "Ratio" },
     ppm: { to_si: 1e-6, quantity: "Ratio" },
     dB: { to_si: 1, quantity: "Ratio" },
+
+    // --- Humidity & Moisture ---
+    "%RH": { to_si: 1, quantity: "Humidity" },      // Relative Humidity
+    "degC dp": { to_si: 1, quantity: "DewPoint" },   // Dew Point Temperature
+    "degF dp": { to_si: 0.55555555, quantity: "DewPoint" },
+    "g/m^3": { to_si: 1, quantity: "AbsoluteHumidity" }, // Mass per volume
+    "g/kg": { to_si: 1, quantity: "SpecificHumidity" },  // Mass per mass of air
+    "ppmv": { to_si: 1e-6, quantity: "VolumeConcentration" }, // Parts per million by volume
+    "%v": { to_si: 0.01, quantity: "VolumeConcentration" },   // Percent moisture by volume
+
   },
 
   /**
@@ -206,6 +216,31 @@ export const unitSystem = {
     if (!unitSystem.units[targetUnit]) return value;
     return value / unitSystem.units[targetUnit].to_si;
   }
+};
+
+export const unitCategories = {
+  Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
+  Current: ["A", "mA", "uA", "nA", "pA", "kA"],
+  Resistance: ["Ohm", "kOhm", "MOhm", "mOhm", "GOhm", "TOhm"],
+  Capacitance: ["F", "uF", "nF", "pF", "mF"],
+  Inductance: ["H", "mH", "uH"],
+  Frequency: ["Hz", "kHz", "MHz", "GHz", "THz"],
+  Time: ["s", "ms", "us", "ns", "ps", "min", "hr", "day"],
+  Temperature: ["Cel", "degF", "degC", "K"],
+  Pressure: ["Pa", "kPa", "MPa", "psi", "bar", "mbar", "torr", "inHg", "inH2O", "atm", "hPa"],
+  Length: ["m", "cm", "mm", "um", "nm", "km", "in", "ft", "yd", "mi"],
+  Mass: ["kg", "g", "mg", "ug", "lb", "oz", "t"],
+  Power: ["W", "mW", "kW", "MW", "dBm"],
+  Humidity: ["%RH", "degC dp", "degF dp", "g/m^3", "g/kg", "ppmv", "%v"], // New Category
+  Angle: ["rad", "deg", "mrad", "arcmin", "arcsec", "rev"],
+  Volume: ["m^3", "L", "mL", "gal", "fl-oz"],
+  Velocity: ["m/s", "km/h", "mph", "ft/s", "kn"],
+  Force: ["N", "kN", "lbf", "ozf", "kgf"],
+  Torque: ["N-m", "N-cm", "in-lb", "ft-lb", "in-ozf", "ozf-in", "kgf-m", "kgf-cm"],
+  Flow: ["m^3/s", "L/min", "cfm", "gpm"],
+  Energy: ["J", "kJ", "Wh", "kWh", "BTU", "cal"],
+  Illuminance: ["lx", "fc"],
+  "Magnetic Field": ["T", "mT", "uT", "G"]
 };
 
 export const convertPpmToUnit = (ppmValue, targetUnit, referencePoint) => {

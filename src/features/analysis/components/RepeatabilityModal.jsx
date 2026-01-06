@@ -4,24 +4,8 @@ import Select from "react-select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrashAlt, faUndo, faCheck, faChartLine } from "@fortawesome/free-solid-svg-icons";
 import * as math from "mathjs";
-import { unitSystem, convertToPPM } from "../../../utils/uncertaintyMath";
+import { unitSystem, unitCategories } from "../../../utils/uncertaintyMath";
 import { useFloatingWindow } from "../../../hooks/useFloatingWindow";
-
-// --- Unit Category Definitions ---
-const unitCategories = {
-    Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
-    Current: ["A", "mA", "uA", "nA", "pA", "kA"],
-    Resistance: ["Ohm", "kOhm", "MOhm", "mOhm", "GOhm", "TOhm"],
-    Capacitance: ["F", "uF", "nF", "pF", "mF"],
-    Inductance: ["H", "mH", "uH"],
-    Frequency: ["Hz", "kHz", "MHz", "GHz", "THz"],
-    Time: ["s", "ms", "us", "ns", "ps", "min", "hr", "day"],
-    Temperature: ["Cel", "degF", "degC", "K"],
-    Pressure: ["Pa", "kPa", "MPa", "psi", "bar", "mbar", "torr", "inHg"],
-    Length: ["m", "cm", "mm", "um", "nm", "km", "in", "ft", "yd", "mi"],
-    Mass: ["kg", "g", "mg", "ug", "lb", "oz"],
-    Power: ["W", "mW", "kW", "MW", "dBm"],
-};
 
 const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
     const options = [];

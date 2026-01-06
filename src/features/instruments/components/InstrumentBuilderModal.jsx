@@ -7,26 +7,10 @@ import {
   faLayerGroup, faArrowLeft, faSearch, faChevronDown, faChevronUp, faInfoCircle,
   faCalculator, faCube
 } from "@fortawesome/free-solid-svg-icons";
-import { unitSystem } from "../../../utils/uncertaintyMath";
+import { unitSystem, unitCategories } from "../../../utils/uncertaintyMath";
 import ToleranceForm from "../../../components/common/ToleranceForm";
 import { useFloatingWindow } from "../../../hooks/useFloatingWindow";
-import "./InstrumentBuilderModal.css"; // Import the new CSS
-
-// --- Configuration for Unit Grouping ---
-const unitCategories = {
-  Voltage: ["V", "mV", "uV", "kV", "nV", "TV"],
-  Current: ["A", "mA", "uA", "nA", "pA", "kA"],
-  Resistance: ["Ohm", "kOhm", "MOhm", "mOhm", "GOhm", "TOhm"],
-  Capacitance: ["F", "uF", "nF", "pF", "mF"],
-  Inductance: ["H", "mH", "uH"],
-  Frequency: ["Hz", "kHz", "MHz", "GHz", "THz"],
-  Time: ["s", "ms", "us", "ns", "ps", "min", "hr", "day"],
-  Temperature: ["Cel", "degF", "degC", "K"],
-  Pressure: ["Pa", "kPa", "MPa", "psi", "bar", "mbar", "torr", "inHg"],
-  Length: ["m", "cm", "mm", "um", "nm", "km", "in", "ft", "yd", "mi"],
-  Mass: ["kg", "g", "mg", "ug", "lb", "oz"],
-  Power: ["W", "mW", "kW", "MW", "dBm"],
-};
+import "./InstrumentBuilderModal.css";
 
 const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
   const options = [];
