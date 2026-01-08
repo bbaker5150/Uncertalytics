@@ -1,8 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import purgeCss from 'vite-plugin-purgecss-updated-v5'; // [!code ++]
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    purgeCss({ // [!code ++]
+      // Optional: Add variables: true to strip unused CSS variables // [!code ++]
+      variables: true, // [!code ++]
+    }), // [!code ++]
+  ],
   base: './',
   server: {
     port: 3000,
@@ -12,9 +19,9 @@ export default defineConfig({
     outDir: 'dist',
   },
   test: {
-    globals: true,             // Enables describe, test, expect
-    environment: 'jsdom',      // Simulates browser for React components
-    setupFiles: './src/setupTests.js', // Runs setup before tests
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/setupTests.js',
     css: true,
   },
 });

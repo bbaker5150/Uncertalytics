@@ -399,8 +399,7 @@ body.theme-orbital .button[style*="status-bad"] {
 }
 
 /* Seals (Data Cards) */
-body.theme-orbital .uut-seal, 
-body.theme-orbital .tmde-seal {
+body.theme-orbital .uut-seal {
   background: var(--component-bg);
   border: 1px solid var(--border-color);
   border-radius: 0px 8px 8px 8px; /* Dog-ear effect */
@@ -1409,29 +1408,10 @@ body.theme-cyberpunk .button {
 
 /* --- Styles for Multi-TMDE Tabs in Tolerance Modal --- */
 
-.modal-content.edit-session-modal {
-    display: flex;
-    flex-direction: column;
-    width: 90vw;
-    max-width: 1000px;
-    height: 80vh;
-    padding: 0;
-    padding-top: 40px; 
-    padding-right: 30px; 
-    text-align: left;
-}
-
 .tmde-management-container {
   display: flex;
   flex-direction: column;
   gap: 20px; /* Adds space between each measurement point card */
-}
-
-.reference-point-control {
-  background-color: var(--background-color);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1rem;
 }
 
 .toggle-switch-container {
@@ -1446,13 +1426,6 @@ body.theme-cyberpunk .button {
   cursor: pointer;
   margin: 0;
   line-height: 1.2;
-}
-
-.uut-point-display {
-  font-weight: normal;
-  color: var(--text-color-muted);
-  margin-left: 8px;
-  font-size: 0.9rem;
 }
 
 .toggle-switch-checkbox { 
@@ -1625,7 +1598,7 @@ body.theme-cyberpunk .button {
   }
 }
 
-.uut-seal, .tmde-seal {
+.uut-seal {
   cursor: pointer;
 }
 
@@ -1709,29 +1682,6 @@ body.theme-cyberpunk .button {
     font-weight: 600;
 }
 
-.tmde-seal {
-    min-width: 325px;
-    max-width: 350px;
-    height: auto;
-    min-height: 325px;
-    border-radius: var(--seal-radius);
-    background-color: var(--background-color);
-    border: 4px solid var(--seal-tmde-background-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.04);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 25px;
-    box-sizing: border-box;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    animation: tmdeFuturisticGlow 3s infinite alternate;
-
-    /* GLASSMORPHISM SUPPORT */
-    backdrop-filter: var(--backdrop-filter);
-    -webkit-backdrop-filter: var(--backdrop-filter);
-}
-
 @keyframes tmdeFuturisticGlow {
   from {
     box-shadow: 
@@ -1746,15 +1696,6 @@ body.theme-cyberpunk .button {
       /* Dynamic TMDE Glow: Uses the theme's TMDE color (usually grey/silver) with 40% opacity */
       0 0 15px 5px color-mix(in srgb, var(--seal-tmde-background-color), transparent 60%);
   }
-}
-
-.tmde-seal:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), inset 0 0 10px rgba(0, 0, 0, 0.04);
-}
-
-.tmde-seal .seal-title {
-    color: var(--text-color);
 }
 
 .tmde-test-point-group {
@@ -1881,27 +1822,6 @@ body.dark-mode .tp-value {
   position: relative;
 }
 
-.copy-tmde-section {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-color);
-  justify-content: center;
-}
-
-.copy-tmde-section input[type="checkbox"] {
-  width: auto;
-  height: auto;
-}
-
-.copy-tmde-section label {
-  margin: 0;
-  font-weight: 500;
-  color: var(--text-color);
-}
-
 .tmde-seal-clickable {
   width: 200px;
   height: auto;
@@ -1999,21 +1919,6 @@ body.dark-mode .tp-value {
   color: var(--primary-color);
 }
 
-.info-icon-modal {
-    position: absolute;
-    top: 17px;
-    left: 15px;
-    color: var(--text-color-muted);
-    cursor: pointer;
-    font-size: 1.1rem;
-    transition: color 0.2s ease, transform 0.2s ease;
-}
-
-.info-icon-modal:hover {
-    color: var(--primary-color);
-    transform: scale(1.1);
-}
-
 .add-component-wrapper {
   position: relative;
   margin-top: 15px;
@@ -2105,18 +2010,6 @@ body.dark-mode .add-component-dropdown li:hover {
 }
 
 /* --- GLASS THEME OVERRIDES --- */
-body.theme-glass .add-component-dropdown {
-  /* Very high opacity for readability on top of wallpapers */
-  background-color: rgba(255, 255, 255, 0.95); 
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-}
-
-body.theme-glass.dark-mode .add-component-dropdown {
-  background-color: rgba(30, 30, 30, 0.95); /* Nearly solid black */
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
 
 /* --- CYBERPUNK THEME OVERRIDES (LIGHT MODE) --- */
 body.theme-cyberpunk .add-component-dropdown {
@@ -2227,10 +2120,6 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
 .modal-tab.active {
   color: var(--primary-color);
   border-bottom-color: var(--primary-color);
-}
-
-.modal-content-wrapper {
-  padding: 30px;
 }
 
 .modal-body-scrollable {
@@ -2371,58 +2260,6 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
-}
-
-.searchable-dropdown {
-  position: relative;
-}
-
-.dropdown-list {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background-color: var(--content-background);
-  border: 1px solid var(--border-color);
-  border-top: none;
-  border-radius: 0 0 6px 6px;
-  z-index: 1010;
-  max-height: 150px;
-  overflow-y: auto;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.dropdown-item {
-  padding: 10px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.dropdown-item:hover {
-  background-color: var(--primary-color-light);
-}
-
-.copy-tmde-section {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-color);
-  justify-content: center;
-}
-
-.copy-tmde-section input[type="checkbox"] {
-  width: auto;
-  height: auto;
-  margin: 0;
-}
-
-.copy-tmde-section label {
-  margin: 0;
-  font-weight: 500;
-  color: var(--text-color);
-  font-size: 0.9rem;
 }
 
 .modal-form-grid {
@@ -2725,29 +2562,6 @@ body.dark-mode .symbol-popout .symbol-button:hover {
     border-top: 1px solid var(--border-color);
 }
 
-.uut-components-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text-color);
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-}
-
-.analyzed-components-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.analysis-dashboard {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 30px;
-  align-items: start;
-}
-
 .configuration-panel {
   display: flex;
   flex-direction: column;
@@ -2836,46 +2650,6 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   color: var(--primary-color);
   font-weight: bold;
   font-size: 1rem;
-}
-
-.add-tmde-card {
-    width: 325px;
-    min-height: 325px;
-    height: 100%;
-    border-radius: var(--seal-radius);
-    background-color: transparent;
-    border: 2px dashed var(--border-color);
-    box-shadow: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease-in-out;
-}
-
-.add-tmde-card:hover {
-    border-color: var(--primary-color);
-    background-color: var(--primary-color-light);
-}
-
-.add-tmde-button {
-    background: none;
-    border: none;
-    color: var(--text-color-muted);
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    height: 100%;
-    transition: color 0.2s ease-in-out;
-}
-
-.add-tmde-card:hover .add-tmde-button {
-    color: var(--primary-color);
 }
 
 /* =================================================================== */
@@ -3561,10 +3335,6 @@ body.dark-mode .final-result-display {
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 25px;
   }
-
-  .analysis-dashboard {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* =================================================================== */
@@ -3903,85 +3673,9 @@ body.theme-orbital.dark-mode .session-selector option {
   width: 100%;
 }
 
-.react-select__control {
-  background-color: var(--input-background) !important;
-  border-color: var(--border-color) !important;
-  color: var(--text-color) !important;
-  border-radius: var(--border-radius) !important;
-  box-shadow: none !important;
-  min-height: 42px;
-  transition: border-color 0.2s ease;
-}
-
-.react-select__control:hover {
-  border-color: var(--primary-color) !important;
-  cursor: pointer;
-}
-
-.react-select__control--is-focused {
-  border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 1px var(--primary-color) !important;
-}
-
-.react-select__menu {
-  background-color: var(--content-background) !important;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius) !important;
-  z-index: 9999 !important;
-  box-shadow: var(--box-shadow-glow);
-  -webkit-backdrop-filter: var(--backdrop-filter);
-  backdrop-filter: var(--backdrop-filter);
-}
-
-.react-select__option {
-  background-color: transparent !important;
-  color: var(--text-color) !important;
-  cursor: pointer;
-}
-
-.react-select__option--is-focused {
-  background-color: var(--primary-color-light) !important;
-  color: var(--text-color) !important;
-}
-
-.react-select__option--is-selected {
-  background-color: var(--primary-color) !important;
-  color: #ffffff !important;
-}
-
-.react-select__single-value {
-  color: var(--text-color) !important;
-}
-
-.react-select__input-container {
-  color: var(--text-color) !important;
-}
-
-.react-select__indicator-separator {
-  background-color: var(--border-color) !important;
-}
-
-.react-select__dropdown-indicator {
-  color: var(--text-color-muted) !important;
-}
-
 /* Ensure menu is visible in Dark Mode */
-body.dark-mode .react-select__menu {
-  background-color: #1e1e1e !important;
-  border-color: #424242 !important;
-}
-
-body.dark-mode .react-select__option:hover,
-body.dark-mode .react-select__option--is-focused {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-}
 
 /* Cyberpunk Edges */
-body.theme-cyberpunk .react-select__control,
-body.theme-cyberpunk .react-select__menu {
-  border-radius: 0 !important;
-  border-width: 2px !important;
-}
 
 
 
@@ -4320,38 +4014,6 @@ body.theme-cyberpunk .react-select__menu {
   align-items: center;
 }
 
-.theme-icon {
-  position: absolute;
-  left: 10px;
-  font-size: 0.9rem;
-  color: var(--text-color-muted);
-  pointer-events: none;
-}
-
-.theme-select-input {
-  -webkit-appearance: none;
-  appearance: none;
-  background-color: transparent;
-  border: 1px solid transparent;
-  color: var(--text-color);
-  font-weight: 600;
-  font-size: 0.9rem;
-  padding: 6px 10px 6px 32px;
-  border-radius: 8px;
-  cursor: pointer;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.theme-select-input:hover {
-  background-color: var(--input-background);
-}
-
-.theme-select-input option {
-  background-color: var(--content-background);
-  color: var(--text-color);
-}
-
 /* Simple Dark Mode Dot */
 .moon-toggle {
   width: 14px;
@@ -4381,10 +4043,6 @@ body.dark-mode .moon-toggle {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
-  }
-  .header-actions {
-    width: 100%;
-    justify-content: space-between;
   }
   
   /* Make Toolbox scrollable or wrap on very small screens */
@@ -4748,11 +4406,6 @@ body.theme-cyberpunk .floating-tool {
 }
 
 /* --- 2. Base Unit Dropdown Fix (Inside Meta Grid) --- */
-.instrument-meta-grid .react-select__control {
-  background-color: var(--background-color) !important; /* Matches grid bg */
-  border-color: var(--border-color) !important;
-  min-height: 38px; /* Slightly compact */
-}
 
 .floating-window-content {
   box-shadow: 0 15px 50px rgba(0,0,0,0.3) !important;
@@ -5255,11 +4908,7 @@ body.dark-mode .nav-btn.primary:hover:not(:disabled) {
   line-height: 1.5;
 }
 
-/* =================================================================== */
-/* THEME-SPECIFIC OVERRIDES (Ensures 100% compatibility)               */
-/* =================================================================== */
-
-/* Cyberpunk Overrides (if variables aren't enough) */
+/* Cyberpunk Overrides  */
 body.theme-cyberpunk .help-modal {
   border: 1px solid var(--primary-color);
   box-shadow: 0 0 20px var(--primary-color-light);
@@ -5307,181 +4956,6 @@ body.theme-orbital.dark-mode .header-toolbox {
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.3));
   border: 1px solid rgba(148, 163, 184, 0.1);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-}
-
-/* =================================================================== */
-/* BUG REPORT FLOATING WINDOW                                          */
-/* =================================================================== */
-
-/* 1. Base Window & Header */
-.bug-report-window {
-  background-color: var(--content-background);
-  color: var(--text-color);
-  display: flex;
-  flex-direction: column;
-}
-
-.bug-report-window .window-header {
-  background-color: var(--background-secondary); 
-  border-bottom: 1px solid var(--border-color);
-}
-
-/* 2. Form Labels (The "Titles" of input boxes) */
-.bug-report-window .form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  /* Use theme font variable to ensure it matches (Inter vs JetBrains Mono) */
-  font-family: var(--main-font); 
-  color: var(--text-color-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  transition: color 0.3s ease;
-}
-
-/* 3. Inputs & Textareas */
-.bug-report-window input,
-.bug-report-window select,
-.bug-report-window textarea {
-  background-color: var(--input-background);
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-  font-family: var(--main-font); /* Essential for Cyberpunk mono-space look */
-  border-radius: var(--border-radius);
-  padding: 10px;
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
-}
-
-.bug-report-window input:focus,
-.bug-report-window select:focus,
-.bug-report-window textarea:focus {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px var(--primary-color-light);
-  outline: none;
-}
-
-/* 4. Bug Card (History List) */
-.bug-card {
-  transition: all 0.2s ease;
-  background-color: var(--input-background);
-  border: 1px solid var(--border-color);
-}
-
-.bug-card:hover {
-  border-color: var(--primary-color) !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  transform: translateY(-2px);
-}
-
-/* =================================================================== */
-/* THEME-SPECIFIC OVERRIDES                                            */
-/* =================================================================== */
-
-/* --- Cyberpunk Theme (Neon/Terminal Look) --- */
-body.theme-cyberpunk .bug-report-window {
-  border-width: 2px;
-  border-radius: 0;
-}
-
-body.theme-cyberpunk .bug-report-window .form-group label {
-  color: var(--primary-color); /* Neon color for labels */
-  font-family: 'Courier New', monospace; /* Force tech font */
-  letter-spacing: 1px;
-  text-shadow: 0 0 2px rgba(0,0,0,0.5);
-}
-
-body.theme-cyberpunk .bug-report-window input,
-body.theme-cyberpunk .bug-report-window textarea {
-  border-radius: 0;
-  border-left-width: 4px; /* Tech accent on left */
-}
-
-/* --- Orbital Theme (Clean/Sci-Fi Look) --- */
-body.theme-orbital .bug-report-window .form-group label {
-  font-weight: 800;
-  color: var(--text-color-muted);
-  letter-spacing: 0.1em;
-}
-
-body.theme-orbital .bug-report-window input:focus,
-body.theme-orbital .bug-report-window textarea:focus {
-  background-color: var(--primary-color-light);
-}
-
-/* --- Dark Mode General --- */
-body.dark-mode .bug-report-window .window-header {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-body.dark-mode .bug-card {
-  background-color: rgba(255, 255, 255, 0.03) !important;
-}
-
-/* =================================================================== */
-/* NOTIFICATION FLOATING WINDOW                                        */
-/* =================================================================== */
-
-.notification-window {
-  /* Default Solid Backgrounds (prevents transparency) */
-  background-color: #ffffff; 
-  color: var(--text-color);
-  animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 15px 50px rgba(0,0,0,0.3);
-}
-
-.notification-window .window-header {
-  border-top-left-radius: var(--border-radius);
-  border-top-right-radius: var(--border-radius);
-  /* Ensure header is also solid/opaque if needed, or matches theme */
-}
-
-.notification-window p {
-  user-select: text;
-}
-
-/* Animation for smooth appearance */
-@keyframes popIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-/* --- DARK MODE SOLID BACKGROUND --- */
-body.dark-mode .notification-window {
-  background-color: #1e1e1e; /* Solid Dark Grey */
-  box-shadow: 0 15px 50px rgba(0,0,0,0.6);
-}
-
-/* --- ORBITAL THEME SOLID OVERRIDES (Fixes Transparency) --- */
-body.theme-orbital .notification-window {
-  background-color: #ffffff !important; /* Force Solid White */
-  border: 1px solid var(--primary-color);
-  backdrop-filter: none; /* Disable glass effect */
-}
-
-body.theme-orbital.dark-mode .notification-window {
-  background-color: #0f172a !important; /* Solid Dark Slate (matches theme palette) */
-  border-color: var(--primary-color);
-}
-
-/* --- CYBERPUNK THEME SOLID OVERRIDES --- */
-body.theme-cyberpunk .notification-window {
-  background-color: #ffffff !important; /* Solid White */
-  box-shadow: 6px 6px 0px rgba(0,0,0,1);
-  border: 2px solid var(--border-color);
-}
-
-body.theme-cyberpunk.dark-mode .notification-window {
-  background-color: #000000 !important; /* Solid Black */
-  border: 2px solid var(--primary-color);
-  box-shadow: 0 0 20px rgba(0,0,0,0.8);
-}
-
-body.theme-cyberpunk .notification-window .window-header {
-  border-top-width: 1px !important; /* Reset color bar width for cyberpunk */
-  background: transparent; /* Header blends into the solid body */
-  border-bottom: 1px solid var(--border-color);
 }
 
 /* =================================================================== */

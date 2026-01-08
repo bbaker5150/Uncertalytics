@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import ReactDOM from "react-dom";
 import { useFloatingWindow } from "../../../hooks/useFloatingWindow";
 import AddTmdeModal from "../../instruments/components/AddTmdeModal";
@@ -8,151 +8,21 @@ import {
   faPlus,
   faPencilAlt,
   faTrashAlt,
-  faGripHorizontal,
   faListAlt
 } from "@fortawesome/free-solid-svg-icons";
 import {
   getToleranceSummary,
-  getToleranceErrorSummary,
   getAbsoluteLimits,
   calculateUncertaintyFromToleranceObject,
   convertPpmToUnit,
 } from "../../../utils/uncertaintyMath";
 
-// --- Sub-Components (Preserved) ---
-
-const UutSealDisplay = ({ uutDescription, uutTolerance, measurementType }) => {
-  const toleranceSummary = getToleranceSummary(uutTolerance);
-  const isDerived = measurementType === "derived";
-
-  return (
-    <div className="uut-seal-container" style={{ padding: "0 0 20px 0", justifyContent: "center" }}>
-      <div
-        className={`uut-seal ${isDerived ? "derived-point" : ""}`}
-        style={{
-          minWidth: "350px",
-          height: "auto",
-          minHeight: "320px",
-          padding: "25px",
-          cursor: "default",
-        }}
-      >
-        <div className="uut-seal-content">
-          <span className="seal-label">Unit Under Test</span>
-          <h4 className="seal-title">{uutDescription || "N/A"}</h4>
-          <div className="seal-info-item">
-            <span>Tolerance Spec</span>
-            <strong>{toleranceSummary}</strong>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const TmdeSealDisplay = ({
-  tmde,
-  onEditClick,
-  onContextMenu,
-  instanceIndex,
-  totalQuantity,
-  referencePoint,
-  measurementType,
-}) => {
-  if (!referencePoint?.value || !referencePoint?.unit) {
-    return (
-      <div className="tmde-seal-clickable-container" onContextMenu={onContextMenu}>
-        <div
-          className="tmde-seal-clickable tmde-seal-error"
-          onClick={onEditClick}
-          title="Error: Missing Reference Point. Click to edit."
-        >
-          <div className="uut-seal-content">
-            <span className="seal-label">TMDE (Error)</span>
-            <h4 className="seal-title">{tmde.name || "TMDE"}</h4>
-            <p style={{ color: "var(--status-bad)", fontSize: "0.8rem", marginTop: "10px", textAlign: "center" }}>
-              Missing Reference Point
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const toleranceSummary = getToleranceSummary(tmde);
-  const toleranceErrorSummary = getToleranceErrorSummary(tmde, referencePoint);
-  const { low: limitLow, high: limitHigh } = getAbsoluteLimits(tmde, referencePoint);
-  const { standardUncertainty: uPpm } = calculateUncertaintyFromToleranceObject(tmde, referencePoint);
-  const stdUncAbs = convertPpmToUnit(uPpm, referencePoint.unit, referencePoint);
-  const stdUncDisplay = typeof stdUncAbs === "number" ? `${stdUncAbs.toPrecision(3)} ${referencePoint.unit}` : stdUncAbs;
-
-  return (
-    <div className="tmde-seal-clickable-container" onContextMenu={onContextMenu}>
-      <div className="tmde-seal-clickable" onClick={onEditClick} title={`Click to edit ${tmde.name}`}>
-        <div className="uut-seal-content">
-          <span className="seal-label">TMDE</span>
-          <h4 className="seal-title">{tmde.name || "TMDE"}</h4>
-          {totalQuantity > 1 && (
-            <span className="seal-label seal-instance-label" style={{ color: "var(--primary-color)", fontWeight: "bold" }}>
-              (Device {instanceIndex + 1} of {totalQuantity})
-            </span>
-          )}
-          {measurementType === "derived" && tmde.variableType && (
-            <div className="seal-info-item">
-              <span>Eq. Input Type</span>
-              <strong style={{ color: "var(--primary-color-dark)", fontSize: "0.9rem" }}>{tmde.variableType}</strong>
-            </div>
-          )}
-          <div className="seal-info-item">
-            <span>Nominal Point</span>
-            <strong>{referencePoint.value} {referencePoint.unit}</strong>
-          </div>
-          <div className="seal-info-item">
-            <span>Tolerance Spec</span>
-            <strong>{toleranceSummary}</strong>
-          </div>
-          <div className="seal-info-item">
-            <span>Calculated Error</span>
-            <strong>{toleranceErrorSummary}</strong>
-          </div>
-          <div className="seal-info-item">
-            <span>Std. Unc (u<sub>i</sub>)</span>
-            <strong>{stdUncDisplay}</strong>
-          </div>
-          <div className="seal-limits-split">
-            <div className="seal-info-item">
-              <span>Low Limit</span>
-              <strong className="calculated-limit">{limitLow}</strong>
-            </div>
-            <div className="seal-info-item">
-              <span>High Limit</span>
-              <strong className="calculated-limit">{limitHigh}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const AddTmdeSeal = ({ onClick }) => (
-  <div className="add-tmde-card-small" onClick={onClick}>
-    <div className="add-tmde-button-small">
-      <FontAwesomeIcon icon={faPlus} />
-      <span>Add TMDE</span>
-    </div>
-  </div>
-);
-
 const getPfaClass = (pfa) => {
-  // Add safety check for null pfa
   if (pfa == null) return "";
   if (pfa > 5) return "status-bad";
   if (pfa > 2) return "status-warning";
   return "status-good";
 };
-
-// --- Main Modal Component ---
 
 const OverviewModal = ({
   isOpen,
@@ -161,24 +31,24 @@ const OverviewModal = ({
   onUpdateTestPoint,
   onDeleteTmdeDefinition,
   onDecrementTmdeQuantity,
-  instruments, // <--- 1. Accept instruments prop
+  instruments,
 }) => {
   const [editingTmde, setEditingTmde] = useState(null);
-  const [contextMenu, setContextMenu] = useState(null);
 
   // Floating Window Logic
   const { position, handleMouseDown } = useFloatingWindow({
     isOpen,
-    defaultWidth: 1000,
+    defaultWidth: 1100,
     defaultHeight: 800,
     initialPosition: typeof window !== 'undefined' ? {
-      x: Math.max(0, (window.innerWidth - 1000) / 2),
+      x: Math.max(0, (window.innerWidth - 1100) / 2),
       y: Math.max(0, (window.innerHeight - 800) / 2)
     } : null
   });
 
-
   if (!isOpen || !sessionData) return null;
+
+  // --- Handlers ---
 
   const handleEditTmdeClick = (tmde, testPoint) => {
     setEditingTmde({ tmde, testPoint });
@@ -205,15 +75,8 @@ const OverviewModal = ({
     setEditingTmde(null);
   };
 
-  const handleBackgroundClick = () => {
-    if (contextMenu) setContextMenu(null);
-  };
-
   return ReactDOM.createPortal(
-    <div onClick={handleBackgroundClick}>
-
-      {/* 2. Moved Editing Modal to BOTTOM of JSX for better Z-Index stacking */}
-
+    <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content floating-window-content"
         style={{
@@ -221,7 +84,7 @@ const OverviewModal = ({
           top: position.y,
           left: position.x,
           margin: 0,
-          width: '1000px',
+          width: '1100px',
           maxWidth: '95vw',
           maxHeight: '90vh',
           display: 'flex',
@@ -231,140 +94,228 @@ const OverviewModal = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* --- Header --- */}
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            paddingBottom: '10px',
-            marginBottom: '10px',
+            padding: '15px 20px',
             borderBottom: '1px solid var(--border-color)',
+            backgroundColor: 'var(--component-header-bg)',
             cursor: 'move',
             userSelect: 'none'
           }}
           onMouseDown={handleMouseDown}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>
-              <FontAwesomeIcon icon={faListAlt} style={{ marginRight: '10px', color: 'var(--primary-color)' }} />
-              Session Overview
-            </h3>
+            <FontAwesomeIcon icon={faListAlt} style={{ color: 'var(--primary-color)', fontSize: '1.2rem' }} />
+            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Session Overview</h3>
           </div>
-          <button onClick={onClose} className="modal-close-button" style={{ position: 'static' }}>&times;</button>
+          <button onClick={onClose} className="modal-close-button" style={{ position: 'static' }}>
+            <FontAwesomeIcon icon={faTimes} />
+          </button>
         </div>
 
-        <div className="modal-main-content" style={{ flex: 1, overflowY: 'auto', paddingRight: '5px' }}>
+        {/* --- Body --- */}
+        <div className="modal-main-content" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+
           <div className="tmde-management-container">
-            <UutSealDisplay
-              uutDescription={sessionData.uutDescription}
-              uutTolerance={sessionData.uutTolerance}
-              measurementType={sessionData.testPoints?.[0]?.measurementType}
-            />
-
             {sessionData.testPoints && sessionData.testPoints.length > 0 ? (
-              sessionData.testPoints.map((tp) => (
-                <div className="tmde-test-point-group" key={tp.id}>
-                  <div className="test-point-header-block">
-                    <div className="tp-header-row primary-row">
-                      <div className="tp-info-item">
-                        <span className="tp-label">Measurement Point:</span>
-                        <span className="tp-value">
-                          {tp.testPointInfo.parameter.value} {tp.testPointInfo.parameter.unit}
-                        </span>
-                      </div>
-                      <div className="tp-info-item">
-                        <span className="tp-label">Measurement Type:</span>
-                        <span className="tp-value">{tp.testPointInfo.parameter.name}</span>
-                      </div>
-                    </div>
+              sessionData.testPoints.map((tp, index) => (
+                <div key={tp.id || index} style={{ marginBottom: "50px" }}>
 
-                    {/* FIXED: Added optional chaining and fallbacks for safety */}
-                    {tp.riskMetrics && (
-                      <div className="tp-header-row secondary-row">
-                        <div className="tp-info-item">
-                          <span className="tp-label">Expanded Uncertainty:</span>
-                          <span className="tp-value">
-                            {tp.riskMetrics.expandedUncertainty?.toPrecision(4) ?? "N/A"} {tp.riskMetrics.nativeUnit}
-                          </span>
-                        </div>
-                        <div className="tp-info-item">
-                          <span className="tp-label">Tolerance Low:</span>
-                          <span className="tp-value">
-                            {tp.riskMetrics.LLow ?? "N/A"} {tp.riskMetrics.nativeUnit}
-                          </span>
-                        </div>
-                        <div className="tp-info-item">
-                          <span className="tp-label">Tolerance High:</span>
-                          <span className="tp-value">
-                            {tp.riskMetrics.LUp ?? "N/A"} {tp.riskMetrics.nativeUnit}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                  {/* Test Point Header */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: "2px solid var(--border-color)",
+                    paddingBottom: "10px",
+                    marginBottom: "15px"
+                  }}>
+                    <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem' }}>
+                      <span style={{ color: "var(--primary-color)", fontWeight: 800 }}>TP {index + 1}:</span>
+                      {tp.testPointInfo?.parameter?.value} {tp.testPointInfo?.parameter?.unit}
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)', fontWeight: 400 }}>
+                        ({tp.testPointInfo?.parameter?.name})
+                      </span>
+                    </h4>
+
                   </div>
 
-                  <div className="tmde-seals-grid">
-                    {(tp.tmdeTolerances || []).flatMap((tmde) => {
-                      const quantity = tmde.quantity || 1;
-                      return Array.from({ length: quantity }, (_, i) => (
-                        <TmdeSealDisplay
-                          key={`${tmde.id}-${i}`}
-                          tmde={tmde}
-                          referencePoint={tmde.measurementPoint}
-                          measurementType={tp.measurementType}
-                          instanceIndex={i}
-                          totalQuantity={quantity}
-                          onEditClick={() => handleEditTmdeClick(tmde, tp)}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                          }}
-                        />
-                      ));
-                    })}
-                    <AddTmdeSeal onClick={() => handleAddTmdeClick(tp)} />
+                  {/* Instrument Table */}
+                  <div className="instrument-table-container">
+                    <table className="instrument-summary-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '90px' }}>Role</th>
+                          <th>Instrument / Description</th>
+                          <th>Parameter / Range</th>
+                          <th>Tolerance Spec <span style={{ fontSize: '0.75em', fontWeight: 'normal', opacity: 0.8 }}></span></th>
+                          <th>Std. Unc (k=1)</th>
+                          <th>Limits</th>
+                          <th style={{ width: '60px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* --- UUT ROW --- */}
+                        <tr className="uut-row">
+                          <td><span className="role-badge uut">UUT</span></td>
+                          <td>
+                            <div style={{ fontWeight: 600 }}>{sessionData.uutDescription || "UUT"}</div>
+                          </td>
+                          <td>
+                            {tp.measurementType === "derived" ? (
+                              <span>Derived</span>
+                            ) : (
+                              <span>{tp.nominalValue} {tp.unit}</span>
+                            )}
+                          </td>
+                          <td style={{ fontFamily: 'Consolas', fontWeight: 500 }}>
+                            {getToleranceSummary(sessionData.uutTolerance)}
+                          </td>
+                          <td><span style={{ color: 'var(--text-color-muted)' }}>-</span></td>
+                          <td>
+                            {tp.measurementType !== "derived" ? (
+                              <div className="limits-cell">
+                                <span className="limit-val">
+                                  {getAbsoluteLimits(sessionData.uutTolerance, { value: tp.nominalValue, unit: tp.unit }).low}
+                                </span>
+                                <span className="limit-sep">to</span>
+                                <span className="limit-val">
+                                  {getAbsoluteLimits(sessionData.uutTolerance, { value: tp.nominalValue, unit: tp.unit }).high}
+                                </span>
+                              </div>
+                            ) : "-"}
+                          </td>
+                          <td></td>
+                        </tr>
+
+                        {/* --- TMDE ROWS --- */}
+                        {(tp.tmdeTolerances || []).flatMap((tmde) => {
+                          const quantity = tmde.quantity || 1;
+                          return Array.from({ length: quantity }, (_, i) => {
+                            const referencePoint = tmde.measurementPoint;
+                            const isError = !referencePoint?.value || !referencePoint?.unit;
+                            const key = `${tmde.id}-${i}`;
+
+                            // Calculate Std Unc
+                            let stdUncDisplay = "-";
+                            if (!isError) {
+                              const { standardUncertainty: uPpm } = calculateUncertaintyFromToleranceObject(tmde, referencePoint);
+                              const uAbs = convertPpmToUnit(uPpm, referencePoint.unit, referencePoint);
+                              stdUncDisplay = typeof uAbs === "number" ? `${uAbs.toPrecision(3)}` : uAbs;
+                            }
+
+                            return (
+                              <tr key={key} className="tmde-row">
+                                <td>
+                                  <span className="role-badge tmde">TMDE {quantity > 1 ? `#${i + 1}` : ""}</span>
+                                </td>
+                                <td>
+                                  <div style={{ fontWeight: 500 }}>{tmde.name || "Unknown TMDE"}</div>
+                                </td>
+                                <td>
+                                  {isError ? (
+                                    <span className="status-bad">Missing Ref</span>
+                                  ) : (
+                                    <span>{referencePoint.value} {referencePoint.unit}</span>
+                                  )}
+                                </td>
+                                <td
+                                  className="clickable-spec-cell"
+                                  onClick={() => handleEditTmdeClick(tmde, tp)}
+                                  title="Edit TMDE"
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span>{getToleranceSummary(tmde)}</span>
+                                    <FontAwesomeIcon icon={faPencilAlt} className="edit-icon-hover" />
+                                  </div>
+                                </td>
+                                <td>
+                                  <strong>{stdUncDisplay}</strong> <span style={{ fontSize: '0.8rem', color: 'var(--text-color-muted)' }}>{!isError ? referencePoint.unit : ''}</span>
+                                </td>
+                                <td>
+                                  {!isError ? (
+                                    <div className="limits-cell">
+                                      <span className="limit-val">{getAbsoluteLimits(tmde, referencePoint).low}</span>
+                                      <span className="limit-sep">to</span>
+                                      <span className="limit-val">{getAbsoluteLimits(tmde, referencePoint).high}</span>
+                                    </div>
+                                  ) : "-"}
+                                </td>
+                                <td className="action-cell">
+                                  <div className="action-row">
+                                    {quantity > 1 ? (
+                                      <button
+                                        className="icon-action-btn destructive"
+                                        onClick={() => onDecrementTmdeQuantity(tp.id, tmde.id)}
+                                        title="Remove Instance"
+                                      >
+                                        <FontAwesomeIcon icon={faTrashAlt} />
+                                      </button>
+                                    ) : (
+                                      <button
+                                        className="icon-action-btn destructive"
+                                        onClick={() => onDeleteTmdeDefinition(tp.id, tmde.id)}
+                                        title="Delete TMDE"
+                                      >
+                                        <FontAwesomeIcon icon={faTrashAlt} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          });
+                        })}
+
+                        {(!tp.tmdeTolerances || tp.tmdeTolerances.length === 0) && (
+                          <tr>
+                            <td colSpan="7" style={{ textAlign: "center", padding: "20px", color: "var(--text-color-muted)", fontStyle: "italic" }}>
+                              No TMDEs configured.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
 
-                  <div className="metric-pods-row-condensed">
-                    {/* FIXED: Added safety checks for every .toFixed() call */}
+                  {/* Risk Metrics Condensed Row */}
+                  <div className="metric-pods-row-condensed" style={{ marginTop: "15px" }}>
                     {tp.riskMetrics ? (
                       <>
                         <div className={`metric-pod ${getPfaClass(tp.riskMetrics.pfa)}`}>
                           <span className="metric-pod-label">PFA</span>
                           <span className="metric-pod-value">
-                            {typeof tp.riskMetrics.pfa === 'number'
-                              ? `${tp.riskMetrics.pfa.toFixed(4)} %`
-                              : '---'}
+                            {typeof tp.riskMetrics.pfa === 'number' ? `${tp.riskMetrics.pfa.toFixed(4)} %` : '---'}
                           </span>
                         </div>
                         <div className="metric-pod pfr">
                           <span className="metric-pod-label">PFR</span>
                           <span className="metric-pod-value">
-                            {typeof tp.riskMetrics.pfr === 'number'
-                              ? `${tp.riskMetrics.pfr.toFixed(4)} %`
-                              : '---'}
+                            {typeof tp.riskMetrics.pfr === 'number' ? `${tp.riskMetrics.pfr.toFixed(4)} %` : '---'}
                           </span>
                         </div>
                         <div className="metric-pod tur">
                           <span className="metric-pod-label">TUR</span>
                           <span className="metric-pod-value">
-                            {typeof tp.riskMetrics.tur === 'number'
-                              ? `${tp.riskMetrics.tur.toFixed(2)} : 1`
-                              : '---'}
+                            {typeof tp.riskMetrics.tur === 'number' ? `${tp.riskMetrics.tur.toFixed(2)} : 1` : '---'}
                           </span>
                         </div>
                         <div className="metric-pod tar">
                           <span className="metric-pod-label">TAR</span>
                           <span className="metric-pod-value">
-                            {typeof tp.riskMetrics.tar === 'number'
-                              ? `${tp.riskMetrics.tar.toFixed(2)} : 1`
-                              : '---'}
+                            {typeof tp.riskMetrics.tar === 'number' ? `${tp.riskMetrics.tar.toFixed(2)} : 1` : '---'}
                           </span>
                         </div>
                       </>
                     ) : (
-                      <span className="risk-not-calculated">Risk metrics not calculated for this point.</span>
+                      <span className="risk-not-calculated">Risk metrics not calculated.</span>
                     )}
                   </div>
+
                 </div>
               ))
             ) : (

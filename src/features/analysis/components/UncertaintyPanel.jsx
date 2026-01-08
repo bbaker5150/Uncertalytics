@@ -1,10 +1,10 @@
 /**
  * * The main container for the "Uncertainty Analysis" tab.
  * * Responsibilities:
- * - Renders the visual "Seals" for UUT and TMDEs.
+ * - Renders the visual Instrument Table (formerly Seals) for UUT and TMDEs.
  * - Renders the Uncertainty Budget Table.
  * - Renders the Contribution Bar Graph.
- * - Handles context menus for Seals.
+ * - Handles context menus.
  */
 
 import React from "react";
@@ -47,7 +47,7 @@ const UncertaintyPanel = ({
   onDecrementTmdeQuantity,
   handleOpenSessionEditor,
   onOpenUutModal, 
-  onDeleteUut, // <--- New Prop
+  onDeleteUut,
   setContextMenu,
   setBreakdownPoint,
   onBudgetRowContextMenu,
@@ -66,232 +66,181 @@ const UncertaintyPanel = ({
 
   return (
     <div className="configuration-panel">
-      {/* --- UUT SECTION --- */}
-      <h4 className="uut-components-title">Unit Under Test</h4>
-      <div className="uut-seal-container">
-        {!isUutDefined ? (
-           // Render "Add UUT" Button when not defined
-           <div className="add-tmde-card" style={{borderColor: 'var(--primary-color)', background: 'rgba(var(--primary-color-rgb), 0.05)'}}>
-              <button className="add-tmde-button" onClick={onOpenUutModal} style={{color: 'var(--primary-color)'}}>
-                <FontAwesomeIcon icon={faPlus} />
-                <span>Add UUT</span>
-              </button>
-           </div>
-        ) : (
-           // Render Seal when defined
-            <div
-            className={`uut-seal ${testPointData.measurementType === "derived" ? "derived-point" : ""}`}
-            onClick={onOpenUutModal} // Open UUT Modal directly
-            onContextMenu={(e) => {
-                e.preventDefault();
-                setContextMenu({
-                x: e.pageX,
-                y: e.pageY,
-                items: [
-                    {
-                    label: "View UUT Calculation",
-                    action: () =>
-                        setBreakdownPoint({
-                        title: "UUT Breakdown",
-                        toleranceObject: uutToleranceData,
-                        referencePoint: uutNominal,
-                        }),
-                    icon: faCalculator,
-                    },
-                    {
-                        label: "Edit UUT Specifications",
-                        action: onOpenUutModal,
-                        icon: faPencilAlt
-                    },
-                    { type: "divider" },
-                    {
-                        label: "Delete UUT",
-                        action: onDeleteUut,
-                        icon: faTrashAlt,
-                        className: "destructive"
-                    }
-                ],
-                });
-            }}
-            >
-            <div className="uut-seal-content">
-                <span className="seal-label">Unit Under Test</span>
-                <h4 className="seal-title">{sessionData.uutDescription || "N/A"}</h4>
-                <div className="seal-info-item">
-                <span>Current Point {testPointData.measurementType === "derived" && "(Derived)"}</span>
-                <strong>
-                    {testPointData.measurementType === "derived"
-                    ? calcResults?.calculatedNominalValue?.toPrecision(5) ?? (testPointData.testPointInfo.parameter.name || "Derived Value")
-                    : `${uutNominal?.value ?? ""} ${uutNominal?.unit ?? ""}`}{" "}
-                    {testPointData.measurementType === "derived" && ` (${uutNominal?.unit ?? ""})`}
-                </strong>
-                </div>
-                {testPointData.measurementType === "derived" && testPointData.equationString && (
-                <div className="seal-info-item" style={{ fontStyle: "italic", marginTop: "5px" }}>
-                    <span>Equation</span>
-                    <strong style={{ fontFamily: "monospace" }}>{testPointData.equationString}</strong>
-                </div>
-                )}
-                <div className="seal-info-item">
-                <span>Tolerance Spec</span>
-                <strong>{getToleranceSummary(uutToleranceData)}</strong>
-                </div>
-                <div className="seal-info-item">
-                <span>Calculated Error</span>
-                <strong>{getToleranceErrorSummary(uutToleranceData, uutNominal)}</strong>
-                </div>
-                <div className="seal-limits-split">
-                <div className="seal-info-item">
-                    <span>Low Limit</span>
-                    <strong className="calculated-limit">
-                    {getAbsoluteLimits(uutToleranceData, uutNominal).low}
-                    </strong>
-                </div>
-                <div className="seal-info-item">
-                    <span>High Limit</span>
-                    <strong className="calculated-limit">
-                    {getAbsoluteLimits(uutToleranceData, uutNominal).high}
-                    </strong>
-                </div>
-                </div>
-            </div>
-            </div>
-        )}
-      </div>
+      
+      {/* --- INSTRUMENT CONFIGURATION TABLE (New Design) --- */}
+      <div className="instrument-section">
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', marginTop: '10px'}}>
+             <h4 className="analyzed-components-title" style={{margin: 0, border: 'none', padding: 0}}>Measurement System Configuration</h4>
+             <button className="button button-small" onClick={onAddTmde} style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                <FontAwesomeIcon icon={faPlus} /> <span>Add TMDE</span>
+             </button>
+        </div>
 
-      {/* --- TMDE SECTION --- */}
-      <h4 className="analyzed-components-title">Test Measurement Device Equipment</h4>
-      <div className="analyzed-components-container">
-        {tmdeTolerancesData.flatMap((tmde, index) => {
-          const quantity = tmde.quantity || 1;
-          return Array.from({ length: quantity }, (_, i) => {
-            const referencePoint = tmde.measurementPoint;
-            
-            // Error State: Missing Reference
-            if (!referencePoint?.value || !referencePoint?.unit) {
-              return (
-                <div key={`${tmde.id || index}-${i}`} className="tmde-seal tmde-seal-error">
-                  <div className="uut-seal-content">
-                    <span className="seal-label">TMDE (Error)</span>
-                    <h4>{tmde.name || "TMDE"}</h4>
-                    <p style={{ color: "var(--status-bad)", fontSize: "0.8rem", marginTop: "10px" }}>
-                      Missing Reference
-                    </p>
-                    <button onClick={() => onEditTmde(tmde)} className="button button-small" style={{ marginTop: "auto" }}>
-                      Edit
-                    </button>
-                  </div>
-                </div>
-              );
-            }
+        <div className="instrument-table-container">
+            <table className="instrument-summary-table">
+                <thead>
+                    <tr>
+                        <th style={{width: '90px'}}>Role</th>
+                        <th>Instrument / Description</th>
+                        <th>Parameter / Range</th>
+                        <th>Tolerance Specification <span style={{fontSize:'0.75em', fontWeight:'normal', opacity: 0.8, marginLeft: '5px'}}>(Click to Edit)</span></th>
+                        <th>Std. Unc (k=1)</th>
+                        <th>Limits</th>
+                        <th style={{width: '60px'}}></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {/* --- UUT ROW --- */}
+                    <tr className="uut-row">
+                        <td><span className="role-badge uut">UUT</span></td>
+                        <td>
+                            {isUutDefined ? (
+                                <div style={{fontWeight: 600}}>{sessionData.uutDescription}</div>
+                            ) : (
+                                <span style={{fontStyle: 'italic', color: 'var(--text-color-muted)'}}>Not Defined</span>
+                            )}
+                        </td>
+                        <td>
+                             {testPointData.measurementType === "derived" ? (
+                                 <span>Derived: <strong>{calcResults?.calculatedNominalValue?.toPrecision(5) ?? "N/A"}</strong> {uutNominal?.unit}</span>
+                             ) : (
+                                 <span>{uutNominal?.value} {uutNominal?.unit}</span>
+                             )}
+                        </td>
+                        <td
+                            className="clickable-spec-cell"
+                            onClick={onOpenUutModal}
+                            title="Edit UUT Specifications"
+                        >
+                            {isUutDefined ? (
+                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                    <span>{getToleranceSummary(uutToleranceData)}</span>
+                                    <FontAwesomeIcon icon={faPencilAlt} className="edit-icon-hover" />
+                                </div>
+                            ) : (
+                                <button className="add-link-btn" onClick={(e) => { e.stopPropagation(); onOpenUutModal(); }}>
+                                    + Define UUT
+                                </button>
+                            )}
+                        </td>
+                        <td>
+                            <span style={{color: 'var(--text-color-muted)'}}>-</span>
+                        </td>
+                        <td>
+                            {isUutDefined && uutNominal ? (
+                                <div className="limits-cell">
+                                    <span className="limit-val">{getAbsoluteLimits(uutToleranceData, uutNominal).low}</span>
+                                    <span className="limit-sep">to</span>
+                                    <span className="limit-val">{getAbsoluteLimits(uutToleranceData, uutNominal).high}</span>
+                                </div>
+                            ) : "-"}
+                        </td>
+                        <td className="action-cell">
+                             {isUutDefined && (
+                                <button className="icon-action-btn destructive" onClick={onDeleteUut} title="Delete UUT">
+                                    <FontAwesomeIcon icon={faTrashAlt} />
+                                </button>
+                             )}
+                        </td>
+                    </tr>
 
-            // Standard TMDE Seal
-            return (
-              <div
-                key={`${tmde.id || index}-${i}`}
-                className="tmde-seal"
-                onClick={() => onEditTmde(tmde)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  const menuItems = [
-                    {
-                      label: `View ${tmde.name || "TMDE"} Calculation`,
-                      action: () => setBreakdownPoint({
-                          title: `${tmde.name || "TMDE"} Breakdown`,
-                          toleranceObject: tmde,
-                          referencePoint: tmde.measurementPoint,
-                        }),
-                      icon: faCalculator,
-                    },
-                    {
-                      label: `Edit "${tmde.name}" (All ${quantity})`,
-                      action: () => onEditTmde(tmde),
-                      icon: faPencilAlt,
-                    },
-                    { type: "divider" },
-                  ];
+                    {/* --- TMDE ROWS --- */}
+                    {tmdeTolerancesData.map((tmde, index) => {
+                        const quantity = tmde.quantity || 1;
+                        return Array.from({ length: quantity }).map((_, i) => {
+                             const referencePoint = tmde.measurementPoint;
+                             const isError = !referencePoint?.value || !referencePoint?.unit;
+                             const key = `${tmde.id}-${i}`;
 
-                  if (quantity > 1) {
-                    menuItems.push({
-                      label: `Delete This Instance`,
-                      action: () => onDecrementTmdeQuantity(tmde.id),
-                      icon: faTrashAlt,
-                      className: "destructive",
-                    });
-                  }
+                             // Calculate Std Unc for display
+                             let stdUncDisplay = "-";
+                             if (!isError) {
+                                const { standardUncertainty: uPpm } = calculateUncertaintyFromToleranceObject(tmde, referencePoint);
+                                const uAbs = convertPpmToUnit(uPpm, referencePoint.unit, referencePoint);
+                                stdUncDisplay = typeof uAbs === "number" ? `${uAbs.toPrecision(3)}` : uAbs;
+                             }
 
-                  menuItems.push({
-                    label: `Delete All "${tmde.name}"`,
-                    action: () => onDeleteTmdeDefinition(tmde.id),
-                    icon: faTrashAlt,
-                    className: "destructive",
-                  });
+                             return (
+                                <tr key={key} className="tmde-row">
+                                    <td>
+                                        <span className="role-badge tmde">TMDE {quantity > 1 ? `#${i+1}` : ""}</span>
+                                    </td>
+                                    <td>
+                                        <div style={{fontWeight: 500}}>{tmde.name || "Unknown TMDE"}</div>
+                                        {testPointData.measurementType === "derived" && tmde.variableType && (
+                                            <div style={{fontSize: '0.75rem', color: 'var(--primary-color)', marginTop: '2px'}}>
+                                                Input: <strong>{tmde.variableType}</strong>
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td>
+                                        {isError ? (
+                                            <span className="status-bad" style={{fontWeight: 'bold', fontSize: '0.8rem'}}>Missing Ref</span>
+                                        ) : (
+                                            <span>{referencePoint.value} {referencePoint.unit}</span>
+                                        )}
+                                    </td>
+                                    <td
+                                        className="clickable-spec-cell"
+                                        onClick={() => onEditTmde(tmde)}
+                                        title="Edit TMDE Specifications"
+                                    >
+                                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                            <span>{getToleranceSummary(tmde)}</span>
+                                            <FontAwesomeIcon icon={faPencilAlt} className="edit-icon-hover" />
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <strong>{stdUncDisplay}</strong> <span style={{fontSize: '0.8rem', color: 'var(--text-color-muted)'}}>{!isError ? referencePoint.unit : ''}</span>
+                                    </td>
+                                    <td>
+                                        {!isError ? (
+                                            <div className="limits-cell">
+                                                <span className="limit-val">{getAbsoluteLimits(tmde, referencePoint).low}</span>
+                                                <span className="limit-sep">to</span>
+                                                <span className="limit-val">{getAbsoluteLimits(tmde, referencePoint).high}</span>
+                                            </div>
+                                        ) : "-"}
+                                    </td>
+                                    <td className="action-cell">
+                                        <div className="action-row">
+                                            {quantity > 1 ? (
+                                                <button
+                                                    className="icon-action-btn destructive"
+                                                    onClick={() => onDecrementTmdeQuantity(tmde.id)}
+                                                    title="Remove this instance"
+                                                >
+                                                    <FontAwesomeIcon icon={faTrashAlt} />
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    className="icon-action-btn destructive"
+                                                    onClick={() => onDeleteTmdeDefinition(tmde.id)}
+                                                    title="Remove TMDE"
+                                                >
+                                                    <FontAwesomeIcon icon={faTrashAlt} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                             );
+                        });
+                    })}
 
-                  setContextMenu({ x: e.pageX, y: e.pageY, items: menuItems });
-                }}
-              >
-                <div className="uut-seal-content">
-                  <span className="seal-label">TMDE</span>
-                  <h4 className="seal-title">{tmde.name || "TMDE"}</h4>
-                  {quantity > 1 && (
-                    <span className="seal-label seal-instance-label">(Device {i + 1} of {quantity})</span>
-                  )}
-                  {testPointData.measurementType === "derived" && tmde.variableType && (
-                    <div className="seal-info-item">
-                      <span>Equation Input Type</span>
-                      <strong style={{ color: "var(--primary-color-dark)", fontSize: "0.9rem" }}>
-                        {tmde.variableType}
-                      </strong>
-                    </div>
-                  )}
-                  <div className="seal-info-item">
-                    <span>Nominal Point</span>
-                    <strong>{referencePoint.value} {referencePoint.unit}</strong>
-                  </div>
-                  <div className="seal-info-item">
-                    <span>Tolerance Spec</span>
-                    <strong>{getToleranceSummary(tmde)}</strong>
-                  </div>
-                  <div className="seal-info-item">
-                    <span>Calculated Error</span>
-                    <strong>{getToleranceErrorSummary(tmde, referencePoint)}</strong>
-                  </div>
-                  <div className="seal-info-item">
-                    <span>Std. Unc (u<sub>i</sub>)</span>
-                    <strong>
-                      {(() => {
-                        const { standardUncertainty: uPpm } = calculateUncertaintyFromToleranceObject(tmde, referencePoint);
-                        const uAbs = convertPpmToUnit(uPpm, referencePoint.unit, referencePoint);
-                        return typeof uAbs === "number" ? `${uAbs.toPrecision(3)} ${referencePoint.unit}` : uAbs;
-                      })()}
-                    </strong>
-                  </div>
-                  <div className="seal-limits-split">
-                    <div className="seal-info-item">
-                      <span>Low Limit</span>
-                      <strong className="calculated-limit">{getAbsoluteLimits(tmde, referencePoint).low}</strong>
-                    </div>
-                    <div className="seal-info-item">
-                      <span>High Limit</span>
-                      <strong className="calculated-limit">{getAbsoluteLimits(tmde, referencePoint).high}</strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          });
-        })}
-
-        {/* Add TMDE Button */}
-        <div className="add-tmde-card">
-          <button className="add-tmde-button" onClick={onAddTmde}>
-            <FontAwesomeIcon icon={faPlus} />
-            <span>Add TMDE</span>
-          </button>
+                    {tmdeTolerancesData.length === 0 && (
+                        <tr>
+                            <td colSpan="7" style={{textAlign: 'center', padding: '30px', color: 'var(--text-color-muted)', fontStyle: 'italic'}}>
+                                No TMDEs configured. Click the "Add TMDE" button above to begin.
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
         </div>
       </div>
 
-      {/* --- TABLE & GRAPH --- */}
+      {/* --- UNCERTAINTY BUDGET & GRAPH --- */}
       {calculationError ? (
         <div className="form-section-warning">
           <p><strong>Calculation Error:</strong> {calculationError}</p>
