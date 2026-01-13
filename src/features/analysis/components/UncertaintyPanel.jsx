@@ -83,7 +83,7 @@ const UncertaintyPanel = ({
                         <th style={{width: '90px'}}>Role</th>
                         <th>Instrument / Description</th>
                         <th>Parameter / Range</th>
-                        <th>Tolerance Specification <span style={{fontSize:'0.75em', fontWeight:'normal', opacity: 0.8, marginLeft: '5px'}}>(Click to Edit)</span></th>
+                        <th>Tolerance Specification <span style={{fontSize:'0.75em', fontWeight:'normal', opacity: 0.8, marginLeft: '5px'}}></span></th>
                         <th>Std. Unc (k=1)</th>
                         <th>Limits</th>
                         <th style={{width: '60px'}}></th>
@@ -102,7 +102,7 @@ const UncertaintyPanel = ({
                         </td>
                         <td>
                              {testPointData.measurementType === "derived" ? (
-                                 <span>Derived: <strong>{calcResults?.calculatedNominalValue?.toPrecision(5) ?? "N/A"}</strong> {uutNominal?.unit}</span>
+                                 <span>Derived: {calcResults?.calculatedNominalValue?.toPrecision(5) ?? "N/A"} {uutNominal?.unit}</span>
                              ) : (
                                  <span>{uutNominal?.value} {uutNominal?.unit}</span>
                              )}
@@ -169,7 +169,7 @@ const UncertaintyPanel = ({
                                         <div style={{fontWeight: 500}}>{tmde.name || "Unknown TMDE"}</div>
                                         {testPointData.measurementType === "derived" && tmde.variableType && (
                                             <div style={{fontSize: '0.75rem', color: 'var(--primary-color)', marginTop: '2px'}}>
-                                                Input: <strong>{tmde.variableType}</strong>
+                                                Input: {tmde.variableType}
                                             </div>
                                         )}
                                     </td>
@@ -191,7 +191,7 @@ const UncertaintyPanel = ({
                                         </div>
                                     </td>
                                     <td>
-                                        <strong>{stdUncDisplay}</strong> <span style={{fontSize: '0.8rem', color: 'var(--text-color-muted)'}}>{!isError ? referencePoint.unit : ''}</span>
+                                        {stdUncDisplay} <span style={{fontSize: '0.8rem', color: 'var(--text-color-muted)'}}>{!isError ? referencePoint.unit : ''}</span>
                                     </td>
                                     <td>
                                         {!isError ? (
@@ -243,7 +243,7 @@ const UncertaintyPanel = ({
       {/* --- UNCERTAINTY BUDGET & GRAPH --- */}
       {calculationError ? (
         <div className="form-section-warning">
-          <p><strong>Calculation Error:</strong> {calculationError}</p>
+          <p>Calculation Error: {calculationError}</p>
           <p style={{ marginTop: "5px", fontSize: "0.9rem", color: "var(--text-color-muted)" }}>
             Please ensure all required fields are set (e.g., UUT nominal, equation, and all mapped TMDEs).
           </p>

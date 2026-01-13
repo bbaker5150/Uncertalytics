@@ -5490,44 +5490,61 @@ body.theme-cyberpunk .notification-window .window-header {
 
 .instrument-table-container {
   border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03); /* Subtle lift */
+  border-radius: 8px;
+  /* Allows horizontal scrolling if content (like long numbers) overflows */
+  overflow-x: auto; 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
   margin-bottom: 25px;
   background-color: var(--content-background);
 }
 
 .instrument-summary-table {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  /* Inherits global font size (usually 1rem) to match Budget Table */
 }
 
 .instrument-summary-table th {
-  background-color: var(--component-header-bg);
-  color: var(--text-color-muted);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 12px 15px;
+  background-color: var(--table-header-bg);
+  color: var(--table-header-text);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  padding: 10px 12px;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
-  font-size: 0.75rem;
+  font-size: 0.9rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.instrument-summary-table thead th {
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
 .instrument-summary-table td {
-  padding: 14px 15px; /* Slightly more padding for breathability */
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-color);
   vertical-align: middle;
+  font-family: inherit; /* Default: Inherits theme's main font (Inter/Roboto) */
+}
+
+/* PREVENT WRAPPING: Keeps Parameter/Range and Std Unc on single lines */
+.instrument-summary-table td:nth-child(3), /* Parameter / Range */
+.instrument-summary-table td:nth-child(5) { /* Std. Unc (k=1) */
+  white-space: nowrap;
 }
 
 .instrument-summary-table tr:last-child td {
   border-bottom: none;
 }
 
-.instrument-summary-table tr:hover {
-  background-color: var(--primary-color-light); /* Subtle hover highlight */
+.instrument-summary-table tbody tr:hover {
+  background-color: var(--background-color);
 }
 
 /* Role Badges */
@@ -5559,14 +5576,13 @@ body.theme-cyberpunk .notification-window .window-header {
   cursor: pointer;
   position: relative;
   transition: all 0.2s ease;
-  font-family: 'Consolas', monospace;
+  font-family: inherit;
   font-weight: 500;
 }
 
 .clickable-spec-cell:hover {
   color: var(--primary-color);
-  background-color: rgba(var(--primary-color-rgb), 0.05); /* Requires RGB var or fallback */
-  background-color: var(--header-background); /* Fallback */
+  background-color: var(--header-background);
   box-shadow: inset 0 0 0 1px var(--primary-color);
 }
 
@@ -5588,19 +5604,23 @@ body.theme-cyberpunk .notification-window .window-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: 'Consolas', monospace;
-  font-size: 0.85rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  /* PREVENT WRAPPING: Keeps Min/To/Max on one line */
+  white-space: nowrap; 
 }
 
 .limit-val {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--text-color);
+  white-space: nowrap;
 }
 
 .limit-sep {
   color: var(--text-color-muted);
   font-size: 0.75rem;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 /* Action Buttons */
@@ -5647,11 +5667,69 @@ body.theme-cyberpunk .notification-window .window-header {
   color: white;
 }
 
-/* Dark Mode Tweaks */
-body.dark-mode .instrument-summary-table tr:hover {
-  background-color: rgba(255,255,255,0.03);
+/* =================================================================== */
+/* THEME OVERRIDES FOR INSTRUMENT TABLE                                */
+/* =================================================================== */
+
+/* --- Dark Mode Tweaks --- */
+body.dark-mode .instrument-summary-table {
+  border-color: var(--border-color);
+}
+
+body.dark-mode .instrument-summary-table th {
+  background-color: var(--component-header-bg);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+body.dark-mode .instrument-summary-table tbody tr:hover {
+  background-color: var(--primary-color-light);
 }
 
 body.dark-mode .clickable-spec-cell:hover {
   background-color: rgba(255,255,255,0.05);
+}
+
+/* --- Orbital Theme Specifics (Matches Budget Table) --- */
+body.theme-orbital .instrument-table-container,
+body.theme-orbital .instrument-summary-table {
+  border: 1px solid var(--border-color);
+}
+
+body.theme-orbital .instrument-summary-table thead th {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--primary-color);
+}
+
+body.theme-orbital .instrument-summary-table td {
+  border-bottom: 1px solid var(--border-color);
+  /* FORCE CONSOLAS: Matches .uncertainty-budget-table styling in Orbital */
+  font-family: 'Consolas', monospace; 
+  font-size: 0.9rem; 
+}
+
+body.theme-orbital .instrument-summary-table tbody tr:hover {
+  background-color: var(--primary-color-light);
+}
+
+body.theme-orbital .clickable-spec-cell,
+body.theme-orbital .limits-cell {
+  /* Ensure interactive cells also respect the Orbital font rule */
+  font-family: 'Consolas', monospace;
+}
+
+/* Orbital Dark Mode */
+body.theme-orbital.dark-mode .instrument-summary-table {
+  border-color: var(--border-color);
+}
+
+body.theme-orbital.dark-mode .instrument-summary-table thead th {
+  background-color: var(--component-header-bg);
+  color: var(--text-color);
+  border-color: var(--border-color);
 }
