@@ -27,6 +27,9 @@ import DerivedBreakdownModal from "./components/BreakdownModals/DerivedBreakdown
 import RiskBreakdownModal from "./components/BreakdownModals/RiskBreakdownModals";
 import RepeatabilityModal from "./components/RepeatabilityModal";
 
+// --- FIX: Adjusted import path assuming file is in features/analysis/components/ ---
+import AddTestPointModal from "../testPoints/components/AddTestPointModal"; 
+
 // --- Utils ---
 import { 
   convertToPPM,
@@ -60,13 +63,15 @@ function Analysis({
   const [isUutModalOpen, setIsUutModalOpen] = useState(false); 
   const [tmdeToEdit, setTmdeToEdit] = useState(null);
   
+  // New State for Test Point Definition
+  const [isTestPointModalOpen, setTestPointModalOpen] = useState(false);
+
   const [isManualModalOpen, setManualModalOpen] = useState(false);
   const [editingComponent, setEditingComponent] = useState(null);
   
   const [isRepeatabilityModalOpen, setRepeatabilityModalOpen] = useState(false);
   const [modalPosition, setModalPosition] = useState(null);
 
-  // UPDATED: Changed from single string to array to support multiple open modals
   const [activeRiskModals, setActiveRiskModals] = useState([]);
   
   const [isDerivedBreakdownOpen, setIsDerivedBreakdownOpen] = useState(false);
@@ -132,25 +137,19 @@ function Analysis({
 
   // --- 5. Handlers ---
   const handleSaveUut = ({ description, tolerance, instrument }) => {
-    // 1. Save specific tolerance to the Test Point (isolating it)
     onDataSave({ uutTolerance: tolerance });
 
     if (onSessionSave) {
-        // FIX: We must manually update the testPoints array in the session object
-        // before saving. Otherwise, the 'sessionData' prop (which contains the OLD testPoints)
-        // will overwrite the update we just made in step 1 when App.js processes the full session update.
-        
         const updatedTestPoint = { ...testPointData, uutTolerance: tolerance };
         const updatedTestPointsList = (sessionData.testPoints || []).map(tp => 
             tp.id === testPointData.id ? updatedTestPoint : tp
         );
 
-        // Update global description and instrument definition, AND the test points list
         onSessionSave({
             ...sessionData,
-            testPoints: updatedTestPointsList, // Explicitly include the updated list
+            testPoints: updatedTestPointsList,
             uutDescription: description,
-            uutTolerance: tolerance, // Update session default as well
+            uutTolerance: tolerance,
             uutInstrument: instrument || sessionData.uutInstrument 
         });
     } else {
@@ -174,6 +173,11 @@ function Analysis({
       setAddTmdeModalOpen(false);
       setTmdeToEdit(null);
     }
+  };
+
+  const handleSaveTestPointInfo = (updatedData) => {
+      onDataSave(updatedData);
+      setTestPointModalOpen(false);
   };
 
   const handleSaveManualComponent = (componentData) => {
@@ -278,14 +282,11 @@ function Analysis({
     setIsDerivedBreakdownOpen(true);
   };
 
-  // UPDATED: Logic to toggle the modal type in the array
   const handleShowRiskBreakdown = (type) => {
       setActiveRiskModals(prev => {
           if (prev.includes(type)) {
-              // If already open, close it (toggle behavior)
               return prev.filter(t => t !== type);
           }
-          // Otherwise, add it
           return [...prev, type];
       });
   };
@@ -294,7 +295,6 @@ function Analysis({
       setActiveRiskModals(prev => prev.filter(t => t !== type));
   };
 
-  // --- Inline Update Handlers ---
   const handleInlineUutUpdate = (field, value) => {
     if (field === 'description') {
         if (onSessionSave) {
@@ -324,7 +324,6 @@ function Analysis({
               value: parseFloat(value) 
           };
       } else if (field === 'variableType') {
-          // New logic for equation mapping
           newTmde.variableType = value;
       }
       handleSaveTmde(newTmde, false);
@@ -332,13 +331,11 @@ function Analysis({
 
   return (
     <div>
-      {/* --- HEADER --- */}
       <AnalysisHeader 
         sessionData={sessionData} 
         onEditSession={handleOpenSessionEditor}
       />
 
-      {/* --- MODALS --- */}
       <NotificationModal
         isOpen={!!notification}
         onClose={() => setNotification(null)}
@@ -350,7 +347,7 @@ function Analysis({
         onClose={() => setIsUutModalOpen(false)}
         onSave={handleSaveUut}
         initialDescription={sessionData.uutDescription}
-        initialTolerance={uutToleranceData} // Pass the specific tolerance
+        initialTolerance={uutToleranceData} 
         instruments={instruments}
         uutNominal={uutNominal}
       />
@@ -362,6 +359,14 @@ function Analysis({
         testPointData={testPointData}
         initialTmdeData={tmdeToEdit}
         instruments={instruments}
+      />
+
+      <AddTestPointModal
+        isOpen={isTestPointModalOpen}
+        onClose={() => setTestPointModalOpen(false)}
+        onSave={handleSaveTestPointInfo}
+        initialData={null} 
+        previousTestPointData={testPointData} 
       />
 
       <ManualComponentModal
@@ -387,7 +392,6 @@ function Analysis({
         breakdownData={derivedBreakdownData}
       />
 
-      {/* RENDER ACTIVE RISK MODALS */}
       {activeRiskModals.map(type => (
           <RiskBreakdownModal
             key={type}
@@ -407,7 +411,6 @@ function Analysis({
           />
       ))}
 
-      {/* --- TABS --- */}
       <div className="analysis-tabs">
         <button
           className={analysisMode === "uncertaintyTool" ? "active" : ""}
@@ -434,8 +437,6 @@ function Analysis({
                const achievedTUR = inputs.turVal ? inputs.turVal.toFixed(2) : "N/A";
                const uCal = inputs.combUnc ? inputs.combUnc.toPrecision(4) : "N/A";
                const unit = inputs.nominalUnit || "";
-
-               // Find Top Contributor
                let topContributorString = "N/A";
                if (calcResults && calcResults.calculatedBudgetComponents) {
                    const sortedComponents = [...calcResults.calculatedBudgetComponents].sort((a, b) => 
@@ -469,7 +470,6 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
         </button>
       </div>
 
-      {/* --- PANELS --- */}
       {analysisMode === "uncertaintyTool" && (
         <UncertaintyPanel 
           testPointData={testPointData}
@@ -494,7 +494,6 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
           
           onOpenUutModal={() => setIsUutModalOpen(true)}
           onDeleteUut={onDeleteUut}
-          // Pass new inline handlers
           onInlineUutUpdate={handleInlineUutUpdate}
           onInlineTmdeUpdate={handleInlineTmdeUpdate}
           
@@ -512,6 +511,7 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
              setEditingComponent(null); 
              setRepeatabilityModalOpen(true); 
           }}
+          onDefineTestPoint={() => setTestPointModalOpen(true)}
           setNotification={setNotification}
         />
       )}

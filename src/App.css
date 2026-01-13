@@ -5492,7 +5492,7 @@ body.theme-cyberpunk .notification-window .window-header {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   /* Allows horizontal scrolling if content (like long numbers) overflows */
-  overflow-x: auto; 
+  overflow-x: visible !important; 
   box-shadow: 0 4px 12px rgba(0,0,0,0.03);
   margin-bottom: 25px;
   background-color: var(--content-background);

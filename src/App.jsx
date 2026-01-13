@@ -923,15 +923,7 @@ function App() {
 
               <div className="sidebar-header">
                 <h4 style={{ margin: "0" }}>Measurement Points</h4>
-                <div className="add-point-controls">
-                  <button
-                    className="add-point-button"
-                    onClick={() => setIsAddModalOpen(true)}
-                    title="Add New Measurement Point"
-                  >
-                    <FontAwesomeIcon icon={faPlus} />
-                  </button>
-                </div>
+                {/* REMOVED THE ADD POINT BUTTON FROM HERE */}
               </div>
 
               <div className="measurement-point-list">
@@ -1032,7 +1024,9 @@ function App() {
                   ) : currentSessionData ? (
                     <>
                       <h3>This session has no measurement points.</h3>
-                      <p>Click the '+' button in the sidebar to add one.</p>
+                      <button className="button primary" onClick={() => setIsAddModalOpen(true)}>
+                        <FontAwesomeIcon icon={faPlus} /> Add Measurement Point
+                      </button>
                     </>
                   ) : (
                     <>
