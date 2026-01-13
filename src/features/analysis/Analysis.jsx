@@ -294,6 +294,42 @@ function Analysis({
       setActiveRiskModals(prev => prev.filter(t => t !== type));
   };
 
+  // --- Inline Update Handlers ---
+  const handleInlineUutUpdate = (field, value) => {
+    if (field === 'description') {
+        if (onSessionSave) {
+            onSessionSave({ ...sessionData, uutDescription: value });
+        }
+    } else if (field === 'nominal') {
+        const currentParam = testPointData.testPointInfo?.parameter || {};
+        const newParam = { ...currentParam, value: parseFloat(value) }; 
+        const updatedTestPointInfo = { 
+            ...testPointData.testPointInfo, 
+            parameter: newParam
+        };
+        onDataSave({ testPointInfo: updatedTestPointInfo });
+    }
+  };
+
+  const handleInlineTmdeUpdate = (id, field, value) => {
+      const tmdeToUpdate = tmdeTolerancesData.find(t => t.id === id);
+      if (!tmdeToUpdate) return;
+      
+      const newTmde = { ...tmdeToUpdate };
+      if (field === 'name') {
+          newTmde.name = value;
+      } else if (field === 'nominal') {
+          newTmde.measurementPoint = { 
+              ...newTmde.measurementPoint, 
+              value: parseFloat(value) 
+          };
+      } else if (field === 'variableType') {
+          // New logic for equation mapping
+          newTmde.variableType = value;
+      }
+      handleSaveTmde(newTmde, false);
+  };
+
   return (
     <div>
       {/* --- HEADER --- */}
@@ -457,7 +493,11 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
           onDecrementTmdeQuantity={onDecrementTmdeQuantity}
           
           onOpenUutModal={() => setIsUutModalOpen(true)}
-          onDeleteUut={onDeleteUut} 
+          onDeleteUut={onDeleteUut}
+          // Pass new inline handlers
+          onInlineUutUpdate={handleInlineUutUpdate}
+          onInlineTmdeUpdate={handleInlineTmdeUpdate}
+          
           handleOpenSessionEditor={handleOpenSessionEditor}
 
           setContextMenu={setContextMenu}

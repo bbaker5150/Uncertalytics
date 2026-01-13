@@ -64,7 +64,7 @@ const WORKFLOW_STEPS = [
         <h4>Adding Measurement Points</h4>
         <p>This is the core of the analysis. You have two types of measurements:</p>
         <h5>Option A: Direct Measurement</h5>
-        <p>Use this when the UUT and the Standard measure the same unit (e.g., UUT reads 10V, Standard reads 10V).</p>
+        <p>Use this when the instrument measures the dimension or characteristic of the target directly without calculation (e.g., Using a caliper to measure the length of a UUT; Using a voltmeter to read the voltage of a UUT).</p>
 
         <h5>Option B: Derived Measurement</h5>
         <p>Use this when the result is calculated via a formula (e.g., Power = Voltage × Current).</p>
