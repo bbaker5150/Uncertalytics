@@ -59,7 +59,7 @@ export const unitSystem = {
     hr: { to_si: 3600, quantity: "Time" },
 
     // --- Temperature ---
-    degC: { to_si: 1, quantity: "Temperature" }, 
+    degC: { to_si: 1, quantity: "Temperature" },
     degF: { to_si: 0.55555555, quantity: "Temperature" },
     K: { to_si: 1, quantity: "Temperature" },
 
@@ -194,7 +194,7 @@ export const unitSystem = {
   getRelevantUnits: (baseUnit) => {
     const quantity = unitSystem.getQuantity(baseUnit);
     if (!quantity) return ["ppm", "%"];
-    
+
     return Object.keys(unitSystem.units).filter(
       (u) => unitSystem.units[u].quantity === quantity
     );
@@ -273,113 +273,113 @@ export const convertPpmToUnit = (ppmValue, targetUnit, referencePoint) => {
 };
 
 export const convertToPPM = (
-    value,
-    unit,
-    nominalValue,
-    nominalUnit,
-    fallbackReferenceValue = null,
-    getExplanation = false
-  ) => {
-    const parsedValue = parseFloat(value);
-    let parsedNominal = parseFloat(nominalValue);
-  
-    if (isNaN(parsedValue)) return getExplanation ? { value: NaN } : NaN;
-    if (unit === "ppm")
-      return getExplanation ? { value: parsedValue } : parsedValue;
-  
-    if (parsedNominal === 0 && fallbackReferenceValue) {
-      parsedNominal = parseFloat(fallbackReferenceValue);
-    }
-  
-    const nominalQuantity = unitSystem.getQuantity(nominalUnit);
-    const valueQuantity = unitSystem.getQuantity(unit);
-  
-    if (!nominalQuantity)
-      return getExplanation
-        ? { value: NaN, warning: `Unknown quantity for nominal unit '${nominalUnit}'.` }
-        : NaN;
-  
-    let valueInBase;
-    if (unit === "%") {
-      valueInBase = (parsedValue / 100) * unitSystem.toBaseUnit(parsedNominal, nominalUnit);
-    } else if (
-      valueQuantity &&
-      (valueQuantity === nominalQuantity || valueQuantity === "Relative")
-    ) {
-      valueInBase = unitSystem.toBaseUnit(parsedValue, unit);
-    } else if (
-      valueQuantity &&
-      nominalQuantity &&
-      valueQuantity !== nominalQuantity
-    ) {
-      return getExplanation
-        ? { value: NaN, warning: `Unit mismatch: Cannot convert ${unit} (${valueQuantity}) to ${nominalUnit} (${nominalQuantity}).` }
-        : NaN;
-    } else {
-      valueInBase = unitSystem.toBaseUnit(parsedValue, unit);
-    }
-  
-    if (isNaN(valueInBase))
-      return getExplanation
-        ? { value: NaN, warning: `Unsupported unit conversion for '${unit}'.` }
-        : NaN;
-  
-    const nominalInBase = unitSystem.toBaseUnit(parsedNominal, nominalUnit);
-    if (isNaN(nominalInBase) || nominalInBase === 0)
-      return getExplanation ? { value: NaN } : NaN;
-  
-    const ppmValue = (valueInBase / Math.abs(nominalInBase)) * 1e6;
-  
-    if (getExplanation) {
-      const explanation = `((${valueInBase.toExponential(4)}) / ${Math.abs(
-        nominalInBase
-      ).toExponential(4)}) × 1,000,000 = ${ppmValue.toFixed(2)} ppm`;
-      return { value: ppmValue, explanation };
-    }
-  
-    return ppmValue;
-  };
+  value,
+  unit,
+  nominalValue,
+  nominalUnit,
+  fallbackReferenceValue = null,
+  getExplanation = false
+) => {
+  const parsedValue = parseFloat(value);
+  let parsedNominal = parseFloat(nominalValue);
+
+  if (isNaN(parsedValue)) return getExplanation ? { value: NaN } : NaN;
+  if (unit === "ppm")
+    return getExplanation ? { value: parsedValue } : parsedValue;
+
+  if (parsedNominal === 0 && fallbackReferenceValue) {
+    parsedNominal = parseFloat(fallbackReferenceValue);
+  }
+
+  const nominalQuantity = unitSystem.getQuantity(nominalUnit);
+  const valueQuantity = unitSystem.getQuantity(unit);
+
+  if (!nominalQuantity)
+    return getExplanation
+      ? { value: NaN, warning: `Unknown quantity for nominal unit '${nominalUnit}'.` }
+      : NaN;
+
+  let valueInBase;
+  if (unit === "%") {
+    valueInBase = (parsedValue / 100) * unitSystem.toBaseUnit(parsedNominal, nominalUnit);
+  } else if (
+    valueQuantity &&
+    (valueQuantity === nominalQuantity || valueQuantity === "Relative")
+  ) {
+    valueInBase = unitSystem.toBaseUnit(parsedValue, unit);
+  } else if (
+    valueQuantity &&
+    nominalQuantity &&
+    valueQuantity !== nominalQuantity
+  ) {
+    return getExplanation
+      ? { value: NaN, warning: `Unit mismatch: Cannot convert ${unit} (${valueQuantity}) to ${nominalUnit} (${nominalQuantity}).` }
+      : NaN;
+  } else {
+    valueInBase = unitSystem.toBaseUnit(parsedValue, unit);
+  }
+
+  if (isNaN(valueInBase))
+    return getExplanation
+      ? { value: NaN, warning: `Unsupported unit conversion for '${unit}'.` }
+      : NaN;
+
+  const nominalInBase = unitSystem.toBaseUnit(parsedNominal, nominalUnit);
+  if (isNaN(nominalInBase) || nominalInBase === 0)
+    return getExplanation ? { value: NaN } : NaN;
+
+  const ppmValue = (valueInBase / Math.abs(nominalInBase)) * 1e6;
+
+  if (getExplanation) {
+    const explanation = `((${valueInBase.toExponential(4)}) / ${Math.abs(
+      nominalInBase
+    ).toExponential(4)}) × 1,000,000 = ${ppmValue.toFixed(2)} ppm`;
+    return { value: ppmValue, explanation };
+  }
+
+  return ppmValue;
+};
 
 // ==========================================
 // 2. Statistics & Distributions
 // ==========================================
 
 export const errorDistributions = [
-    { value: "1.732", label: "Rectangular" },
-    { value: "2.449", label: "Triangular" },
-    { value: "1.414", label: "U-Shaped" },
-    { value: "1.645", label: "Normal (90%)" },
-    { value: "1.960", label: "Normal (95%)" },
-    { value: "2.000", label: "Normal (95.45%)" },
-    { value: "2.576", label: "Normal (99%)" },
-    { value: "3.000", label: "Normal (99.73%)" },
-    { value: "4.179", label: "Rayleigh" },
-    { value: "1.000", label: "Std. Uncertainty" },
+  { value: "1.732", label: "Rectangular" },
+  { value: "2.449", label: "Triangular" },
+  { value: "1.414", label: "U-Shaped" },
+  { value: "1.645", label: "Normal (90%)" },
+  { value: "1.960", label: "Normal (95%)" },
+  { value: "2.000", label: "Normal (95.45%)" },
+  { value: "2.576", label: "Normal (99%)" },
+  { value: "3.000", label: "Normal (99.73%)" },
+  { value: "4.179", label: "Rayleigh" },
+  { value: "1.000", label: "Std. Uncertainty" },
 ];
 
 const T_DISTRIBUTION_95 = {
-    1: 12.71, 2: 4.3, 3: 3.18, 4: 2.78, 5: 2.57, 6: 2.45, 7: 2.36, 8: 2.31, 9: 2.26, 10: 2.23,
-    15: 2.13, 20: 2.09, 25: 2.06, 30: 2.04, 40: 2.02, 50: 2.01, 60: 2.0, 100: 1.98, 120: 1.98,
+  1: 12.71, 2: 4.3, 3: 3.18, 4: 2.78, 5: 2.57, 6: 2.45, 7: 2.36, 8: 2.31, 9: 2.26, 10: 2.23,
+  15: 2.13, 20: 2.09, 25: 2.06, 30: 2.04, 40: 2.02, 50: 2.01, 60: 2.0, 100: 1.98, 120: 1.98,
 };
-  
+
 export function getKValueFromTDistribution(dof) {
-    if (dof === Infinity || dof > 120) return 1.96;
-    const roundedDof = Math.round(dof);
-    if (T_DISTRIBUTION_95[roundedDof]) {
-      return T_DISTRIBUTION_95[roundedDof];
-    }
-    const lowerKeys = Object.keys(T_DISTRIBUTION_95).map(Number).filter((k) => k < roundedDof);
-    const upperKeys = Object.keys(T_DISTRIBUTION_95).map(Number).filter((k) => k > roundedDof);
-    if (lowerKeys.length === 0) return T_DISTRIBUTION_95[Math.min(...upperKeys)];
-    if (upperKeys.length === 0) return T_DISTRIBUTION_95[Math.max(...lowerKeys)];
-    const lowerBound = Math.max(...lowerKeys);
-    const upperBound = Math.min(...upperKeys);
-    const kLower = T_DISTRIBUTION_95[lowerBound];
-    const kUpper = T_DISTRIBUTION_95[upperBound];
-    return (
-      kLower +
-      ((roundedDof - lowerBound) * (kUpper - kLower)) / (upperBound - lowerBound)
-    );
+  if (dof === Infinity || dof > 120) return 1.96;
+  const roundedDof = Math.round(dof);
+  if (T_DISTRIBUTION_95[roundedDof]) {
+    return T_DISTRIBUTION_95[roundedDof];
+  }
+  const lowerKeys = Object.keys(T_DISTRIBUTION_95).map(Number).filter((k) => k < roundedDof);
+  const upperKeys = Object.keys(T_DISTRIBUTION_95).map(Number).filter((k) => k > roundedDof);
+  if (lowerKeys.length === 0) return T_DISTRIBUTION_95[Math.min(...upperKeys)];
+  if (upperKeys.length === 0) return T_DISTRIBUTION_95[Math.max(...lowerKeys)];
+  const lowerBound = Math.max(...lowerKeys);
+  const upperBound = Math.min(...upperKeys);
+  const kLower = T_DISTRIBUTION_95[lowerBound];
+  const kUpper = T_DISTRIBUTION_95[upperBound];
+  return (
+    kLower +
+    ((roundedDof - lowerBound) * (kUpper - kLower)) / (upperBound - lowerBound)
+  );
 }
 
 // ==========================================
@@ -387,673 +387,654 @@ export function getKValueFromTDistribution(dof) {
 // ==========================================
 
 export const getToleranceUnitOptions = (referenceUnit) => {
-    const quantity = unitSystem.getQuantity(referenceUnit);
-    if (!quantity) return ["%", "ppm"];
-  
-    const physicalUnits = Object.keys(unitSystem.units).filter(
-      (u) => unitSystem.units[u].quantity === quantity
-    );
-  
-    return ["%", "ppm", ...physicalUnits];
-  };
+  const quantity = unitSystem.getQuantity(referenceUnit);
+  if (!quantity) return ["%", "ppm"];
+
+  const physicalUnits = Object.keys(unitSystem.units).filter(
+    (u) => unitSystem.units[u].quantity === quantity
+  );
+
+  return ["%", "ppm", ...physicalUnits];
+};
 
 export const getToleranceSummary = (toleranceData) => {
-    if (!toleranceData || Object.keys(toleranceData).length === 0)
-      return "Not Set";
-  
-    const formatPart = (part) => {
-      if (!part || (isNaN(parseFloat(part.high)) && isNaN(parseFloat(part.low))))
-        return null;
-      const high = parseFloat(part.high || 0);
-      const low = parseFloat(part.low || -high);
-      if (Math.abs(high + low) < 1e-9 && high > 0)
-        return `±${high} ${part.unit || ""}`;
-      return `+${high}/${low} ${part.unit || ""}`;
-    };
-  
-    const parts = [];
-    if (toleranceData.reading) parts.push(formatPart(toleranceData.reading));
-    if (toleranceData.readings_iv) parts.push(formatPart(toleranceData.readings_iv));
-    if (toleranceData.range)
-      parts.push(`${formatPart(toleranceData.range)} of FS`);
-    if (toleranceData.floor) parts.push(formatPart(toleranceData.floor));
-    if (toleranceData.db) parts.push(formatPart(toleranceData.db));
-  
-    return parts.filter((p) => p).join(" + ") || "Not Set";
+  if (!toleranceData || Object.keys(toleranceData).length === 0)
+    return "Not Set";
+
+  const formatPart = (part) => {
+    if (!part || (isNaN(parseFloat(part.high)) && isNaN(parseFloat(part.low))))
+      return null;
+    const high = parseFloat(part.high || 0);
+    const low = parseFloat(part.low || -high);
+    if (Math.abs(high + low) < 1e-9 && high > 0)
+      return `±${high} ${part.unit || ""}`;
+    return `+${high}/${low} ${part.unit || ""}`;
+  };
+
+  const parts = [];
+  if (toleranceData.reading) parts.push(formatPart(toleranceData.reading));
+  if (toleranceData.readings_iv) parts.push(formatPart(toleranceData.readings_iv));
+  if (toleranceData.range)
+    parts.push(`${formatPart(toleranceData.range)} of FS`);
+  if (toleranceData.floor) parts.push(formatPart(toleranceData.floor));
+  if (toleranceData.db) parts.push(formatPart(toleranceData.db));
+
+  return parts.filter((p) => p).join(" + ") || "Not Set";
 };
 
 export const calculateUncertaintyFromToleranceObject = (
-    toleranceObject,
-    referenceMeasurementPoint,
-    excludeResolution = false
-  ) => {
-  
+  toleranceObject,
+  referenceMeasurementPoint,
+  excludeResolution = false
+) => {
+
+  if (
+    !toleranceObject ||
+    !referenceMeasurementPoint ||
+    !referenceMeasurementPoint.value ||
+    !referenceMeasurementPoint.unit
+  ) {
+    return { standardUncertainty: 0, totalToleranceForTar: 0, breakdown: [] };
+  }
+
+  const nominalValue = parseFloat(referenceMeasurementPoint.value);
+  const nominalUnit = referenceMeasurementPoint.unit;
+  let totalVariance = 0;
+  let totalLinearTolerance = 0;
+  const breakdown = [];
+
+  const addComponent = (tolComp, name, baseValueForRelative) => {
     if (
-      !toleranceObject ||
-      !referenceMeasurementPoint ||
-      !referenceMeasurementPoint.value ||
-      !referenceMeasurementPoint.unit
-    ) {
-      return { standardUncertainty: 0, totalToleranceForTar: 0, breakdown: [] };
+      !tolComp ||
+      (isNaN(parseFloat(tolComp.high)) && isNaN(parseFloat(tolComp.low)))
+    )
+      return;
+
+    const high = parseFloat(tolComp.high || 0);
+    const low = parseFloat(tolComp.low || -high);
+    const halfSpan = (high - low) / 2;
+
+    if (halfSpan === 0) return;
+
+    const unit = tolComp.unit;
+    const divisor = parseFloat(tolComp.distribution) || 1.732;
+    const distributionLabel =
+      errorDistributions.find((d) => d.value === String(tolComp.distribution))
+        ?.label || "Rectangular";
+
+    let specString =
+      Math.abs(high + low) < 1e-9
+        ? `±${high} ${unit}`
+        : `+${high}/${low} ${unit}`;
+
+    let valueInNominalUnits;
+    let explanation = "";
+
+    if (unit === "%" || unit === "ppm") {
+      valueInNominalUnits =
+        halfSpan * unitSystem.units[unit].to_si * baseValueForRelative;
+      explanation = `${halfSpan.toExponential(
+        3
+      )}${unit} of ${baseValueForRelative}${nominalUnit}`;
+    } else {
+      const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
+      const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
+      valueInNominalUnits = valueInBase / nominalUnitInBase;
+      explanation = `${halfSpan.toExponential(3)} ${unit}`;
     }
-  
-    const nominalValue = parseFloat(referenceMeasurementPoint.value);
-    const nominalUnit = referenceMeasurementPoint.unit;
-    let totalVariance = 0;
-    let totalLinearTolerance = 0;
-    const breakdown = [];
-  
-    const addComponent = (tolComp, name, baseValueForRelative) => {
-      if (
-        !tolComp ||
-        (isNaN(parseFloat(tolComp.high)) && isNaN(parseFloat(tolComp.low)))
-      )
-        return;
-  
-      const high = parseFloat(tolComp.high || 0);
-      const low = parseFloat(tolComp.low || -high);
-      const halfSpan = (high - low) / 2;
-  
-      if (halfSpan === 0) return;
-  
-      const unit = tolComp.unit;
-      const divisor = parseFloat(tolComp.distribution) || 1.732;
+
+    const rangeFsValue = parseFloat(toleranceObject.range?.value);
+    const ppm = convertToPPM(
+      valueInNominalUnits,
+      nominalUnit,
+      nominalValue,
+      nominalUnit,
+      rangeFsValue
+    );
+
+    if (!isNaN(ppm)) {
+      const u_i = Math.abs(ppm / divisor);
+      totalLinearTolerance += Math.abs(ppm);
+      totalVariance += Math.pow(u_i, 2);
+
+      // Calculate absolute deviations and final limits
+      const highDeviation = (high / halfSpan) * valueInNominalUnits;
+      const lowDeviation = (low / halfSpan) * valueInNominalUnits;
+      const absoluteHigh = nominalValue + highDeviation;
+      const absoluteLow = nominalValue + lowDeviation;
+
+      breakdown.push({
+        name,
+        input: specString,
+        explanation,
+        ppm: Math.abs(ppm),
+        u_i,
+        divisor,
+        distributionLabel,
+        absoluteLow,
+        absoluteHigh,
+        originalHalfSpan: Math.abs(halfSpan),
+        originalUnit: unit,
+      });
+    }
+  };
+
+  addComponent(toleranceObject.reading, "Reading", nominalValue);
+  addComponent(toleranceObject.readings_iv, "Reading (IV)", nominalValue);
+
+  addComponent(
+    toleranceObject.range,
+    "Range",
+    parseFloat(toleranceObject.range?.value)
+  );
+  addComponent(toleranceObject.floor, "Floor", nominalValue);
+
+  const dbTolComp = toleranceObject.db;
+  if (dbTolComp && !isNaN(parseFloat(dbTolComp.high))) {
+    const highDb = parseFloat(dbTolComp.high || 0);
+    const lowDb = parseFloat(dbTolComp.low || -highDb);
+    const dbTol = (highDb - lowDb) / 2;
+
+    if (dbTol > 0 && nominalValue > 0) {
+      const dbMult = parseFloat(dbTolComp.multiplier) || 20;
+      const dbRef = parseFloat(dbTolComp.ref) || 1;
+      const divisor = parseFloat(dbTolComp.distribution) || 1.732;
       const distributionLabel =
-        errorDistributions.find((d) => d.value === String(tolComp.distribution))
-          ?.label || "Rectangular";
-  
-      let specString =
-        Math.abs(high + low) < 1e-9
-          ? `±${high} ${unit}`
-          : `+${high}/${low} ${unit}`;
-  
-      let valueInNominalUnits;
-      let explanation = "";
-  
-      if (unit === "%" || unit === "ppm") {
-        valueInNominalUnits =
-          halfSpan * unitSystem.units[unit].to_si * baseValueForRelative;
-        explanation = `${halfSpan.toExponential(
-          3
-        )}${unit} of ${baseValueForRelative}${nominalUnit}`;
-      } else {
-        const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
-        const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
-        valueInNominalUnits = valueInBase / nominalUnitInBase;
-        explanation = `${halfSpan.toExponential(3)} ${unit}`;
-      }
-  
-      const rangeFsValue = parseFloat(toleranceObject.range?.value);
+        errorDistributions.find(
+          (d) => d.value === String(dbTolComp.distribution)
+        )?.label || "Rectangular";
+
+      const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
+      const absoluteHigh = dbRef * Math.pow(10, (dbNominal + highDb) / dbMult);
+      const absoluteLow = dbRef * Math.pow(10, (dbNominal + lowDb) / dbMult);
+      const centerValue = (absoluteHigh + absoluteLow) / 2;
+      const absoluteDeviation = absoluteHigh - centerValue;
+
       const ppm = convertToPPM(
-        valueInNominalUnits,
+        absoluteDeviation,
         nominalUnit,
         nominalValue,
-        nominalUnit,
-        rangeFsValue
+        nominalUnit
       );
-  
+
       if (!isNaN(ppm)) {
         const u_i = Math.abs(ppm / divisor);
         totalLinearTolerance += Math.abs(ppm);
         totalVariance += Math.pow(u_i, 2);
-  
-        // Calculate absolute deviations and final limits
-        const highDeviation = (high / halfSpan) * valueInNominalUnits;
-        const lowDeviation = (low / halfSpan) * valueInNominalUnits;
-        const absoluteHigh = nominalValue + highDeviation;
-        const absoluteLow = nominalValue + lowDeviation;
-  
+        const specString =
+          Math.abs(highDb + lowDb) < 1e-9
+            ? `±${highDb} dB`
+            : `+${highDb}/${lowDb} dB`;
         breakdown.push({
-          name,
+          name: "dB",
           input: specString,
-          explanation,
+          explanation: `Calculates to a half-span of ${absoluteDeviation.toExponential(
+            3
+          )} ${nominalUnit}`,
           ppm: Math.abs(ppm),
           u_i,
           divisor,
           distributionLabel,
           absoluteLow,
           absoluteHigh,
-          originalHalfSpan: Math.abs(halfSpan),
-          originalUnit: unit,
+          originalHalfSpan: Math.abs(dbTol),
+          originalUnit: "dB",
         });
       }
-    };
-  
-    addComponent(toleranceObject.reading, "Reading", nominalValue);
-    addComponent(toleranceObject.readings_iv, "Reading (IV)", nominalValue);
-  
-    addComponent(
-      toleranceObject.range,
-      "Range",
-      parseFloat(toleranceObject.range?.value)
-    );
-    addComponent(toleranceObject.floor, "Floor", nominalValue);
-  
-    const dbTolComp = toleranceObject.db;
-    if (dbTolComp && !isNaN(parseFloat(dbTolComp.high))) {
-      const highDb = parseFloat(dbTolComp.high || 0);
-      const lowDb = parseFloat(dbTolComp.low || -highDb);
-      const dbTol = (highDb - lowDb) / 2;
-  
-      if (dbTol > 0 && nominalValue > 0) {
-        const dbMult = parseFloat(dbTolComp.multiplier) || 20;
-        const dbRef = parseFloat(dbTolComp.ref) || 1;
-        const divisor = parseFloat(dbTolComp.distribution) || 1.732;
-        const distributionLabel =
-          errorDistributions.find(
-            (d) => d.value === String(dbTolComp.distribution)
-          )?.label || "Rectangular";
-  
-        const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
-        const absoluteHigh = dbRef * Math.pow(10, (dbNominal + highDb) / dbMult);
-        const absoluteLow = dbRef * Math.pow(10, (dbNominal + lowDb) / dbMult);
-        const centerValue = (absoluteHigh + absoluteLow) / 2;
-        const absoluteDeviation = absoluteHigh - centerValue;
-  
-        const ppm = convertToPPM(
-          absoluteDeviation,
-          nominalUnit,
-          nominalValue,
-          nominalUnit
-        );
-  
-        if (!isNaN(ppm)) {
-          const u_i = Math.abs(ppm / divisor);
-          totalLinearTolerance += Math.abs(ppm);
-          totalVariance += Math.pow(u_i, 2);
-          const specString =
-            Math.abs(highDb + lowDb) < 1e-9
-              ? `±${highDb} dB`
-              : `+${highDb}/${lowDb} dB`;
-          breakdown.push({
-            name: "dB",
-            input: specString,
-            explanation: `Calculates to a half-span of ${absoluteDeviation.toExponential(
-              3
-            )} ${nominalUnit}`,
-            ppm: Math.abs(ppm),
-            u_i,
-            divisor,
-            distributionLabel,
-            absoluteLow,
-            absoluteHigh,
-            originalHalfSpan: Math.abs(dbTol),
-            originalUnit: "dB",
-          });
-        }
-      }
     }
-  
-    // --- UPDATED RESOLUTION LOGIC ---
-    // Only include resolution if excludeResolution is false AND toleranceObject is NOT marked as a TMDE
-    const shouldSkipResolution = excludeResolution || toleranceObject.isTmde;
+  }
 
-    if (!shouldSkipResolution && parseFloat(toleranceObject.measuringResolution) > 0) {
-      const res = parseFloat(toleranceObject.measuringResolution);
-      const resUnit = toleranceObject.measuringResolutionUnit || nominalUnit;
-      const halfSpan = res / 2;
-  
-      const resPpm = convertToPPM(halfSpan, resUnit, nominalValue, nominalUnit);
-      if (!isNaN(resPpm)) {
-        const divisor = 1.732; // sqrt(3)
-        const u_i = Math.abs(resPpm / divisor);
-        totalVariance += Math.pow(u_i, 2);
-  
-        breakdown.push({
-          name: "Resolution",
-          input: `±${halfSpan} ${resUnit}`,
-          explanation: `Rectangular distribution over ± half the least significant digit.`,
-          ppm: Math.abs(resPpm),
-          u_i,
-          divisor,
-          distributionLabel: "Rectangular",
-          originalHalfSpan: halfSpan,
-          originalUnit: resUnit,
-        });
-      }
+  // --- UPDATED RESOLUTION LOGIC ---
+  // Only include resolution if excludeResolution is false AND toleranceObject is NOT marked as a TMDE
+  const shouldSkipResolution = excludeResolution || toleranceObject.isTmde;
+
+  if (!shouldSkipResolution && parseFloat(toleranceObject.measuringResolution) > 0) {
+    const res = parseFloat(toleranceObject.measuringResolution);
+    const resUnit = toleranceObject.measuringResolutionUnit || nominalUnit;
+    const halfSpan = res / 2;
+
+    const resPpm = convertToPPM(halfSpan, resUnit, nominalValue, nominalUnit);
+    if (!isNaN(resPpm)) {
+      const divisor = 1.732; // sqrt(3)
+      const u_i = Math.abs(resPpm / divisor);
+      totalVariance += Math.pow(u_i, 2);
+
+      breakdown.push({
+        name: "Resolution",
+        input: `±${halfSpan} ${resUnit}`,
+        explanation: `Rectangular distribution over ± half the least significant digit.`,
+        ppm: Math.abs(resPpm),
+        u_i,
+        divisor,
+        distributionLabel: "Rectangular",
+        originalHalfSpan: halfSpan,
+        originalUnit: resUnit,
+      });
     }
-  
-    const standardUncertainty = Math.sqrt(totalVariance);
-    return {
-      standardUncertainty,
-      totalToleranceForTar: totalLinearTolerance,
-      breakdown,
-    };
+  }
+
+  const standardUncertainty = Math.sqrt(totalVariance);
+  return {
+    standardUncertainty,
+    totalToleranceForTar: totalLinearTolerance,
+    breakdown,
+  };
 };
 
 export const getToleranceErrorSummary = (toleranceObject, referencePoint) => {
-    if (
-      !toleranceObject ||
-      Object.keys(toleranceObject).length <= 1 ||
-      !referencePoint ||
-      !referencePoint.value
-    ) {
-      return "Not Set";
-    }
-  
-    const { breakdown } = calculateUncertaintyFromToleranceObject(
-      toleranceObject,
-      referencePoint
-    );
-  
-    const nominalValue = parseFloat(referencePoint.value);
-    const nominalUnit = referencePoint.unit;
-  
-    if (breakdown.length === 0) {
-      return "Not Calculated";
-    }
-  
-    const specComponents = breakdown.filter(
-      (comp) => comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
-    );
-  
-    if (specComponents.length === 0) {
-      return "N/A";
-    }
-  
-    const totalHighDeviation = specComponents.reduce((sum, comp) => {
-      return sum + (comp.absoluteHigh - nominalValue);
-    }, 0);
-  
-    const totalLowDeviation = specComponents.reduce((sum, comp) => {
-      return sum + (comp.absoluteLow - nominalValue);
-    }, 0);
-  
-    if (
-      Math.abs(totalHighDeviation + totalLowDeviation) < 1e-9 &&
-      totalHighDeviation > 0
-    ) {
-      return `±${totalHighDeviation.toPrecision(3)} ${nominalUnit}`;
-    }
-  
-    return `+${totalHighDeviation.toPrecision(
-      3
-    )} / ${totalLowDeviation.toPrecision(3)} ${nominalUnit}`;
+  if (
+    !toleranceObject ||
+    Object.keys(toleranceObject).length <= 1 ||
+    !referencePoint ||
+    !referencePoint.value
+  ) {
+    return "Not Set";
+  }
+
+  const { breakdown } = calculateUncertaintyFromToleranceObject(
+    toleranceObject,
+    referencePoint
+  );
+
+  const nominalValue = parseFloat(referencePoint.value);
+  const nominalUnit = referencePoint.unit;
+
+  if (breakdown.length === 0) {
+    return "Not Calculated";
+  }
+
+  const specComponents = breakdown.filter(
+    (comp) => comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
+  );
+
+  if (specComponents.length === 0) {
+    return "N/A";
+  }
+
+  const totalHighDeviation = specComponents.reduce((sum, comp) => {
+    return sum + (comp.absoluteHigh - nominalValue);
+  }, 0);
+
+  const totalLowDeviation = specComponents.reduce((sum, comp) => {
+    return sum + (comp.absoluteLow - nominalValue);
+  }, 0);
+
+  if (
+    Math.abs(totalHighDeviation + totalLowDeviation) < 1e-9 &&
+    totalHighDeviation > 0
+  ) {
+    return `±${totalHighDeviation.toPrecision(3)} ${nominalUnit}`;
+  }
+
+  return `+${totalHighDeviation.toPrecision(
+    3
+  )} / ${totalLowDeviation.toPrecision(3)} ${nominalUnit}`;
 };
 
 export const getAbsoluteLimits = (toleranceObject, referencePoint) => {
-    if (!toleranceObject || !referencePoint || !referencePoint.value) {
-      return { high: "N/A", low: "N/A" };
-    }
-  
-    const { breakdown } = calculateUncertaintyFromToleranceObject(
-      toleranceObject,
-      referencePoint
-    );
-  
-    if (breakdown.length === 0) {
-      const nominal = `${parseFloat(referencePoint.value).toPrecision(7)} ${
-        referencePoint.unit
+  if (!toleranceObject || !referencePoint || !referencePoint.value) {
+    return { high: "N/A", low: "N/A" };
+  }
+
+  const { breakdown } = calculateUncertaintyFromToleranceObject(
+    toleranceObject,
+    referencePoint
+  );
+
+  if (breakdown.length === 0) {
+    const nominal = `${parseFloat(referencePoint.value).toPrecision(7)} ${referencePoint.unit
       }`;
-      return { high: nominal, low: nominal };
-    }
-  
-    const nominalValue = parseFloat(referencePoint.value);
-    const nominalUnit = referencePoint.unit;
-  
-    const specComponents = breakdown.filter(
-      (comp) => comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
-    );
-  
-    const totalHighDeviation = specComponents.reduce((sum, comp) => {
-      return sum + (comp.absoluteHigh - nominalValue);
-    }, 0);
-  
-    const totalLowDeviation = specComponents.reduce((sum, comp) => {
-      return sum + (comp.absoluteLow - nominalValue);
-    }, 0);
-  
-    const finalHighLimit = nominalValue + totalHighDeviation;
-    const finalLowLimit = nominalValue + totalLowDeviation;
-  
-    return {
-      high: `${finalHighLimit.toPrecision(7)} ${nominalUnit}`,
-      low: `${finalLowLimit.toPrecision(7)} ${nominalUnit}`,
-    };
+    return { high: nominal, low: nominal };
+  }
+
+  const nominalValue = parseFloat(referencePoint.value);
+  const nominalUnit = referencePoint.unit;
+
+  const specComponents = breakdown.filter(
+    (comp) => comp.absoluteHigh !== undefined && comp.absoluteLow !== undefined
+  );
+
+  const totalHighDeviation = specComponents.reduce((sum, comp) => {
+    return sum + (comp.absoluteHigh - nominalValue);
+  }, 0);
+
+  const totalLowDeviation = specComponents.reduce((sum, comp) => {
+    return sum + (comp.absoluteLow - nominalValue);
+  }, 0);
+
+  const finalHighLimit = nominalValue + totalHighDeviation;
+  const finalLowLimit = nominalValue + totalLowDeviation;
+
+  return {
+    high: `${finalHighLimit.toPrecision(7)} ${nominalUnit}`,
+    low: `${finalLowLimit.toPrecision(7)} ${nominalUnit}`,
+  };
 };
 
 export const calculateDerivedUncertainty = (
-    equationString,
-    variableMappings,
-    tmdeTolerances,
-    derivedNominalPoint,
-    manualComponents = [] // <--- UPDATED: Added parameter
-  ) => {
-    if (!equationString || !variableMappings || !tmdeTolerances) {
-      console.error("calculateDerivedUncertainty missing essential inputs", {
-        equationString,
-        variableMappings,
-        tmdeTolerances,
-      });
-      return {
-        combinedUncertaintyNative: NaN,
-        breakdown: [],
-        nominalResult: NaN,
-        error: "Missing calculation inputs.",
-      };
-    }
-    if (
-      Object.keys(variableMappings).length === 0 &&
-      equationString.match(/[a-zA-Z]/)
-    ) {
-      return {
-        combinedUncertaintyNative: NaN,
-        breakdown: [],
-        nominalResult: NaN,
-        error: "Variable mappings are missing for the equation.",
-      };
-    }
-  
-    try {
-      let expressionToParse = equationString.trim();
-      const equalsIndex = expressionToParse.indexOf("=");
-  
-      if (equalsIndex !== -1) {
-        if (equalsIndex < expressionToParse.length - 1) {
-          expressionToParse = expressionToParse.substring(equalsIndex + 1).trim();
-        } else {
-          throw new Error(
-            "Invalid equation format: Assignment without expression."
-          );
-        }
-      }
-      if (!expressionToParse) {
-        throw new Error("Equation expression is empty.");
-      }
-  
-      const node = math.parse(expressionToParse);
-  
-      const variables = Object.keys(variableMappings);
-      if (variables.length === 0) {
-        try {
-          const constantResult = node.compile().evaluate({});
-          return {
-            combinedUncertaintyNative: 0,
-            breakdown: [],
-            nominalResult: constantResult,
-            error: null,
-          };
-        } catch (constEvalError) {
-          throw new Error(
-            "Equation has no mapped variables and is not a constant expression."
-          );
-        }
-      }
-  
-      let sumOfSquaresNative = 0;
-      const calculationBreakdown = [];
-      const nominalScope = {};
-      const uncertaintyInputs = {};
-  
-      // --- 1. PROCESS TMDE INPUTS ---
-      tmdeTolerances.forEach((tmde) => {
-        if (
-          !tmde.variableType ||
-          !tmde.measurementPoint ||
-          tmde.measurementPoint.value === "" ||
-          tmde.measurementPoint.unit === ""
-        ) {
-          console.warn(
-            "Skipping TMDE due to missing type or measurement point:",
-            tmde
-          );
-          return;
-        }
-        const nominalValue = parseFloat(tmde.measurementPoint.value);
-        if (isNaN(nominalValue)) {
-          console.warn("Skipping TMDE due to invalid nominal value:", tmde);
-          return;
-        }
-        
-        // Pass 'true' to exclude Resolution from TMDE uncertainty here
-        const { standardUncertainty: ui_ppm } =
-          calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint, true);
+  equationString,
+  variableMappings,
+  tmdeTolerances,
+  derivedNominalPoint,
+  manualComponents = []
+) => {
+  // 1. Basic Validation
+  if (!equationString || !variableMappings || !tmdeTolerances) {
+    console.error("calculateDerivedUncertainty missing essential inputs", {
+      equationString,
+      variableMappings,
+      tmdeTolerances,
+    });
+    return {
+      combinedUncertaintyNative: NaN,
+      breakdown: [],
+      nominalResult: NaN,
+      error: "Missing calculation inputs.",
+    };
+  }
 
-        const nominalInBase = unitSystem.toBaseUnit(
-          nominalValue,
-          tmde.measurementPoint.unit
+  if (
+    Object.keys(variableMappings).length === 0 &&
+    equationString.match(/[a-zA-Z]/)
+  ) {
+    return {
+      combinedUncertaintyNative: NaN,
+      breakdown: [],
+      nominalResult: NaN,
+      error: "Variable mappings are missing for the equation.",
+    };
+  }
+
+  try {
+    // 2. Parse the Equation
+    let expressionToParse = equationString.trim();
+    const equalsIndex = expressionToParse.indexOf("=");
+
+    if (equalsIndex !== -1) {
+      if (equalsIndex < expressionToParse.length - 1) {
+        expressionToParse = expressionToParse.substring(equalsIndex + 1).trim();
+      } else {
+        throw new Error(
+          "Invalid equation format: Assignment without expression."
         );
-  
-        const ui_absolute_base = (ui_ppm / 1e6) * Math.abs(nominalInBase);
-        const ui_absolute_native = (ui_ppm / 1e6) * Math.abs(nominalValue);
-  
-        const quantity = parseInt(tmde.quantity, 10) || 1;
-        const variance_base = ui_absolute_base ** 2 * quantity;
-        const variance_native = ui_absolute_native ** 2 * quantity;
-  
-        if (isNaN(variance_base) || variance_base < 0 || isNaN(variance_native)) {
-          console.warn(
-            "Could not calculate valid absolute uncertainty for TMDE:",
-            tmde
-          );
-          return;
-        }
-  
-        const variableSymbol = Object.keys(variableMappings).find(
-          (key) => variableMappings[key] === tmde.variableType
-        );
-        if (variableSymbol && !nominalScope.hasOwnProperty(variableSymbol)) {
-          nominalScope[variableSymbol] = nominalValue;
-        } else if (!variableSymbol) {
-          // It's okay if a TMDE doesn't map to a variable (it might be for something else)
-          // but we log it just in case.
-          // console.warn(`TMDE variable type '${tmde.variableType}' not found in mappings.`);
-        }
-  
-        if (uncertaintyInputs[tmde.variableType]) {
-          uncertaintyInputs[tmde.variableType].ui_squared_sum_base +=
-            variance_base;
-          uncertaintyInputs[tmde.variableType].ui_squared_sum_native +=
-            variance_native;
-        } else {
-          uncertaintyInputs[tmde.variableType] = {
-            ui_squared_sum_base: variance_base,
-            ui_squared_sum_native: variance_native,
-            nominal: nominalValue,
-            unit: tmde.measurementPoint.unit,
-            symbol: variableSymbol,
-          };
-        }
-      });
-
-      // --- 2. PROCESS MANUAL COMPONENT INPUTS (UPDATED BLOCK) ---
-      if (manualComponents && Array.isArray(manualComponents)) {
-        manualComponents.forEach((comp) => {
-          // We assume comp.variableType or comp.name holds the mapping key (e.g. "Width")
-          const varType = comp.variableType || comp.name;
-          
-          // Find which equation symbol (e.g., "w") maps to this type (e.g., "Width")
-          const variableSymbol = Object.keys(variableMappings).find(
-            (key) => variableMappings[key] === varType
-          );
-
-          if (variableSymbol) {
-             // Use the manual component's nominal value for the equation scope
-             const nominalValue = parseFloat(comp.nominal);
-             
-             if (!isNaN(nominalValue)) {
-                // If the variable hasn't been defined by a TMDE yet, set it now
-                if (!nominalScope.hasOwnProperty(variableSymbol)) {
-                    nominalScope[variableSymbol] = nominalValue;
-                }
-
-                // Calculate Variance contribution
-                // Manual value is typically the standard uncertainty in the unit specified
-                const u_val = parseFloat(comp.value) || 0;
-                // If manual unit differs from base, conversion logic might be needed here. 
-                // For now, we assume consistency or that 'value' is already in base/native as needed.
-                // If 'value' is absolute:
-                const variance = u_val ** 2;
-
-                if (uncertaintyInputs[varType]) {
-                    uncertaintyInputs[varType].ui_squared_sum_base += variance;
-                    uncertaintyInputs[varType].ui_squared_sum_native += variance;
-                } else {
-                    uncertaintyInputs[varType] = {
-                        ui_squared_sum_base: variance,
-                        ui_squared_sum_native: variance,
-                        nominal: nominalValue,
-                        unit: comp.unit || "",
-                        symbol: variableSymbol
-                    };
-                }
-             }
-          }
-        });
       }
-  
-      // --- 3. VALIDATE ALL VARIABLES ARE PRESENT ---
-      const typesFound = new Set(Object.keys(uncertaintyInputs));
-      const requiredTypes = new Set(Object.values(variableMappings));
-      if (typesFound.size < requiredTypes.size) {
-        const missingTypes = [...requiredTypes].filter((t) => !typesFound.has(t));
-        
+    }
+    if (!expressionToParse) {
+      throw new Error("Equation expression is empty.");
+    }
+
+    const node = math.parse(expressionToParse);
+    const variables = Object.keys(variableMappings);
+
+    // Handle Constant Expressions (e.g. "1 + 1")
+    if (variables.length === 0) {
+      try {
+        const constantResult = node.compile().evaluate({});
         return {
-            combinedUncertaintyNative: NaN,
-            breakdown: [],
-            nominalResult: NaN,
-            error: `Waiting for assignments: ${missingTypes.join(", ")}`,
-            missingInputs: true, // Flag to indicate this is a configuration state, not a math error
-            missingTypes: missingTypes
+          combinedUncertaintyNative: 0,
+          breakdown: [],
+          nominalResult: constantResult,
+          error: null,
+        };
+      } catch (constEvalError) {
+        throw new Error(
+          "Equation has no mapped variables and is not a constant expression."
+        );
+      }
+    }
+
+    let sumOfSquaresNative = 0;
+    const calculationBreakdown = [];
+    const nominalScope = {};
+    const uncertaintyInputs = {};
+
+    // --- 3. PROCESS TMDE INPUTS (Build Data Source) ---
+    // We first collect all available physics/uncertainty data by "Variable Type"
+    tmdeTolerances.forEach((tmde) => {
+      if (
+        !tmde.variableType ||
+        !tmde.measurementPoint ||
+        tmde.measurementPoint.value === "" ||
+        tmde.measurementPoint.unit === ""
+      ) {
+        return; // Skip invalid TMDEs
+      }
+
+      const nominalValue = parseFloat(tmde.measurementPoint.value);
+      if (isNaN(nominalValue)) return;
+
+      // Calculate Standard Uncertainty (exclude resolution if needed)
+      const { standardUncertainty: ui_ppm } =
+        calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint, true);
+
+      const nominalInBase = unitSystem.toBaseUnit(
+        nominalValue,
+        tmde.measurementPoint.unit
+      );
+
+      // Convert ppm to absolute values
+      const ui_absolute_base = (ui_ppm / 1e6) * Math.abs(nominalInBase);
+      const ui_absolute_native = (ui_ppm / 1e6) * Math.abs(nominalValue);
+
+      const quantity = parseInt(tmde.quantity, 10) || 1;
+      const variance_base = ui_absolute_base ** 2 * quantity;
+      const variance_native = ui_absolute_native ** 2 * quantity;
+
+      if (isNaN(variance_base) || variance_base < 0 || isNaN(variance_native)) {
+        console.warn("Could not calculate valid absolute uncertainty for TMDE:", tmde);
+        return;
+      }
+
+      // Accumulate variance for this Variable Type
+      if (uncertaintyInputs[tmde.variableType]) {
+        uncertaintyInputs[tmde.variableType].ui_squared_sum_base += variance_base;
+        uncertaintyInputs[tmde.variableType].ui_squared_sum_native += variance_native;
+      } else {
+        uncertaintyInputs[tmde.variableType] = {
+          ui_squared_sum_base: variance_base,
+          ui_squared_sum_native: variance_native,
+          nominal: nominalValue,
+          unit: tmde.measurementPoint.unit,
+          // Note: We don't assign 'symbol' here yet, because one type might map to multiple symbols
         };
       }
-  
-      Object.keys(uncertaintyInputs).forEach((type) => {
-        uncertaintyInputs[type].ui_base = Math.sqrt(
-          uncertaintyInputs[type].ui_squared_sum_base
-        );
-        uncertaintyInputs[type].ui_native = Math.sqrt(
-          uncertaintyInputs[type].ui_squared_sum_native
-        );
+    });
+
+    // --- 4. PROCESS MANUAL COMPONENT INPUTS ---
+    if (manualComponents && Array.isArray(manualComponents)) {
+      manualComponents.forEach((comp) => {
+        const varType = comp.variableType || comp.name;
+        const nominalValue = parseFloat(comp.nominal);
+
+        if (!isNaN(nominalValue)) {
+          const u_val = parseFloat(comp.value) || 0;
+          // Assuming manual value is standard uncertainty (k=1)
+          const variance = u_val ** 2;
+
+          if (uncertaintyInputs[varType]) {
+            uncertaintyInputs[varType].ui_squared_sum_base += variance;
+            uncertaintyInputs[varType].ui_squared_sum_native += variance;
+          } else {
+            uncertaintyInputs[varType] = {
+              ui_squared_sum_base: variance,
+              ui_squared_sum_native: variance,
+              nominal: nominalValue,
+              unit: comp.unit || "",
+            };
+          }
+        }
       });
-  
-      variables.forEach((variableSymbol) => {
-        const variableType = variableMappings[variableSymbol];
-        const inputData = uncertaintyInputs[variableType];
-  
-        if (!inputData || inputData.ui_native === undefined) {
-          throw new Error(
-            `Internal error: Input data missing for type '${variableType}'.`
-          );
-        }
-        if (nominalScope[variableSymbol] === undefined) {
-          throw new Error(
-            `Nominal value for variable '${variableSymbol}' missing.`
-          );
-        }
-  
-        const ui_native = inputData.ui_native;
-        const ui_base = inputData.ui_base;
-  
-        const derivativeNode = math.derivative(node, variableSymbol);
-        const derivativeStr = derivativeNode.toString();
-        const derivativeFunc = derivativeNode.compile();
-        const sensitivityCoeff = derivativeFunc.evaluate(nominalScope);
-  
-        if (isNaN(sensitivityCoeff)) {
-          throw new Error(
-            `Could not evaluate derivative for '${variableSymbol}'.`
-          );
-        }
-  
-        const contribution_native = sensitivityCoeff * ui_native;
-        const termSquared_native = contribution_native ** 2;
-  
-        sumOfSquaresNative += termSquared_native;
-  
-        calculationBreakdown.push({
-          variable: variableSymbol,
-          type: variableType,
-          nominal: inputData.nominal,
-          unit: inputData.unit,
-          ui_absolute_base: ui_base,
-          ci: sensitivityCoeff,
-          derivativeString: derivativeStr,
-          contribution_native: Math.abs(contribution_native),
-          termSquared_native: termSquared_native,
-        });
-      });
-  
-      const combinedUncertaintyNative = math.sqrt(sumOfSquaresNative);
-  
-      let nominalResult = NaN;
-      try {
-        nominalResult = node.compile().evaluate(nominalScope);
-      } catch (evalError) {
-        console.error("Error evaluating nominal equation result:", evalError);
+    }
+
+    // --- 5. POPULATE NOMINAL SCOPE (Crucial Fix) ---
+    // Iterate through the EQUATION SYMBOLS (V1, V2, etc.) and assign values 
+    // from the collected uncertaintyInputs. This ensures every symbol gets a value.
+    Object.keys(variableMappings).forEach((symbol) => {
+      const mappedType = variableMappings[symbol];
+      const inputData = uncertaintyInputs[mappedType];
+
+      if (inputData) {
+        nominalScope[symbol] = inputData.nominal;
       }
-  
-      return {
-        combinedUncertaintyNative: combinedUncertaintyNative,
-        breakdown: calculationBreakdown,
-        nominalResult,
-        error: null,
-      };
-    } catch (error) {
-      console.error("Error calculating derived uncertainty:", error);
+    });
+
+    // --- 6. VALIDATE ALL VARIABLES ARE PRESENT ---
+    // Check if any mapped variables failed to get a value in the scope
+    const missingSymbols = variables.filter(sym => nominalScope[sym] === undefined);
+
+    if (missingSymbols.length > 0) {
+      // Map symbols back to their types for a friendlier error message
+      const missingTypes = missingSymbols.map(sym => variableMappings[sym]);
+
       return {
         combinedUncertaintyNative: NaN,
         breakdown: [],
         nominalResult: NaN,
-        error: error.message,
+        error: `Waiting for values for: ${[...new Set(missingTypes)].join(", ")}`,
+        missingInputs: true,
+        missingTypes: missingTypes
       };
     }
+
+    // Pre-calculate final uncertainty for each input type
+    Object.keys(uncertaintyInputs).forEach((type) => {
+      uncertaintyInputs[type].ui_base = Math.sqrt(
+        uncertaintyInputs[type].ui_squared_sum_base
+      );
+      uncertaintyInputs[type].ui_native = Math.sqrt(
+        uncertaintyInputs[type].ui_squared_sum_native
+      );
+    });
+
+    // --- 7. CALCULATE SENSITIVITY & COMBINED UNCERTAINTY ---
+    variables.forEach((variableSymbol) => {
+      const variableType = variableMappings[variableSymbol];
+      const inputData = uncertaintyInputs[variableType];
+
+      if (!inputData || inputData.ui_native === undefined) {
+        // Should be caught by step 6, but safety check
+        throw new Error(`Internal error: Data missing for '${variableType}'.`);
+      }
+
+      const ui_native = inputData.ui_native;
+      const ui_base = inputData.ui_base;
+
+      // MathJS Derivative
+      const derivativeNode = math.derivative(node, variableSymbol);
+      const derivativeStr = derivativeNode.toString();
+      const derivativeFunc = derivativeNode.compile();
+
+      // Evaluate derivative at the nominal point
+      const sensitivityCoeff = derivativeFunc.evaluate(nominalScope);
+
+      if (isNaN(sensitivityCoeff)) {
+        // Catch Complex numbers which evaluate to Objects in MathJS but fail isNaN checks in some envs, 
+        // or standard NaNs.
+        if (sensitivityCoeff && typeof sensitivityCoeff === 'object' && sensitivityCoeff.re !== undefined) {
+          throw new Error(`Derivative for '${variableSymbol}' is Complex. Check equation domain.`);
+        }
+        throw new Error(`Could not evaluate derivative for '${variableSymbol}' (Result: NaN).`);
+      }
+
+      const contribution_native = sensitivityCoeff * ui_native;
+      const termSquared_native = contribution_native ** 2;
+
+      sumOfSquaresNative += termSquared_native;
+
+      calculationBreakdown.push({
+        variable: variableSymbol,
+        type: variableType,
+        nominal: inputData.nominal,
+        unit: inputData.unit,
+        ui_absolute_base: ui_base,
+        ci: sensitivityCoeff,
+        derivativeString: derivativeStr,
+        contribution_native: Math.abs(contribution_native),
+        termSquared_native: termSquared_native,
+      });
+    });
+
+    const combinedUncertaintyNative = math.sqrt(sumOfSquaresNative);
+
+    let nominalResult = NaN;
+    try {
+      nominalResult = node.compile().evaluate(nominalScope);
+    } catch (evalError) {
+      console.error("Error evaluating nominal equation result:", evalError);
+    }
+
+    return {
+      combinedUncertaintyNative: combinedUncertaintyNative,
+      breakdown: calculationBreakdown,
+      nominalResult,
+      error: null,
+    };
+
+  } catch (error) {
+    console.error("Error calculating derived uncertainty:", error);
+    return {
+      combinedUncertaintyNative: NaN,
+      breakdown: [],
+      nominalResult: NaN,
+      error: error.message,
+    };
+  }
 };
 
-  /**
- * Smart Lookup for Instrument Specs
- * 1. Matches the Function based on unit (e.g. "V" matches "DC Voltage" if unit is V)
- * 2. Normalizes measurement value to instrument base unit (mV -> V)
- * 3. Finds the specific Range where value falls between Min/Max
- * 4. Returns the tolerance object for that range
- */
+/**
+* Smart Lookup for Instrument Specs
+* 1. Matches the Function based on unit (e.g. "V" matches "DC Voltage" if unit is V)
+* 2. Normalizes measurement value to instrument base unit (mV -> V)
+* 3. Finds the specific Range where value falls between Min/Max
+* 4. Returns the tolerance object for that range
+*/
 /**
  * Smart Lookup for Instrument Specs (ALL Matches)
  * Returns ARRAY of matches or NULL if none found.
  */
 export const findMatchingTolerances = (instrument, value, unit) => {
-    if (!instrument || !value || !unit) return null;
-  
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) return null;
-  
-    // 1. Find Matching Functions
-    const matchedFunctions = instrument.functions.filter(f => {
-        const funcUnit = unitSystem.units[f.unit];
-        const inputUnit = unitSystem.units[unit];
-        return funcUnit && inputUnit && funcUnit.quantity === inputUnit.quantity;
-    });
-  
-    if (matchedFunctions.length === 0) return null;
+  if (!instrument || !value || !unit) return null;
 
-    const allMatches = [];
+  const numValue = parseFloat(value);
+  if (isNaN(numValue)) return null;
 
-    matchedFunctions.forEach(func => {
-        // 2. Convert Input Value to Function's Base Unit
-        const inputToSi = unitSystem.units[unit].to_si;
-        const funcToSi = unitSystem.units[func.unit].to_si;
-        const valueInBase = (numValue * inputToSi) / funcToSi;
+  // 1. Find Matching Functions
+  const matchedFunctions = instrument.functions.filter(f => {
+    const funcUnit = unitSystem.units[f.unit];
+    const inputUnit = unitSystem.units[unit];
+    return funcUnit && inputUnit && funcUnit.quantity === inputUnit.quantity;
+  });
 
-        // 3. Find Ranges
-        func.ranges.forEach(r => {
-            const min = parseFloat(r.min);
-            const max = parseFloat(r.max);
-            const absVal = Math.abs(valueInBase); 
-            
-            if (absVal >= min && absVal <= max) {
-                allMatches.push({
-                    tolerance: r.tolerances,
-                    rangeMax: r.max,
-                    rangeUnit: func.unit,
-                    resolution: r.resolution,
-                    rangeInfo: `${r.min}-${r.max} ${func.unit}`,
-                    id: Date.now() + Math.random() // Unique ID for selection
-                });
-            }
+  if (matchedFunctions.length === 0) return null;
+
+  const allMatches = [];
+
+  matchedFunctions.forEach(func => {
+    // 2. Convert Input Value to Function's Base Unit
+    const inputToSi = unitSystem.units[unit].to_si;
+    const funcToSi = unitSystem.units[func.unit].to_si;
+    const valueInBase = (numValue * inputToSi) / funcToSi;
+
+    // 3. Find Ranges
+    func.ranges.forEach(r => {
+      const min = parseFloat(r.min);
+      const max = parseFloat(r.max);
+      const absVal = Math.abs(valueInBase);
+
+      if (absVal >= min && absVal <= max) {
+        allMatches.push({
+          tolerance: r.tolerances,
+          rangeMax: r.max,
+          rangeUnit: func.unit,
+          resolution: r.resolution,
+          rangeInfo: `${r.min}-${r.max} ${func.unit}`,
+          id: Date.now() + Math.random() // Unique ID for selection
         });
+      }
     });
+  });
 
-    return allMatches.length > 0 ? allMatches : null;
+  return allMatches.length > 0 ? allMatches : null;
 };
 
 /**
@@ -1061,12 +1042,12 @@ export const findMatchingTolerances = (instrument, value, unit) => {
  * Preserves existing behavior for parts of the app not yet updated.
  */
 export const findInstrumentTolerance = (instrument, value, unit) => {
-    const matches = findMatchingTolerances(instrument, value, unit);
-    if (!matches) return null;
+  const matches = findMatchingTolerances(instrument, value, unit);
+  if (!matches) return null;
 
-    // improved heuristic: prefer smallest rangeMax (tightest fit)
-    // The previous logic sorted by ranges.max before finding, so we replicate that preference.
-    return matches.sort((a, b) => parseFloat(a.rangeMax) - parseFloat(b.rangeMax))[0];
+  // improved heuristic: prefer smallest rangeMax (tightest fit)
+  // The previous logic sorted by ranges.max before finding, so we replicate that preference.
+  return matches.sort((a, b) => parseFloat(a.rangeMax) - parseFloat(b.rangeMax))[0];
 };
 
 // ==========================================
@@ -1074,58 +1055,58 @@ export const findInstrumentTolerance = (instrument, value, unit) => {
 // ==========================================
 
 export const recalculateTolerance = (instrument, value, unit, existingData = {}) => {
-    let matchedData = null;
+  let matchedData = null;
 
-    // CHECK: Did we pass a specific resolved match (from the Ambiguity Modal or Range Lookup)?
-    // A "Match Object" typically has { tolerance: {...}, rangeMax: ..., id: ... }
-    if (existingData && existingData.tolerance && existingData.rangeInfo) {
-        matchedData = existingData;
-    } else {
-        // Fallback to auto-detection (Best Fit) if we just passed an old tolerance object
-        matchedData = findInstrumentTolerance(instrument, parseFloat(value), unit);
-    }
+  // CHECK: Did we pass a specific resolved match (from the Ambiguity Modal or Range Lookup)?
+  // A "Match Object" typically has { tolerance: {...}, rangeMax: ..., id: ... }
+  if (existingData && existingData.tolerance && existingData.rangeInfo) {
+    matchedData = existingData;
+  } else {
+    // Fallback to auto-detection (Best Fit) if we just passed an old tolerance object
+    matchedData = findInstrumentTolerance(instrument, parseFloat(value), unit);
+  }
 
-    if (!matchedData) return null;
+  if (!matchedData) return null;
 
-    // Deep copy the raw specs from the matched range
-    const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
-    
-    // Determine Range Max for 'range' specs
-    let calculatedRangeMax = matchedData.rangeMax; 
-    if (!calculatedRangeMax) calculatedRangeMax = parseFloat(value);
-    
-    // Apply updates to the specs structure (units, range values, etc.)
-    const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
-    
-    compKeys.forEach(key => {
-        if (specs[key]) {
-            if (!specs[key].unit) {
-                if (key === 'reading' || key === 'range') specs[key].unit = '%';
-                else if (key === 'floor' || key === 'readings_iv') specs[key].unit = unit;
-            }
-            if (key === 'range') {
-                specs[key].value = calculatedRangeMax;
-            }
-            if (specs[key].high) {
-                const highVal = parseFloat(specs[key].high);
-                if (!isNaN(highVal)) {
-                    specs[key].low = String(-Math.abs(highVal));
-                }
-                specs[key].symmetric = true; 
-            }
+  // Deep copy the raw specs from the matched range
+  const specs = JSON.parse(JSON.stringify(matchedData.tolerances || matchedData.tolerance || {}));
+
+  // Determine Range Max for 'range' specs
+  let calculatedRangeMax = matchedData.rangeMax;
+  if (!calculatedRangeMax) calculatedRangeMax = parseFloat(value);
+
+  // Apply updates to the specs structure (units, range values, etc.)
+  const compKeys = ['reading', 'range', 'floor', 'readings_iv', 'db'];
+
+  compKeys.forEach(key => {
+    if (specs[key]) {
+      if (!specs[key].unit) {
+        if (key === 'reading' || key === 'range') specs[key].unit = '%';
+        else if (key === 'floor' || key === 'readings_iv') specs[key].unit = unit;
+      }
+      if (key === 'range') {
+        specs[key].value = calculatedRangeMax;
+      }
+      if (specs[key].high) {
+        const highVal = parseFloat(specs[key].high);
+        if (!isNaN(highVal)) {
+          specs[key].low = String(-Math.abs(highVal));
         }
-    });
-    
-    // Return a CLEAN object. 
-    // We do NOT spread 'existingData' directly because it might contain the raw 'tolerance' object 
-    // or other metadata from the lookup that we don't want polluting the actual tolerance state.
-    // We only preserve specific keys if 'existingData' was actually a previous Tolerance State, 
-    // but in the "Edit UUT" flow, we usually want to Replace, not Merge, when switching ranges.
-    
-    return {
-        ...specs,
-        measuringResolution: matchedData.resolution
-    };
+        specs[key].symmetric = true;
+      }
+    }
+  });
+
+  // Return a CLEAN object. 
+  // We do NOT spread 'existingData' directly because it might contain the raw 'tolerance' object 
+  // or other metadata from the lookup that we don't want polluting the actual tolerance state.
+  // We only preserve specific keys if 'existingData' was actually a previous Tolerance State, 
+  // but in the "Edit UUT" flow, we usually want to Replace, not Merge, when switching ranges.
+
+  return {
+    ...specs,
+    measuringResolution: matchedData.resolution
+  };
 };
 
 // ==========================================
@@ -1298,7 +1279,7 @@ export function PHID(z) {
       (((((P[6] * ZABS + P[5]) * ZABS + P[4]) * ZABS + P[3]) * ZABS + P[2]) *
         ZABS +
         P[1]) *
-        ZABS +
+      ZABS +
       P[0];
     const denominator =
       ((((((Q[7] * ZABS + Q[6]) * ZABS + Q[5]) * ZABS + Q[4]) * ZABS +
@@ -1307,7 +1288,7 @@ export function PHID(z) {
         Q[2]) *
         ZABS +
         Q[1]) *
-        ZABS +
+      ZABS +
       Q[0];
     p = (EXPNTL * numerator) / denominator;
   }
@@ -1365,8 +1346,8 @@ export function bivariateNormalCDF(A, B, r) {
         LH =
           LH -
           w_quad[i] *
-            Math.exp(-h5 / rr) *
-            (Math.exp(-h3 / (1 + r2_inner)) / r2_inner / h7 - 1 - AA * rr);
+          Math.exp(-h5 / rr) *
+          (Math.exp(-h3 / (1 + r2_inner)) / r2_inner / h7 - 1 - AA * rr);
       }
     }
 
@@ -1504,7 +1485,7 @@ function getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp) {
   const bNoTolUp = isNotNumeric(rngTolUp);
 
   if (bNoTolLow && bNoTolUp) return ["Fail"];
-  
+
   let dNominal = vbaNbrValidate(rngNominal);
   let dAvg = vbaNbrValidate(rngAvg);
   let dTolLow = vbaNbrValidate(rngTolLow);
@@ -1618,73 +1599,73 @@ function calRelwTUR(sRiskType, rngTUR, rngReqTUR, dMeasUnc, dMeasRel, dTolLow, d
 
 // --- CORE PFA MATH FUNCTIONS ---
 function PFA_Core(uUUT, uCal, LLow, LUp, ALow, AUp) {
-    const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
-    const cor = uUUT / uDev;
-    const term1 = bivariateNormalCDF(LLow / uUUT, AUp / uDev, cor) - bivariateNormalCDF(LLow / uUUT, ALow / uDev, cor);
-    const term2 = bivariateNormalCDF(-LUp / uUUT, -ALow / uDev, cor) - bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
-    return [term1 + term2, term1, term2, uUUT, uDev, cor];
+  const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+  const cor = uUUT / uDev;
+  const term1 = bivariateNormalCDF(LLow / uUUT, AUp / uDev, cor) - bivariateNormalCDF(LLow / uUUT, ALow / uDev, cor);
+  const term2 = bivariateNormalCDF(-LUp / uUUT, -ALow / uDev, cor) - bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
+  return [term1 + term2, term1, term2, uUUT, uDev, cor];
 }
 
 function PFAUL_Core(uUUT, uCal, avg, LUp, AUp) {
-    const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
-    const cor = uUUT / uDev;
-    const term1 = vbNormSDist((LUp - avg) / uUUT);
-    const term2 = bivariateNormalCDF(-(LUp - avg) / uUUT, -(AUp - avg) / uDev, cor);
-    return [1 - term1 - term2, term1, term2, uUUT, uDev, cor];
+  const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+  const cor = uUUT / uDev;
+  const term1 = vbNormSDist((LUp - avg) / uUUT);
+  const term2 = bivariateNormalCDF(-(LUp - avg) / uUUT, -(AUp - avg) / uDev, cor);
+  return [1 - term1 - term2, term1, term2, uUUT, uDev, cor];
 }
 
 function PFALL_Core(uUUT, uCal, avg, LLow, ALow) {
-    const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
-    const cor = uUUT / uDev;
-    const term1 = vbNormSDist((LLow - avg) / uUUT);
-    const term2 = bivariateNormalCDF((LLow - avg) / uUUT, (ALow - avg) / uDev, cor);
-    return [term1 - term2, term1, term2, uUUT, uDev, cor];
+  const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+  const cor = uUUT / uDev;
+  const term1 = vbNormSDist((LLow - avg) / uUUT);
+  const term2 = bivariateNormalCDF((LLow - avg) / uUUT, (ALow - avg) / uDev, cor);
+  return [term1 - term2, term1, term2, uUUT, uDev, cor];
 }
 
 // --- CORE PFR MATH FUNCTIONS ---
 function PFR_Core(uUUT, uCal, LLow, LUp, ALow, AUp) {
-    const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
-    const cor = uUUT / uDev;
-    const term1 = bivariateNormalCDF(LUp / uUUT, ALow / uDev, cor) - bivariateNormalCDF(LLow / uUUT, ALow / uDev, cor);
-    const term2 = bivariateNormalCDF(-LLow / uUUT, -AUp / uDev, cor) - bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
-    return [term1 + term2, term1, term2];
+  const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+  const cor = uUUT / uDev;
+  const term1 = bivariateNormalCDF(LUp / uUUT, ALow / uDev, cor) - bivariateNormalCDF(LLow / uUUT, ALow / uDev, cor);
+  const term2 = bivariateNormalCDF(-LLow / uUUT, -AUp / uDev, cor) - bivariateNormalCDF(-LUp / uUUT, -AUp / uDev, cor);
+  return [term1 + term2, term1, term2];
 }
 
 function PFRUL_Core(uUUT, uCal, avg, LUp, AUp) {
-    const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
-    const cor = uUUT / uDev;
-    const term1 = vbNormSDist((LUp - avg) / uUUT);
-    const term2 = bivariateNormalCDF((LUp - avg) / uUUT, (AUp - avg) / uDev, cor);
-    return [term1 - term2, term1, term2];
+  const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+  const cor = uUUT / uDev;
+  const term1 = vbNormSDist((LUp - avg) / uUUT);
+  const term2 = bivariateNormalCDF((LUp - avg) / uUUT, (AUp - avg) / uDev, cor);
+  return [term1 - term2, term1, term2];
 }
 
 function PFRLL_Core(uUUT, uCal, avg, LLow, ALow) {
-    const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
-    const cor = uUUT / uDev;
-    const term1 = vbNormSDist((LLow - avg) / uUUT);
-    const term2 = bivariateNormalCDF(-(LLow - avg) / uUUT, -(ALow - avg) / uDev, cor);
-    return [1 - term1 - term2, term1, term2];
+  const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+  const cor = uUUT / uDev;
+  const term1 = vbNormSDist((LLow - avg) / uUUT);
+  const term2 = bivariateNormalCDF(-(LLow - avg) / uUUT, -(ALow - avg) / uDev, cor);
+  return [1 - term1 - term2, term1, term2];
 }
 
 // --- PFA ITERATION LOGIC (Used by CalInt/CalRel) ---
 function PFAIter(sRiskType, dMeasRel, dAvg, dTolLow, dTolUp, dMeasUnc) {
-    let dUUTUnc;
-    if (sRiskType === "NotThreshold") {
-        dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-        if (dUUTUnc <= 0) return -1;
-        return PFA_Core(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dTolLow, dTolUp)[0];
-    }
-    if (sRiskType === "UpThreshold") {
-        dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
-        if (dUUTUnc <= 0) return -1;
-        return PFAUL_Core(dUUTUnc, dMeasUnc, dAvg, dTolUp, dTolUp)[0];
-    }
-    if (sRiskType === "LowThreshold") {
-        dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
-        if (dUUTUnc <= 0) return -1;
-        return PFALL_Core(dUUTUnc, dMeasUnc, dAvg, dTolLow, dTolLow)[0];
-    }
-    return -1;
+  let dUUTUnc;
+  if (sRiskType === "NotThreshold") {
+    dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
+    if (dUUTUnc <= 0) return -1;
+    return PFA_Core(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dTolLow, dTolUp)[0];
+  }
+  if (sRiskType === "UpThreshold") {
+    dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
+    if (dUUTUnc <= 0) return -1;
+    return PFAUL_Core(dUUTUnc, dMeasUnc, dAvg, dTolUp, dTolUp)[0];
+  }
+  if (sRiskType === "LowThreshold") {
+    dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
+    if (dUUTUnc <= 0) return -1;
+    return PFALL_Core(dUUTUnc, dMeasUnc, dAvg, dTolLow, dTolLow)[0];
+  }
+  return -1;
 }
 
 // ---------------------------------------------------------
@@ -1808,377 +1789,377 @@ export function PFRMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngM
 }
 
 export function gbLowMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel) {
-    const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel] = getRiskInfo(
-        rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel
-    );
-    const dReq = vbaNbrValidate(rngReq);
-    let dUUTUnc, GBMult;
+  const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel] = getRiskInfo(
+    rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel
+  );
+  const dReq = vbaNbrValidate(rngReq);
+  let dUUTUnc, GBMult;
 
-    // Helper specific to GB
-    function pfaGBMult(req, uUUT, uCal, LLow, LUp) {
-        const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
-        const REOP = vbNormSDist(LUp / uDev) - vbNormSDist(LLow / uDev);
-        const precision = 0.00001;
-        let GBMult = 1;
-        let AUp = LUp;
-        let ALow = LLow;
-        let uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
-        
-        let EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
+  // Helper specific to GB
+  function pfaGBMult(req, uUUT, uCal, LLow, LUp) {
+    const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+    const REOP = vbNormSDist(LUp / uDev) - vbNormSDist(LLow / uDev);
+    const precision = 0.00001;
+    let GBMult = 1;
+    let AUp = LUp;
+    let ALow = LLow;
+    let uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
 
-        if (EstPFA > req) {
-            let change = 0.05;
-            do {
-                GBMult -= change;
-                AUp = LUp * GBMult;
-                ALow = LLow * GBMult;
-                uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
-                EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
-            } while (EstPFA > req);
-            do {
-                change /= 2;
-                GBMult += EstPFA < req ? change : -change;
-                AUp = LUp * GBMult;
-                ALow = LLow * GBMult;
-                uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
-                EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
-            } while (!(EstPFA >= req - precision && EstPFA <= req));
-        }
-        return GBMult;
+    let EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
+
+    if (EstPFA > req) {
+      let change = 0.05;
+      do {
+        GBMult -= change;
+        AUp = LUp * GBMult;
+        ALow = LLow * GBMult;
+        uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
+        EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
+      } while (EstPFA > req);
+      do {
+        change /= 2;
+        GBMult += EstPFA < req ? change : -change;
+        AUp = LUp * GBMult;
+        ALow = LLow * GBMult;
+        uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
+        EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
+      } while (!(EstPFA >= req - precision && EstPFA <= req));
     }
-    
-    // Internal Helper for LL GB
-    function pfaLLGBMult(req, uUUT, uCal, avg, LLow) {
-        const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
-        const REOP = vbNormSDist((avg - LLow) / uDev);
-        const precision = 0.00001;
-        let GBMult = 1;
-        let ALow = LLow;
-        let uUUT_GB = uutUncLL(REOP, uCal, avg, ALow);
-        
-        let EstPFA = PFALL_Core(uUUT_GB, uCal, avg, LLow, ALow)[0];
+    return GBMult;
+  }
 
-        if (EstPFA > req) {
-            let change = 0.05;
-            do {
-                GBMult -= change;
-                ALow = avg - (avg - LLow) * GBMult;
-                uUUT_GB = uutUncLL(REOP, uCal, avg, ALow);
-                EstPFA = PFALL_Core(uUUT_GB, uCal, avg, LLow, ALow)[0];
-            } while (EstPFA > req);
-            do {
-                change /= 2;
-                GBMult += EstPFA < req ? change : -change;
-                ALow = avg - (avg - LLow) * GBMult;
-                uUUT_GB = uutUncLL(REOP, uCal, avg, ALow);
-                EstPFA = PFALL_Core(uUUT_GB, uCal, avg, LLow, ALow)[0];
-            } while (!(EstPFA >= req - precision && EstPFA <= req));
-        }
-        return GBMult;
-    }
+  // Internal Helper for LL GB
+  function pfaLLGBMult(req, uUUT, uCal, avg, LLow) {
+    const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+    const REOP = vbNormSDist((avg - LLow) / uDev);
+    const precision = 0.00001;
+    let GBMult = 1;
+    let ALow = LLow;
+    let uUUT_GB = uutUncLL(REOP, uCal, avg, ALow);
 
-    if (sRiskType === "NotThreshold") {
-        dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-        if (dUUTUnc <= 0) return [];
-        GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
-        return [dNominal + dTolLow * GBMult,GBMult];
-    } else if (sRiskType === "LowThreshold") {
-        dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
-        if (dUUTUnc <= 0) return [];
-        GBMult = pfaLLGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolLow);
-        return [dAvg - (dAvg - dTolLow) * GBMult,GBMult];
-    } else if (sRiskType === "AltLowThreshold") {
-        return [dTolLow - PHIDInv(dReq) * dMeasUnc,GBMult];
+    let EstPFA = PFALL_Core(uUUT_GB, uCal, avg, LLow, ALow)[0];
+
+    if (EstPFA > req) {
+      let change = 0.05;
+      do {
+        GBMult -= change;
+        ALow = avg - (avg - LLow) * GBMult;
+        uUUT_GB = uutUncLL(REOP, uCal, avg, ALow);
+        EstPFA = PFALL_Core(uUUT_GB, uCal, avg, LLow, ALow)[0];
+      } while (EstPFA > req);
+      do {
+        change /= 2;
+        GBMult += EstPFA < req ? change : -change;
+        ALow = avg - (avg - LLow) * GBMult;
+        uUUT_GB = uutUncLL(REOP, uCal, avg, ALow);
+        EstPFA = PFALL_Core(uUUT_GB, uCal, avg, LLow, ALow)[0];
+      } while (!(EstPFA >= req - precision && EstPFA <= req));
     }
-    return "";
+    return GBMult;
+  }
+
+  if (sRiskType === "NotThreshold") {
+    dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
+    if (dUUTUnc <= 0) return [];
+    GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
+    return [dNominal + dTolLow * GBMult, GBMult];
+  } else if (sRiskType === "LowThreshold") {
+    dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
+    if (dUUTUnc <= 0) return [];
+    GBMult = pfaLLGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolLow);
+    return [dAvg - (dAvg - dTolLow) * GBMult, GBMult];
+  } else if (sRiskType === "AltLowThreshold") {
+    return [dTolLow - PHIDInv(dReq) * dMeasUnc, GBMult];
+  }
+  return "";
 }
 
 export function gbUpMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel) {
-    const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel] = getRiskInfo(
-        rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel
-    );
-    const dReq = vbaNbrValidate(rngReq);
-    let dUUTUnc, GBMult;
+  const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel] = getRiskInfo(
+    rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel
+  );
+  const dReq = vbaNbrValidate(rngReq);
+  let dUUTUnc, GBMult;
 
-    function PFAULGBMult(req, uUUT, uCal, avg, LUp) {
-        const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
-        const REOP = vbNormSDist((LUp - avg) / uDev);
-        const precision = 0.00001;
-        let GBMult = 1;
-        let AUp = LUp;
-        let uUUT_GB = uutUncUL(REOP, uCal, avg, AUp);
+  function PFAULGBMult(req, uUUT, uCal, avg, LUp) {
+    const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+    const REOP = vbNormSDist((LUp - avg) / uDev);
+    const precision = 0.00001;
+    let GBMult = 1;
+    let AUp = LUp;
+    let uUUT_GB = uutUncUL(REOP, uCal, avg, AUp);
 
-        let EstPFA = PFAUL_Core(uUUT_GB, uCal, avg, LUp, AUp)[0];
+    let EstPFA = PFAUL_Core(uUUT_GB, uCal, avg, LUp, AUp)[0];
 
-        if (EstPFA > req) {
-            let change = 0.05;
-            do {
-                GBMult -= change;
-                AUp = (LUp - avg) * GBMult + avg;
-                uUUT_GB = uutUncUL(REOP, uCal, avg, AUp);
-                EstPFA = PFAUL_Core(uUUT_GB, uCal, avg, LUp, AUp)[0];
-            } while (EstPFA > req);
-            do {
-                change /= 2;
-                GBMult += EstPFA < req ? change : -change;
-                AUp = (LUp - avg) * GBMult + avg;
-                uUUT_GB = uutUncUL(REOP, uCal, avg, AUp);
-                EstPFA = PFAUL_Core(uUUT_GB, uCal, avg, LUp, AUp)[0];
-            } while (!(EstPFA >= req - precision && EstPFA <= req));
-        }
-        return GBMult;
+    if (EstPFA > req) {
+      let change = 0.05;
+      do {
+        GBMult -= change;
+        AUp = (LUp - avg) * GBMult + avg;
+        uUUT_GB = uutUncUL(REOP, uCal, avg, AUp);
+        EstPFA = PFAUL_Core(uUUT_GB, uCal, avg, LUp, AUp)[0];
+      } while (EstPFA > req);
+      do {
+        change /= 2;
+        GBMult += EstPFA < req ? change : -change;
+        AUp = (LUp - avg) * GBMult + avg;
+        uUUT_GB = uutUncUL(REOP, uCal, avg, AUp);
+        EstPFA = PFAUL_Core(uUUT_GB, uCal, avg, LUp, AUp)[0];
+      } while (!(EstPFA >= req - precision && EstPFA <= req));
     }
+    return GBMult;
+  }
 
-    function pfaGBMult(req, uUUT, uCal, LLow, LUp) {
-        // Reuse logic from gbLowMgr - logic identical for symmetric
-        const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
-        const REOP = vbNormSDist(LUp / uDev) - vbNormSDist(LLow / uDev);
-        const precision = 0.00001;
-        let GBMult = 1;
-        let AUp = LUp;
-        let ALow = LLow;
-        let uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
-        let EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
-        
-        if (EstPFA > req) {
-            let change = 0.05;
-            do {
-                GBMult -= change;
-                AUp = LUp * GBMult;
-                ALow = LLow * GBMult;
-                uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
-                EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
-            } while (EstPFA > req);
-            do {
-                change /= 2;
-                GBMult += EstPFA < req ? change : -change;
-                AUp = LUp * GBMult;
-                ALow = LLow * GBMult;
-                uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
-                EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
-            } while (!(EstPFA >= req - precision && EstPFA <= req));
-        }
-        return GBMult;
-    }
+  function pfaGBMult(req, uUUT, uCal, LLow, LUp) {
+    // Reuse logic from gbLowMgr - logic identical for symmetric
+    const uDev = Math.sqrt(Math.pow(uUUT, 2) + Math.pow(uCal, 2));
+    const REOP = vbNormSDist(LUp / uDev) - vbNormSDist(LLow / uDev);
+    const precision = 0.00001;
+    let GBMult = 1;
+    let AUp = LUp;
+    let ALow = LLow;
+    let uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
+    let EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
 
-    if (sRiskType === "NotThreshold") {
-        dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-        if (dUUTUnc <= 0) return [];
-        GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
-        return [dTolUp * GBMult + dNominal,GBMult];
-    } else if (sRiskType === "UpThreshold") {
-        dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
-        if (dUUTUnc <= 0) return [];
-        GBMult = PFAULGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolUp);
-        return [(dTolUp - dAvg) * GBMult + dAvg,GBMult];
-    } else if (sRiskType === "AltUpThreshold") {
-        return [dTolUp + PHIDInv(dReq) * dMeasUnc,GBMult];
+    if (EstPFA > req) {
+      let change = 0.05;
+      do {
+        GBMult -= change;
+        AUp = LUp * GBMult;
+        ALow = LLow * GBMult;
+        uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
+        EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
+      } while (EstPFA > req);
+      do {
+        change /= 2;
+        GBMult += EstPFA < req ? change : -change;
+        AUp = LUp * GBMult;
+        ALow = LLow * GBMult;
+        uUUT_GB = uutUnc(REOP, uCal, ALow, AUp);
+        EstPFA = PFA_Core(uUUT_GB, uCal, LLow, LUp, ALow, AUp)[0];
+      } while (!(EstPFA >= req - precision && EstPFA <= req));
     }
-    return "";
+    return GBMult;
+  }
+
+  if (sRiskType === "NotThreshold") {
+    dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
+    if (dUUTUnc <= 0) return [];
+    GBMult = pfaGBMult(dReq, dUUTUnc, dMeasUnc, dTolLow, dTolUp);
+    return [dTolUp * GBMult + dNominal, GBMult];
+  } else if (sRiskType === "UpThreshold") {
+    dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
+    if (dUUTUnc <= 0) return [];
+    GBMult = PFAULGBMult(dReq, dUUTUnc, dMeasUnc, dAvg, dTolUp);
+    return [(dTolUp - dAvg) * GBMult + dAvg, GBMult];
+  } else if (sRiskType === "AltUpThreshold") {
+    return [dTolUp + PHIDInv(dReq) * dMeasUnc, GBMult];
+  }
+  return "";
 }
 
 export function GBMultMgr(rngReq, rngNominal, rngAvg, rngTolLow, rngTolUp, rngGBLow, rngGBUp) {
-    const [sRiskType, dNominal, dAvg, dTolLow, dTolUp] = getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp);
-    const dGBLow = vbaNbrValidate(rngGBLow);
-    const dGBUp = vbaNbrValidate(rngGBUp);
+  const [sRiskType, dNominal, dAvg, dTolLow, dTolUp] = getTolInfo(rngNominal, rngAvg, rngTolLow, rngTolUp);
+  const dGBLow = vbaNbrValidate(rngGBLow);
+  const dGBUp = vbaNbrValidate(rngGBUp);
 
-    if (dGBLow === 0 && dGBUp === 0) return "";
+  if (dGBLow === 0 && dGBUp === 0) return "";
 
-    if (sRiskType === "NotThreshold") {
-        return Math.abs(dTolUp) > 0 ? Math.abs(dGBUp - dNominal) / Math.abs(dTolUp) : "";
-    } else if (sRiskType === "UpThreshold") {
-        return Math.abs(dTolUp - dAvg) > 0 ? Math.abs(dGBUp - dAvg) / Math.abs(dTolUp - dAvg) : "";
-    } else if (sRiskType === "LowThreshold") {
-        return Math.abs(dAvg - dTolLow) > 0 ? Math.abs(dAvg - dGBLow) / Math.abs(dAvg - dTolLow) : "";
-    }
-    return "";
+  if (sRiskType === "NotThreshold") {
+    return Math.abs(dTolUp) > 0 ? Math.abs(dGBUp - dNominal) / Math.abs(dTolUp) : "";
+  } else if (sRiskType === "UpThreshold") {
+    return Math.abs(dTolUp - dAvg) > 0 ? Math.abs(dGBUp - dAvg) / Math.abs(dTolUp - dAvg) : "";
+  } else if (sRiskType === "LowThreshold") {
+    return Math.abs(dAvg - dTolLow) > 0 ? Math.abs(dAvg - dGBLow) / Math.abs(dAvg - dTolLow) : "";
+  }
+  return "";
 }
 
 export function PFAwGBMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp) {
-    const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel, dGBLow, dGBUp] = GetGBInfo(
-        rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp
-    );
-    
-    // Return empty array strings on failure so destructuring [a,b,c] doesn't crash
-    if (dGBLow === 0 && dGBUp === 0) return ["", "", ""];
+  const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel, dGBLow, dGBUp] = GetGBInfo(
+    rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp
+  );
 
-    let dUUTUnc;
+  // Return empty array strings on failure so destructuring [a,b,c] doesn't crash
+  if (dGBLow === 0 && dGBUp === 0) return ["", "", ""];
 
-    if (sRiskType === "NotThreshold") {
-        dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dGBLow, dGBUp);
-        if (dUUTUnc <= 0) return ["", "", ""];
-        return PFA_Core(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dGBLow, dGBUp);
-    }
-    if (sRiskType === "UpThreshold") {
-        dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dGBUp);
-        if (dUUTUnc <= 0) return ["", "", ""];
-        return PFAUL_Core(dUUTUnc, dMeasUnc, dAvg, dTolUp, dGBUp);
-    }
-    if (sRiskType === "LowThreshold") {
-        dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dGBLow);
-        if (dUUTUnc <= 0) return ["", "", ""];
-        return PFALL_Core(dUUTUnc, dMeasUnc, dAvg, dTolLow, dGBLow);
-    }
-    if (sRiskType === "AltUpThreshold") {
-        const val = PHID((dGBUp - dTolUp) / dMeasUnc);
-        // Map scalar result to array: [Total, Lower, Upper]
-        // UpThreshold implies risk is only on the Upper tail
-        return [val, 0, val];
-    }
-    if (sRiskType === "AltLowThreshold") {
-        const val = PHID((dTolLow - dGBLow) / dMeasUnc);
-        // LowThreshold implies risk is only on the Lower tail
-        return [val, val, 0];
-    }
-    return ["", "", ""];
+  let dUUTUnc;
+
+  if (sRiskType === "NotThreshold") {
+    dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dGBLow, dGBUp);
+    if (dUUTUnc <= 0) return ["", "", ""];
+    return PFA_Core(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dGBLow, dGBUp);
+  }
+  if (sRiskType === "UpThreshold") {
+    dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dGBUp);
+    if (dUUTUnc <= 0) return ["", "", ""];
+    return PFAUL_Core(dUUTUnc, dMeasUnc, dAvg, dTolUp, dGBUp);
+  }
+  if (sRiskType === "LowThreshold") {
+    dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dGBLow);
+    if (dUUTUnc <= 0) return ["", "", ""];
+    return PFALL_Core(dUUTUnc, dMeasUnc, dAvg, dTolLow, dGBLow);
+  }
+  if (sRiskType === "AltUpThreshold") {
+    const val = PHID((dGBUp - dTolUp) / dMeasUnc);
+    // Map scalar result to array: [Total, Lower, Upper]
+    // UpThreshold implies risk is only on the Upper tail
+    return [val, 0, val];
+  }
+  if (sRiskType === "AltLowThreshold") {
+    const val = PHID((dTolLow - dGBLow) / dMeasUnc);
+    // LowThreshold implies risk is only on the Lower tail
+    return [val, val, 0];
+  }
+  return ["", "", ""];
 }
 
 export function PFRwGBMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp) {
-    const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel, dGBLow, dGBUp] = GetGBInfo(
-        rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp
-    );
+  const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel, dGBLow, dGBUp] = GetGBInfo(
+    rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp
+  );
 
-    if (dGBLow === 0 && dGBUp === 0) return ["", "", ""];
+  if (dGBLow === 0 && dGBUp === 0) return ["", "", ""];
 
-    let dUUTUnc;
+  let dUUTUnc;
 
-    if (sRiskType === "NotThreshold") {
-        dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dGBLow, dGBUp);
-        if (dUUTUnc <= 0) return ["", "", ""];
-        return PFR_Core(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dGBLow, dGBUp);
-    }
-    if (sRiskType === "UpThreshold") {
-        dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dGBUp);
-        if (dUUTUnc <= 0) return ["", "", ""];
-        return PFRUL_Core(dUUTUnc, dMeasUnc, dAvg, dTolUp, dGBUp);
-    }
-    if (sRiskType === "LowThreshold") {
-        dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dGBLow);
-        if (dUUTUnc <= 0) return ["", "", ""];
-        return PFRLL_Core(dUUTUnc, dMeasUnc, dAvg, dTolLow, dGBLow);
-    }
-    return ["", "", ""];
+  if (sRiskType === "NotThreshold") {
+    dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dGBLow, dGBUp);
+    if (dUUTUnc <= 0) return ["", "", ""];
+    return PFR_Core(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dGBLow, dGBUp);
+  }
+  if (sRiskType === "UpThreshold") {
+    dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dGBUp);
+    if (dUUTUnc <= 0) return ["", "", ""];
+    return PFRUL_Core(dUUTUnc, dMeasUnc, dAvg, dTolUp, dGBUp);
+  }
+  if (sRiskType === "LowThreshold") {
+    dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dGBLow);
+    if (dUUTUnc <= 0) return ["", "", ""];
+    return PFRLL_Core(dUUTUnc, dMeasUnc, dAvg, dTolLow, dGBLow);
+  }
+  return ["", "", ""];
 }
 
 export function CalIntwGBMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngReqRel, rngMeasRel, rngGBLow, rngGBUp, rngTUR, rngReqTUR, rngInt) {
-    const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel, dGBLow, dGBUp] = GetGBInfo(
-        rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp
-    );
-    const dReqRel = vbaNbrValidate(rngReqRel);
-    const dTUR = vbaNbrValidate(rngTUR);
-    const dReqTur = vbaNbrValidate(rngReqTUR);
-    const dInt = vbaNbrValidate(rngInt);
+  const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel, dGBLow, dGBUp] = GetGBInfo(
+    rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel, rngGBLow, rngGBUp
+  );
+  const dReqRel = vbaNbrValidate(rngReqRel);
+  const dTUR = vbaNbrValidate(rngTUR);
+  const dReqTur = vbaNbrValidate(rngReqTUR);
+  const dInt = vbaNbrValidate(rngInt);
 
-    if (dGBLow === 0 && dGBUp === 0) return "";
-    if (sRiskType !== "NotThreshold" && sRiskType !== "UpThreshold" && sRiskType !== "LowThreshold") return "";
+  if (dGBLow === 0 && dGBUp === 0) return "";
+  if (sRiskType !== "NotThreshold" && sRiskType !== "UpThreshold" && sRiskType !== "LowThreshold") return "";
 
-    let dObsRel;
-    if (dReqTur > 0) {
-        const dTstRUnc = (dMeasUnc * dTUR) / dReqTur;
-        dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-    } else {
-        dObsRel = dMeasRel;
-    }
-    
-    const dPredRel = PredRel(sRiskType, dMeasUnc, dReqRel, dAvg, dTolLow, dTolUp, dMeasUnc, dGBLow, dGBUp);
-    const dPredInt = (Math.log(dPredRel) / Math.log(dObsRel)) * dInt;
-    return dPredInt > 0 ? [dPredInt,dObsRel,dPredRel] : "";
+  let dObsRel;
+  if (dReqTur > 0) {
+    const dTstRUnc = (dMeasUnc * dTUR) / dReqTur;
+    dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel, dAvg, dTolLow, dTolUp, dMeasUnc);
+  } else {
+    dObsRel = dMeasRel;
+  }
+
+  const dPredRel = PredRel(sRiskType, dMeasUnc, dReqRel, dAvg, dTolLow, dTolUp, dMeasUnc, dGBLow, dGBUp);
+  const dPredInt = (Math.log(dPredRel) / Math.log(dObsRel)) * dInt;
+  return dPredInt > 0 ? [dPredInt, dObsRel, dPredRel] : "";
 }
 
 export function CalIntMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngReqRel, rngMeasRel, rngTUR, rngReqTUR, rngInt, rngReqPFA) {
-    const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel] = getRiskInfo(
-        rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel
-    );
-    const dTUR = vbaNbrValidate(rngTUR);
-    const dReqTur = vbaNbrValidate(rngReqTUR);
-    const dInt = vbaNbrValidate(rngInt);
-    const dReqRel = vbaNbrValidate(rngReqRel);
-    const dReqPFA = vbaNbrValidate(rngReqPFA);
+  const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel] = getRiskInfo(
+    rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel
+  );
+  const dTUR = vbaNbrValidate(rngTUR);
+  const dReqTur = vbaNbrValidate(rngReqTUR);
+  const dInt = vbaNbrValidate(rngInt);
+  const dReqRel = vbaNbrValidate(rngReqRel);
+  const dReqPFA = vbaNbrValidate(rngReqPFA);
 
-    let dObsRel;
-    if (dReqTur > 0) {
-        const dTstRUnc = (dMeasUnc * dTUR) / dReqTur;
-        dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-    } else {
-        dObsRel = dMeasRel;
-    }
+  let dObsRel;
+  if (dReqTur > 0) {
+    const dTstRUnc = (dMeasUnc * dTUR) / dReqTur;
+    dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel, dAvg, dTolLow, dTolUp, dMeasUnc);
+  } else {
+    dObsRel = dMeasRel;
+  }
 
-    let result = PFAIter(sRiskType, dObsRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-    if (result === -1) return ["","",""];
-    let dPFA = result;
+  let result = PFAIter(sRiskType, dObsRel, dAvg, dTolLow, dTolUp, dMeasUnc);
+  if (result === -1) return ["", "", ""];
+  let dPFA = result;
 
-    if (dPFA <= dReqPFA) {
-        return [(Math.log(dReqRel) / Math.log(dObsRel)) * dInt,dObsRel,dReqRel];
-    }
+  if (dPFA <= dReqPFA) {
+    return [(Math.log(dReqRel) / Math.log(dObsRel)) * dInt, dObsRel, dReqRel];
+  }
 
-    let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
+  let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
+  result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
+  if (result === -1) return ["", "", ""];
+  dPFA = result;
+
+  let dChg = dPFA < dReqPFA ? -Math.abs(dPredRel - dObsRel) : Math.abs(dPredRel - dObsRel);
+  let lIter = 1;
+  while (Math.abs(dPFA - dReqPFA) >= 0.00001 && lIter < 20) {
+    dChg = dPFA < dReqPFA ? -Math.abs(dChg) / 2 : Math.abs(dChg) / 2;
+    dPredRel += dChg;
     result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-    if (result === -1) return ["","",""];
-    dPFA = result;
+    if (result !== -1) dPFA = result;
+    lIter++;
+  }
 
-    let dChg = dPFA < dReqPFA ? -Math.abs(dPredRel - dObsRel) : Math.abs(dPredRel - dObsRel);
-    let lIter = 1;
-    while (Math.abs(dPFA - dReqPFA) >= 0.00001 && lIter < 20) {
-        dChg = dPFA < dReqPFA ? -Math.abs(dChg) / 2 : Math.abs(dChg) / 2;
-        dPredRel += dChg;
-        result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-        if (result !== -1) dPFA = result;
-        lIter++;
-    }
+  if (dPredRel < dReqRel) {
+    dPredRel = dReqRel;
+    result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
+    if (result !== -1) dPFA = result;
+  }
 
-    if (dPredRel < dReqRel) {
-        dPredRel = dReqRel;
-        result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-        if (result !== -1) dPFA = result;
-    }
-
-    return dPFA === -1 ? ["","",""] : [(Math.log(dPredRel) / Math.log(dObsRel)) * dInt,dObsRel,dPredRel];
+  return dPFA === -1 ? ["", "", ""] : [(Math.log(dPredRel) / Math.log(dObsRel)) * dInt, dObsRel, dPredRel];
 }
 
 export function CalRelMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngReqRel, rngMeasRel, rngTUR, rngReqTUR, rngInt, rngReqPFA) {
-    const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel] = getRiskInfo(
-        rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel
-    );
-    const dTUR = vbaNbrValidate(rngTUR);
-    const dReqTur = vbaNbrValidate(rngReqTUR);
-    const dInt = vbaNbrValidate(rngInt);
-    const dReqRel = vbaNbrValidate(rngReqRel);
-    const dReqPFA = vbaNbrValidate(rngReqPFA);
+  const [sRiskType, dNominal, dAvg, dTolLow, dTolUp, dMeasUnc, dMeasRel] = getRiskInfo(
+    rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngMeasRel
+  );
+  const dTUR = vbaNbrValidate(rngTUR);
+  const dReqTur = vbaNbrValidate(rngReqTUR);
+  const dInt = vbaNbrValidate(rngInt);
+  const dReqRel = vbaNbrValidate(rngReqRel);
+  const dReqPFA = vbaNbrValidate(rngReqPFA);
 
-    let dObsRel;
-    if (dReqTur > 0) {
-        const dTstRUnc = (dMeasUnc * dTUR) / dReqTur;
-        dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-    } else {
-        dObsRel = dMeasRel;
-    }
+  let dObsRel;
+  if (dReqTur > 0) {
+    const dTstRUnc = (dMeasUnc * dTUR) / dReqTur;
+    dObsRel = ObsRel(sRiskType, dTstRUnc, dMeasRel, dAvg, dTolLow, dTolUp, dMeasUnc);
+  } else {
+    dObsRel = dMeasRel;
+  }
 
-    let result = PFAIter(sRiskType, dObsRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-    if (result === -1) return "";
-    let dPFA = result;
+  let result = PFAIter(sRiskType, dObsRel, dAvg, dTolLow, dTolUp, dMeasUnc);
+  if (result === -1) return "";
+  let dPFA = result;
 
-    if (dPFA <= dReqPFA) return [dReqRel, dObsRel];
+  if (dPFA <= dReqPFA) return [dReqRel, dObsRel];
 
-    let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
+  let dPredRel = 1 - Math.abs(1 - dObsRel) / 2;
+  result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
+  if (result === -1) return "";
+  dPFA = result;
+
+  let dChg = dPFA < dReqPFA ? -Math.abs(dPredRel - dObsRel) : Math.abs(dPredRel - dObsRel);
+  let lIter = 1;
+  while (Math.abs(dPFA - dReqPFA) >= 0.00001 && lIter < 20) {
+    dChg = dPFA < dReqPFA ? -Math.abs(dChg) / 2 : Math.abs(dChg) / 2;
+    dPredRel += dChg;
     result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-    if (result === -1) return "";
-    dPFA = result;
+    if (result !== -1) dPFA = result;
+    lIter++;
+  }
 
-    let dChg = dPFA < dReqPFA ? -Math.abs(dPredRel - dObsRel) : Math.abs(dPredRel - dObsRel);
-    let lIter = 1;
-    while (Math.abs(dPFA - dReqPFA) >= 0.00001 && lIter < 20) {
-        dChg = dPFA < dReqPFA ? -Math.abs(dChg) / 2 : Math.abs(dChg) / 2;
-        dPredRel += dChg;
-        result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-        if (result !== -1) dPFA = result;
-        lIter++;
-    }
+  if (dPredRel < dReqRel) {
+    dPredRel = dReqRel;
+    result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
+    if (result !== -1) dPFA = result;
+  }
 
-    if (dPredRel < dReqRel) {
-        dPredRel = dReqRel;
-        result = PFAIter(sRiskType, dPredRel, dAvg, dTolLow, dTolUp, dMeasUnc);
-        if (result !== -1) dPFA = result;
-    }
-
-    return dPFA === -1 ? "" : [dPredRel, dObsRel];
+  return dPFA === -1 ? "" : [dPredRel, dObsRel];
 }
