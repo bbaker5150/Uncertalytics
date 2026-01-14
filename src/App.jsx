@@ -923,7 +923,6 @@ function App() {
 
               <div className="sidebar-header">
                 <h4 style={{ margin: "0" }}>Measurement Points</h4>
-                {/* REMOVED THE ADD POINT BUTTON FROM HERE */}
               </div>
 
               <div className="measurement-point-list">
@@ -1005,6 +1004,7 @@ function App() {
                     testPointData={testPointData}
                     onDataSave={updateTestPointData}
                     onSessionSave={updateSession}
+                    onSaveTestPoint={handleSaveTestPoint} // <--- UPDATED: Passed this prop
                     defaultTestPoint={defaultTestPoint}
                     setContextMenu={setContextMenu}
                     setBreakdownPoint={setBreakdownPoint}

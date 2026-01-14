@@ -14,10 +14,8 @@ import {
     faPencilAlt,
     faTrashAlt,
     faCalculator,
-    faLink,
-    faExclamationTriangle,
     faTimes,
-    faUnlink
+    faExclamationTriangle
 } from "@fortawesome/free-solid-svg-icons";
 
 // Sub-components
@@ -85,7 +83,6 @@ const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, p
 
     const handleBlur = () => {
         setIsEditing(false);
-        // Trim strings to prevent whitespace mismatch bugs
         const cleanVal = typeof currentValue === 'string' ? currentValue.trim() : currentValue;
         if (cleanVal != value) {
             onSave(cleanVal);
@@ -141,7 +138,6 @@ const UncertaintyPanel = ({
     uutNominal,
     uutToleranceData,
     tmdeTolerancesData,
-    // Handlers
     onAddManualComponent,
     onEditManualComponent,
     onRemoveComponent,
@@ -159,11 +155,13 @@ const UncertaintyPanel = ({
     showContribution,
     setShowContribution,
     onOpenRepeatability,
-    // New prop for defining test point via modal
     onDefineTestPoint,
     onUpdateTestPoint, 
     riskResults,
-    setNotification
+    setNotification,
+    selectedTmdeIds = [],
+    onToggleTmdeSelection,
+    onToggleAllTmdes
 }) => {
 
     const [isSymbolMenuOpen, setIsSymbolMenuOpen] = useState(false);
@@ -171,7 +169,6 @@ const UncertaintyPanel = ({
     const symbolMenuRef = useRef(null);
     const symbolButtonRef = useRef(null);
 
-    // Close symbol menu when clicking outside
     useEffect(() => {
         function handleClickOutside(event) {
             if (symbolMenuRef.current && !symbolMenuRef.current.contains(event.target) &&
@@ -188,11 +185,9 @@ const UncertaintyPanel = ({
 
     const isDerived = testPointData.measurementType === "derived";
 
-    // --- Available Variables for Dropdown (Fixed) ---
     const availableVariables = useMemo(() => {
         if (!isDerived) return [];
         if (testPointData.variableMappings && Object.values(testPointData.variableMappings).length > 0) {
-            // Unique, non-empty, trimmed values only
             const vars = Object.values(testPointData.variableMappings)
                 .map(v => v ? v.trim() : "")
                 .filter(v => v !== "");
@@ -201,7 +196,6 @@ const UncertaintyPanel = ({
         return [];
     }, [testPointData, isDerived]);
 
-    // --- Equation Logic ---
     const handleEquationChange = (newEquationString) => {
         let variables = [];
         try {
@@ -275,7 +269,6 @@ const UncertaintyPanel = ({
     };
 
     const handleVariableMappingChange = (symbol, newName) => {
-        // Trim input to ensure exact matches with TMDE dropdowns
         const cleanedName = newName ? newName.trim() : "";
         const newMappings = { ...testPointData.variableMappings, [symbol]: cleanedName };
         if (onUpdateTestPoint) {
@@ -283,16 +276,10 @@ const UncertaintyPanel = ({
         }
     };
 
-    // --- NEW: Assign TMDE to Variable Handler (FIXED) ---
     const handleAssignTmdeToVariable = (symbol, tmdeIdStr) => {
-        // 1. Ensure variable has a name mapping
         const varName = testPointData.variableMappings?.[symbol] || "";
-        if (!varName) {
-             // In a real app, maybe show a toast warning "Please name the variable first"
-             return; 
-        }
+        if (!varName) return; 
 
-        // Case A: Unassigning (User selected "Manual Entry")
         if (!tmdeIdStr) {
              const currentAssigned = tmdeTolerancesData.find(t => t.variableType === varName);
              if (currentAssigned && onInlineTmdeUpdate) {
@@ -300,42 +287,30 @@ const UncertaintyPanel = ({
              }
              return;
         }
-
-        // Case B: Assigning a new Source (TMDE)
         
-        // 1. Find the TMDE object loosely (handling string vs number match)
         const targetTmde = tmdeTolerancesData.find(t => t.id == tmdeIdStr);
-        if (!targetTmde) return; // Should not happen given the dropdown options
+        if (!targetTmde) return; 
         
-        // Use the REAL id from the object (likely a number)
         const realTmdeId = targetTmde.id;
-
-        // 2. Find if any other TMDE is currently holding this variable name
         const previousHolder = tmdeTolerancesData.find(t => t.variableType === varName);
         
-        // If the same TMDE is already assigned, do nothing
         if (previousHolder && previousHolder.id === realTmdeId) return;
 
-        // 3. If another TMDE holds it, clear that assignment first (enforce 1:1)
         if (previousHolder && onInlineTmdeUpdate) {
             onInlineTmdeUpdate(previousHolder.id, 'variableType', "");
         }
 
-        // 4. Assign the variable name to the new TMDE
         if (onInlineTmdeUpdate) {
             onInlineTmdeUpdate(realTmdeId, 'variableType', varName);
         }
     };
 
-    // --- Equation Display Data ---
     const equationDisplayData = useMemo(() => {
         if (!isDerived) return null;
 
         const currentMappings = testPointData.variableMappings || {};
         const vars = Object.keys(currentMappings).sort().map((symbol) => {
             const name = currentMappings[symbol];
-            
-            // Strict matching: Name must match TMDE variableType exactly
             const assignedTmde = tmdeTolerancesData.find(t => 
                 t.variableType && name && t.variableType.trim() === name.trim()
             );
@@ -362,13 +337,32 @@ const UncertaintyPanel = ({
         ? "Test Measurement Equipment Devices"
         : "Test Measurement Equipment Device";
 
-    // Original Styles
+    // --- Layout Constants ---
+    const mainGridStyle = {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '20px',
+        width: '100%',
+        alignItems: 'flex-start',
+        marginBottom: '30px'
+    };
+
+    const verticalColumnStyle = {
+        flex: '1 1 600px',
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px'
+    };
+
     const cardStyle = {
         backgroundColor: 'var(--content-background)',
         border: '1px solid var(--border-color)',
         borderRadius: '8px',
-        marginBottom: '30px',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.02)'
+        boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%' 
     };
 
     const sectionTitleStyle = {
@@ -381,6 +375,14 @@ const UncertaintyPanel = ({
     };
 
     const hasMeasurementPoint = isDerived || (uutNominal && (uutNominal.value !== undefined && uutNominal.value !== "" && uutNominal.value !== null));
+    const hasUnassignedVariables = isDerived && equationDisplayData?.variables.some(v => !v.isAssigned);
+
+    // Suppress generic calculation errors if they are just about missing inputs (handled inline)
+    const isBackendMappingError = calculationError && (
+        calculationError.includes("Variable mappings are missing") ||
+        calculationError.includes("Input data missing") ||
+        calculationError.includes("Internal error")
+    );
 
     const handleClearMeasurementPoint = () => {
         if (onInlineUutUpdate) {
@@ -391,29 +393,16 @@ const UncertaintyPanel = ({
     return (
         <div className="configuration-panel">
 
-            {/* --- TOP SECTION: LISTS + MEASUREMENT DETAILS --- */}
-            <div style={{ 
-                display: 'flex', 
-                gap: '20px', 
-                alignItems: 'flex-start', 
-                flexWrap: 'wrap', 
-                width: '100%', 
-                paddingBottom: '20px'   
-            }}>
-
-                {/* --- LEFT PANEL: UUT & TMDE LISTS --- */}
-                <div style={{ 
-                    flex: '1 1 600px', 
-                    minWidth: 0,
-                    display: 'flex', 
-                    flexDirection: 'column'
-                }}>
-
-                    {/* --- SECTION 1: UUT INFORMATION --- */}
+            <div style={mainGridStyle}>
+                
+                {/* --- LEFT COLUMN: UUT & TMDEs --- */}
+                <div style={verticalColumnStyle}>
+                    
+                    {/* 1. UUT INFORMATION */}
                     <div>
                         <h3 style={sectionTitleStyle}>Unit Under Test</h3>
                         <div style={cardStyle}>
-                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto' }}>
+                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1 }}>
                                 <table className="instrument-summary-table" style={{width: '100%'}}>
                                     <colgroup>
                                         <col style={{width: '35%'}} />
@@ -491,164 +480,34 @@ const UncertaintyPanel = ({
                         </div>
                     </div>
 
-                    {/* --- SECTION 1.5: MODERN MEASUREMENT EQUATION (Derived Only) --- */}
-                    {isDerived && equationDisplayData && (
-                        <div className="equation-section-container">
-                            <h3 style={sectionTitleStyle}>Measurement Equation</h3>
-                            
-                            {/* Hero Input */}
-                            <div className="equation-hero-container">
-                                <div className="equation-hero-input-wrapper">
-                                    <input
-                                        ref={equationInputRef}
-                                        type="text"
-                                        className="equation-hero-input"
-                                        value={equationDisplayData.equation}
-                                        onChange={(e) => handleEquationChange(e.target.value)}
-                                        placeholder="e.g. V / R"
-                                    />
-                                    <button 
-                                        ref={symbolButtonRef}
-                                        className={`equation-tools-trigger ${isSymbolMenuOpen ? 'active' : ''}`}
-                                        onClick={() => setIsSymbolMenuOpen(!isSymbolMenuOpen)}
-                                        title="Math Symbols"
-                                    >
-                                        <FontAwesomeIcon icon={faCalculator} />
-                                    </button>
-
-                                    {/* Symbols Popout */}
-                                    {isSymbolMenuOpen && (
-                                        <div className="symbol-popout" ref={symbolMenuRef}>
-                                             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '5px', borderBottom: '1px solid var(--border-color)'}}>
-                                                 <span style={{fontWeight: 700, fontSize: '0.85rem'}}>Math Symbols</span>
-                                                 <span onClick={() => setIsSymbolMenuOpen(false)} style={{cursor: 'pointer'}}><FontAwesomeIcon icon={faTimes} /></span>
-                                             </div>
-                                            {Object.entries(symbolCategories).map(([category, symbols]) => (
-                                                <div key={category} className="symbol-category">
-                                                    <h5 className="symbol-category-title">{category}</h5>
-                                                    <div className="symbol-category-grid">
-                                                        {symbols.map(s => (
-                                                            <SymbolButton 
-                                                                key={s.symbol} 
-                                                                symbol={s.symbol} 
-                                                                title={s.title} 
-                                                                onSymbolClick={handleSymbolClick} 
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            
-                            {/* Modern Variable Grid */}
-                            <div className="var-map-grid">
-                                {equationDisplayData.variables.length === 0 ? (
-                                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-color-muted)', padding: '20px', background: 'var(--background-color)', borderRadius: '8px', border: '1px dashed var(--border-color)' }}>
-                                        Start typing an equation to map variables (e.g., A + B).
-                                    </div>
-                                ) : (
-                                    equationDisplayData.variables.map((v) => (
-                                        <div key={v.symbol} className={`var-card-modern ${v.isAssigned ? 'assigned' : 'unassigned'}`}>
-                                            {/* Card Header: Symbol & Name */}
-                                            <div className="var-card-header">
-                                                <div className="var-symbol-badge">{v.symbol}</div>
-                                                <input 
-                                                    type="text" 
-                                                    className="var-name-input"
-                                                    value={v.name}
-                                                    placeholder="Map to (e.g. Volts)..."
-                                                    onChange={(e) => handleVariableMappingChange(v.symbol, e.target.value)}
-                                                />
-                                            </div>
-
-                                            {/* Card Body: Assignment & Values */}
-                                            <div className="var-card-body">
-                                                {/* Source Selector */}
-                                                <div>
-                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px'}}>
-                                                        ASSIGNED SOURCE
-                                                    </label>
-                                                    <select 
-                                                        className="var-source-select"
-                                                        value={v.tmdeId || ""}
-                                                        onChange={(e) => handleAssignTmdeToVariable(v.symbol, e.target.value)}
-                                                        disabled={!v.name} /* Cannot assign if variable not named */
-                                                    >
-                                                        <option value="">-- No Source (Manual Entry) --</option>
-                                                        {tmdeTolerancesData.map(tmde => (
-                                                            <option key={tmde.id} value={tmde.id}>
-                                                                {tmde.name || "Unnamed TMDE"} 
-                                                                {tmde.measurementPoint?.value ? ` (${tmde.measurementPoint.value} ${tmde.measurementPoint.unit})` : ''}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-
-                                                {/* Value Display or Manual Input */}
-                                                <div>
-                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px'}}>
-                                                        VALUE
-                                                    </label>
-                                                    {v.isAssigned ? (
-                                                        <div className="var-value-display">
-                                                            <EditableCell
-                                                                value={v.value}
-                                                                type="number"
-                                                                onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(v.tmdeId, 'nominal', val)}
-                                                                style={{ 
-                                                                    fontFamily: "'Consolas', monospace",
-                                                                    fontSize: "1.1rem",
-                                                                    fontWeight: 700,
-                                                                    color: "var(--primary-color)",
-                                                                    backgroundColor: "transparent", 
-                                                                    border: "none",
-                                                                    padding: 0,
-                                                                    width: "100px" // Allows room for typing
-                                                                }}
-                                                            />
-                                                            <span className="var-unit">{v.unit}</span>
-                                                        </div>
-                                                    ) : (
-                                                        /* If Manual Entry (Unassigned), allow typing directly if we wanted to support it, 
-                                                           but currently manual entries are placeholders in this view. 
-                                                           We will show a 'Manual' placeholder or empty state. */
-                                                        <div className="var-value-display" style={{backgroundColor: 'var(--input-background)'}}>
-                                                            <span style={{color: 'var(--text-color-muted)', fontSize: '0.9rem', fontStyle: 'italic'}}>
-                                                                <FontAwesomeIcon icon={faExclamationTriangle} style={{color: 'var(--status-warning)', marginRight: '6px'}}/>
-                                                                Map source above
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* --- SECTION 2: TMDE LIST --- */}
+                    {/* 2. TMDE LIST */}
                     <div>
                         <h3 style={sectionTitleStyle}>{tmdeTitle}</h3>
                         <div style={cardStyle}>
-                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto' }}>
+                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1 }}>
                                 <table className="instrument-summary-table" style={{width: '100%'}}>
-                                     <colgroup>
+                                        <colgroup>
+                                        <col style={{width: '5%'}} />
                                         <col style={{width: '25%'}} />
                                         {isDerived && <col style={{width: '10%'}} />}
                                         <col style={{width: '15%'}} />
                                         <col style={{width: '15%'}} />
                                         <col style={{width: '15%'}} />
-                                        <col style={{width: '15%'}} />
+                                        <col style={{width: '10%'}} />
                                         <col style={{width: '5%'}} />
                                     </colgroup>
                                     <thead>
                                         <tr>
-                                            <th style={{ paddingLeft: '20px' }}>Description</th>
+                                            <th style={{ textAlign: 'center' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={tmdeTolerancesData.length > 0 && selectedTmdeIds.length === tmdeTolerancesData.length}
+                                                    onChange={onToggleAllTmdes}
+                                                    title="Select All for Carry-Over"
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                            </th>
+                                            <th style={{ paddingLeft: '10px' }}>Description</th>
                                             {isDerived && <th>Input Var</th>}
                                             <th>Measurement Point</th>
                                             <th>Tolerance Spec</th>
@@ -679,7 +538,7 @@ const UncertaintyPanel = ({
                                     <tbody>
                                         {tmdeTolerancesData.length === 0 ? (
                                             <tr>
-                                                <td colSpan={isDerived ? "7" : "6"} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
+                                                <td colSpan={isDerived ? "8" : "7"} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
                                                     No TMDEs configured. Click the <strong>+</strong> icon above to add standards.
                                                 </td>
                                             </tr>
@@ -700,7 +559,16 @@ const UncertaintyPanel = ({
 
                                                     return (
                                                         <tr key={key} className="tmde-row">
-                                                            <td style={{ paddingLeft: '20px' }}>
+                                                            <td style={{ textAlign: 'center' }}>
+                                                                <input 
+                                                                    type="checkbox"
+                                                                    checked={selectedTmdeIds.includes(tmde.id)}
+                                                                    onChange={() => onToggleTmdeSelection(tmde.id)}
+                                                                    title="Carry over to new measurement point"
+                                                                    style={{ cursor: 'pointer' }}
+                                                                />
+                                                            </td>
+                                                            <td style={{ paddingLeft: '10px' }}>
                                                                 <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
                                                                     <EditableCell
                                                                         value={tmde.name || "Unknown TMDE"}
@@ -800,135 +668,303 @@ const UncertaintyPanel = ({
                             </div>
                         </div>
                     </div>
+
                 </div>
 
-                {/* --- RIGHT PANEL: MEASUREMENT POINT SECTION --- */}
-                <div style={{ 
-                    flex: '1 1 350px', 
-                    minWidth: '300px',
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    backgroundColor: 'var(--content-color)' 
-                }}>
-                     <h3 style={sectionTitleStyle}>Measurement Point</h3>
-                     <div style={cardStyle}>
-                        <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px' }}>
-                             <table className="instrument-summary-table" style={{width: '100%', tableLayout: 'fixed'}}>
-                                 <colgroup>
-                                     <col style={{width: '35%'}} />
-                                     <col style={{width: '35%'}} />
-                                     <col style={{width: '15%'}} />
-                                     <col style={{width: '15%'}} />
-                                 </colgroup>
-                                 <thead>
-                                     <tr>
-                                         <th style={{ paddingLeft: '20px' }}>Point</th>
-                                         <th>Tolerance</th>
-                                         <th>Unit</th>
-                                         <th style={{ textAlign: 'center', paddingRight: '20px' }}>
-                                             {/* UPDATED: Add Button Moved Here & ALWAYS VISIBLE */}
-                                             <span
-                                                onClick={onDefineTestPoint}
-                                                className="action-icon"
-                                                title="Add/Edit Measurement Point"
-                                                style={{
-                                                    cursor: "pointer",
-                                                    color: "var(--text-color-muted)",
-                                                    display: "flex",
-                                                    justifyContent: "center",
-                                                    alignItems: "center",
-                                                    transition: "color 0.2s ease",
-                                                    fontSize: '0.95rem',
-                                                    float: 'right'
-                                                }}
-                                                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--primary-color)")}
-                                                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-color-muted)")}
-                                            >
-                                                <FontAwesomeIcon icon={faPlus} />
-                                            </span>
-                                         </th>
-                                     </tr>
-                                 </thead>
-                                 <tbody>
-                                     {hasMeasurementPoint ? (
-                                         <tr>
-                                             <td style={{ paddingLeft: '20px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                 <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary-color)' }}>
-                                                    {isDerived ? (
-                                                        <span>{calcResults?.calculatedNominalValue?.toPrecision(5) ?? "-"}</span>
-                                                    ) : (
+                {/* --- RIGHT COLUMN: MEASUREMENT POINT & EQUATION --- */}
+                <div style={verticalColumnStyle}>
+
+                    {/* 3. MEASUREMENT POINT */}
+                    <div>
+                        <h3 style={sectionTitleStyle}>Measurement Point</h3>
+                        <div style={cardStyle}>
+                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1, overflowX: 'auto' }}>
+                                <table className="instrument-summary-table" style={{width: '100%', tableLayout: 'fixed'}}>
+                                    <colgroup>
+                                        <col style={{width: '35%'}} />
+                                        <col style={{width: '35%'}} />
+                                        <col style={{width: '15%'}} />
+                                        <col style={{width: '15%'}} />
+                                    </colgroup>
+                                    <thead>
+                                        <tr>
+                                            <th style={{ paddingLeft: '20px' }}>Point</th>
+                                            <th>Tolerance</th>
+                                            <th>Unit</th>
+                                            <th style={{ textAlign: 'center', paddingRight: '20px' }}>
+                                                <span
+                                                    onClick={onDefineTestPoint}
+                                                    className="action-icon"
+                                                    title="Add/Edit Measurement Point"
+                                                    style={{
+                                                        cursor: "pointer",
+                                                        color: "var(--text-color-muted)",
+                                                        display: "flex",
+                                                        justifyContent: "center",
+                                                        alignItems: "center",
+                                                        transition: "color 0.2s ease",
+                                                        fontSize: '0.95rem',
+                                                        float: 'right'
+                                                    }}
+                                                    onMouseEnter={(e) => (e.currentTarget.style.color = "var(--primary-color)")}
+                                                    onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-color-muted)")}
+                                                >
+                                                    <FontAwesomeIcon icon={faPlus} />
+                                                </span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {hasMeasurementPoint ? (
+                                            <tr>
+                                                <td style={{ paddingLeft: '20px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary-color)' }}>
+                                                        {isDerived ? (
+                                                            <span>{calcResults?.calculatedNominalValue?.toPrecision(5) ?? "-"}</span>
+                                                        ) : (
+                                                            <EditableCell
+                                                                value={uutNominal?.value}
+                                                                onSave={(val) => onInlineUutUpdate && onInlineUutUpdate('nominal', val)}
+                                                                type="number"
+                                                                placeholder="0.00"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td 
+                                                    className="clickable-spec-cell"
+                                                    onClick={onOpenUutModal}
+                                                    title="Edit Tolerance Spec"
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                        <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                            {getToleranceErrorSummary(uutToleranceData, uutNominal) || "± 0"}
+                                                        </span>
+                                                        <FontAwesomeIcon icon={faPencilAlt} className="edit-icon-hover" style={{ fontSize: '0.8rem', marginLeft: '5px' }} />
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div style={{ fontWeight: 600 }}>
                                                         <EditableCell
-                                                            value={uutNominal?.value}
-                                                            onSave={(val) => onInlineUutUpdate && onInlineUutUpdate('nominal', val)}
-                                                            type="number"
-                                                            placeholder="0.00"
+                                                            value={uutNominal?.unit}
+                                                            onSave={(val) => onInlineUutUpdate && onInlineUutUpdate('unit', val)}
+                                                            placeholder="Unit"
                                                         />
-                                                    )}
-                                                 </div>
-                                             </td>
-                                             <td 
-                                                 className="clickable-spec-cell"
-                                                 onClick={onOpenUutModal}
-                                                 title="Edit Tolerance Spec"
-                                             >
-                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                        {getToleranceErrorSummary(uutToleranceData, uutNominal) || "± 0"}
-                                                    </span>
-                                                    <FontAwesomeIcon icon={faPencilAlt} className="edit-icon-hover" style={{ fontSize: '0.8rem', marginLeft: '5px' }} />
-                                                </div>
-                                             </td>
-                                             <td>
-                                                 <div style={{ fontWeight: 600 }}>
-                                                    <EditableCell
-                                                        value={uutNominal?.unit}
-                                                        onSave={(val) => onInlineUutUpdate && onInlineUutUpdate('unit', val)}
-                                                        placeholder="Unit"
-                                                    />
-                                                 </div>
-                                             </td>
-                                             <td className="action-cell" style={{ paddingRight: '20px' }}>
-                                                 <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                                     <span
-                                                         className="action-icon"
-                                                         onClick={handleClearMeasurementPoint}
-                                                         title="Remove Measurement Point"
-                                                         style={{
-                                                             cursor: "pointer",
-                                                             color: "var(--status-bad)",
-                                                             fontSize: '0.9rem',
-                                                             transition: 'color 0.2s'
-                                                         }}
-                                                     >
-                                                         <FontAwesomeIcon icon={faTrashAlt} />
-                                                     </span>
-                                                 </div>
-                                             </td>
-                                         </tr>
-                                     ) : (
-                                         <tr>
-                                             <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>
-                                                 Click <strong>+</strong> in header to add point.
-                                             </td>
-                                         </tr>
-                                     )}
-                                 </tbody>
-                             </table>
+                                                    </div>
+                                                </td>
+                                                <td className="action-cell" style={{ paddingRight: '20px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                                        <span
+                                                            className="action-icon"
+                                                            onClick={handleClearMeasurementPoint}
+                                                            title="Remove Measurement Point"
+                                                            style={{
+                                                                cursor: "pointer",
+                                                                color: "var(--status-bad)",
+                                                                fontSize: '0.9rem',
+                                                                transition: 'color 0.2s'
+                                                            }}
+                                                        >
+                                                            <FontAwesomeIcon icon={faTrashAlt} />
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>
+                                                    Click <strong>+</strong> in header to add point.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                     </div>
+                    </div>
+
+                    {/* 4. MEASUREMENT EQUATION (If derived) */}
+                    {isDerived && equationDisplayData && (
+                        <div>
+                            <h3 style={sectionTitleStyle}>Measurement Equation</h3>
+                            
+                            <div style={{
+                                backgroundColor: 'var(--content-background)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
+                                padding: '20px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '15px'
+                            }}>
+                                {/* Organic Input Area */}
+                                <div className="input-with-symbol-button">
+                                    <input
+                                        ref={equationInputRef}
+                                        type="text"
+                                        value={equationDisplayData.equation}
+                                        onChange={(e) => handleEquationChange(e.target.value)}
+                                        placeholder="e.g. V / R or W * L"
+                                        style={{ fontFamily: 'monospace' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="symbol-toggle-button"
+                                        title="Show Symbols"
+                                        ref={symbolButtonRef}
+                                        onClick={() => setIsSymbolMenuOpen(!isSymbolMenuOpen)}
+                                    >
+                                        f(x)
+                                    </button>
+
+                                    {/* Symbols Popout */}
+                                    {isSymbolMenuOpen && (
+                                        <div 
+                                            className="symbol-popout" 
+                                            ref={symbolMenuRef}
+                                            style={{ maxHeight: '300px', overflowY: 'auto' }}
+                                        >
+                                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '5px', borderBottom: '1px solid var(--border-color)'}}>
+                                                 <span style={{fontWeight: 700, fontSize: '0.85rem'}}>Math Symbols</span>
+                                                 <span onClick={() => setIsSymbolMenuOpen(false)} style={{cursor: 'pointer'}}><FontAwesomeIcon icon={faTimes} /></span>
+                                             </div>
+                                            {Object.entries(symbolCategories).map(([category, symbols]) => (
+                                                <div key={category} className="symbol-category">
+                                                    <h5 className="symbol-category-title">{category}</h5>
+                                                    <div className="symbol-category-grid">
+                                                        {symbols.map(s => (
+                                                            <SymbolButton 
+                                                                key={s.symbol} 
+                                                                symbol={s.symbol} 
+                                                                title={s.title} 
+                                                                onSymbolClick={handleSymbolClick} 
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {/* Variable Grid */}
+                                <div className="var-map-grid" style={{flex: 1}}>
+                                    {equationDisplayData.variables.length === 0 ? (
+                                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-color-muted)', padding: '20px', background: 'var(--background-color)', borderRadius: '8px', border: '1px dashed var(--border-color)' }}>
+                                            Start typing an equation above to map variables (e.g., A + B).
+                                        </div>
+                                    ) : (
+                                        equationDisplayData.variables.map((v) => (
+                                            <div key={v.symbol} className={`var-card-modern ${v.isAssigned ? 'assigned' : 'unassigned'}`}>
+                                                <div className="var-card-header">
+                                                    <div className="var-symbol-badge">{v.symbol}</div>
+                                                    <input 
+                                                        type="text" 
+                                                        className="var-name-input"
+                                                        value={v.name}
+                                                        placeholder="Map to (e.g. Volts)..."
+                                                        onChange={(e) => handleVariableMappingChange(v.symbol, e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="var-card-body">
+                                                    <div>
+                                                        <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px'}}>
+                                                            ASSIGNED SOURCE
+                                                        </label>
+                                                        <select 
+                                                            className="var-source-select"
+                                                            value={v.tmdeId || ""}
+                                                            onChange={(e) => handleAssignTmdeToVariable(v.symbol, e.target.value)}
+                                                            disabled={!v.name} 
+                                                        >
+                                                            <option value="">-- No Source (Manual Entry) --</option>
+                                                            {tmdeTolerancesData.map(tmde => (
+                                                                <option key={tmde.id} value={tmde.id}>
+                                                                    {tmde.name || "Unnamed TMDE"} 
+                                                                    {tmde.measurementPoint?.value ? ` (${tmde.measurementPoint.value} ${tmde.measurementPoint.unit})` : ''}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div>
+                                                        <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px'}}>
+                                                            VALUE
+                                                        </label>
+                                                        {v.isAssigned ? (
+                                                            <div className="var-value-display">
+                                                                <EditableCell
+                                                                    value={v.value}
+                                                                    type="number"
+                                                                    onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(v.tmdeId, 'nominal', val)}
+                                                                    style={{ 
+                                                                        fontFamily: "'Consolas', monospace",
+                                                                        fontSize: "1.1rem",
+                                                                        fontWeight: 700,
+                                                                        color: "var(--primary-color)",
+                                                                        backgroundColor: "transparent", 
+                                                                        border: "none",
+                                                                        padding: 0,
+                                                                        width: "100px" 
+                                                                    }}
+                                                                />
+                                                                <span className="var-unit">{v.unit}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="var-value-display" style={{backgroundColor: 'var(--input-background)'}}>
+                                                                <span style={{color: 'var(--text-color-muted)', fontSize: '0.9rem', fontStyle: 'italic'}}>
+                                                                    <FontAwesomeIcon icon={faExclamationTriangle} style={{color: 'var(--status-warning)', marginRight: '6px'}}/>
+                                                                    Map source above
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                {/* --- INLINE ERROR DISPLAY --- */}
+                                {(hasUnassignedVariables || isBackendMappingError) && (
+                                     <div style={{
+                                         marginTop: '15px',
+                                         padding: '10px',
+                                         backgroundColor: 'rgba(255, 82, 82, 0.1)', 
+                                         border: '1px solid var(--status-bad)', 
+                                         borderRadius: '4px',
+                                         color: 'var(--status-bad)',
+                                         fontSize: '0.9rem',
+                                         display: 'flex',
+                                         alignItems: 'center',
+                                         gap: '10px'
+                                     }}>
+                                         <FontAwesomeIcon icon={faExclamationTriangle} />
+                                         <div>
+                                             <strong>Mapping Required:</strong> Input variables have to be assigned a source.
+                                         </div>
+                                     </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
-
             </div>
-            {/* --- END TOP SECTION --- */}
-
 
             {/* --- UNCERTAINTY BUDGET & GRAPH --- */}
-            {calculationError ? (
+            {hasUnassignedVariables || isBackendMappingError ? (
+                 <div className="placeholder-content" style={{padding: '20px', color: 'var(--text-color-muted)'}}>
+                     {/* Show a helpful message instead of the big error */}
+                     {hasUnassignedVariables 
+                        ? "Map all equation variables to a TMDE above to calculate budget."
+                        : "Complete the equation configuration to calculate budget."}
+                 </div>
+            ) : calculationError ? (
+                // Only show this for non-mapping errors (e.g. math errors like divide by zero)
                 <div className="form-section-warning">
                     <p>Calculation Error: {calculationError}</p>
-                    <p style={{ marginTop: "5px", fontSize: "0.9rem", color: "var(--text-color-muted)" }}>
-                        Please ensure all required fields are set (e.g., UUT nominal, equation, and all mapped TMDEs).
-                    </p>
                 </div>
             ) : (
                 <>

@@ -5,7 +5,7 @@
  * - Renders the appropriate dashboard based on the selected tab.
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 
 // --- Custom Hooks ---
 import { useUncertaintyCalculation } from "./hooks/useUncertaintyCalculation";
@@ -39,7 +39,8 @@ function Analysis({
   sessionData,
   testPointData,
   onDataSave, 
-  onSessionSave, 
+  onSessionSave,
+  onSaveTestPoint,
   defaultTestPoint,
   setContextMenu,
   setBreakdownPoint,
@@ -77,6 +78,9 @@ function Analysis({
   const [isDerivedBreakdownOpen, setIsDerivedBreakdownOpen] = useState(false);
   const [derivedBreakdownData, setDerivedBreakdownData] = useState(null);
 
+  // --- NEW: TMDE Selection State ---
+  const [selectedTmdeIds, setSelectedTmdeIds] = useState([]);
+
   // --- 2. Memoized Data Lookups ---
   const uutNominal = useMemo(
     () => testPointData?.testPointInfo?.parameter,
@@ -96,6 +100,11 @@ function Analysis({
   const manualComponents = useMemo(() => {
       return testPointData.components || [];
   }, [testPointData.components]);
+
+  // Reset selection when test point changes
+  useEffect(() => {
+      setSelectedTmdeIds([]);
+  }, [testPointData.id]);
 
   // --- 3. Uncertainty Calculation Hook ---
   const { calcResults, calculationError } = useUncertaintyCalculation(
@@ -136,6 +145,25 @@ function Analysis({
   }
 
   // --- 5. Handlers ---
+  
+  // --- TMDE Selection Handlers ---
+  const handleToggleTmdeSelection = (id) => {
+      setSelectedTmdeIds(prev => {
+          if (prev.includes(id)) {
+              return prev.filter(tid => tid !== id);
+          }
+          return [...prev, id];
+      });
+  };
+
+  const handleToggleAllTmdes = () => {
+      if (selectedTmdeIds.length === tmdeTolerancesData.length) {
+          setSelectedTmdeIds([]);
+      } else {
+          setSelectedTmdeIds(tmdeTolerancesData.map(t => t.id));
+      }
+  };
+
   const handleSaveUut = ({ description, tolerance, instrument }) => {
     onDataSave({ uutTolerance: tolerance });
 
@@ -176,7 +204,40 @@ function Analysis({
   };
 
   const handleSaveTestPointInfo = (updatedData) => {
-      onDataSave(updatedData);
+      if (onSaveTestPoint) {
+          // If we are CREATING a new point (no ID yet)
+          // We need to inject the selected TMDEs with RESET values
+          
+          let finalData = { ...updatedData };
+          
+          // Check if this is a creation event (usually implied if passed from AddTestPointModal without an ID)
+          // AddTestPointModal calls onSave({ ...data })
+          // If editing, it calls onSave({ id: ..., ...data })
+          
+          if (!finalData.id && selectedTmdeIds.length > 0) {
+              const selectedTmdes = tmdeTolerancesData.filter(t => selectedTmdeIds.includes(t.id));
+              
+              const resetTmdes = selectedTmdes.map(t => ({
+                  ...t,
+                  id: Date.now() + Math.random(), // Ensure unique ID for new instance
+                  measurementPoint: { 
+                      ...t.measurementPoint, 
+                      value: ""  // RESET VALUE
+                  }
+              }));
+              
+              finalData.tmdeTolerances = resetTmdes;
+              finalData.copyTmdes = false; // Disable default copy behavior since we handled it
+          } else if (!finalData.id && selectedTmdeIds.length === 0) {
+              // If nothing selected, ensure we don't copy anything implicitly
+              finalData.copyTmdes = false;
+              finalData.tmdeTolerances = [];
+          }
+
+          onSaveTestPoint(finalData);
+      } else {
+          onDataSave(updatedData);
+      }
       setTestPointModalOpen(false);
   };
 
@@ -499,8 +560,15 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
           
           handleOpenSessionEditor={handleOpenSessionEditor}
           
-          onUpdateTestPoint={onDataSave} // <--- ADDED: Passes onDataSave for equation editing
-
+          onUpdateTestPoint={onDataSave} 
+          
+          onDefineTestPoint={() => setTestPointModalOpen(true)}
+          
+          // --- Pass Selection Props ---
+          selectedTmdeIds={selectedTmdeIds}
+          onToggleTmdeSelection={handleToggleTmdeSelection}
+          onToggleAllTmdes={handleToggleAllTmdes}
+          
           setContextMenu={setContextMenu}
           setBreakdownPoint={setBreakdownPoint}
           onBudgetRowContextMenu={handleBudgetRowContextMenu}
@@ -513,7 +581,6 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
              setEditingComponent(null); 
              setRepeatabilityModalOpen(true); 
           }}
-          onDefineTestPoint={() => setTestPointModalOpen(true)}
           setNotification={setNotification}
         />
       )}

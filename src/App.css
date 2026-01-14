@@ -914,7 +914,7 @@ body.theme-cyberpunk .button {
   /* Reset the outer container to be a full-screen flex wrapper */
   text-align: center;
   margin: 0;
-  padding: 2rem; /* Space between window edge and your app card */
+  padding: 1rem; /* Space between window edge and your app card */
   min-height: 100vh;
   width: 100vw;
   display: flex;
@@ -926,7 +926,7 @@ body.theme-cyberpunk .button {
 .content-area {
   /* This is now your main "Application Window" */
   width: 100%;
-  max-width: 1800px; /* Controls the max width of your UI */
+  max-width: 95vw; /* Controls the max width of your UI */
   min-height: 85vh;  /* Ensures it has substantial presence */
   
   /* Layout Internals */
@@ -5492,7 +5492,7 @@ body.theme-cyberpunk .notification-window .window-header {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   /* Allows horizontal scrolling if content (like long numbers) overflows */
-  overflow-x: visible !important; 
+  overflow-x: auto; 
   box-shadow: 0 4px 12px rgba(0,0,0,0.03);
   margin-bottom: 25px;
   background-color: var(--content-background);
