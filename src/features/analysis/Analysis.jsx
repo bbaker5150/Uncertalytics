@@ -386,6 +386,11 @@ function Analysis({
           };
       } else if (field === 'variableType') {
           newTmde.variableType = value;
+      } else if (field === 'unit') {
+          newTmde.measurementPoint = { 
+              ...newTmde.measurementPoint, 
+              unit: value 
+          };
       }
       handleSaveTmde(newTmde, false);
   };

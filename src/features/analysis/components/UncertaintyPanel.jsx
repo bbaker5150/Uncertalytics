@@ -1,13 +1,6 @@
-/**
- * * The main container for the "Uncertainty Analysis" tab.
- * * Responsibilities:
- * - Renders the visual Instrument Table for UUT and TMDEs.
- * - Renders the Uncertainty Budget Table.
- * - Renders the Contribution Bar Graph.
- */
-
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as math from 'mathjs'; 
+import Select from "react-select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faPlus,
@@ -15,7 +8,9 @@ import {
     faTrashAlt,
     faCalculator,
     faTimes,
-    faExclamationTriangle
+    faExclamationTriangle,
+    faCheckCircle,
+    faTimesCircle
 } from "@fortawesome/free-solid-svg-icons";
 
 // Sub-components
@@ -29,6 +24,8 @@ import {
     getAbsoluteLimits,
     calculateUncertaintyFromToleranceObject,
     convertPpmToUnit,
+    unitSystem,
+    unitCategories // Imported to support grouped options
 } from "../../../utils/uncertaintyMath";
 
 // --- HELPERS FOR EQUATION EDITOR ---
@@ -73,6 +70,78 @@ const symbolCategories = {
         { symbol: 'π', title: 'Pi' },
         { symbol: 'Ω', title: 'Omega' },
     ]
+};
+
+// Styles for the React-Select dropdown (Compact version of AddTestPointModal styles)
+const customUnitSelectStyles = {
+    control: (provided) => ({
+        ...provided,
+        minHeight: '28px',
+        height: '28px',
+        width: '100px',
+        fontSize: '0.8rem',
+        border: 'none',
+        backgroundColor: 'transparent',
+        boxShadow: 'none',
+        cursor: 'pointer',
+        textAlign: 'right'
+    }),
+    valueContainer: (provided) => ({
+        ...provided,
+        height: '28px',
+        padding: '0 4px',
+        justifyContent: 'flex-end'
+    }),
+    input: (provided) => ({
+        ...provided,
+        margin: 0,
+        padding: 0,
+        color: 'var(--text-color)'
+    }),
+    singleValue: (provided) => ({
+        ...provided,
+        color: 'var(--text-color-muted)',
+        fontWeight: 600
+    }),
+    indicatorsContainer: (provided) => ({
+        ...provided,
+        height: '28px',
+    }),
+    dropdownIndicator: (provided) => ({
+        ...provided,
+        padding: '2px',
+        color: 'var(--text-color-muted)'
+    }),
+    indicatorSeparator: () => ({ display: 'none' }),
+    menu: (provided) => ({
+        ...provided,
+        backgroundColor: 'var(--content-background)',
+        border: '1px solid var(--border-color)',
+        zIndex: 9999,
+        width: '180px', // Slightly wider to accommodate category names
+        right: 0
+    }),
+    groupHeading: (provided) => ({
+        ...provided,
+        color: 'var(--primary-color)',
+        fontSize: '0.75rem',
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        padding: '8px 12px 4px'
+    }),
+    option: (provided, state) => ({
+        ...provided,
+        backgroundColor: state.isSelected 
+            ? 'var(--primary-color)' 
+            : state.isFocused 
+                ? 'var(--hover-background)' 
+                : 'transparent',
+        color: state.isSelected ? '#fff' : 'var(--text-color)',
+        fontSize: '0.8rem',
+        cursor: 'pointer',
+        textAlign: 'left',
+        paddingLeft: '20px' // Indent options under headers
+    })
 };
 
 const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, placeholder = "", className = "" }) => {
@@ -178,6 +247,41 @@ const UncertaintyPanel = ({
         }
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // --- Dynamic Unit Options Generation (Matches AddTestPointModal structure) ---
+    const groupedUnitOptions = useMemo(() => {
+        const allSupportedUnits = Object.keys(unitSystem.units);
+        const options = [];
+        const usedUnits = new Set();
+
+        // 1. Map defined categories
+        Object.entries(unitCategories).forEach(([category, units]) => {
+            // Only show units that actually exist in the unitSystem
+            const validUnits = units.filter(u => allSupportedUnits.includes(u));
+            
+            if (validUnits.length > 0) {
+                options.push({
+                    label: category,
+                    options: validUnits.map(u => {
+                        usedUnits.add(u);
+                        return { value: u, label: u };
+                    })
+                });
+            }
+        });
+
+        // 2. Catch "Other" (Any unit in unitSystem not yet categorized)
+        const leftovers = allSupportedUnits
+            .filter(u => !usedUnits.has(u))
+            .sort()
+            .map(u => ({ value: u, label: u }));
+
+        if (leftovers.length > 0) {
+            options.push({ label: "Other", options: leftovers });
+        }
+
+        return options;
     }, []);
 
     const isUutDefined = (sessionData.uutDescription && sessionData.uutDescription.trim() !== "") ||
@@ -389,6 +493,44 @@ const UncertaintyPanel = ({
             onInlineUutUpdate('nominal', '');
         }
     };
+
+    // --- LOGIC FOR CALCULATED vs ACTUAL COMPARISON ---
+    const calculatedNominal = calcResults?.calculatedNominalValue;
+    const targetNominal = parseFloat(uutNominal?.value);
+    
+    // Determine status: "match" (green), "mismatch" (red), or "neutral" (gray/hidden)
+    const getCalculatedStatus = () => {
+        if (isNaN(calculatedNominal) || isNaN(targetNominal)) return 'neutral';
+        
+        // Use a small tolerance relative to magnitude (0.01%) or fixed epsilon near zero
+        const diff = Math.abs(calculatedNominal - targetNominal);
+        const tolerance = Math.max(Math.abs(targetNominal * 0.0001), 1e-9); 
+        
+        return diff <= tolerance ? 'match' : 'mismatch';
+    };
+    
+    const calcStatus = getCalculatedStatus();
+    
+    const calcStatusStyle = {
+        match: {
+            borderColor: 'var(--status-good)',
+            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+            color: 'var(--status-good)',
+            icon: faCheckCircle
+        },
+        mismatch: {
+            borderColor: 'var(--status-bad)',
+            backgroundColor: 'rgba(255, 82, 82, 0.1)',
+            color: 'var(--status-bad)',
+            icon: faTimesCircle
+        },
+        neutral: {
+            borderColor: 'var(--border-color)',
+            backgroundColor: 'transparent',
+            color: 'var(--text-color-muted)',
+            icon: null
+        }
+    }[calcStatus];
 
     return (
         <div className="configuration-panel">
@@ -719,16 +861,12 @@ const UncertaintyPanel = ({
                                             <tr>
                                                 <td style={{ paddingLeft: '20px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary-color)' }}>
-                                                        {isDerived ? (
-                                                            <span>{calcResults?.calculatedNominalValue?.toPrecision(5) ?? "-"}</span>
-                                                        ) : (
-                                                            <EditableCell
-                                                                value={uutNominal?.value}
-                                                                onSave={(val) => onInlineUutUpdate && onInlineUutUpdate('nominal', val)}
-                                                                type="number"
-                                                                placeholder="0.00"
-                                                            />
-                                                        )}
+                                                        <EditableCell
+                                                            value={uutNominal?.value}
+                                                            onSave={(val) => onInlineUutUpdate && onInlineUutUpdate('nominal', val)}
+                                                            type="number"
+                                                            placeholder="0.00"
+                                                        />
                                                     </div>
                                                 </td>
                                                 <td 
@@ -848,6 +986,32 @@ const UncertaintyPanel = ({
                                     )}
                                 </div>
                                 
+                                {/* Calculated vs Target Comparison */}
+                                {calcStatus !== 'neutral' && (
+                                    <div style={{
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        justifyContent: 'space-between',
+                                        padding: '10px 14px',
+                                        borderRadius: '6px',
+                                        border: `1px solid ${calcStatusStyle.borderColor}`,
+                                        backgroundColor: calcStatusStyle.backgroundColor,
+                                        fontSize: '0.9rem',
+                                        fontWeight: 500,
+                                        color: calcStatusStyle.color
+                                    }}>
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                            <FontAwesomeIcon icon={calcStatusStyle.icon} />
+                                            <span>
+                                                Calculated: <strong>{calculatedNominal?.toPrecision(6)} {uutNominal?.unit}</strong>
+                                            </span>
+                                        </div>
+                                        <div style={{color: 'var(--text-color-muted)', fontSize: '0.85rem'}}>
+                                            (Target: {targetNominal?.toPrecision(6)} {uutNominal?.unit})
+                                        </div>
+                                    </div>
+                                )}
+                                
                                 {/* Variable Grid */}
                                 <div className="var-map-grid" style={{flex: 1}}>
                                     {equationDisplayData.variables.length === 0 ? (
@@ -910,7 +1074,22 @@ const UncertaintyPanel = ({
                                                                         width: "100px" 
                                                                     }}
                                                                 />
-                                                                <span className="var-unit">{v.unit}</span>
+                                                                {/* DROPDOWN FOR UNIT SELECTION */}
+                                                                <div style={{ width: '85px', marginLeft: '5px', borderBottom: '1px dashed var(--border-color)' }}>
+                                                                     <Select
+                                                                        options={groupedUnitOptions}
+                                                                        value={
+                                                                            groupedUnitOptions
+                                                                                .flatMap(g => g.options)
+                                                                                .find(opt => opt.value === v.unit) || (v.unit ? { value: v.unit, label: v.unit } : null)
+                                                                        }
+                                                                        onChange={(opt) => onInlineTmdeUpdate && onInlineTmdeUpdate(v.tmdeId, 'unit', opt.value)}
+                                                                        styles={customUnitSelectStyles}
+                                                                        placeholder="Unit"
+                                                                        menuPortalTarget={document.body} 
+                                                                        isSearchable={true}
+                                                                     />
+                                                                </div>
                                                             </div>
                                                         ) : (
                                                             <div className="var-value-display" style={{backgroundColor: 'var(--input-background)'}}>

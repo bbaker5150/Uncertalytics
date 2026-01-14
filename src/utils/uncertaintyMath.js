@@ -766,14 +766,21 @@ export const calculateDerivedUncertainty = (
     const node = math.parse(expressionToParse);
     const variables = Object.keys(variableMappings);
 
+    // Get Target Unit Conversion Factor (to convert final result back to user's unit)
+    const targetUnit = derivedNominalPoint?.unit || "";
+    const targetUnitInfo = unitSystem.units[targetUnit];
+    // Default to 1 if unit not found to prevent NaN, but logic relies on valid units usually
+    const targetToSi = targetUnitInfo ? targetUnitInfo.to_si : 1; 
+
     // Handle Constant Expressions (e.g. "1 + 1")
     if (variables.length === 0) {
       try {
-        const constantResult = node.compile().evaluate({});
+        const constantResultBase = node.compile().evaluate({});
+        const constantResultConverted = unitSystem.fromBaseUnit(constantResultBase, targetUnit);
         return {
           combinedUncertaintyNative: 0,
           breakdown: [],
-          nominalResult: constantResult,
+          nominalResult: constantResultConverted,
           error: null,
         };
       } catch (constEvalError) {
@@ -783,13 +790,13 @@ export const calculateDerivedUncertainty = (
       }
     }
 
-    let sumOfSquaresNative = 0;
+    let sumOfSquaresBase = 0;
     const calculationBreakdown = [];
     const nominalScope = {};
     const uncertaintyInputs = {};
 
     // --- 3. PROCESS TMDE INPUTS (Build Data Source) ---
-    // We first collect all available physics/uncertainty data by "Variable Type"
+    // We collect all data in BASE UNITS to ensure physics are correct (e.g. 1mV * 1kV = 0.001 * 1000 = 1)
     tmdeTolerances.forEach((tmde) => {
       if (
         !tmde.variableType ||
@@ -797,13 +804,13 @@ export const calculateDerivedUncertainty = (
         tmde.measurementPoint.value === "" ||
         tmde.measurementPoint.unit === ""
       ) {
-        return; // Skip invalid TMDEs
+        return; 
       }
 
       const nominalValue = parseFloat(tmde.measurementPoint.value);
       if (isNaN(nominalValue)) return;
 
-      // Calculate Standard Uncertainty (exclude resolution if needed)
+      // Calculate Standard Uncertainty
       const { standardUncertainty: ui_ppm } =
         calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint, true);
 
@@ -812,30 +819,24 @@ export const calculateDerivedUncertainty = (
         tmde.measurementPoint.unit
       );
 
-      // Convert ppm to absolute values
+      // Uncertainty in Base Units (absolute)
       const ui_absolute_base = (ui_ppm / 1e6) * Math.abs(nominalInBase);
-      const ui_absolute_native = (ui_ppm / 1e6) * Math.abs(nominalValue);
 
       const quantity = parseInt(tmde.quantity, 10) || 1;
       const variance_base = ui_absolute_base ** 2 * quantity;
-      const variance_native = ui_absolute_native ** 2 * quantity;
 
-      if (isNaN(variance_base) || variance_base < 0 || isNaN(variance_native)) {
-        console.warn("Could not calculate valid absolute uncertainty for TMDE:", tmde);
+      if (isNaN(variance_base) || variance_base < 0) {
         return;
       }
 
-      // Accumulate variance for this Variable Type
+      // Store in map
       if (uncertaintyInputs[tmde.variableType]) {
         uncertaintyInputs[tmde.variableType].ui_squared_sum_base += variance_base;
-        uncertaintyInputs[tmde.variableType].ui_squared_sum_native += variance_native;
       } else {
         uncertaintyInputs[tmde.variableType] = {
           ui_squared_sum_base: variance_base,
-          ui_squared_sum_native: variance_native,
-          nominal: nominalValue,
+          nominalBase: nominalInBase, // STORE BASE VALUE
           unit: tmde.measurementPoint.unit,
-          // Note: We don't assign 'symbol' here yet, because one type might map to multiple symbols
         };
       }
     });
@@ -847,18 +848,26 @@ export const calculateDerivedUncertainty = (
         const nominalValue = parseFloat(comp.nominal);
 
         if (!isNaN(nominalValue)) {
-          const u_val = parseFloat(comp.value) || 0;
-          // Assuming manual value is standard uncertainty (k=1)
-          const variance = u_val ** 2;
+          // Normalize manual input to Base Units
+          const nominalInBase = comp.unit 
+            ? unitSystem.toBaseUnit(nominalValue, comp.unit)
+            : nominalValue;
+
+          // Convert uncertainty value to Base Units
+          // Check if value is provided in Base or Native. 
+          // Usually manualComponents store 'value' as calculated standard uncertainty in NATIVE units (if unit provided) or PPM?
+          // For simplicity in this context, assuming 'value' is absolute in the component's unit.
+          const u_val_native = parseFloat(comp.value) || 0; 
+          const u_val_base = comp.unit ? unitSystem.toBaseUnit(u_val_native, comp.unit) : u_val_native;
+          
+          const variance_base = u_val_base ** 2;
 
           if (uncertaintyInputs[varType]) {
-            uncertaintyInputs[varType].ui_squared_sum_base += variance;
-            uncertaintyInputs[varType].ui_squared_sum_native += variance;
+            uncertaintyInputs[varType].ui_squared_sum_base += variance_base;
           } else {
             uncertaintyInputs[varType] = {
-              ui_squared_sum_base: variance,
-              ui_squared_sum_native: variance,
-              nominal: nominalValue,
+              ui_squared_sum_base: variance_base,
+              nominalBase: nominalInBase,
               unit: comp.unit || "",
             };
           }
@@ -866,26 +875,21 @@ export const calculateDerivedUncertainty = (
       });
     }
 
-    // --- 5. POPULATE NOMINAL SCOPE (Crucial Fix) ---
-    // Iterate through the EQUATION SYMBOLS (V1, V2, etc.) and assign values 
-    // from the collected uncertaintyInputs. This ensures every symbol gets a value.
+    // --- 5. POPULATE NOMINAL SCOPE (Base Units) ---
     Object.keys(variableMappings).forEach((symbol) => {
       const mappedType = variableMappings[symbol];
       const inputData = uncertaintyInputs[mappedType];
 
       if (inputData) {
-        nominalScope[symbol] = inputData.nominal;
+        nominalScope[symbol] = inputData.nominalBase;
       }
     });
 
     // --- 6. VALIDATE ALL VARIABLES ARE PRESENT ---
-    // Check if any mapped variables failed to get a value in the scope
     const missingSymbols = variables.filter(sym => nominalScope[sym] === undefined);
 
     if (missingSymbols.length > 0) {
-      // Map symbols back to their types for a friendlier error message
       const missingTypes = missingSymbols.map(sym => variableMappings[sym]);
-
       return {
         combinedUncertaintyNative: NaN,
         breakdown: [],
@@ -901,22 +905,13 @@ export const calculateDerivedUncertainty = (
       uncertaintyInputs[type].ui_base = Math.sqrt(
         uncertaintyInputs[type].ui_squared_sum_base
       );
-      uncertaintyInputs[type].ui_native = Math.sqrt(
-        uncertaintyInputs[type].ui_squared_sum_native
-      );
     });
 
-    // --- 7. CALCULATE SENSITIVITY & COMBINED UNCERTAINTY ---
+    // --- 7. CALCULATE SENSITIVITY & COMBINED UNCERTAINTY (Base Units) ---
     variables.forEach((variableSymbol) => {
       const variableType = variableMappings[variableSymbol];
       const inputData = uncertaintyInputs[variableType];
 
-      if (!inputData || inputData.ui_native === undefined) {
-        // Should be caught by step 6, but safety check
-        throw new Error(`Internal error: Data missing for '${variableType}'.`);
-      }
-
-      const ui_native = inputData.ui_native;
       const ui_base = inputData.ui_base;
 
       // MathJS Derivative
@@ -924,49 +919,64 @@ export const calculateDerivedUncertainty = (
       const derivativeStr = derivativeNode.toString();
       const derivativeFunc = derivativeNode.compile();
 
-      // Evaluate derivative at the nominal point
-      const sensitivityCoeff = derivativeFunc.evaluate(nominalScope);
+      // Sensitivity in Base Units: d(ResultBase) / d(InputBase)
+      const sensitivityCoeffBase = derivativeFunc.evaluate(nominalScope);
 
-      if (isNaN(sensitivityCoeff)) {
-        // Catch Complex numbers which evaluate to Objects in MathJS but fail isNaN checks in some envs, 
-        // or standard NaNs.
-        if (sensitivityCoeff && typeof sensitivityCoeff === 'object' && sensitivityCoeff.re !== undefined) {
+      if (isNaN(sensitivityCoeffBase)) {
+        if (sensitivityCoeffBase && typeof sensitivityCoeffBase === 'object') {
           throw new Error(`Derivative for '${variableSymbol}' is Complex. Check equation domain.`);
         }
         throw new Error(`Could not evaluate derivative for '${variableSymbol}' (Result: NaN).`);
       }
 
-      const contribution_native = sensitivityCoeff * ui_native;
-      const termSquared_native = contribution_native ** 2;
+      // Contribution to uncertainty in Base Units
+      const contribution_base = sensitivityCoeffBase * ui_base;
+      const termSquared_base = contribution_base ** 2;
 
-      sumOfSquaresNative += termSquared_native;
+      sumOfSquaresBase += termSquared_base;
+
+      // Convert Sensitivity for Display: d(TargetUnit) / d(InputNativeUnit)
+      // ci_display = ci_base * (InputToSi / TargetToSi)
+      const inputToSi = unitSystem.units[inputData.unit]?.to_si || 1;
+      const ci_display = sensitivityCoeffBase * (inputToSi / targetToSi);
+
+      // Convert Contribution for Display (Target Unit)
+      const contribution_target = Math.abs(contribution_base / targetToSi);
 
       calculationBreakdown.push({
         variable: variableSymbol,
         type: variableType,
-        nominal: inputData.nominal,
+        nominal: unitSystem.fromBaseUnit(inputData.nominalBase, inputData.unit), // Display nominal in native unit
         unit: inputData.unit,
-        ui_absolute_base: ui_base,
-        ci: sensitivityCoeff,
+        ui_absolute_base: ui_base, 
+        ci: ci_display, // Sensitivity scaled to units
         derivativeString: derivativeStr,
-        contribution_native: Math.abs(contribution_native),
-        termSquared_native: termSquared_native,
+        contribution_native: contribution_target, // This matches the "Native" field expected by UI
+        termSquared_native: termSquared_base, // Used for Pareto, strictly doesn't matter as long as proportional
       });
     });
 
-    const combinedUncertaintyNative = math.sqrt(sumOfSquaresNative);
+    // Combined Uncertainty in Base Units
+    const combinedUncertaintyBase = math.sqrt(sumOfSquaresBase);
+    
+    // Convert Combined Uncertainty to Target Unit
+    const combinedUncertaintyTarget = unitSystem.fromBaseUnit(combinedUncertaintyBase, targetUnit);
 
-    let nominalResult = NaN;
+    // Calculate Nominal Result in Base Units
+    let nominalResultBase = NaN;
     try {
-      nominalResult = node.compile().evaluate(nominalScope);
+      nominalResultBase = node.compile().evaluate(nominalScope);
     } catch (evalError) {
       console.error("Error evaluating nominal equation result:", evalError);
     }
 
+    // Convert Nominal Result to Target Unit
+    const nominalResultTarget = unitSystem.fromBaseUnit(nominalResultBase, targetUnit);
+
     return {
-      combinedUncertaintyNative: combinedUncertaintyNative,
+      combinedUncertaintyNative: combinedUncertaintyTarget,
       breakdown: calculationBreakdown,
-      nominalResult,
+      nominalResult: nominalResultTarget,
       error: null,
     };
 
