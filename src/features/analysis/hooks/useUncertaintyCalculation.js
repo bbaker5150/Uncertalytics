@@ -1,14 +1,3 @@
-/**
- * * This hook handles the heavy lifting of the Uncertainty Analysis calculation.
- * It monitors the test point data, TMDE tolerances, and UUT specs. When these change,
- * it recalculates the Combined Uncertainty, Expanded Uncertainty, and Effective Degrees of Freedom.
- * * Key Responsibilities:
- * - Handling both "Direct" and "Derived" measurement types.
- * - Aggregating variance from all contributors (Manual, TMDE, UUT Resolution).
- * - Calculating Welch-Satterthwaite Effective DoF.
- * - Returning the final calculated results object used by the UI table.
- */
-
 import { useState, useEffect } from "react";
 import { probit } from "simple-statistics";
 import { 
@@ -46,10 +35,14 @@ export const useUncertaintyCalculation = (
         Object.keys(testPointData.variableMappings).length > 0;
       const noTmdes = !tmdeTolerancesData || tmdeTolerancesData.length === 0;
 
+      // UPDATED CONDITION: Only return if there are no TMDEs AND no Manual Components
+      const noManuals = !manualComponents || manualComponents.length === 0;
+
       if (
         testPointData.measurementType === "derived" &&
         hasVariables &&
-        noTmdes
+        noTmdes && 
+        noManuals // <--- Added check
       ) {
         setCalcResults(null);
         if (testPointData.is_detailed_uncertainty_calculated) {
@@ -93,7 +86,8 @@ export const useUncertaintyCalculation = (
           testPointData.equationString,
           testPointData.variableMappings,
           tmdeTolerancesData,
-          uutNominal
+          uutNominal,
+          manualComponents // <--- UPDATED: Passed manualComponents here
         );
 
         if (calcError) {
@@ -111,85 +105,81 @@ export const useUncertaintyCalculation = (
         let totalVariance_Native = derivedUcInputs_Native ** 2;
 
         derivedBreakdown.forEach((item, index) => {
-          const contributingTmde = tmdeTolerancesData.find(
-            (tmde) => tmde.variableType === item.type
-          );
-          let distributionLabel = contributingTmde
-            ? getBudgetComponentsFromTolerance(
-                contributingTmde,
-                contributingTmde.measurementPoint
-              )[0]?.distribution || "N/A"
-            : "N/A";
+            // Logic to find if this component came from a TMDE or Manual
+            const contributingTmde = tmdeTolerancesData.find(
+                (tmde) => tmde.variableType === item.type
+            );
+            
+            // Check manual if not found in TMDE
+            const contributingManual = !contributingTmde 
+                ? manualComponents.find(m => (m.variableType || m.name) === item.type) 
+                : null;
 
-          const allContributingTmdes = tmdeTolerancesData.filter(
-            (tmde) => tmde.variableType === item.type
-          );
-          const totalQuantity = allContributingTmdes.reduce(
-            (sum, tmde) => sum + (tmde.quantity || 1),
-            0
-          );
+            let distributionLabel = "N/A";
+            if (contributingTmde) {
+                distributionLabel = getBudgetComponentsFromTolerance(
+                    contributingTmde,
+                    contributingTmde.measurementPoint
+                )[0]?.distribution || "N/A";
+            } else if (contributingManual) {
+                distributionLabel = contributingManual.distribution || "Normal (k=2)"; // Default or read from obj
+            }
 
-          componentsForBudgetTable.push({
-            id: `derived_${item.variable}_${index}`,
-            name: `Input: ${item.type} (${item.variable})`,
-            type: "B",
-            value: item.ui_absolute_base,
-            unit: item.unit,
-            isBaseUnitValue: true,
-            sensitivityCoefficient: item.ci,
-            derivativeString: item.derivativeString,
-            contribution: item.contribution_native,
-            dof: Infinity,
-            isCore: true,
-            distribution: distributionLabel,
-            sourcePointLabel: `${item.nominal} ${item.unit || ""}`,
-            quantity: totalQuantity,
-          });
+            const allContributingTmdes = tmdeTolerancesData.filter(
+                (tmde) => tmde.variableType === item.type
+            );
+            const totalQuantity = allContributingTmdes.length > 0 
+                ? allContributingTmdes.reduce((sum, tmde) => sum + (tmde.quantity || 1), 0)
+                : 1;
+
+            componentsForBudgetTable.push({
+                id: `derived_${item.variable}_${index}`,
+                name: `Input: ${item.type} (${item.variable})`,
+                type: "B",
+                value: item.ui_absolute_base,
+                unit: item.unit,
+                isBaseUnitValue: true,
+                sensitivityCoefficient: item.ci,
+                derivativeString: item.derivativeString,
+                contribution: item.contribution_native,
+                dof: Infinity,
+                isCore: true,
+                distribution: distributionLabel,
+                sourcePointLabel: `${item.nominal} ${item.unit || ""}`,
+                quantity: totalQuantity,
+            });
         });
 
-        // -------------------------------------------------------------
-        // NEW CODE START: Handle Manual Components (e.g., Repeatability)
-        // -------------------------------------------------------------
+        // Add Manual Components that are NOT variables (e.g. Repeatability of the result)
+        // We filter out manual components that were already used as variables above
         if (manualComponents && manualComponents.length > 0) {
             manualComponents.forEach((comp, idx) => {
-                // Manual components typically come in as PPM (relative).
-                // We need to convert them to absolute native units to add to the
-                // Derived Total Variance (which is calculated in Native Units squared).
-                
-                // comp.value is the uncertainty (usually PPM/Relative).
-                // derivedNominalValue is the calculated nominal result of the equation.
-                
-                // Calculate Absolute Uncertainty in Native Units
-                // (PPM / 1,000,000) * Nominal
-                const absUncNative = (comp.value / 1e6) * Math.abs(derivedNominalValue);
+                const varType = comp.variableType || comp.name;
+                const isMappedVariable = Object.values(testPointData.variableMappings || {}).includes(varType);
 
-                // Calculate Absolute Uncertainty in Base Units (SI)
-                const absUncBase = absUncNative * targetUnitInfo.to_si;
+                if (!isMappedVariable) {
+                    const absUncNative = (comp.value / 1e6) * Math.abs(derivedNominalValue);
+                    const absUncBase = absUncNative * targetUnitInfo.to_si;
 
-                if (!isNaN(absUncNative)) {
-                    // Add to Total Variance (Sum of Squares)
-                    totalVariance_Native += absUncNative ** 2;
+                    if (!isNaN(absUncNative)) {
+                        totalVariance_Native += absUncNative ** 2;
 
-                    componentsForBudgetTable.push({
-                        ...comp,
-                        id: comp.id || `manual_derived_${idx}`,
-                        sourcePointLabel: "Manual",
-                        // For derived table, 'value' often represents the Base Unit value 
-                        // (matching the logic in derivedBreakdown push above)
-                        value: absUncBase, 
-                        unit: derivedNominalUnit,
-                        isBaseUnitValue: true,
-                        sensitivityCoefficient: 1, // Direct contributor to the result
-                        contribution: absUncNative,
-                        dof: comp.dof || Infinity,
-                        isCore: false
-                    });
+                        componentsForBudgetTable.push({
+                            ...comp,
+                            id: comp.id || `manual_derived_${idx}`,
+                            sourcePointLabel: "Manual",
+                            value: absUncBase, 
+                            unit: derivedNominalUnit,
+                            isBaseUnitValue: true,
+                            sensitivityCoefficient: 1, 
+                            contribution: absUncNative,
+                            dof: comp.dof || Infinity,
+                            isCore: false
+                        });
+                    }
                 }
             });
         }
-        // -------------------------------------------------------------
-        // NEW CODE END
-        // -------------------------------------------------------------
 
         // Add direct components like resolution
         let uutResolutionUncertaintyBase = 0;
@@ -256,6 +246,7 @@ export const useUncertaintyCalculation = (
 
         effectiveDof = Infinity;
       } else {
+        // --- DIRECT MEASUREMENT LOGIC (Unchanged mostly) ---
         let totalVariancePPM = 0;
         const uutResolutionComponents = getBudgetComponentsFromTolerance(
           uutToleranceData,

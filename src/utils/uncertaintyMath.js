@@ -716,7 +716,8 @@ export const calculateDerivedUncertainty = (
     equationString,
     variableMappings,
     tmdeTolerances,
-    derivedNominalPoint
+    derivedNominalPoint,
+    manualComponents = [] // <--- UPDATED: Added parameter
   ) => {
     if (!equationString || !variableMappings || !tmdeTolerances) {
       console.error("calculateDerivedUncertainty missing essential inputs", {
@@ -784,6 +785,7 @@ export const calculateDerivedUncertainty = (
       const nominalScope = {};
       const uncertaintyInputs = {};
   
+      // --- 1. PROCESS TMDE INPUTS ---
       tmdeTolerances.forEach((tmde) => {
         if (
           !tmde.variableType ||
@@ -803,8 +805,7 @@ export const calculateDerivedUncertainty = (
           return;
         }
         
-        // --- UPDATED CALL ---
-        // We pass 'true' as the 3rd argument to force exclusion of Resolution from TMDE uncertainty
+        // Pass 'true' to exclude Resolution from TMDE uncertainty here
         const { standardUncertainty: ui_ppm } =
           calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint, true);
 
@@ -834,10 +835,9 @@ export const calculateDerivedUncertainty = (
         if (variableSymbol && !nominalScope.hasOwnProperty(variableSymbol)) {
           nominalScope[variableSymbol] = nominalValue;
         } else if (!variableSymbol) {
-          console.warn(
-            `TMDE variable type '${tmde.variableType}' not found in mappings.`
-          );
-          return;
+          // It's okay if a TMDE doesn't map to a variable (it might be for something else)
+          // but we log it just in case.
+          // console.warn(`TMDE variable type '${tmde.variableType}' not found in mappings.`);
         }
   
         if (uncertaintyInputs[tmde.variableType]) {
@@ -855,7 +855,54 @@ export const calculateDerivedUncertainty = (
           };
         }
       });
+
+      // --- 2. PROCESS MANUAL COMPONENT INPUTS (UPDATED BLOCK) ---
+      if (manualComponents && Array.isArray(manualComponents)) {
+        manualComponents.forEach((comp) => {
+          // We assume comp.variableType or comp.name holds the mapping key (e.g. "Width")
+          const varType = comp.variableType || comp.name;
+          
+          // Find which equation symbol (e.g., "w") maps to this type (e.g., "Width")
+          const variableSymbol = Object.keys(variableMappings).find(
+            (key) => variableMappings[key] === varType
+          );
+
+          if (variableSymbol) {
+             // Use the manual component's nominal value for the equation scope
+             const nominalValue = parseFloat(comp.nominal);
+             
+             if (!isNaN(nominalValue)) {
+                // If the variable hasn't been defined by a TMDE yet, set it now
+                if (!nominalScope.hasOwnProperty(variableSymbol)) {
+                    nominalScope[variableSymbol] = nominalValue;
+                }
+
+                // Calculate Variance contribution
+                // Manual value is typically the standard uncertainty in the unit specified
+                const u_val = parseFloat(comp.value) || 0;
+                // If manual unit differs from base, conversion logic might be needed here. 
+                // For now, we assume consistency or that 'value' is already in base/native as needed.
+                // If 'value' is absolute:
+                const variance = u_val ** 2;
+
+                if (uncertaintyInputs[varType]) {
+                    uncertaintyInputs[varType].ui_squared_sum_base += variance;
+                    uncertaintyInputs[varType].ui_squared_sum_native += variance;
+                } else {
+                    uncertaintyInputs[varType] = {
+                        ui_squared_sum_base: variance,
+                        ui_squared_sum_native: variance,
+                        nominal: nominalValue,
+                        unit: comp.unit || "",
+                        symbol: variableSymbol
+                    };
+                }
+             }
+          }
+        });
+      }
   
+      // --- 3. VALIDATE ALL VARIABLES ARE PRESENT ---
       const typesFound = new Set(Object.keys(uncertaintyInputs));
       const requiredTypes = new Set(Object.values(variableMappings));
       if (typesFound.size < requiredTypes.size) {

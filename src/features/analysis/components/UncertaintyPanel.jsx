@@ -6,13 +6,18 @@
  * - Renders the Contribution Bar Graph.
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import * as math from 'mathjs'; 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faPlus,
     faPencilAlt,
     faTrashAlt,
-    faRulerCombined
+    faCalculator,
+    faLink,
+    faExclamationTriangle,
+    faTimes,
+    faUnlink
 } from "@fortawesome/free-solid-svg-icons";
 
 // Sub-components
@@ -28,7 +33,51 @@ import {
     convertPpmToUnit,
 } from "../../../utils/uncertaintyMath";
 
-const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, placeholder = "" }) => {
+// --- HELPERS FOR EQUATION EDITOR ---
+const SymbolButton = ({ onSymbolClick, symbol, title }) => (
+    <button
+        type="button"
+        className="symbol-button"
+        title={title || `Insert ${symbol}`}
+        onClick={() => onSymbolClick(symbol)}
+        onMouseDown={(e) => e.preventDefault()} 
+    >
+        {symbol.replace('()', '( )')}
+    </button>
+);
+
+const symbolCategories = {
+    'Operators': [
+        { symbol: '+', title: 'Add' },
+        { symbol: '-', title: 'Subtract' },
+        { symbol: '*', title: 'Multiply' },
+        { symbol: '/', title: 'Divide' },
+        { symbol: '^', title: 'Power' },
+        { symbol: '()', title: 'Parentheses' },
+        { symbol: '%', title: 'Percent' },
+    ],
+    'Functions': [
+        { symbol: 'sqrt()', title: 'Square Root' },
+        { symbol: 'abs()', title: 'Absolute Value' },
+        { symbol: 'log()', title: 'Log (base 10)' },
+        { symbol: 'ln()', title: 'Natural Log' },
+        { symbol: 'exp()', title: 'Exponential' },
+    ],
+    'Trigonometry': [
+        { symbol: 'sin()', title: 'Sine' },
+        { symbol: 'cos()', title: 'Cosine' },
+        { symbol: 'tan()', title: 'Tangent' },
+    ],
+    'Greek': [
+        { symbol: 'Δ', title: 'Delta' },
+        { symbol: 'θ', title: 'Theta' },
+        { symbol: 'λ', title: 'Lambda' },
+        { symbol: 'π', title: 'Pi' },
+        { symbol: 'Ω', title: 'Omega' },
+    ]
+};
+
+const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, placeholder = "", className = "" }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentValue, setCurrentValue] = useState(value);
 
@@ -36,8 +85,10 @@ const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, p
 
     const handleBlur = () => {
         setIsEditing(false);
-        if (currentValue != value) {
-            onSave(currentValue);
+        // Trim strings to prevent whitespace mismatch bugs
+        const cleanVal = typeof currentValue === 'string' ? currentValue.trim() : currentValue;
+        if (cleanVal != value) {
+            onSave(cleanVal);
         }
     };
 
@@ -57,6 +108,7 @@ const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, p
                 onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
+                className={className}
                 style={{ width: '100%', padding: '4px', boxSizing: 'border-box', ...style }}
             />
         )
@@ -73,7 +125,7 @@ const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, p
                 color: !value && placeholder ? 'var(--text-color-muted)' : 'inherit',
                 ...style
             }}
-            className="editable-cell-display"
+            className={`editable-cell-display ${className}`}
             title="Click to edit"
         >
             {value || placeholder} {suffix}
@@ -109,32 +161,208 @@ const UncertaintyPanel = ({
     onOpenRepeatability,
     // New prop for defining test point via modal
     onDefineTestPoint,
+    onUpdateTestPoint, 
     riskResults,
     setNotification
 }) => {
 
-    // Determine if UUT is defined (has a description or specs)
+    const [isSymbolMenuOpen, setIsSymbolMenuOpen] = useState(false);
+    const equationInputRef = useRef(null);
+    const symbolMenuRef = useRef(null);
+    const symbolButtonRef = useRef(null);
+
+    // Close symbol menu when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (symbolMenuRef.current && !symbolMenuRef.current.contains(event.target) &&
+                symbolButtonRef.current && !symbolButtonRef.current.contains(event.target)) {
+                setIsSymbolMenuOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
     const isUutDefined = (sessionData.uutDescription && sessionData.uutDescription.trim() !== "") ||
         (uutToleranceData && Object.keys(uutToleranceData).length > 0);
 
-    // --- Derived Variable Logic ---
     const isDerived = testPointData.measurementType === "derived";
 
-    // Get available variables from mapping (e.g., A, B, C) or fallback
+    // --- Available Variables for Dropdown (Fixed) ---
     const availableVariables = useMemo(() => {
         if (!isDerived) return [];
         if (testPointData.variableMappings && Object.values(testPointData.variableMappings).length > 0) {
-            return Object.values(testPointData.variableMappings);
+            // Unique, non-empty, trimmed values only
+            const vars = Object.values(testPointData.variableMappings)
+                .map(v => v ? v.trim() : "")
+                .filter(v => v !== "");
+            return [...new Set(vars)];
         }
-        return ["A", "B", "C", "D", "E"];
+        return [];
     }, [testPointData, isDerived]);
 
-    // Determine TMDE Title Pluralization
+    // --- Equation Logic ---
+    const handleEquationChange = (newEquationString) => {
+        let variables = [];
+        try {
+            if (newEquationString && newEquationString.trim()) {
+                let expressionToParse = newEquationString.trim(); 
+                const equalsIndex = expressionToParse.indexOf('=');
+                if (equalsIndex !== -1) {
+                    expressionToParse = expressionToParse.substring(equalsIndex + 1).trim();
+                }
+
+                const node = math.parse(expressionToParse);
+                const varsSet = new Set();
+                node.traverse(function (node, path, parent) {
+                    if (node.isSymbolNode && !math[node.name] && !['e', 'pi', 'i'].includes(node.name.toLowerCase())) {
+                        varsSet.add(node.name);
+                    }
+                });
+                variables = Array.from(varsSet).sort();
+            }
+        } catch (e) {
+            // Fail silently on incomplete equations
+        }
+
+        const currentMappings = testPointData.variableMappings || {};
+        const newMappings = {};
+        
+        variables.forEach(v => {
+            newMappings[v] = currentMappings[v] || ""; 
+        });
+
+        if (onUpdateTestPoint) {
+            onUpdateTestPoint({
+                equationString: newEquationString,
+                variableMappings: newMappings
+            });
+        }
+    };
+
+    const handleSymbolClick = (symbol) => {
+        const input = equationInputRef.current;
+        if (!input) return;
+
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const currentValue = input.value;
+        const selectedText = currentValue.substring(start, end);
+
+        let newValue;
+        let newCursorPos;
+
+        const isFunction = symbol.endsWith('()');
+
+        if (isFunction) {
+            const funcName = symbol.slice(0, -2);
+            const textToInsert = `${funcName}(${selectedText})`;
+            newValue = currentValue.substring(0, start) + textToInsert + currentValue.substring(end);
+            newCursorPos = start + (selectedText ? textToInsert.length + 1 : funcName.length + 1);
+        } else {
+            newValue = currentValue.substring(0, start) + symbol + currentValue.substring(end);
+            newCursorPos = start + symbol.length;
+        }
+
+        handleEquationChange(newValue);
+
+        setTimeout(() => {
+            if (input) {
+                input.focus();
+                input.setSelectionRange(newCursorPos, newCursorPos);
+            }
+        }, 0);
+    };
+
+    const handleVariableMappingChange = (symbol, newName) => {
+        // Trim input to ensure exact matches with TMDE dropdowns
+        const cleanedName = newName ? newName.trim() : "";
+        const newMappings = { ...testPointData.variableMappings, [symbol]: cleanedName };
+        if (onUpdateTestPoint) {
+            onUpdateTestPoint({ variableMappings: newMappings });
+        }
+    };
+
+    // --- NEW: Assign TMDE to Variable Handler (FIXED) ---
+    const handleAssignTmdeToVariable = (symbol, tmdeIdStr) => {
+        // 1. Ensure variable has a name mapping
+        const varName = testPointData.variableMappings?.[symbol] || "";
+        if (!varName) {
+             // In a real app, maybe show a toast warning "Please name the variable first"
+             return; 
+        }
+
+        // Case A: Unassigning (User selected "Manual Entry")
+        if (!tmdeIdStr) {
+             const currentAssigned = tmdeTolerancesData.find(t => t.variableType === varName);
+             if (currentAssigned && onInlineTmdeUpdate) {
+                  onInlineTmdeUpdate(currentAssigned.id, 'variableType', "");
+             }
+             return;
+        }
+
+        // Case B: Assigning a new Source (TMDE)
+        
+        // 1. Find the TMDE object loosely (handling string vs number match)
+        const targetTmde = tmdeTolerancesData.find(t => t.id == tmdeIdStr);
+        if (!targetTmde) return; // Should not happen given the dropdown options
+        
+        // Use the REAL id from the object (likely a number)
+        const realTmdeId = targetTmde.id;
+
+        // 2. Find if any other TMDE is currently holding this variable name
+        const previousHolder = tmdeTolerancesData.find(t => t.variableType === varName);
+        
+        // If the same TMDE is already assigned, do nothing
+        if (previousHolder && previousHolder.id === realTmdeId) return;
+
+        // 3. If another TMDE holds it, clear that assignment first (enforce 1:1)
+        if (previousHolder && onInlineTmdeUpdate) {
+            onInlineTmdeUpdate(previousHolder.id, 'variableType', "");
+        }
+
+        // 4. Assign the variable name to the new TMDE
+        if (onInlineTmdeUpdate) {
+            onInlineTmdeUpdate(realTmdeId, 'variableType', varName);
+        }
+    };
+
+    // --- Equation Display Data ---
+    const equationDisplayData = useMemo(() => {
+        if (!isDerived) return null;
+
+        const currentMappings = testPointData.variableMappings || {};
+        const vars = Object.keys(currentMappings).sort().map((symbol) => {
+            const name = currentMappings[symbol];
+            
+            // Strict matching: Name must match TMDE variableType exactly
+            const assignedTmde = tmdeTolerancesData.find(t => 
+                t.variableType && name && t.variableType.trim() === name.trim()
+            );
+            
+            return {
+                symbol,
+                name,
+                isAssigned: !!assignedTmde,
+                value: assignedTmde?.measurementPoint?.value,
+                unit: assignedTmde?.measurementPoint?.unit,
+                instrumentName: assignedTmde?.name,
+                tmdeId: assignedTmde?.id 
+            };
+        });
+
+        return {
+            equation: testPointData.equationString || "",
+            variables: vars
+        };
+    }, [isDerived, testPointData, tmdeTolerancesData]);
+
+
     const tmdeTitle = tmdeTolerancesData.length > 1
         ? "Test Measurement Equipment Devices"
         : "Test Measurement Equipment Device";
 
-    // Common styles
+    // Original Styles
     const cardStyle = {
         backgroundColor: 'var(--content-background)',
         border: '1px solid var(--border-color)',
@@ -152,8 +380,6 @@ const UncertaintyPanel = ({
         letterSpacing: '0.5px'
     };
 
-    // --- Measurement Point Check ---
-    // Check if the measurement point is "Active" (has a value or is derived)
     const hasMeasurementPoint = isDerived || (uutNominal && (uutNominal.value !== undefined && uutNominal.value !== "" && uutNominal.value !== null));
 
     const handleClearMeasurementPoint = () => {
@@ -170,15 +396,15 @@ const UncertaintyPanel = ({
                 display: 'flex', 
                 gap: '20px', 
                 alignItems: 'flex-start', 
-                flexWrap: 'nowrap', 
+                flexWrap: 'wrap', 
                 width: '100%', 
-                overflowX: 'auto',      // Allows scrolling if tables are too wide
-                paddingBottom: '20px'   // Space for scrollbar
+                paddingBottom: '20px'   
             }}>
 
                 {/* --- LEFT PANEL: UUT & TMDE LISTS --- */}
                 <div style={{ 
-                    flex: '1 0 auto',   // Grow: Yes, Shrink: NO (prevent overlapping), Basis: Auto
+                    flex: '1 1 600px', 
+                    minWidth: 0,
                     display: 'flex', 
                     flexDirection: 'column'
                 }}>
@@ -187,7 +413,7 @@ const UncertaintyPanel = ({
                     <div>
                         <h3 style={sectionTitleStyle}>Unit Under Test</h3>
                         <div style={cardStyle}>
-                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px' }}>
+                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto' }}>
                                 <table className="instrument-summary-table" style={{width: '100%'}}>
                                     <colgroup>
                                         <col style={{width: '35%'}} />
@@ -198,7 +424,6 @@ const UncertaintyPanel = ({
                                     <thead>
                                         <tr>
                                             <th style={{ paddingLeft: '20px' }}>Description</th>
-                                            {/* Removed Measurement Point Column from UUT Table on Left */}
                                             <th>Tolerance Spec</th>
                                             <th>Limits</th>
                                             <th style={{ textAlign: 'center', paddingRight: '20px' }}></th>
@@ -206,7 +431,6 @@ const UncertaintyPanel = ({
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            {/* Added whiteSpace: 'nowrap' to prevent description wrapping */}
                                             <td style={{ paddingLeft: '20px', whiteSpace: 'nowrap' }}>
                                                 <EditableCell
                                                     value={sessionData.uutDescription || ""}
@@ -267,13 +491,152 @@ const UncertaintyPanel = ({
                         </div>
                     </div>
 
+                    {/* --- SECTION 1.5: MODERN MEASUREMENT EQUATION (Derived Only) --- */}
+                    {isDerived && equationDisplayData && (
+                        <div className="equation-section-container">
+                            <h3 style={sectionTitleStyle}>Measurement Equation</h3>
+                            
+                            {/* Hero Input */}
+                            <div className="equation-hero-container">
+                                <div className="equation-hero-input-wrapper">
+                                    <input
+                                        ref={equationInputRef}
+                                        type="text"
+                                        className="equation-hero-input"
+                                        value={equationDisplayData.equation}
+                                        onChange={(e) => handleEquationChange(e.target.value)}
+                                        placeholder="e.g. V / R"
+                                    />
+                                    <button 
+                                        ref={symbolButtonRef}
+                                        className={`equation-tools-trigger ${isSymbolMenuOpen ? 'active' : ''}`}
+                                        onClick={() => setIsSymbolMenuOpen(!isSymbolMenuOpen)}
+                                        title="Math Symbols"
+                                    >
+                                        <FontAwesomeIcon icon={faCalculator} />
+                                    </button>
+
+                                    {/* Symbols Popout */}
+                                    {isSymbolMenuOpen && (
+                                        <div className="symbol-popout" ref={symbolMenuRef}>
+                                             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '5px', borderBottom: '1px solid var(--border-color)'}}>
+                                                 <span style={{fontWeight: 700, fontSize: '0.85rem'}}>Math Symbols</span>
+                                                 <span onClick={() => setIsSymbolMenuOpen(false)} style={{cursor: 'pointer'}}><FontAwesomeIcon icon={faTimes} /></span>
+                                             </div>
+                                            {Object.entries(symbolCategories).map(([category, symbols]) => (
+                                                <div key={category} className="symbol-category">
+                                                    <h5 className="symbol-category-title">{category}</h5>
+                                                    <div className="symbol-category-grid">
+                                                        {symbols.map(s => (
+                                                            <SymbolButton 
+                                                                key={s.symbol} 
+                                                                symbol={s.symbol} 
+                                                                title={s.title} 
+                                                                onSymbolClick={handleSymbolClick} 
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {/* Modern Variable Grid */}
+                            <div className="var-map-grid">
+                                {equationDisplayData.variables.length === 0 ? (
+                                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-color-muted)', padding: '20px', background: 'var(--background-color)', borderRadius: '8px', border: '1px dashed var(--border-color)' }}>
+                                        Start typing an equation to map variables (e.g., A + B).
+                                    </div>
+                                ) : (
+                                    equationDisplayData.variables.map((v) => (
+                                        <div key={v.symbol} className={`var-card-modern ${v.isAssigned ? 'assigned' : 'unassigned'}`}>
+                                            {/* Card Header: Symbol & Name */}
+                                            <div className="var-card-header">
+                                                <div className="var-symbol-badge">{v.symbol}</div>
+                                                <input 
+                                                    type="text" 
+                                                    className="var-name-input"
+                                                    value={v.name}
+                                                    placeholder="Map to (e.g. Volts)..."
+                                                    onChange={(e) => handleVariableMappingChange(v.symbol, e.target.value)}
+                                                />
+                                            </div>
+
+                                            {/* Card Body: Assignment & Values */}
+                                            <div className="var-card-body">
+                                                {/* Source Selector */}
+                                                <div>
+                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px'}}>
+                                                        ASSIGNED SOURCE
+                                                    </label>
+                                                    <select 
+                                                        className="var-source-select"
+                                                        value={v.tmdeId || ""}
+                                                        onChange={(e) => handleAssignTmdeToVariable(v.symbol, e.target.value)}
+                                                        disabled={!v.name} /* Cannot assign if variable not named */
+                                                    >
+                                                        <option value="">-- No Source (Manual Entry) --</option>
+                                                        {tmdeTolerancesData.map(tmde => (
+                                                            <option key={tmde.id} value={tmde.id}>
+                                                                {tmde.name || "Unnamed TMDE"} 
+                                                                {tmde.measurementPoint?.value ? ` (${tmde.measurementPoint.value} ${tmde.measurementPoint.unit})` : ''}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* Value Display or Manual Input */}
+                                                <div>
+                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px'}}>
+                                                        VALUE
+                                                    </label>
+                                                    {v.isAssigned ? (
+                                                        <div className="var-value-display">
+                                                            <EditableCell
+                                                                value={v.value}
+                                                                type="number"
+                                                                onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(v.tmdeId, 'nominal', val)}
+                                                                style={{ 
+                                                                    fontFamily: "'Consolas', monospace",
+                                                                    fontSize: "1.1rem",
+                                                                    fontWeight: 700,
+                                                                    color: "var(--primary-color)",
+                                                                    backgroundColor: "transparent", 
+                                                                    border: "none",
+                                                                    padding: 0,
+                                                                    width: "100px" // Allows room for typing
+                                                                }}
+                                                            />
+                                                            <span className="var-unit">{v.unit}</span>
+                                                        </div>
+                                                    ) : (
+                                                        /* If Manual Entry (Unassigned), allow typing directly if we wanted to support it, 
+                                                           but currently manual entries are placeholders in this view. 
+                                                           We will show a 'Manual' placeholder or empty state. */
+                                                        <div className="var-value-display" style={{backgroundColor: 'var(--input-background)'}}>
+                                                            <span style={{color: 'var(--text-color-muted)', fontSize: '0.9rem', fontStyle: 'italic'}}>
+                                                                <FontAwesomeIcon icon={faExclamationTriangle} style={{color: 'var(--status-warning)', marginRight: '6px'}}/>
+                                                                Map source above
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {/* --- SECTION 2: TMDE LIST --- */}
                     <div>
                         <h3 style={sectionTitleStyle}>{tmdeTitle}</h3>
                         <div style={cardStyle}>
-                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px' }}>
+                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto' }}>
                                 <table className="instrument-summary-table" style={{width: '100%'}}>
-                                     {/* Define col widths for TMDE table to prevent jumping */}
                                      <colgroup>
                                         <col style={{width: '25%'}} />
                                         {isDerived && <col style={{width: '10%'}} />}
@@ -349,7 +712,7 @@ const UncertaintyPanel = ({
                                                             {isDerived && (
                                                                 <td>
                                                                     <select
-                                                                        value={tmde.variableType || ""}
+                                                                        value={availableVariables.includes(tmde.variableType) ? tmde.variableType : ""}
                                                                         onChange={(e) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmde.id, 'variableType', e.target.value)}
                                                                         style={{
                                                                             fontSize: '0.8rem',
@@ -441,13 +804,11 @@ const UncertaintyPanel = ({
 
                 {/* --- RIGHT PANEL: MEASUREMENT POINT SECTION --- */}
                 <div style={{ 
-                    flex: '0 0 350px', 
+                    flex: '1 1 350px', 
+                    minWidth: '300px',
                     display: 'flex', 
                     flexDirection: 'column',
-                    position: 'sticky', // Stick to the right edge
-                    right: 0,
-                    zIndex: 10, // Ensure it sits above table content if they overlap slightly during transition
-                    backgroundColor: 'var(--content-color)' // Prevent transparent background showing content behind
+                    backgroundColor: 'var(--content-color)' 
                 }}>
                      <h3 style={sectionTitleStyle}>Measurement Point</h3>
                      <div style={cardStyle}>

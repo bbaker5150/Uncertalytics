@@ -498,6 +498,8 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
           onInlineTmdeUpdate={handleInlineTmdeUpdate}
           
           handleOpenSessionEditor={handleOpenSessionEditor}
+          
+          onUpdateTestPoint={onDataSave} // <--- ADDED: Passes onDataSave for equation editing
 
           setContextMenu={setContextMenu}
           setBreakdownPoint={setBreakdownPoint}
