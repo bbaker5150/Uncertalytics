@@ -42,7 +42,7 @@ export const useUncertaintyCalculation = (
         testPointData.measurementType === "derived" &&
         hasVariables &&
         noTmdes && 
-        noManuals // <--- Added check
+        noManuals
       ) {
         setCalcResults(null);
         if (testPointData.is_detailed_uncertainty_calculated) {
@@ -77,18 +77,42 @@ export const useUncertaintyCalculation = (
       }
 
       if (testPointData.measurementType === "derived") {
+        // --- UPDATED LOGIC START ---
+        const derivedCalculationResult = calculateDerivedUncertainty(
+          testPointData.equationString,
+          testPointData.variableMappings,
+          tmdeTolerancesData,
+          uutNominal,
+          manualComponents
+        );
+
+        // Check for "soft" error state (missing inputs during configuration)
+        // This prevents the "Missing TMDE assignments" error from crashing the UI
+        if (derivedCalculationResult.missingInputs) {
+          setCalcResults(null);
+          setCalculationError(null); // Explicitly clear errors
+          
+          if (testPointData.is_detailed_uncertainty_calculated) {
+            onDataSave({
+              combined_uncertainty: null,
+              effective_dof: null,
+              k_value: null,
+              expanded_uncertainty: null,
+              is_detailed_uncertainty_calculated: false,
+              calculatedBudgetComponents: [],
+              calculatedNominalValue: null,
+            });
+          }
+          return; // Exit effect gracefully
+        }
+
         const {
           combinedUncertaintyNative,
           breakdown: derivedBreakdown,
           nominalResult,
           error: calcError,
-        } = calculateDerivedUncertainty(
-          testPointData.equationString,
-          testPointData.variableMappings,
-          tmdeTolerancesData,
-          uutNominal,
-          manualComponents // <--- UPDATED: Passed manualComponents here
-        );
+        } = derivedCalculationResult;
+        // --- UPDATED LOGIC END ---
 
         if (calcError) {
           throw new Error(calcError);
@@ -122,7 +146,7 @@ export const useUncertaintyCalculation = (
                     contributingTmde.measurementPoint
                 )[0]?.distribution || "N/A";
             } else if (contributingManual) {
-                distributionLabel = contributingManual.distribution || "Normal (k=2)"; // Default or read from obj
+                distributionLabel = contributingManual.distribution || "Normal (k=2)";
             }
 
             const allContributingTmdes = tmdeTolerancesData.filter(
@@ -151,7 +175,6 @@ export const useUncertaintyCalculation = (
         });
 
         // Add Manual Components that are NOT variables (e.g. Repeatability of the result)
-        // We filter out manual components that were already used as variables above
         if (manualComponents && manualComponents.length > 0) {
             manualComponents.forEach((comp, idx) => {
                 const varType = comp.variableType || comp.name;
@@ -246,7 +269,7 @@ export const useUncertaintyCalculation = (
 
         effectiveDof = Infinity;
       } else {
-        // --- DIRECT MEASUREMENT LOGIC (Unchanged mostly) ---
+        // --- DIRECT MEASUREMENT LOGIC (Unchanged) ---
         let totalVariancePPM = 0;
         const uutResolutionComponents = getBudgetComponentsFromTolerance(
           uutToleranceData,

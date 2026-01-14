@@ -907,11 +907,15 @@ export const calculateDerivedUncertainty = (
       const requiredTypes = new Set(Object.values(variableMappings));
       if (typesFound.size < requiredTypes.size) {
         const missingTypes = [...requiredTypes].filter((t) => !typesFound.has(t));
-        throw new Error(
-          `Missing TMDE assignments for required input types: ${missingTypes.join(
-            ", "
-          )}. Check inputs and TMDE assignments.`
-        );
+        
+        return {
+            combinedUncertaintyNative: NaN,
+            breakdown: [],
+            nominalResult: NaN,
+            error: `Waiting for assignments: ${missingTypes.join(", ")}`,
+            missingInputs: true, // Flag to indicate this is a configuration state, not a math error
+            missingTypes: missingTypes
+        };
       }
   
       Object.keys(uncertaintyInputs).forEach((type) => {
