@@ -30,6 +30,33 @@ export const useUncertaintyCalculation = (
 
     try {
       setCalculationError(null);
+
+      // --- 1. EARLY EXIT: EMPTY STATE ---
+      // If we are in a "Virtual Test Point" state (Area selected, but no point defined),
+      // or if the user simply hasn't typed a value yet, we exit gracefully.
+      if (!uutNominal || 
+          uutNominal.value === "" || 
+          uutNominal.value === null || 
+          uutNominal.value === undefined || 
+          !uutNominal.unit) {
+            
+        setCalcResults(null);
+        
+        // If data was previously calculated, clear it from the persisted state
+        if (testPointData.is_detailed_uncertainty_calculated) {
+          onDataSave({
+            combined_uncertainty: null,
+            effective_dof: null,
+            k_value: null,
+            expanded_uncertainty: null,
+            is_detailed_uncertainty_calculated: false,
+            calculatedBudgetComponents: [],
+            calculatedNominalValue: null,
+          });
+        }
+        return; 
+      }
+
       const hasVariables =
         testPointData.variableMappings &&
         Object.keys(testPointData.variableMappings).length > 0;
@@ -59,11 +86,7 @@ export const useUncertaintyCalculation = (
         return;
       }
 
-      if (!uutNominal || !uutNominal.value || !uutNominal.unit) {
-        throw new Error(
-          "Missing UUT nominal value or unit for calculation reference."
-        );
-      }
+      // --- 2. VALIDATION: UNIT COMPATIBILITY ---
       const derivedNominalValue = parseFloat(uutNominal.value);
       const derivedNominalUnit = uutNominal.unit;
       const targetUnitInfo = unitSystem.units[derivedNominalUnit];

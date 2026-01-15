@@ -1,167 +1,279 @@
-import React, { useState, useEffect, useLayoutEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
+import Select from "react-select";
 import ToleranceForm from "../../../components/common/ToleranceForm";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faBookOpen, faEdit, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { 
+    faCheck, 
+    faBookOpen, 
+    faPlus, 
+    faTrashAlt, 
+    faEdit,
+    faLayerGroup,
+    faCube,
+    faTimes,
+    faCalculator
+} from "@fortawesome/free-solid-svg-icons";
 import InstrumentLookupModal from "./InstrumentLookupModal";
-import NotificationModal from "../../../components/modals/NotificationModal"; //
-import { findInstrumentTolerance, findMatchingTolerances, getToleranceSummary, recalculateTolerance } from "../../../utils/uncertaintyMath";
+import NotificationModal from "../../../components/modals/NotificationModal";
 import { useFloatingWindow } from "../../../hooks/useFloatingWindow";
-import UnresolvedToleranceModal from "../../testPoints/components/UnresolvedToleranceModal";
+import { unitSystem, unitCategories } from "../../../utils/uncertaintyMath";
+import { v4 as uuidv4 } from "uuid";
+
+// Reuse the builder styles for consistency
+import "./InstrumentBuilderModal.css";
+
+// Styles for React Select (matching InstrumentBuilder)
+const portalStyle = {
+  menuPortal: (base) => ({ ...base, zIndex: 99999 }),
+  menu: (base) => ({ ...base, zIndex: 99999, backgroundColor: 'var(--input-background)', color: 'var(--text-color)' }),
+  control: (base) => ({
+    ...base,
+    backgroundColor: 'var(--input-background)',
+    borderColor: 'var(--border-color)',
+    color: 'var(--text-color)',
+  }),
+  singleValue: (base) => ({ ...base, color: 'var(--text-color)' }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isFocused ? 'var(--primary-color)' : 'transparent',
+    color: state.isFocused ? '#fff' : 'var(--text-color)',
+  })
+};
+
+const getCategorizedUnitOptions = (allUnits, referenceUnit) => {
+  const options = [];
+  const usedUnits = new Set();
+  
+  if (referenceUnit && allUnits.includes(referenceUnit)) {
+    let refCategory = "Suggested";
+    for (const [cat, units] of Object.entries(unitCategories)) {
+      if (units.includes(referenceUnit)) {
+        refCategory = cat;
+        break;
+      }
+    }
+    const categoryUnits = unitCategories[refCategory] || [referenceUnit];
+    const prioritizedOptions = categoryUnits
+      .filter((u) => allUnits.includes(u))
+      .map((u) => {
+        usedUnits.add(u);
+        return { value: u, label: u };
+      });
+    options.push({ label: refCategory, options: prioritizedOptions });
+  }
+
+  Object.entries(unitCategories).forEach(([label, units]) => {
+    if (options.some((opt) => opt.label === label)) return;
+    const groupOptions = units
+      .filter((u) => allUnits.includes(u) && !usedUnits.has(u))
+      .map((u) => {
+        usedUnits.add(u);
+        return { value: u, label: u };
+      });
+    if (groupOptions.length > 0) options.push({ label, options: groupOptions });
+  });
+
+  const leftovers = allUnits
+    .filter((u) => !usedUnits.has(u) && !["%", "ppm", "dB", "ppb"].includes(u))
+    .map((u) => ({ value: u, label: u }));
+  if (leftovers.length > 0) options.push({ label: "Other", options: leftovers });
+
+  return options;
+};
 
 const EditUutModal = ({
     isOpen,
     onClose,
     onSave,
-    initialDescription = "",
-    initialTolerance = {},
+    initialUut = null, 
     instruments = [],
-    uutNominal = null,
     hasParentOverlay = false
 }) => {
+    // --- State ---
     const [description, setDescription] = useState("");
-    const [tolerance, setTolerance] = useState({});
-    const [selectedInstrument, setSelectedInstrument] = useState(null);
-    const [notification, setNotification] = useState(null); // Local notification state
+    const [measurementArea, setMeasurementArea] = useState("");
+    
+    // Instrument Definition State
+    const [instrumentDef, setInstrumentDef] = useState({
+        manufacturer: "",
+        model: "",
+        functions: [] 
+    });
+
+    const [activeFunctionId, setActiveFunctionId] = useState(null);
+    const [editingRange, setEditingRange] = useState(null); // For slide-over
 
     const [isLookupOpen, setIsLookupOpen] = useState(false);
-    const [pendingInstrument, setPendingInstrument] = useState(null);
-    const [showRangePrompt, setShowRangePrompt] = useState(false);
-    const [rangePromptData, setRangePromptData] = useState({ value: "", unit: "" });
-    const [unresolvedToleranceModal, setUnresolvedToleranceModal] = useState(null);
+    const [notification, setNotification] = useState(null);
 
     // Floating Window Logic
     const { position, handleMouseDown } = useFloatingWindow({
         isOpen,
-        defaultWidth: 600,
-        defaultHeight: 700
+        defaultWidth: 1000, 
+        defaultHeight: 800
     });
 
+    // --- Initialization ---
     useLayoutEffect(() => {
         if (isOpen) {
-            setDescription(initialDescription || "");
-            setTolerance(initialTolerance || {});
-            setSelectedInstrument(null);
+            setDescription(initialUut?.description || "");
+            // Use existing measurementArea or default to empty
+            setMeasurementArea(initialUut?.measurementArea || initialUut?.measurementAreaId || ""); // Handle both legacy prop names
+            
+            if (initialUut?.instrument) {
+                setInstrumentDef(JSON.parse(JSON.stringify(initialUut.instrument)));
+                if (initialUut.instrument.functions?.length > 0) {
+                    setActiveFunctionId(initialUut.instrument.functions[0].id);
+                }
+            } else {
+                setInstrumentDef({ manufacturer: "", model: "", functions: [] });
+                setActiveFunctionId(null);
+            }
+            setEditingRange(null);
             setNotification(null);
         }
-    }, [isOpen, initialDescription, initialTolerance]);
+    }, [isOpen, initialUut]);
 
+    // --- Helpers ---
+    const activeFunction = useMemo(() => 
+        instrumentDef.functions.find(f => f.id === activeFunctionId), 
+    [instrumentDef.functions, activeFunctionId]);
 
-    const applySpecs = (matchedData, rangeValue, rangeUnit) => {
-        // Use the centralized recalculateTolerance logic.
-        // We explicitly pass {} as existingData to ensure we generate a FRESH tolerance object
-        // based on the new match, rather than merging with potentially stale state.
-        const specs = recalculateTolerance(
-             pendingInstrument || selectedInstrument, 
-             rangeValue, 
-             rangeUnit, 
-             matchedData
-        );
+    const allUnitsRaw = useMemo(() => Object.keys(unitSystem.units), []);
+    const categorizedUnitOptions = useMemo(() => {
+        return getCategorizedUnitOptions(allUnitsRaw, activeFunction?.unit);
+    }, [allUnitsRaw, activeFunction?.unit]);
 
-        if (!specs) {
-            setNotification({
-                title: "Error",
-                message: "Could not apply specifications. Please check the instrument definition.",
-            });
-            return;
+    const formatToleranceSummary = (tolerances) => {
+        if (!tolerances) return "N/A";
+        const parts = [];
+        const fmt = (c) => c.symmetric ? `±${c.high}` : `+${c.high}/-${c.low}`;
+    
+        if (tolerances.reading?.high) parts.push(`${fmt(tolerances.reading)}% Rdg`);
+        if (tolerances.range?.high) parts.push(`${fmt(tolerances.range)}% ${tolerances.range.value ? 'FS' : 'Rng'}`);
+        if (tolerances.floor?.high) parts.push(`${fmt(tolerances.floor)} ${tolerances.floor.unit || ''}`);
+        if (tolerances.db?.high) parts.push(`dB: ${fmt(tolerances.db)}`);
+    
+        return parts.length > 0 ? <span className="tolerance-badge">{parts.join(" + ")}</span> : <span className="tolerance-badge">Custom Spec</span>;
+    };
+
+    // --- Handlers ---
+
+    // 1. Import from Library
+    const handleInstrumentImport = (importedInstrument) => {
+        const newDef = {
+            manufacturer: importedInstrument.manufacturer,
+            model: importedInstrument.model,
+            functions: JSON.parse(JSON.stringify(importedInstrument.functions || [])) 
+        };
+        setInstrumentDef(newDef);
+        
+        // Auto-fill description if empty
+        if (!description) {
+            setDescription(`${importedInstrument.manufacturer} ${importedInstrument.model} ${importedInstrument.description || ""}`);
         }
 
-        // Use Custom Notification Modal
-        const summary = getToleranceSummary(specs);
+        if (newDef.functions.length > 0) {
+            setActiveFunctionId(newDef.functions[0].id);
+        }
+
+        setIsLookupOpen(false);
         setNotification({
-            title: "Confirm Specifications",
-            message: `Found specifications for ${pendingInstrument?.model || selectedInstrument?.model || "Instrument"}:\n\n` +
-                `Tolerance: ${summary}\n\n` +
-                `Do you want to apply these tolerances?`,
-            confirmText: "Apply Specs",
-            cancelText: "Cancel",
-            onConfirm: () => {
-                // Force a fresh object reference to ensure React re-renders the form
-                setTolerance({ ...specs }); 
-                setShowRangePrompt(false);
-                setPendingInstrument(null);
-                setNotification(null);
-            }
+            title: "Import Successful",
+            message: `Imported ${importedInstrument.functions?.length || 0} functions from ${importedInstrument.model}.`
         });
     };
 
-    const handleInstrumentSelect = (instrument) => {
-        setDescription(`${instrument.manufacturer} ${instrument.model} ${instrument.description}`);
-        setSelectedInstrument(instrument);
+    // 2. Functions
+    const handleAddFunction = () => {
+        const newFunc = { id: uuidv4(), name: "New Function", unit: "V", ranges: [] };
+        setInstrumentDef(prev => ({ ...prev, functions: [...prev.functions, newFunc] }));
+        setActiveFunctionId(newFunc.id);
+    };
 
-        // If uutNominal exists, we usually auto-match. 
-        // However, if the user explicitly opened the lookup, they might want to change it.
-        // For now, we keep the auto-match logic but ensure it updates if found.
-        if (uutNominal && uutNominal.value && uutNominal.unit) {
-            const matches = findMatchingTolerances(
-                instrument,
-                uutNominal.value,
-                uutNominal.unit
-            );
+    const handleDeleteFunction = (id) => {
+        setInstrumentDef(prev => ({ ...prev, functions: prev.functions.filter(f => f.id !== id) }));
+        if (activeFunctionId === id) setActiveFunctionId(null);
+    };
 
-            if (matches && matches.length > 1) {
-                setUnresolvedToleranceModal({
-                    instrumentName: instrument.model,
-                    matches: matches,
-                    onSelect: (selected) => {
-                        applySpecs(selected, uutNominal.value, uutNominal.unit);
-                        setUnresolvedToleranceModal(null);
-                    }
-                });
-                return;
-            } else if (matches && matches.length === 1) {
-                applySpecs(matches[0], uutNominal.value, uutNominal.unit);
-                return;
-            }
-        }
+    const updateActiveFunction = (key, value) => {
+        setInstrumentDef(prev => ({
+            ...prev,
+            functions: prev.functions.map(f => f.id === activeFunctionId ? { ...f, [key]: value } : f)
+        }));
+    };
 
-        // If no nominal or no match found for nominal, open prompt for manual entry
-        setPendingInstrument(instrument);
-        setRangePromptData({
-            value: uutNominal?.value || "",
-            unit: uutNominal?.unit || instrument.functions[0]?.unit || "V"
+    // 3. Ranges
+    const handleAddRange = () => {
+        if (!activeFunction) return;
+        const newRange = { id: uuidv4(), min: 0, max: 0, resolution: 0.0001, tolerances: {} };
+        const updatedRanges = [...activeFunction.ranges, newRange].sort((a, b) => parseFloat(a.min) - parseFloat(b.min));
+        setInstrumentDef(prev => ({
+            ...prev,
+            functions: prev.functions.map(f => f.id === activeFunctionId ? { ...f, ranges: updatedRanges } : f)
+        }));
+    };
+
+    const handleDeleteRange = (rangeId) => {
+        setInstrumentDef(prev => ({
+            ...prev,
+            functions: prev.functions.map(f => {
+                if (f.id !== activeFunctionId) return f;
+                return { ...f, ranges: f.ranges.filter(r => r.id !== rangeId) };
+            })
+        }));
+    };
+
+    const updateRangeBounds = (rangeId, field, value) => {
+        setInstrumentDef(prev => ({
+            ...prev,
+            functions: prev.functions.map(f => {
+                if (f.id !== activeFunctionId) return f;
+                return { ...f, ranges: f.ranges.map(r => r.id === rangeId ? { ...r, [field]: value } : r) };
+            })
+        }));
+    };
+
+    // 4. Tolerances (Slide Over)
+    const handleToleranceUpdate = (updater) => {
+        setEditingRange(prev => {
+            if (!prev) return null;
+            const newVal = typeof updater === 'function' ? updater(prev.tolerances) : updater;
+            return { ...prev, tolerances: newVal };
         });
-        setShowRangePrompt(true);
     };
 
-    const confirmRangeSelection = () => {
-        if (!pendingInstrument) return;
-
-        const matchedData = findInstrumentTolerance(
-            pendingInstrument,
-            rangePromptData.value,
-            rangePromptData.unit
-        );
-
-        if (matchedData) {
-            applySpecs(matchedData, rangePromptData.value, rangePromptData.unit);
-        } else {
-            // If no match, we just set the description but don't apply specs
-            setNotification({
-                title: "No Match Found",
-                message: "No matching range found for the values entered. Description updated, but specs were not imported."
-            });
-            setShowRangePrompt(false);
-            setPendingInstrument(null);
-        }
+    const saveRangeSpecs = () => {
+        if (!editingRange) return;
+        setInstrumentDef(prev => ({
+            ...prev,
+            functions: prev.functions.map(f => {
+                if (f.id !== activeFunctionId) return f;
+                return { 
+                    ...f, 
+                    ranges: f.ranges.map(r => r.id === editingRange.id ? { ...r, tolerances: editingRange.tolerances } : r) 
+                };
+            })
+        }));
+        setEditingRange(null);
     };
+
 
     const handleSave = () => {
-        // 1. Ensure resolution is a power of 10 (e.g., 0.1, 0.01)
-        let sanitizedTolerance = { ...tolerance };
-        if (sanitizedTolerance.measuringResolution) {
-            const res = parseFloat(sanitizedTolerance.measuringResolution);
-            if (res > 0) {
-                // Find the magnitude: e.g., 0.003 -> -3 -> 0.001
-                const exponent = Math.floor(Math.log10(res));
-                sanitizedTolerance.measuringResolution = Math.pow(10, exponent).toString();
-            }
+        if (!description.trim()) {
+            setNotification({ title: "Validation Error", message: "Please enter a UUT Description." });
+            return;
+        }
+        if (!measurementArea.trim()) {
+             setNotification({ title: "Validation Error", message: "Please enter a Measurement Area." });
+             return;
         }
 
         onSave({
             description,
-            tolerance: sanitizedTolerance,
-            instrument: selectedInstrument
+            measurementArea, // Saved as string
+            instrument: instrumentDef
         });
         onClose();
     };
@@ -169,7 +281,6 @@ const EditUutModal = ({
     if (!isOpen) return null;
 
     const modalZIndex = hasParentOverlay ? 2100 : 2000;
-    const overlayZIndex = modalZIndex + 100;
 
     return ReactDOM.createPortal(
         <>
@@ -177,7 +288,7 @@ const EditUutModal = ({
                 isOpen={isLookupOpen}
                 onClose={() => setIsLookupOpen(false)}
                 instruments={instruments}
-                onSelect={handleInstrumentSelect}
+                onSelect={handleInstrumentImport}
             />
 
             <NotificationModal
@@ -185,132 +296,245 @@ const EditUutModal = ({
                 onClose={() => setNotification(null)}
                 title={notification?.title}
                 message={notification?.message}
-                onConfirm={notification?.onConfirm}
-                confirmText={notification?.confirmText}
-                cancelText={notification?.cancelText}
             />
-
-            <UnresolvedToleranceModal
-                isOpen={!!unresolvedToleranceModal}
-                matches={unresolvedToleranceModal?.matches}
-                instrumentName={unresolvedToleranceModal?.instrumentName}
-                onSelect={unresolvedToleranceModal?.onSelect}
-                onClose={() => setUnresolvedToleranceModal(null)}
-            />
-
-            {showRangePrompt && (
-                <div className="modal-overlay" style={{ zIndex: overlayZIndex, backgroundColor: 'rgba(0,0,0,0.7)' }}>
-                    <div className="modal-content" style={{ maxWidth: '400px' }}>
-                        <h4 style={{ marginTop: 0 }}>Set Baseline Tolerance</h4>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-color-muted)' }}>
-                            Please enter a representative measurement value (e.g., 10 V).
-                            This is required to import the correct range specifications from the library.
-                        </p>
-                        <div className="input-group" style={{ marginBottom: '20px' }}>
-                            <input
-                                type="number"
-                                placeholder="Value"
-                                value={rangePromptData.value}
-                                onChange={e => setRangePromptData({ ...rangePromptData, value: e.target.value })}
-                                autoFocus
-                            />
-                            <input
-                                type="text"
-                                placeholder="Unit"
-                                value={rangePromptData.unit}
-                                onChange={e => setRangePromptData({ ...rangePromptData, unit: e.target.value })}
-                            />
-                        </div>
-                        <div className="modal-actions">
-                            <button className="button button-secondary" onClick={() => { setShowRangePrompt(false); setPendingInstrument(null); }}>Skip Spec Import</button>
-                            <button className="button button-primary" onClick={confirmRangeSelection} disabled={!rangePromptData.value}>Import Specs</button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             <div
-                className="modal-content floating-window-content"
+                className="modal-content floating-window-content instrument-builder-wrapper"
                 style={{
                     position: 'fixed',
                     top: position.y,
                     left: position.x,
                     margin: 0,
-                    width: '600px',
-                    maxWidth: '90vw',
-                    maxHeight: '90vh',
+                    width: '1000px',
+                    maxWidth: '95vw',
+                    height: '85vh',
                     display: 'flex',
                     flexDirection: 'column',
                     zIndex: modalZIndex,
                     overflow: 'hidden'
                 }}
             >
+                {/* --- Header --- */}
                 <div
+                    className="modal-header"
                     style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        paddingBottom: '10px',
-                        marginBottom: '10px',
+                        padding: '10px 15px',
                         borderBottom: '1px solid var(--border-color)',
                         cursor: 'move',
-                        userSelect: 'none'
+                        userSelect: 'none',
+                        backgroundColor: 'var(--header-background)'
                     }}
                     onMouseDown={handleMouseDown}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <h3 style={{ margin: 0, fontSize: '1.2rem' }}>
-                            Edit UUT Specifications
+                            Edit UUT Configuration
                         </h3>
                     </div>
                     <button onClick={onClose} className="modal-close-button" style={{ position: 'static' }}>&times;</button>
                 </div>
 
-                <div className="modal-main-content" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '5px' }}>
-                    <div className="form-section">
-                        <label>UUT Name / Model</label>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <input
-                                type="text"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="e.g., Fluke 8588A"
-                                style={{ flex: 1 }}
+                {/* --- Body (Copied Layout from Builder) --- */}
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                    
+                    {/* SUB-MODAL: Range Tolerance Editor (Slide-over) */}
+                    {editingRange && (
+                        <div className="tolerance-slide-over">
+                        <div className="slide-over-header">
+                            <div className="slide-over-title">
+                            <h3><FontAwesomeIcon icon={faCalculator} /> Edit Tolerances</h3>
+                            <div className="slide-over-subtitle">
+                                Range: {editingRange.min} - {editingRange.max} {activeFunction?.unit}
+                            </div>
+                            </div>
+                            <button onClick={() => setEditingRange(null)} className="modal-icon-button secondary" title="Close"><FontAwesomeIcon icon={faTimes} size="lg" /></button>
+                        </div>
+                        
+                        <div className="slide-over-body">
+                            <ToleranceForm 
+                                tolerance={editingRange.tolerances || {}} 
+                                setTolerance={handleToleranceUpdate} 
+                                isUUT={true} 
+                                referencePoint={{ unit: activeFunction?.unit }} 
                             />
-                            <button
-                                className="btn-icon-only"
-                                onClick={() => setIsLookupOpen(true)}
-                                title="Import from Instrument Library"
-                                style={{ width: '42px', height: '42px', fontSize: '1rem' }}
-                            >
-                                <FontAwesomeIcon icon={faBookOpen} />
+                        </div>
+                        
+                        <div className="slide-over-footer">
+                            <button className="button primary" onClick={saveRangeSpecs}>
+                            <FontAwesomeIcon icon={faCheck} style={{ marginRight: '8px' }} />
+                            Save Specs
                             </button>
+                        </div>
+                        </div>
+                    )}
+
+                    {/* TOP: Identity Card */}
+                    <div className="instrument-identity-card" style={{ flexShrink: 0 }}>
+                        <div className="instrument-field-group" style={{ flex: 2 }}>
+                            <label>UUT Description / Model</label>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <input
+                                    type="text"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="e.g., Fluke 8588A"
+                                    style={{ width: '100%' }}
+                                />
+                                <button
+                                    className="btn-icon-only"
+                                    onClick={() => setIsLookupOpen(true)}
+                                    title="Import from Library"
+                                    style={{ width: '38px', height: '38px', flexShrink: 0 }}
+                                >
+                                    <FontAwesomeIcon icon={faBookOpen} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="instrument-field-group" style={{ flex: 1 }}>
+                             <label><FontAwesomeIcon icon={faLayerGroup} style={{ color: 'var(--primary-color)', marginRight: '5px' }} /> Measurement Area</label>
+                             <input
+                                type="text"
+                                value={measurementArea}
+                                onChange={(e) => setMeasurementArea(e.target.value)}
+                                placeholder="e.g., DC Voltage"
+                             />
                         </div>
                     </div>
 
-                    <ToleranceForm
-                        tolerance={tolerance}
-                        setTolerance={setTolerance}
-                        isUUT={true}
-                        /* UPDATED: Pass uutNominal so ToleranceForm knows the default unit */
-                        referencePoint={uutNominal}
-                        hideDistribution={true}
-                    />
-                </div>
+                    {/* MIDDLE: Workspace */}
+                    <div className="instrument-editor-body">
+                         {/* SIDEBAR */}
+                        <div className="function-nav-rail">
+                            <div className="rail-header">
+                                <h5><FontAwesomeIcon icon={faCube} /> Functions</h5>
+                                <button className="icon-action-btn" onClick={handleAddFunction} title="Add Function"><FontAwesomeIcon icon={faPlus} /></button>
+                            </div>
+                            <div className="rail-list">
+                                {instrumentDef.functions.map(f => (
+                                <div 
+                                    key={f.id} 
+                                    className={`rail-item ${activeFunctionId === f.id ? 'active' : ''}`}
+                                    onClick={() => setActiveFunctionId(f.id)}
+                                >
+                                    <span>{f.name}</span>
+                                    <button 
+                                    className="delete-btn"
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteFunction(f.id); }}
+                                    title="Delete Function"
+                                    >
+                                    <FontAwesomeIcon icon={faTrashAlt} size="sm" />
+                                    </button>
+                                </div>
+                                ))}
+                                {instrumentDef.functions.length === 0 && (
+                                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-color-muted)', fontSize: '0.8rem' }}>
+                                    No functions defined.<br/>Add one to start.
+                                </div>
+                                )}
+                            </div>
+                        </div>
 
-                <div
-                    className="modal-actions"
-                    style={{ justifyContent: "flex-end", alignItems: "center" }}
-                >
-                    <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                        <button
-                            className="modal-icon-button primary"
-                            onClick={handleSave}
-                            title="Save Changes"
-                        >
-                            <FontAwesomeIcon icon={faCheck} />
+                        {/* WORKSPACE */}
+                        <div className="function-workspace">
+                            {activeFunction ? (
+                                <>
+                                <div className="workspace-header">
+                                    <div className="instrument-field-group main-input">
+                                    <label>Function Name</label>
+                                    <input type="text" value={activeFunction.name} onChange={e => updateActiveFunction('name', e.target.value)} />
+                                    </div>
+                                    <div className="instrument-field-group unit-select">
+                                    <label>Base Unit</label>
+                                    <Select
+                                        value={
+                                        categorizedUnitOptions
+                                            .flatMap(g => g.options ? g.options : g)
+                                            .find(opt => opt.value === activeFunction.unit) || null
+                                        }
+                                        onChange={opt => updateActiveFunction('unit', opt.value)}
+                                        options={categorizedUnitOptions}
+                                        menuPortalTarget={document.body}
+                                        styles={portalStyle}
+                                        classNamePrefix="react-select"
+                                    />
+                                    </div>
+                                </div>
+
+                                <div className="ranges-panel">
+                                    <div className="panel-toolbar">
+                                    <h5><FontAwesomeIcon icon={faLayerGroup} /> Ranges</h5>
+                                    <button className="button small" onClick={handleAddRange}>
+                                        <FontAwesomeIcon icon={faPlus} /> Add Range
+                                    </button>
+                                    </div>
+                                    <div className="ranges-table-container">
+                                    <table className="ranges-table">
+                                        <thead>
+                                        <tr>
+                                            <th style={{width: '20%'}}>Min</th>
+                                            <th style={{width: '20%'}}>Max</th>
+                                            <th style={{width: '20%'}}>Resolution</th>
+                                            <th style={{width: '30%'}}>Tolerance Spec</th>
+                                            <th style={{width: '10%'}}>Actions</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {activeFunction.ranges.map(range => (
+                                            <tr key={range.id}>
+                                            <td>
+                                                <input type="number" step="any" value={range.min} onChange={e => updateRangeBounds(range.id, 'min', e.target.value)} />
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" value={range.max} onChange={e => updateRangeBounds(range.id, 'max', e.target.value)} />
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" value={range.resolution} onChange={e => updateRangeBounds(range.id, 'resolution', e.target.value)} />
+                                            </td>
+                                            <td>
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setEditingRange({ ...range })}>
+                                                {formatToleranceSummary(range.tolerances)}
+                                                <FontAwesomeIcon icon={faEdit} style={{ color: 'var(--text-color-muted)', fontSize: '0.8rem' }} />
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <button className="btn-icon-only danger" onClick={() => handleDeleteRange(range.id)} title="Delete Range">
+                                                <FontAwesomeIcon icon={faTrashAlt} />
+                                                </button>
+                                            </td>
+                                            </tr>
+                                        ))}
+                                        {activeFunction.ranges.length === 0 && (
+                                            <tr>
+                                            <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-color-muted)' }}>
+                                                No ranges defined.
+                                            </td>
+                                            </tr>
+                                        )}
+                                        </tbody>
+                                    </table>
+                                    </div>
+                                </div>
+                                </>
+                            ) : (
+                                <div className="empty-state">
+                                <FontAwesomeIcon icon={faCube} className="empty-state-icon" />
+                                <p>Select a function to edit specs.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="editor-actions" style={{ padding: '15px 20px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--background-color)' }}>
+                         <button className="button primary" onClick={handleSave}>
+                            <FontAwesomeIcon icon={faCheck} style={{ marginRight: '8px' }} />
+                            Save Configuration
                         </button>
                     </div>
+
                 </div>
             </div>
         </>,

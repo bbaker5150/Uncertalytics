@@ -33,6 +33,7 @@ import AddTestPointModal from "../testPoints/components/AddTestPointModal";
 // --- Utils ---
 import { 
   convertToPPM,
+  recalculateTolerance
 } from "../../utils/uncertaintyMath";
 
 function Analysis({
@@ -162,6 +163,31 @@ function Analysis({
       } else {
           setSelectedTmdeIds(tmdeTolerancesData.map(t => t.id));
       }
+  };
+
+  // --- NEW: UUT Selection Handler ---
+  const handleToggleUut = (uutId) => {
+      const currentIds = testPointData.associatedUutIds || [];
+      let newIds;
+      if (currentIds.includes(uutId)) {
+          newIds = currentIds.filter(id => id !== uutId);
+      } else {
+          newIds = [...currentIds, uutId];
+      }
+
+      const updates = { associatedUutIds: newIds };
+
+      // If we selected a UUT and we don't have hardcoded tolerances yet, pull from the new selection
+      if (!currentIds.includes(uutId) && (!testPointData.uutTolerance || Object.keys(testPointData.uutTolerance).length === 0)) {
+          const uutDef = sessionData.uuts?.find(u => u.id === uutId);
+          if (uutDef && uutDef.instrument && uutNominal && uutNominal.value) {
+              const newSpecs = recalculateTolerance(uutDef.instrument, uutNominal.value, uutNominal.unit, {});
+              if (newSpecs) {
+                  updates.uutTolerance = newSpecs;
+              }
+          }
+      }
+      onDataSave(updates);
   };
 
   const handleSaveUut = ({ description, tolerance, instrument }) => {
@@ -574,6 +600,9 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
           onToggleTmdeSelection={handleToggleTmdeSelection}
           onToggleAllTmdes={handleToggleAllTmdes}
           
+          // --- Pass UUT Toggle Handler ---
+          onToggleUut={handleToggleUut}
+
           setContextMenu={setContextMenu}
           setBreakdownPoint={setBreakdownPoint}
           onBudgetRowContextMenu={handleBudgetRowContextMenu}

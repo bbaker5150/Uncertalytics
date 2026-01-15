@@ -91,7 +91,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
         section: '',
         paramName: '', paramValue: '', paramUnit: '',
         qualName: 'Frequency', qualValue: '', qualUnit: 'kHz',
-        copyTmdes: true,
         measurementType: 'direct',
         equationString: '',
         variableMappings: {},
@@ -164,7 +163,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
     };
 
     // --- Dynamic Unit Options Generation ---
-    // This logic ensures parity with other modals by checking unitSystem
     const groupedUnitOptions = useMemo(() => {
         const allSupportedUnits = Object.keys(unitSystem.units);
         const options = [];
@@ -172,9 +170,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
 
         // 1. Map defined categories
         Object.entries(unitCategories).forEach(([category, units]) => {
-            // Only show units that actually exist in the unitSystem
             const validUnits = units.filter(u => allSupportedUnits.includes(u));
-            
             if (validUnits.length > 0) {
                 options.push({
                     label: category,
@@ -186,8 +182,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
             }
         });
 
-        // 2. Catch "Other" (Any unit in unitSystem not yet categorized)
-        // This ensures units like in-ozf appear even if I missed adding "Torque" above
+        // 2. Catch "Other"
         const leftovers = allSupportedUnits
             .filter(u => !usedUnits.has(u))
             .sort()
@@ -273,7 +268,8 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
 
     useEffect(() => {
         if (isOpen) {
-            if (initialData) {
+            // Check if initialData is a full Test Point (has testPointInfo) or just partial data (like Group ID)
+            if (initialData && initialData.testPointInfo) {
                 const qualExists = !!initialData.testPointInfo.qualifier?.value;
                 setHasQualifier(qualExists);
                 const initialMappings = initialData.variableMappings || {};
@@ -285,10 +281,9 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                     qualName: initialData.testPointInfo.qualifier?.name || 'Frequency',
                     qualValue: initialData.testPointInfo.qualifier?.value || '',
                     qualUnit: initialData.testPointInfo.qualifier?.unit || 'kHz',
-                    copyTmdes: false,
                     measurementType: initialData.measurementType || 'direct',
                     equationString: initialData.equationString || '',
-                    variableMappings: { ...initialMappings }, // Deep copy
+                    variableMappings: { ...initialMappings }, 
                 });
                 if (initialData.measurementType === 'derived') {
                     updateEquationVariables(initialData.equationString);
@@ -296,11 +291,11 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                     setEquationVariables([]);
                 }
             } else if (previousTestPointData) {
+                // Fallback to previous point data
                 const prev = previousTestPointData;
                 const qualExists = !!prev.testPointInfo.qualifier;
                 setHasQualifier(qualExists);
                 
-                // CRITICAL FIX: Ensure variableMappings is a deep copy to prevent reference sharing issues
                 const prevMappings = prev.variableMappings ? { ...prev.variableMappings } : {};
                 
                 setFormData({
@@ -311,7 +306,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                     qualName: prev.testPointInfo.qualifier?.name || 'Frequency',
                     qualValue: '',
                     qualUnit: prev.testPointInfo.qualifier?.unit || 'kHz',
-                    copyTmdes: true,
                     measurementType: prev.measurementType || 'direct',
                     equationString: prev.equationString || '',
                     variableMappings: prevMappings,
@@ -322,6 +316,7 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                     setEquationVariables([]);
                 }
             } else {
+                // Default / New Point
                 setHasQualifier(false);
                 setFormData(getInitialFormData());
                 setEquationVariables([]);
@@ -421,20 +416,20 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                 parameter: { name: formData.paramName, value: formData.paramValue, unit: formData.paramUnit },
                 qualifier: qualifierData,
             },
-            copyTmdes: formData.copyTmdes,
             measurementType: formData.measurementType,
             equationString: formData.equationString,
             variableMappings: formData.variableMappings,
         };
 
-        if (initialData) {
+        if (initialData && initialData.id) {
             onSave({ id: initialData.id, ...finalData });
         } else {
             onSave(finalData);
         }
     };
 
-    const isEditing = !!initialData;
+    // Determine if we are strictly editing (has ID) or just have partial data
+    const isEditing = initialData && initialData.id;
 
     return ReactDOM.createPortal(
         <>
@@ -659,33 +654,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
                             )}
                         </div>
                     </div>
-
-                    {!isEditing && hasExistingPoints && (
-                        <div className="toggle-switch-container" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid var(--border-color)' }}>
-                             <input
-                                type="checkbox"
-                                id="copyTmdes"
-                                name="copyTmdes"
-                                className="toggle-switch-checkbox"
-                                checked={formData.copyTmdes}
-                                onChange={handleChange}
-                            />
-                            <label
-                                className="toggle-switch-label"
-                                htmlFor="copyTmdes"
-                                style={{ transform: "scale(0.75)", margin: 0, border: '1px solid var(--border-color)' }}
-                            >
-                                <span className="toggle-switch-switch" />
-                            </label>
-                            <label
-                                htmlFor="copyTmdes"
-                                className="toggle-option-label"
-                                style={{ fontSize: "0.9rem", color: "var(--text-color)", cursor: "pointer", userSelect: 'none' }}
-                            >
-                                Use TMDEs from previous measurement point
-                            </label>
-                        </div>
-                    )}
                 </div>
 
                 {/* --- Footer --- */}

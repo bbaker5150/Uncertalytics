@@ -11,6 +11,9 @@ const useSessionManager = () => {
       tmdeTolerances: [],
       // NEW: Allow specific UUT tolerance per point
       uutTolerance: null, 
+      // NEW: Hierarchical Linkage
+      measurementAreaId: "", 
+      associatedUutIds: [], // Array of UUT IDs this point links to
       specifications: {
         mfg: { uncertainty: "", k: 2 },
         navy: { uncertainty: "", k: 2 },
@@ -32,15 +35,22 @@ const useSessionManager = () => {
     () => ({
       id: Date.now(),
       name: "New Session",
-      uutDescription: "",
       analyst: "",
       organization: "",
       document: "",
       documentDate: "",
       notes: "",
       noteImages: [], 
+      // NEW: Master lists for the "Instruments Tab" workflow
+      measurementAreas: [], // { id, name, color }
+      uuts: [],             // { id, name, measurementAreaId, ...specs }
+      tmdes: [],            // { id, name, measurementAreaId, ...specs }
+      
+      // Legacy/Fallback fields (kept for backward compatibility or simple sessions)
+      uutDescription: "",
       uutTolerance: {},
       testPoints: [],
+      
       uncReq: {
         uncertaintyConfidence: 95,
         reliability: 85,
@@ -57,7 +67,7 @@ const useSessionManager = () => {
   // --- State ---
   const [sessions, setSessions] = useState([]);
   const [instruments, setInstruments] = useState([]); 
-  const [bugReports, setBugReports] = useState([]); // NEW STATE
+  const [bugReports, setBugReports] = useState([]); 
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [selectedTestPointId, setSelectedTestPointId] = useState(null);
   const [dbPath, setDbPath] = useState(null);
@@ -254,7 +264,6 @@ const useSessionManager = () => {
 
   // --- 2.3 Save/Update Bug Report ---
   const saveBugReport = async (report) => {
-    // Optimistic Update: Check if it exists, if so replace, else prepend
     setBugReports(prev => {
         const idx = prev.findIndex(r => r.id === report.id);
         if (idx > -1) {
@@ -274,11 +283,8 @@ const useSessionManager = () => {
     }
   };
 
-  // --- 2.4 Delete Bug Report ---
   const deleteBugReport = async (reportId) => {
-    // Optimistic Delete
     setBugReports(prev => prev.filter(r => r.id !== reportId));
-
     if (ipcRenderer && dbPath) {
         try {
             await ipcRenderer.invoke('delete-bug-report', reportId);
@@ -343,7 +349,7 @@ const useSessionManager = () => {
           if (path) {
               setDbPath(path);
               loadData(); 
-              loadSharedData(); // Load instruments AND bugs
+              loadSharedData(); 
           }
       }
   };
@@ -438,12 +444,84 @@ const useSessionManager = () => {
     persistSession(loadedSession, imagesToSave);
   };
 
-  // FIX: Added sessionUpdates parameter to allow saving UUT tolerance along with the test point
+  // --- 6. Workflow Redesign CRUD (Area, UUT, TMDE) ---
+  
+  // Measurement Areas
+  const addMeasurementArea = (sessionId, area) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const currentAreas = session.measurementAreas || [];
+    const updatedSession = { ...session, measurementAreas: [...currentAreas, area] };
+    updateSession(updatedSession);
+  };
+
+  const updateMeasurementArea = (sessionId, updatedArea) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const updatedAreas = (session.measurementAreas || []).map(a => a.id === updatedArea.id ? updatedArea : a);
+    updateSession({ ...session, measurementAreas: updatedAreas });
+  };
+
+  const removeMeasurementArea = (sessionId, areaId) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const updatedAreas = (session.measurementAreas || []).filter(a => a.id !== areaId);
+    // Optional: Logic to cleanup UUTs/TMDEs associated with this area could go here
+    updateSession({ ...session, measurementAreas: updatedAreas });
+  };
+
+  // UUTs (Session Level)
+  const addSessionUut = (sessionId, uut) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const currentUuts = session.uuts || [];
+    updateSession({ ...session, uuts: [...currentUuts, uut] });
+  };
+
+  const updateSessionUut = (sessionId, updatedUut) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const updatedUuts = (session.uuts || []).map(u => u.id === updatedUut.id ? updatedUut : u);
+    updateSession({ ...session, uuts: updatedUuts });
+  };
+
+  const removeSessionUut = (sessionId, uutId) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const updatedUuts = (session.uuts || []).filter(u => u.id !== uutId);
+    updateSession({ ...session, uuts: updatedUuts });
+  };
+
+  // TMDEs (Session Level)
+  const addSessionTmde = (sessionId, tmde) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const currentTmdes = session.tmdes || [];
+    updateSession({ ...session, tmdes: [...currentTmdes, tmde] });
+  };
+
+  const updateSessionTmde = (sessionId, updatedTmde) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const updatedTmdes = (session.tmdes || []).map(t => t.id === updatedTmde.id ? updatedTmde : t);
+    updateSession({ ...session, tmdes: updatedTmdes });
+  };
+
+  const removeSessionTmde = (sessionId, tmdeId) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const updatedTmdes = (session.tmdes || []).filter(t => t.id !== tmdeId);
+    updateSession({ ...session, tmdes: updatedTmdes });
+  };
+
+
+  // --- 7. Test Point Actions ---
+
   const saveTestPoint = (formData, sessionUpdates = null) => {
     const session = sessions.find(s => s.id === selectedSessionId);
     if(!session) return;
     
-    // Start with a copy of the session and apply any immediate session-level overrides (like uutTolerance)
+    // Start with a copy of the session and apply any immediate session-level overrides
     let updatedSession = { ...session, ...sessionUpdates };
     
     if (formData.id) {
@@ -457,10 +535,11 @@ const useSessionManager = () => {
             measurementType: formData.measurementType,
             equationString: formData.equationString,
             variableMappings: formData.variableMappings,
-            // FIX: Ensure we accept updated tolerances if passed
             tmdeTolerances: formData.tmdeTolerances || tp.tmdeTolerances,
-            // FIX: Ensure UUT tolerance is saved to the point
-            uutTolerance: formData.uutTolerance || tp.uutTolerance || null
+            uutTolerance: formData.uutTolerance || tp.uutTolerance || null,
+            // NEW: Persist Linkages
+            measurementAreaId: formData.measurementAreaId || tp.measurementAreaId || "",
+            associatedUutIds: formData.associatedUutIds || tp.associatedUutIds || []
             };
         }
         return tp;
@@ -493,11 +572,13 @@ const useSessionManager = () => {
             section: formData.section,
             testPointInfo: formData.testPointInfo,
             tmdeTolerances: finalTmdes,
-            // FIX: Accept passed UUT tolerance or default to null
             uutTolerance: formData.uutTolerance || null, 
             measurementType: formData.measurementType,
             equationString: formData.equationString,
             variableMappings: formData.variableMappings,
+            // NEW: Persist Linkages
+            measurementAreaId: formData.measurementAreaId || "",
+            associatedUutIds: formData.associatedUutIds || []
         };
         setSelectedTestPointId(newTestPoint.id);
         updatedSession = { ...updatedSession, testPoints: [...session.testPoints, newTestPoint] };
@@ -568,12 +649,12 @@ const useSessionManager = () => {
   return {
     sessions,
     instruments,
-    bugReports, // EXPORTED
+    bugReports, 
     saveInstrument,
-    saveBugReport, // EXPORTED
-    deleteBugReport, // EXPORTED
+    saveBugReport, 
+    deleteBugReport, 
     deleteInstrument, 
-    loadInstruments: loadSharedData, // FIX: Map loadInstruments to loadSharedData to resolve ReferenceError
+    loadInstruments: loadSharedData,
     selectedSessionId,
     setSelectedSessionId,
     selectedTestPointId,
@@ -598,7 +679,18 @@ const useSessionManager = () => {
     updateTestPointData,
     deleteTmdeDefinition,
     decrementTmdeQuantity,
-    setSessions
+    setSessions,
+    
+    // NEW EXPORTS
+    addMeasurementArea,
+    updateMeasurementArea,
+    removeMeasurementArea,
+    addSessionUut,
+    updateSessionUut,
+    removeSessionUut,
+    addSessionTmde,
+    updateSessionTmde,
+    removeSessionTmde
   };
 };
 
