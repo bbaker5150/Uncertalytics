@@ -58,7 +58,9 @@ function Analysis({
   
   // --- NEW: Global UUT Selection Props ---
   currentUutSelection = [],
-  setCurrentUutSelection
+  setCurrentUutSelection,
+  activeRangeIndices,
+  onRangeSelectionChange,
 }) {
   // --- 1. Local UI State ---
   const [analysisMode, setAnalysisMode] = useState("uncertaintyTool");
@@ -639,6 +641,8 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
           }}
           setNotification={setNotification}
           onDeleteTestPoint={onDeleteTestPoint}
+          activeRangeIndices={activeRangeIndices}
+          onRangeSelectionChange={onRangeSelectionChange}
         />
       )}
 

@@ -202,7 +202,7 @@ const UncertaintyPanel = ({
     calcResults,
     calculationError,
     uutNominal,
-    uutToleranceData,
+    uutToleranceData: propUutToleranceData, 
     tmdeTolerancesData,
     onAddManualComponent,
     onEditManualComponent,
@@ -230,19 +230,15 @@ const UncertaintyPanel = ({
     onToggleAllTmdes,
     onToggleUut, 
     onDeleteTestPoint,
-    // --- NEW: Global Selection Prop ---
-    currentUutSelection = [] 
+    currentUutSelection = [],
+    activeRangeIndices = {},
+    onRangeSelectionChange,
 }) => {
 
     const [isSymbolMenuOpen, setIsSymbolMenuOpen] = useState(false);
     const equationInputRef = useRef(null);
     const symbolMenuRef = useRef(null);
     const symbolButtonRef = useRef(null);
-
-    // --- RANGE SELECTION STATE ---
-    // Tracks dropdown selections for each UUT. { [uutId]: rangeIndex }
-    // This decouples the view from the saved test point, ensuring the Spec column updates immediately.
-    const [rangeSelections, setRangeSelections] = useState({});
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -255,8 +251,15 @@ const UncertaintyPanel = ({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // --- HELPER: Resolve Ranges & Selection ---
+    const uutToleranceData = useMemo(() => {
+        const isUnassigned = !testPointData.associatedUutIds || testPointData.associatedUutIds.length === 0;
+        if (isUnassigned) return {}; 
+        return propUutToleranceData || {};
+    }, [propUutToleranceData, testPointData.associatedUutIds]);
+
+
     const resolveUutRange = (uut) => {
+        // 1. Normalize Ranges
         let ranges = [];
         if (Array.isArray(uut.ranges) && uut.ranges.length > 0) {
             ranges = uut.ranges.map(r => ({ ...r, ...(r.tolerances || r.tolerance || {}) }));
@@ -276,18 +279,40 @@ const UncertaintyPanel = ({
             ranges = [{ id: 'default', range: 'Default', ...baseTolerance }];
         }
 
-        // Determine active index
+        // Add index
+        ranges = ranges.map((r, i) => ({ ...r, _index: i }));
+
         let activeIndex = 0;
         
-        // 1. Check local state (user changed dropdown)
-        if (rangeSelections[uut.id] !== undefined) {
-            activeIndex = rangeSelections[uut.id];
+        const hasSavedIds = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id);
+        const savedTolerance = uutToleranceData;
+
+        // 2. Determine Active Index
+        if (activeRangeIndices[uut.id] !== undefined) {
+            activeIndex = activeRangeIndices[uut.id];
         } 
-        // 2. Fallback to saved test point data if matches
-        else if (testPointData.uutTolerance) {
-            const currentString = JSON.stringify(testPointData.uutTolerance);
-            const matchIdx = ranges.findIndex(r => JSON.stringify(r) === currentString);
-            if (matchIdx !== -1) activeIndex = matchIdx;
+        else if (hasSavedIds && savedTolerance) {
+            const matchIdx = ranges.findIndex(r => {
+                // A. Strict Name Match
+                if (savedTolerance.range && r.range) {
+                    if (savedTolerance.range !== r.range) return false;
+                    if (savedTolerance.functionName && r.functionName) {
+                        return savedTolerance.functionName === r.functionName;
+                    }
+                    return true;
+                }
+                
+                // B. Fallback: Value Match
+                const minMatch = r.min == savedTolerance.min;
+                const maxMatch = r.max == savedTolerance.max;
+                const unitMatch = (r.unit || "") === (savedTolerance.unit || "");
+                
+                return minMatch && maxMatch && unitMatch;
+            });
+
+            if (matchIdx !== -1) {
+                activeIndex = matchIdx;
+            }
         }
 
         return { ranges, activeIndex, activeRange: ranges[activeIndex] || {} };
@@ -323,7 +348,6 @@ const UncertaintyPanel = ({
         return options;
     }, []);
 
-    // --- AREA & UUT RESOLUTION ---
     const activeMeasurementAreaId = testPointData.measurementAreaId;
     const activeArea = sessionData.measurementAreas?.find(a => a.id === activeMeasurementAreaId);
 
@@ -338,6 +362,7 @@ const UncertaintyPanel = ({
 
     const associatedUutIds = testPointData.associatedUutIds || [];
     const isDerived = testPointData.measurementType === "derived";
+    const isUnassigned = associatedUutIds.length === 0;
 
     const availableVariables = useMemo(() => {
         if (!isDerived) return [];
@@ -351,34 +376,31 @@ const UncertaintyPanel = ({
     }, [testPointData, isDerived]);
 
     // --- HANDLERS ---
-
     const handleUutCheckboxChange = (uutId) => {
-        // Now just calls the toggle prop, which updates App.jsx state
         onToggleUut(uutId);
     };
 
     const handleRangeChange = (uutId, newIndex, ranges) => {
-        // 1. Update local UI state immediately (fixes spec column bug)
-        setRangeSelections(prev => ({ ...prev, [uutId]: newIndex }));
+        if (onRangeSelectionChange) {
+            onRangeSelectionChange(prev => ({ ...prev, [uutId]: newIndex }));
+        }
 
-        // 2. If this UUT is the "Active" one (currently saved to the point), update the point's data too
         const isLinkedToPoint = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uutId);
         
         if (isLinkedToPoint && onUpdateTestPoint) {
-            onUpdateTestPoint({ uutTolerance: ranges[newIndex] });
+            const selectedRange = ranges[newIndex];
+            onUpdateTestPoint({ uutTolerance: selectedRange });
         }
     };
 
     const handleActionAdd = () => {
         if (!currentUutSelection || currentUutSelection.length === 0) {
-            // Unassigned case
             onDefineTestPoint([], null);
             return;
         }
 
-        // Assigned case: Determine tolerance from Primary UUT (first selected)
-        const primaryId = currentUutSelection[0];
-        const primaryUut = relevantUuts.find(u => u.id === primaryId);
+        const primaryUutId = currentUutSelection[0];
+        const primaryUut = relevantUuts.find(u => u.id === primaryUutId);
         let resolvedTolerance = null;
 
         if (primaryUut) {
@@ -387,16 +409,11 @@ const UncertaintyPanel = ({
         }
 
         onDefineTestPoint(currentUutSelection, resolvedTolerance);
-        
-        // Note: Selection clearing is handled after save in App.jsx or manually here if needed.
-        // But App.jsx handles the save flow.
     };
 
     const handleActionRemove = () => {
         if (!testPointData.id) {
-             // Virtual point -> just clear selection or delete
              if (onDeleteTestPoint) onDeleteTestPoint(null);
-             // Clear selection done by onToggleUut implicitly if we uncheck
              return;
         }
 
@@ -428,19 +445,11 @@ const UncertaintyPanel = ({
                 } else {
                     onUpdateTestPoint({ associatedUutIds: remainingUuts });
                 }
-                // Clear the global selection
-                // We need to trigger a clear via the prop if available, or assume parent handles it.
-                // Since onToggleUut toggles, we can't easily "clear all". 
-                // However, App.jsx handles clearing on selection changes, so we rely on re-render.
-                // Or better: we should manually uncheck them one by one? 
-                // No, let's assume the user will uncheck them or we force an update.
-                // Ideally, we'd have onClearUutSelection.
-                uutsToRemove.forEach(id => onToggleUut(id)); // Toggle them off
+                uutsToRemove.forEach(id => onToggleUut(id)); 
             }
         });
     };
 
-    // ... [Equation and Variable Handlers Omitted for Brevity - Unchanged] ...
     const handleEquationChange = (newEquationString) => {
         let variables = [];
         try {
@@ -625,6 +634,91 @@ const UncertaintyPanel = ({
         neutral: { borderColor: 'var(--border-color)', backgroundColor: 'transparent', color: 'var(--text-color-muted)', icon: null }
     }[calcStatus];
 
+    // --- FIX 1: Resolve Active Tolerance ---
+    const primaryUutId = testPointData.associatedUutIds?.[0];
+    const primaryUut = relevantUuts.find(u => u.id === primaryUutId);
+    
+    const activeResolvedTolerance = useMemo(() => {
+        if (!primaryUut) return uutToleranceData; 
+        
+        const { activeRange } = resolveUutRange(primaryUut);
+        
+        return (activeRange && Object.keys(activeRange).length > 0) ? activeRange : uutToleranceData;
+    }, [primaryUut, activeRangeIndices, uutToleranceData]);
+
+    // --- FIX 2: Robust Tolerance Display Logic ---
+    const calculatedToleranceDisplay = useMemo(() => {
+        // A. Basic Validation
+        if (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) return "No Spec Selected";
+        
+        // B. Try Standard Utility First
+        const utilResult = getToleranceErrorSummary(activeResolvedTolerance, uutNominal);
+        
+        if (utilResult && utilResult !== "Not Calculated" && utilResult !== "± -" && !utilResult.includes("NaN")) {
+            return utilResult;
+        }
+
+        // C. Fallback: Manual Calculation (Complex Objects)
+        const nominalVal = parseFloat(uutNominal?.value);
+        if (isNaN(nominalVal)) return "± -"; 
+
+        // HELPER: Safely extract numeric value from complex tolerance component
+        const getComponentValue = (comp) => {
+            if (comp === undefined || comp === null) return 0;
+            
+            // Handle Object Structure (e.g. { high: '0.05', low: '0.05', ... })
+            if (typeof comp === 'object') {
+                const valStr = comp.high || comp.value || comp.tolerance;
+                const parsed = parseFloat(valStr);
+                return isNaN(parsed) ? 0 : parsed;
+            }
+            
+            // Handle Primitive (e.g. "0.05" or 0.05)
+            const parsed = parseFloat(comp);
+            return isNaN(parsed) ? 0 : parsed;
+        };
+
+        let totalTolerance = 0;
+        let foundComponent = false;
+
+        // C.1. Handle 'Reading' (Percentage)
+        const readingComp = activeResolvedTolerance.reading || activeResolvedTolerance.tolerances?.reading;
+        if (readingComp) {
+            const readingPcn = getComponentValue(readingComp);
+            if (readingPcn !== 0) {
+                totalTolerance += Math.abs(nominalVal * (readingPcn / 100));
+                foundComponent = true;
+            }
+        }
+
+        // C.2. Handle 'Floor' (Fixed Value)
+        const floorComp = activeResolvedTolerance.floor || activeResolvedTolerance.tolerances?.floor;
+        if (floorComp) {
+            const floorVal = getComponentValue(floorComp);
+            if (floorVal !== 0) {
+                totalTolerance += Math.abs(floorVal);
+                foundComponent = true;
+            }
+        }
+
+        // C.3. Handle generic 'tolerance' (simple range fallback)
+        if (!foundComponent && (activeResolvedTolerance.tolerance || activeResolvedTolerance.value)) {
+             const tolVal = getComponentValue(activeResolvedTolerance);
+             if (tolVal !== 0) {
+                 totalTolerance += Math.abs(tolVal);
+                 foundComponent = true;
+             }
+        }
+
+        if (foundComponent) {
+            return `± ${Number(totalTolerance.toPrecision(4))} ${uutNominal.unit || ""}`;
+        }
+
+        return "Not Calculated";
+
+    }, [activeResolvedTolerance, uutNominal]);
+
+    
     return (
         <div className="configuration-panel">
 
@@ -667,15 +761,18 @@ const UncertaintyPanel = ({
                                             </tr>
                                         ) : (
                                             relevantUuts.map((uut) => {
-                                                // Resolve ranges and active state using new helper
                                                 const { ranges, activeIndex, activeRange } = resolveUutRange(uut);
                                                 const specSummary = getToleranceSummary(activeRange);
                                                 const hasMultipleRanges = ranges.length > 1;
 
-                                                // State Checks
                                                 const isChecked = currentUutSelection.includes(uut.id);
-                                                // STRICT Active Check: Only true if the POINT is saved and linked to this UUT ID
-                                                const isActiveContext = testPointData.id && testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id);
+                                                
+                                                // --- FIX 3: Correct Context Highlighting ---
+                                                const isActiveContext = testPointData.id 
+                                                    ? (testPointData.activeUutId 
+                                                        ? uut.id === testPointData.activeUutId 
+                                                        : (testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id)))
+                                                    : false;
 
                                                 return (
                                                     <tr key={uut.id} style={{
@@ -770,10 +867,9 @@ const UncertaintyPanel = ({
                         </div>
                     </div>
 
-                    {/* 2. TMDE LIST Omitted for brevity - No changes needed here */}
+                    {/* 2. TMDE LIST */}
                     <div>
                          <h3 style={sectionTitleStyle}>Measurement Standards (TMDE)</h3>
-                         {/* ... TMDE table ... */}
                           <div style={cardStyle}>
                             <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '400px' }}>
                                 <table className="instrument-summary-table" style={{ width: '100%' }}>
@@ -913,7 +1009,7 @@ const UncertaintyPanel = ({
                                             <th style={{ textAlign: 'center', paddingRight: '20px' }}>
                                                 {!hasMeasurementPoint && (
                                                     <span
-                                                        onClick={handleActionAdd} // Use our new logic
+                                                        onClick={handleActionAdd} 
                                                         className="action-icon"
                                                         title="Add Measurement Point"
                                                         style={{
@@ -941,11 +1037,18 @@ const UncertaintyPanel = ({
                                                         />
                                                     </div>
                                                 </td>
+                                                {/* --- FIX 4: Use Calculated Display --- */}
                                                 <td>
                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                        <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
-                                                            {getToleranceErrorSummary(uutToleranceData, uutNominal) || "± 0"}
-                                                        </span>
+                                                        {isUnassigned && (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) ? (
+                                                            <span style={{ fontWeight: 400, color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
+                                                                No UUT / Spec
+                                                            </span>
+                                                        ) : (
+                                                            <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
+                                                                {calculatedToleranceDisplay}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td>
@@ -961,7 +1064,7 @@ const UncertaintyPanel = ({
                                                     <div style={{ display: 'flex', justifyContent: 'center' }}>
                                                         <span
                                                             className="action-icon"
-                                                            onClick={handleActionRemove} // Use our new logic
+                                                            onClick={handleActionRemove}
                                                             title="Delete or Unassign"
                                                             style={{
                                                                 cursor: "pointer",
@@ -987,7 +1090,7 @@ const UncertaintyPanel = ({
                         </div>
                     </div>
 
-                    {/* ... (Equation Editor - No changes) ... */}
+                    {/* Equation Editor */}
                     {isDerived && equationDisplayData && (
                         <div>
                             <h3 style={sectionTitleStyle}>Measurement Equation</h3>
@@ -1001,7 +1104,6 @@ const UncertaintyPanel = ({
                                 flexDirection: 'column',
                                 gap: '15px'
                             }}>
-                                {/* Organic Input Area */}
                                 <div className="input-with-symbol-button">
                                     <input
                                         ref={equationInputRef}
@@ -1021,7 +1123,6 @@ const UncertaintyPanel = ({
                                         f(x)
                                     </button>
 
-                                    {/* Symbols Popout */}
                                     {isSymbolMenuOpen && (
                                         <div
                                             className="symbol-popout"
@@ -1051,7 +1152,6 @@ const UncertaintyPanel = ({
                                     )}
                                 </div>
 
-                                {/* Calculated vs Target Comparison */}
                                 {calcStatus !== 'neutral' && (
                                     <div style={{
                                         display: 'flex',
@@ -1077,7 +1177,6 @@ const UncertaintyPanel = ({
                                     </div>
                                 )}
 
-                                {/* Variable Grid */}
                                 <div className="var-map-grid" style={{ flex: 1 }}>
                                     {equationDisplayData.variables.map((v) => (
                                         <div key={v.symbol} className={`var-card-modern ${v.isAssigned ? 'assigned' : 'unassigned'}`}>

@@ -5996,3 +5996,149 @@ body.theme-cyberpunk .var-card-modern {
     border-radius: 0;
     border-width: 2px;
 }
+
+/* =================================================================== */
+/* 19. SIDEBAR ENHANCEMENTS (QUICK ADD & TOGGLE)                       */
+/* =================================================================== */
+
+/* --- Header Toggle Controls --- */
+.sidebar-view-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.sidebar-view-controls .sidebar-action-button.active {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* --- UUT Header Enhancements --- */
+.uut-header {
+    padding: 8px 10px 8px 25px; 
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between; /* Pushes actions to the right */
+    align-items: center;
+    gap: 8px;
+    border-left: 3px solid transparent;
+    transition: background-color 0.2s ease;
+}
+
+.uut-header:hover {
+    background-color: rgba(0, 0, 0, 0.03); /* Subtle hover */
+}
+
+/* Container for Icon + Text */
+.uut-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-color-muted);
+}
+
+/* Active State Styles */
+.uut-header.active {
+    background-color: var(--highlight-background);
+    color: var(--primary-color);
+    border-left-color: var(--primary-color);
+}
+
+.uut-header.active .uut-label {
+    color: var(--primary-color);
+}
+
+/* --- UUT Action Buttons (Right Side) --- */
+.uut-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0; /* Changed from 0.5 to 0 to completely hide them */
+    transition: opacity 0.2s ease;
+}
+
+/* Reveal actions on hover or if active */
+.uut-header:hover .uut-actions,
+.uut-header.active .uut-actions {
+    opacity: 1;
+}
+
+/* Ensure buttons are clickable when visible */
+.uut-actions .btn-icon-only {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer; /* Ensure pointer cursor */
+}
+
+.uut-actions .btn-icon-only:hover {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color);
+}
+
+.uut-actions .btn-icon-only.active {
+    color: var(--primary-color);
+    opacity: 1;
+}
+
+/* --- Range Header with Hover Effect --- */
+.range-header-container {
+    padding: 4px 10px 4px 45px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text-color-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.range-header-container:hover {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color);
+}
+
+.range-label-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* --- Theme Compatibility Overrides --- */
+
+/* Dark Mode */
+body.dark-mode .range-header-container:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .uut-header:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Orbital Theme */
+body.theme-orbital .range-header-container {
+    font-family: 'Consolas', monospace; /* Tech feel for ranges */
+}
+
+/* Cyberpunk Theme */
+body.theme-cyberpunk .range-header-container {
+    border-left: 2px solid transparent;
+}
+
+body.theme-cyberpunk .range-header-container:hover {
+    border-left-color: var(--primary-color);
+    background-color: transparent;
+    color: var(--primary-color);
+    text-shadow: 0 0 5px var(--primary-color);
+}
