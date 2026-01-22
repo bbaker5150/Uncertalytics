@@ -268,61 +268,67 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
 
     useEffect(() => {
         if (isOpen) {
-            // Check if initialData is a full Test Point (has testPointInfo) or just partial data (like Group ID)
-            if (initialData && initialData.testPointInfo) {
-                const qualExists = !!initialData.testPointInfo.qualifier?.value;
-                setHasQualifier(qualExists);
-                const initialMappings = initialData.variableMappings || {};
-                setFormData({
-                    section: initialData.section || '',
-                    paramName: initialData.testPointInfo.parameter.name || '',
-                    paramValue: initialData.testPointInfo.parameter.value || '',
-                    paramUnit: initialData.testPointInfo.parameter.unit || '',
-                    qualName: initialData.testPointInfo.qualifier?.name || 'Frequency',
-                    qualValue: initialData.testPointInfo.qualifier?.value || '',
-                    qualUnit: initialData.testPointInfo.qualifier?.unit || 'kHz',
-                    measurementType: initialData.measurementType || 'direct',
-                    equationString: initialData.equationString || '',
-                    variableMappings: { ...initialMappings }, 
-                });
-                if (initialData.measurementType === 'derived') {
-                    updateEquationVariables(initialData.equationString);
-                } else {
-                    setEquationVariables([]);
-                }
-            } else if (previousTestPointData) {
-                // Fallback to previous point data
-                const prev = previousTestPointData;
-                const qualExists = !!prev.testPointInfo.qualifier;
-                setHasQualifier(qualExists);
+            // MERGE LOGIC:
+            // 1. Start with previous point data (to copy Section, Param Name, etc.)
+            // 2. Override with specific initialData (specifically UUT IDs)
+            // 3. Reset defaults if neither exist
+
+            const baseData = previousTestPointData || {};
+            const overrideData = initialData || {};
+
+            // Helper: prefer override, then base, then default
+            const getVal = (path, def = '') => {
+                // Simple helper for top-level props
+                return overrideData[path] !== undefined ? overrideData[path] : (baseData[path] !== undefined ? baseData[path] : def);
+            };
+
+            // Deep helper for testPointInfo
+            const getTpInfo = (key, subKey, def = '') => {
+                 const overrideVal = overrideData.testPointInfo?.[key]?.[subKey];
+                 if (overrideVal !== undefined) return overrideVal;
+                 
+                 const baseVal = baseData.testPointInfo?.[key]?.[subKey];
+                 if (baseVal !== undefined) return baseVal;
+                 
+                 return def;
+            };
+
+            // Determine if we are editing a full existing point (has ID)
+            const isFullEdit = !!overrideData.id; 
+
+            // If specifically editing a point (overrideData has ID), use it strictly.
+            // If creating NEW (no ID), merge overrideData (UUTs) on top of baseData (Previous Point).
+            const source = isFullEdit ? overrideData : { ...baseData, ...overrideData };
+            
+            // Logic for Qualifier existence
+            const qualExists = !!source.testPointInfo?.qualifier?.value;
+            setHasQualifier(qualExists);
+
+            const initialMappings = source.variableMappings || {};
+            
+            setFormData({
+                section: source.section || '',
+                paramName: source.testPointInfo?.parameter?.name || '',
+                // If creating new, clear the value. If editing, keep it.
+                paramValue: isFullEdit ? (source.testPointInfo?.parameter?.value || '') : '', 
+                paramUnit: source.testPointInfo?.parameter?.unit || '',
                 
-                const prevMappings = prev.variableMappings ? { ...prev.variableMappings } : {};
+                qualName: source.testPointInfo?.qualifier?.name || 'Frequency',
+                qualValue: isFullEdit ? (source.testPointInfo?.qualifier?.value || '') : '',
+                qualUnit: source.testPointInfo?.qualifier?.unit || 'kHz',
                 
-                setFormData({
-                    section: prev.section || '',
-                    paramName: prev.testPointInfo.parameter.name || '',
-                    paramValue: '', 
-                    paramUnit: prev.testPointInfo.parameter.unit || '',
-                    qualName: prev.testPointInfo.qualifier?.name || 'Frequency',
-                    qualValue: '',
-                    qualUnit: prev.testPointInfo.qualifier?.unit || 'kHz',
-                    measurementType: prev.measurementType || 'direct',
-                    equationString: prev.equationString || '',
-                    variableMappings: prevMappings,
-                });
-                if (prev.measurementType === 'derived') {
-                    updateEquationVariables(prev.equationString);
-                } else {
-                    setEquationVariables([]);
-                }
+                measurementType: source.measurementType || 'direct',
+                equationString: source.equationString || '',
+                variableMappings: { ...initialMappings }, 
+            });
+
+            if (source.measurementType === 'derived') {
+                updateEquationVariables(source.equationString);
             } else {
-                // Default / New Point
-                setHasQualifier(false);
-                setFormData(getInitialFormData());
                 setEquationVariables([]);
             }
         }
-    }, [initialData, isOpen, previousTestPointData]); 
+    }, [initialData, isOpen, previousTestPointData]);
 
     if (!isOpen) return null;
 

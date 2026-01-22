@@ -4,16 +4,11 @@ import Select from "react-select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faPlus,
-    faPencilAlt,
     faTrashAlt,
-    faCalculator,
     faTimes,
     faExclamationTriangle,
     faCheckCircle,
     faTimesCircle,
-    faMicroscope,
-    faList,
-    faCheckSquare // Used for the "Checked" state
 } from "@fortawesome/free-solid-svg-icons";
 
 // Sub-components
@@ -27,7 +22,6 @@ import {
     getAbsoluteLimits,
     calculateUncertaintyFromToleranceObject,
     convertPpmToUnit,
-    recalculateTolerance,
     unitSystem,
     unitCategories
 } from "../../../utils/uncertaintyMath";
@@ -222,19 +216,19 @@ const UncertaintyPanel = ({
     onInlineUutUpdate,
     onInlineTmdeUpdate,
     onBudgetRowContextMenu,
+    onDefineTestPoint,
     onShowDerivedBreakdown,
     onShowRiskBreakdown,
     showContribution,
     setShowContribution,
     onOpenRepeatability,
-    onDefineTestPoint,
     onUpdateTestPoint,
     riskResults,
     setNotification,
     selectedTmdeIds = [],
     onToggleTmdeSelection,
     onToggleAllTmdes,
-    onToggleUut,
+    onToggleUut, // NOTE: We might not use this directly anymore for real points
     onDeleteTestPoint,
 }) => {
 
@@ -242,6 +236,16 @@ const UncertaintyPanel = ({
     const equationInputRef = useRef(null);
     const symbolMenuRef = useRef(null);
     const symbolButtonRef = useRef(null);
+
+    // --- ISSUE 1 FIX: LOCAL SELECTION STATE ---
+    // We maintain a local selection state that defaults to the DB state.
+    // This allows users to check/uncheck boxes without auto-saving to DB.
+    const [localSelectedUuts, setLocalSelectedUuts] = useState([]);
+
+    useEffect(() => {
+        // Sync local state with DB state whenever the loaded test point changes
+        setLocalSelectedUuts(testPointData.associatedUutIds || []);
+    }, [testPointData.id, testPointData.associatedUutIds]);
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -311,6 +315,66 @@ const UncertaintyPanel = ({
         }
         return [];
     }, [testPointData, isDerived]);
+
+    // --- HANDLERS ---
+
+    // 1. Checkbox Toggle
+    const handleUutCheckboxChange = (uutId) => {
+        const isCurrentlySelected = localSelectedUuts.includes(uutId);
+        let newSelection;
+        if (isCurrentlySelected) {
+            newSelection = localSelectedUuts.filter(id => String(id) !== String(uutId));
+        } else {
+            newSelection = [...localSelectedUuts, uutId];
+        }
+
+        setLocalSelectedUuts(newSelection);
+
+        // If this is a VIRTUAL point (not saved yet), we DO want to update "draft" state immediately
+        // so the "Add" button works as expected.
+        if (!testPointData.id) {
+            if (onUpdateTestPoint) {
+                onUpdateTestPoint({ associatedUutIds: newSelection });
+            }
+        }
+        // If it's a REAL point, we DO NOT update immediately. 
+        // Changes are applied via specific actions (Delete) or context logic.
+    };
+
+    // 2. Smart Delete / Unassign
+    const handleSmartDelete = () => {
+        if (!testPointData.id) {
+            if (onDeleteTestPoint) onDeleteTestPoint(null);
+            setLocalSelectedUuts([]);
+            return;
+        }
+
+        const uutsToRemoveFrom = localSelectedUuts;
+
+        const remainingUuts = associatedUutIds.filter(id =>
+            !uutsToRemoveFrom.some(removeId => String(removeId) === String(id))
+        );
+
+        const isRemovingFromAll = remainingUuts.length === 0;
+
+        setNotification({
+            title: isRemovingFromAll ? "Delete Measurement Point" : "Unassign Measurement Point",
+            message: isRemovingFromAll
+                ? "This will permanently delete the measurement point from all UUTs."
+                : `This will remove the measurement point from ${uutsToRemoveFrom.length} UUT(s), but keep it on ${remainingUuts.length} others.`,
+            confirmText: isRemovingFromAll ? "Delete" : "Unassign",
+            isIconConfirm: isRemovingFromAll,
+            onConfirm: () => {
+                if (isRemovingFromAll) {
+                    onDeleteTestPoint(testPointData.id);
+                    setLocalSelectedUuts([]);
+                } else {
+                    onUpdateTestPoint({ associatedUutIds: remainingUuts });
+                    setLocalSelectedUuts(remainingUuts);
+                }
+            }
+        });
+    };
 
     const handleEquationChange = (newEquationString) => {
         let variables = [];
@@ -438,33 +502,6 @@ const UncertaintyPanel = ({
         }
     };
 
-    // --- UUT Range Selection (Checkbox Mode) ---
-    // NOTE: This is partially superseded by the simple checkbox toggle in render
-    // but kept if we need finer grained range selection in future.
-    const handleSelectUutSpec = (uutId, rangeId, specObject, isChecked) => {
-        let newAssociatedIds = [...associatedUutIds];
-
-        if (isChecked) {
-            // 1. Ensure UUT is associated
-            if (!newAssociatedIds.includes(uutId)) {
-                newAssociatedIds = [uutId];
-            }
-
-            // 2. Set the Active Tolerance Spec
-            onUpdateTestPoint({
-                associatedUutIds: newAssociatedIds,
-                uutTolerance: specObject, // This becomes the active spec for calculations
-                uutToleranceRangeId: rangeId
-            });
-        } else {
-            // Uncheck logic managed by main toggle usually
-            onUpdateTestPoint({
-                uutTolerance: null,
-                uutToleranceRangeId: null
-            });
-        }
-    };
-
     const equationDisplayData = useMemo(() => {
         if (!isDerived) return null;
 
@@ -571,16 +608,11 @@ const UncertaintyPanel = ({
                                                 </td>
                                             </tr>
                                         ) : (
-                                            relevantUuts.flatMap((uut, uutIndex) => {
-                                                // VALIDATION: Ensure UUT has an ID
-                                                if (!uut.id && uut.id !== 0) {
-                                                    console.warn("Render Warning: UUT missing ID", uut);
-                                                }
-
+                                            relevantUuts.map((uut, uutIndex) => {
+                                                // Prepare ranges
                                                 let ranges = [];
-
                                                 if (Array.isArray(uut.ranges) && uut.ranges.length > 0) {
-                                                    ranges = uut.ranges;
+                                                    ranges = uut.ranges.map(r => ({ ...r, ...(r.tolerances || r.tolerance || {}) }));
                                                 } else if (Array.isArray(uut.instrument?.functions) && uut.instrument.functions.length > 0) {
                                                     ranges = uut.instrument.functions.flatMap(fn =>
                                                         (fn.ranges || []).map(r => ({
@@ -591,86 +623,124 @@ const UncertaintyPanel = ({
                                                         }))
                                                     );
                                                 } else if (Array.isArray(uut.instrument?.ranges) && uut.instrument.ranges.length > 0) {
-                                                    ranges = uut.instrument.ranges;
+                                                    ranges = uut.instrument.ranges.map(r => ({ ...r, ...(r.tolerances || {}) }));
                                                 } else {
                                                     const baseTolerance = uut.tolerance || uut.instrument?.tolerance || {};
                                                     ranges = [{ id: 'default', range: 'Default', ...baseTolerance }];
                                                 }
 
-                                                return ranges.map((range, rangeIndex) => {
-                                                    // STRICT COMPARISON: Ensure IDs match types (String vs Number)
-                                                    const isChecked = associatedUutIds.some(id => String(id) === String(uut.id));
+                                                // --- STATE CHECKS ---
+                                                // 1. Is checked in local UI? (Controls Add/Delete scope)
+                                                const isChecked = localSelectedUuts.includes(uut.id);
 
-                                                    const uniqueKey = `${uut.id}-${rangeIndex}`;
+                                                // 2. Is this the active context? (Controls highlighting)
+                                                const isActiveContext = testPointData.activeUutId && (String(testPointData.activeUutId) === String(uut.id));
 
-                                                    // FIX RANGE DISPLAY: Handle min/max objects if 'range' string is missing
-                                                    let rangeText = range.range;
-                                                    if (!rangeText) {
-                                                        if (range.min !== undefined && range.max !== undefined) {
-                                                            rangeText = `${range.min} to ${range.max}`;
-                                                        } else {
-                                                            rangeText = "Full Range";
-                                                        }
-                                                    }
+                                                // 3. Find currently selected range (to display spec)
+                                                let selectedRangeIndex = 0;
+                                                if (testPointData.uutTolerance) {
+                                                    const currentString = JSON.stringify(testPointData.uutTolerance);
+                                                    const matchIdx = ranges.findIndex(r => JSON.stringify(r) === currentString);
+                                                    if (matchIdx !== -1) selectedRangeIndex = matchIdx;
+                                                }
 
-                                                    const rangeLabel = range.functionName
-                                                        ? `${range.functionName}: ${rangeText} ${range.unit || ""}`
-                                                        : `${rangeText} ${range.unit || ""}`;
+                                                const activeRange = ranges[selectedRangeIndex] || {};
+                                                const specSummary = getToleranceSummary(activeRange);
 
-                                                    const specSummary = getToleranceSummary(range);
-                                                    const specDisplay = (specSummary && !specSummary.includes('null')) ? specSummary : (
-                                                        <span style={{ color: 'var(--text-color-muted)', fontStyle: 'italic' }}>No spec defined</span>
-                                                    );
+                                                // ISSUE 3: Dropdown only if multiple ranges
+                                                const hasMultipleRanges = ranges.length > 1;
 
-                                                    // Highlight if this specific range is the "active" tolerance for the point
-                                                    const isActiveSpec = JSON.stringify(testPointData.uutTolerance) === JSON.stringify(range);
-
-                                                    return (
-                                                        <tr key={uniqueKey} style={{ backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent' }}>
-                                                            <td style={{ textAlign: 'center' }}>
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isChecked}
-                                                                    onChange={() => {
-                                                                        // 1. Toggle the Instrument ID (Existing Logic)
-                                                                        onToggleUut(uut.id);
-
-                                                                        // 2. NEW: Explicitly set THIS specific range as the active tolerance
-                                                                        // This handles the "Multi-range display" issue by capturing user intent.
-                                                                        if (!isChecked && onUpdateTestPoint) { // If we are checking it ON
+                                                return (
+                                                    <tr key={uut.id} style={{
+                                                        backgroundColor: isActiveContext ? 'rgba(var(--primary-rgb), 0.15)' : (isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent'),
+                                                        borderLeft: isActiveContext ? '4px solid var(--primary-color)' : '4px solid transparent',
+                                                        transition: 'all 0.2s ease'
+                                                    }}>
+                                                        <td style={{ textAlign: 'center' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={() => handleUutCheckboxChange(uut.id)}
+                                                                style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                                            />
+                                                        </td>
+                                                        <td>
+                                                            <div style={{ fontWeight: isActiveContext ? 700 : (isChecked ? 600 : 400), color: isChecked ? 'var(--primary-color)' : 'var(--text-color)' }}>
+                                                                {uut.description}
+                                                                {isActiveContext && (
+                                                                    <span style={{
+                                                                        marginLeft: '8px',
+                                                                        fontSize: '0.65rem',
+                                                                        backgroundColor: 'var(--primary-color)',
+                                                                        color: '#fff',
+                                                                        padding: '2px 6px',
+                                                                        borderRadius: '4px',
+                                                                        verticalAlign: 'middle',
+                                                                        textTransform: 'uppercase',
+                                                                        letterSpacing: '0.5px'
+                                                                    }}>
+                                                                        Active
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            {hasMultipleRanges ? (
+                                                                <select
+                                                                    className="mini-select"
+                                                                    style={{ width: '100%' }}
+                                                                    value={selectedRangeIndex}
+                                                                    onChange={(e) => {
+                                                                        const newIndex = parseInt(e.target.value, 10);
+                                                                        const newRange = ranges[newIndex];
+                                                                        if (onUpdateTestPoint) {
+                                                                            // When changing range, we update the TP.
+                                                                            // We also assume the user wants this UUT to be associated if it wasn't already.
+                                                                            let newAssociatedIds = [...localSelectedUuts];
+                                                                            if (!newAssociatedIds.includes(uut.id)) {
+                                                                                newAssociatedIds.push(uut.id);
+                                                                                setLocalSelectedUuts(newAssociatedIds);
+                                                                            }
                                                                             onUpdateTestPoint({
-                                                                                uutTolerance: range
+                                                                                associatedUutIds: newAssociatedIds,
+                                                                                uutTolerance: newRange
                                                                             });
                                                                         }
                                                                     }}
-                                                                    style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                                                                />
-                                                            </td>
-                                                            <td>
-                                                                <div style={{ fontWeight: isChecked ? 700 : 400, color: isChecked ? 'var(--primary-color)' : 'var(--text-color)' }}>
-                                                                    {uut.description}
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <span style={{ fontSize: '0.85rem' }}>{rangeLabel}</span>
-                                                            </td>
-                                                            <td
-                                                                style={{
-                                                                    cursor: isChecked ? 'pointer' : 'default',
-                                                                    borderLeft: isActiveSpec ? '3px solid var(--primary-color)' : 'none'
-                                                                }}
-                                                                onClick={() => {
-                                                                    if (isChecked && onUpdateTestPoint) {
-                                                                        onUpdateTestPoint({ uutTolerance: range });
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <span style={{ fontSize: '0.85rem' }}>{specDisplay}</span>
-                                                                {isActiveSpec && <span style={{ marginLeft: '5px', fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 'bold' }}>(Active)</span>}
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                });
+                                                                >
+                                                                    {ranges.map((range, idx) => {
+                                                                        let rangeText = range.range;
+                                                                        if (!rangeText) {
+                                                                            if (range.min !== undefined && range.max !== undefined) {
+                                                                                rangeText = `${range.min} to ${range.max}`;
+                                                                            } else {
+                                                                                rangeText = "Full Range";
+                                                                            }
+                                                                        }
+                                                                        const label = range.functionName
+                                                                            ? `${range.functionName}: ${rangeText} ${range.unit || ''}`
+                                                                            : `${rangeText} ${range.unit || ''}`;
+
+                                                                        return <option key={idx} value={idx}>{label}</option>
+                                                                    })}
+                                                                </select>
+                                                            ) : (
+                                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>
+                                                                    {ranges[0] ? (
+                                                                        ranges[0].functionName
+                                                                            ? `${ranges[0].functionName}: ${ranges[0].range || "Full"} ${ranges[0].unit || ''}`
+                                                                            : `${ranges[0].range || "Full Range"} ${ranges[0].unit || ''}`
+                                                                    ) : "-"}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td>
+                                                            <span style={{ fontSize: '0.85rem' }}>
+                                                                {specSummary}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
                                             })
                                         )}
                                     </tbody>
@@ -819,20 +889,18 @@ const UncertaintyPanel = ({
                                             <th>Tolerance</th>
                                             <th>Unit</th>
                                             <th style={{ textAlign: 'center', paddingRight: '20px' }}>
-                                                {/* Allow adding point if none exists */}
                                                 {!hasMeasurementPoint && (
                                                     <span
                                                         onClick={() => {
-                                                            // VALIDATION CHECK: Ensure a UUT is selected
-                                                            if (!testPointData.associatedUutIds || testPointData.associatedUutIds.length === 0) {
+                                                            if (!localSelectedUuts || localSelectedUuts.length === 0) {
                                                                 setNotification({
                                                                     title: "Action Required",
-                                                                    message: "Please select a UUT from the table on the left before adding a measurement point.",
+                                                                    message: "Please select at least one UUT from the table on the left.",
                                                                     isIconConfirm: false
                                                                 });
                                                                 return;
                                                             }
-                                                            onDefineTestPoint();
+                                                            onDefineTestPoint(localSelectedUuts);
                                                         }}
                                                         className="action-icon"
                                                         title="Add Measurement Point"
@@ -861,16 +929,11 @@ const UncertaintyPanel = ({
                                                         />
                                                     </div>
                                                 </td>
-                                                <td
-                                                    className="clickable-spec-cell"
-                                                    onClick={onOpenUutModal}
-                                                    title="Edit Tolerance Spec"
-                                                >
+                                                <td>
                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                        <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
                                                             {getToleranceErrorSummary(uutToleranceData, uutNominal) || "± 0"}
                                                         </span>
-                                                        <FontAwesomeIcon icon={faPencilAlt} className="edit-icon-hover" style={{ fontSize: '0.8rem', marginLeft: '5px' }} />
                                                     </div>
                                                 </td>
                                                 <td>
@@ -886,21 +949,8 @@ const UncertaintyPanel = ({
                                                     <div style={{ display: 'flex', justifyContent: 'center' }}>
                                                         <span
                                                             className="action-icon"
-                                                            onClick={() => {
-                                                                if (testPointData.id) {
-                                                                    // UPDATED: Use Custom Notification Modal instead of window.confirm
-                                                                    setNotification({
-                                                                        title: "Delete Measurement Point",
-                                                                        message: "Are you sure you want to permanently delete this measurement point?",
-                                                                        onConfirm: () => onDeleteTestPoint(testPointData.id),
-                                                                        isIconConfirm: true // This triggers the Confirm/Cancel button layout in your modal
-                                                                    });
-                                                                } else {
-                                                                    // VIRTUAL POINT: Just clear fields (no confirmation needed)
-                                                                    handleClearMeasurementPoint();
-                                                                }
-                                                            }}
-                                                            title="Delete Point"
+                                                            onClick={handleSmartDelete} // CHANGED TO SMART DELETE
+                                                            title="Delete or Unassign"
                                                             style={{
                                                                 cursor: "pointer",
                                                                 color: "var(--status-bad)",
@@ -1046,7 +1096,6 @@ const UncertaintyPanel = ({
                                                         {sessionData.tmdes?.map(tmde => (
                                                             <option key={tmde.id} value={tmde.id}>
                                                                 {tmde.name || "Unnamed TMDE"}
-                                                                {/* Helper text if mapped to a value */}
                                                             </option>
                                                         ))}
                                                     </select>
@@ -1113,13 +1162,11 @@ const UncertaintyPanel = ({
             {hasMeasurementPoint ? (
                 hasUnassignedVariables || isBackendMappingError ? (
                     <div className="placeholder-content" style={{ padding: '20px', color: 'var(--text-color-muted)' }}>
-                        {/* Show a helpful message instead of the big error */}
                         {hasUnassignedVariables
                             ? "Map all equation variables to a TMDE above to calculate budget."
                             : "Complete the equation configuration to calculate budget."}
                     </div>
                 ) : calculationError ? (
-                    // Only show this for non-mapping errors (e.g. math errors like divide by zero)
                     <div className="form-section-warning">
                         <p>Calculation Error: {calculationError}</p>
                     </div>

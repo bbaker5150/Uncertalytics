@@ -65,6 +65,7 @@ function Analysis({
   const [isAddTmdeModalOpen, setAddTmdeModalOpen] = useState(false);
   const [isUutModalOpen, setIsUutModalOpen] = useState(false);
   const [tmdeToEdit, setTmdeToEdit] = useState(null);
+  const [modalOverrides, setModalOverrides] = useState(null);
 
   // New State for Test Point Definition
   const [isTestPointModalOpen, setTestPointModalOpen] = useState(false);
@@ -482,9 +483,12 @@ function Analysis({
 
       <AddTestPointModal
         isOpen={isTestPointModalOpen}
-        onClose={() => setTestPointModalOpen(false)}
+        onClose={() => {
+            setTestPointModalOpen(false);
+            setModalOverrides(null);
+        }}
         onSave={handleSaveTestPointInfo}
-        initialData={null}
+        initialData={modalOverrides} 
         previousTestPointData={testPointData}
       />
 
@@ -612,6 +616,7 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
           onDecrementTmdeQuantity={onDecrementTmdeQuantity}
 
           onOpenUutModal={() => setIsUutModalOpen(true)}
+          
           onDeleteUut={onDeleteUut}
           onInlineUutUpdate={handleInlineUutUpdate}
           onInlineTmdeUpdate={handleInlineTmdeUpdate}
@@ -620,7 +625,12 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
 
           onUpdateTestPoint={onDataSave}
 
-          onDefineTestPoint={() => setTestPointModalOpen(true)}
+          onDefineTestPoint={(selectedUutIds) => {
+             if (selectedUutIds && Array.isArray(selectedUutIds)) {
+                 setModalOverrides({ associatedUutIds: selectedUutIds });
+             }
+             setTestPointModalOpen(true);
+          }}
 
           // --- Pass Selection Props ---
           selectedTmdeIds={selectedTmdeIds}
