@@ -157,6 +157,10 @@ function App() {
   // Tracks which UUT "folder" was clicked in the sidebar to enforce context
   const [selectedTestPointContextUutId, setSelectedTestPointContextUutId] = useState(null);
 
+  // --- NEW: Global UUT Selection State ---
+  // This state is shared between the Sidebar "Add" button and the UncertaintyPanel checkboxes.
+  const [currentUutSelection, setCurrentUutSelection] = useState([]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'M') {
@@ -217,6 +221,7 @@ function App() {
     setSelectedUutId(null);
     setVirtualPoint(null);
     setSelectedTestPointContextUutId(null);
+    setCurrentUutSelection([]); // Clear selection
   };
 
   const handleSelectArea = (areaId) => {
@@ -224,6 +229,7 @@ function App() {
     setSelectedUutId(null);
     setSelectedTestPointId(null);
     setSelectedTestPointContextUutId(null);
+    setCurrentUutSelection([]); // Clear selection
 
     setVirtualPoint({
       ...defaultTestPoint,
@@ -239,6 +245,7 @@ function App() {
     setSelectedAreaId(areaId);
     setSelectedTestPointId(null);
     setSelectedTestPointContextUutId(null);
+    setCurrentUutSelection([uutId]); // Auto-select the clicked UUT to facilitate quick add
 
     let defaultTolerance = {};
     if (uutObject.instrument?.functions?.[0]?.ranges?.[0]) {
@@ -265,6 +272,11 @@ function App() {
     setSelectedUutId(null);
     setVirtualPoint(null);
     setSelectedTestPointContextUutId(contextUutId);
+    
+    // FIX: Explicitly clear the user selection state when selecting a point.
+    // This allows the panel to show the associated UUT as "Active" (highlighted context)
+    // but keeps the checkbox unchecked so the user doesn't accidentally affect it.
+    setCurrentUutSelection([]); 
   };
 
   const handleAddNewSession = () => {
@@ -272,8 +284,34 @@ function App() {
     setEditingSession(newSession);
   };
 
+  // --- MODIFIED: Uses currentUutSelection to pre-fill the new point ---
   const handleAddNewTestPoint = (areaId = null) => {
-    const initialData = virtualPoint || (areaId ? { measurementAreaId: areaId } : null);
+    let initialData = null;
+
+    if (currentUutSelection.length > 0) {
+        // Priority 1: Use Global Selection (Checkbox state)
+        initialData = {
+            measurementAreaId: areaId || selectedAreaId,
+            associatedUutIds: currentUutSelection,
+        };
+        // Try to inherit tolerance from the first selected UUT if possible
+        const primaryUutId = currentUutSelection[0];
+        const primaryUut = currentSessionData?.uuts?.find(u => u.id === primaryUutId);
+        if (primaryUut) {
+             // Basic default tolerance resolution
+             if (primaryUut.instrument?.functions?.[0]?.ranges?.[0]) {
+                 initialData.uutTolerance = primaryUut.instrument.functions[0].ranges[0];
+             } else if (primaryUut.instrument?.ranges?.[0]) {
+                 initialData.uutTolerance = primaryUut.instrument.ranges[0];
+             } else if (primaryUut.tolerance) {
+                 initialData.uutTolerance = primaryUut.tolerance;
+             }
+        }
+    } else {
+        // Priority 2: Use Virtual Point or Blank Area
+        initialData = virtualPoint || (areaId ? { measurementAreaId: areaId, associatedUutIds: [] } : null);
+    }
+    
     setEditingTestPoint(initialData);
     setIsAddModalOpen(true);
   };
@@ -360,13 +398,14 @@ function App() {
     if (!finalData.measurementAreaId && selectedAreaId) finalData.measurementAreaId = selectedAreaId;
     
     // Ensure we capture UUTs
-    if ((!finalData.associatedUutIds || finalData.associatedUutIds.length === 0) && selectedUutId) {
-      finalData.associatedUutIds = [selectedUutId];
+    if ((!finalData.associatedUutIds || finalData.associatedUutIds.length === 0) && currentUutSelection.length > 0) {
+      finalData.associatedUutIds = currentUutSelection;
     }
 
     saveTestPoint(finalData, null);
     setIsAddModalOpen(false);
     setEditingTestPoint(null);
+    setCurrentUutSelection([]); // Clear selection after save
     
     // --- CONTEXT PRESERVATION LOGIC ---
     if (finalData.associatedUutIds && finalData.associatedUutIds.length > 0) {
@@ -783,6 +822,10 @@ function App() {
                     onDeleteUut={handleDeleteUut}
                     instruments={instruments}
                     onDeleteTestPoint={handleDeleteTestPoint}
+                    
+                    // --- NEW: Pass Global UUT Selection Props ---
+                    currentUutSelection={currentUutSelection}
+                    setCurrentUutSelection={setCurrentUutSelection}
                   />
                 </TestPointDetailView>
               ) : (

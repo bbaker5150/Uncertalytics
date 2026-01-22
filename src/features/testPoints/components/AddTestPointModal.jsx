@@ -398,7 +398,6 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
     };
 
     const handleSave = () => {
-        // 1. Validation Logic
         if (!formData.section || !formData.paramUnit || !formData.paramValue ||
             (formData.measurementType === 'derived' && !formData.equationString) ||
             (formData.measurementType === 'derived' && equationVariables.some(v => !formData.variableMappings[v] || formData.variableMappings[v].trim() === ''))
@@ -417,7 +416,10 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
 
         const qualifierData = hasQualifier ? { name: formData.qualName, value: formData.qualValue, unit: formData.qualUnit } : null;
 
-        // 2. Construct the Data Object
+        const resolvedAssociatedUuts = (initialData && initialData.associatedUutIds !== undefined)
+            ? initialData.associatedUutIds
+            : (previousTestPointData?.associatedUutIds || []);
+
         const finalData = {
             section: formData.section,
             testPointInfo: {
@@ -427,14 +429,11 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
             measurementType: formData.measurementType,
             equationString: formData.equationString,
             variableMappings: formData.variableMappings,
-
-            // CRITICAL UPDATE: Persist the hierarchical links (Area & UUT)
-            // We look at initialData first (Virtual Point), then fallback to previous point data
             measurementAreaId: initialData?.measurementAreaId || previousTestPointData?.measurementAreaId || null,
-            associatedUutIds: initialData?.associatedUutIds || previousTestPointData?.associatedUutIds || [],
+            associatedUutIds: resolvedAssociatedUuts,
+            uutTolerance: initialData?.uutTolerance || previousTestPointData?.uutTolerance || null,
         };
 
-        // 3. Save
         if (initialData && initialData.id) {
             onSave({ id: initialData.id, ...finalData });
         } else {

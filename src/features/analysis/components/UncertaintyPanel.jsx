@@ -228,8 +228,10 @@ const UncertaintyPanel = ({
     selectedTmdeIds = [],
     onToggleTmdeSelection,
     onToggleAllTmdes,
-    onToggleUut, // NOTE: We might not use this directly anymore for real points
+    onToggleUut, 
     onDeleteTestPoint,
+    // --- NEW: Global Selection Prop ---
+    currentUutSelection = [] 
 }) => {
 
     const [isSymbolMenuOpen, setIsSymbolMenuOpen] = useState(false);
@@ -237,15 +239,10 @@ const UncertaintyPanel = ({
     const symbolMenuRef = useRef(null);
     const symbolButtonRef = useRef(null);
 
-    // --- ISSUE 1 FIX: LOCAL SELECTION STATE ---
-    // We maintain a local selection state that defaults to the DB state.
-    // This allows users to check/uncheck boxes without auto-saving to DB.
-    const [localSelectedUuts, setLocalSelectedUuts] = useState([]);
-
-    useEffect(() => {
-        // Sync local state with DB state whenever the loaded test point changes
-        setLocalSelectedUuts(testPointData.associatedUutIds || []);
-    }, [testPointData.id, testPointData.associatedUutIds]);
+    // --- RANGE SELECTION STATE ---
+    // Tracks dropdown selections for each UUT. { [uutId]: rangeIndex }
+    // This decouples the view from the saved test point, ensuring the Spec column updates immediately.
+    const [rangeSelections, setRangeSelections] = useState({});
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -257,6 +254,44 @@ const UncertaintyPanel = ({
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    // --- HELPER: Resolve Ranges & Selection ---
+    const resolveUutRange = (uut) => {
+        let ranges = [];
+        if (Array.isArray(uut.ranges) && uut.ranges.length > 0) {
+            ranges = uut.ranges.map(r => ({ ...r, ...(r.tolerances || r.tolerance || {}) }));
+        } else if (Array.isArray(uut.instrument?.functions) && uut.instrument.functions.length > 0) {
+            ranges = uut.instrument.functions.flatMap(fn =>
+                (fn.ranges || []).map(r => ({
+                    ...r,
+                    ...(r.tolerances || {}),
+                    functionName: fn.name,
+                    unit: fn.unit || r.unit
+                }))
+            );
+        } else if (Array.isArray(uut.instrument?.ranges) && uut.instrument.ranges.length > 0) {
+            ranges = uut.instrument.ranges.map(r => ({ ...r, ...(r.tolerances || {}) }));
+        } else {
+            const baseTolerance = uut.tolerance || uut.instrument?.tolerance || {};
+            ranges = [{ id: 'default', range: 'Default', ...baseTolerance }];
+        }
+
+        // Determine active index
+        let activeIndex = 0;
+        
+        // 1. Check local state (user changed dropdown)
+        if (rangeSelections[uut.id] !== undefined) {
+            activeIndex = rangeSelections[uut.id];
+        } 
+        // 2. Fallback to saved test point data if matches
+        else if (testPointData.uutTolerance) {
+            const currentString = JSON.stringify(testPointData.uutTolerance);
+            const matchIdx = ranges.findIndex(r => JSON.stringify(r) === currentString);
+            if (matchIdx !== -1) activeIndex = matchIdx;
+        }
+
+        return { ranges, activeIndex, activeRange: ranges[activeIndex] || {} };
+    };
 
     const groupedUnitOptions = useMemo(() => {
         const allSupportedUnits = Object.keys(unitSystem.units);
@@ -292,7 +327,6 @@ const UncertaintyPanel = ({
     const activeMeasurementAreaId = testPointData.measurementAreaId;
     const activeArea = sessionData.measurementAreas?.find(a => a.id === activeMeasurementAreaId);
 
-    // Filter UUTs: Match by ID OR by Name (fallback for string-entered areas)
     const relevantUuts = useMemo(() => {
         if (!sessionData.uuts) return [];
         return sessionData.uuts.filter(u => {
@@ -318,64 +352,95 @@ const UncertaintyPanel = ({
 
     // --- HANDLERS ---
 
-    // 1. Checkbox Toggle
     const handleUutCheckboxChange = (uutId) => {
-        const isCurrentlySelected = localSelectedUuts.includes(uutId);
-        let newSelection;
-        if (isCurrentlySelected) {
-            newSelection = localSelectedUuts.filter(id => String(id) !== String(uutId));
-        } else {
-            newSelection = [...localSelectedUuts, uutId];
-        }
-
-        setLocalSelectedUuts(newSelection);
-
-        // If this is a VIRTUAL point (not saved yet), we DO want to update "draft" state immediately
-        // so the "Add" button works as expected.
-        if (!testPointData.id) {
-            if (onUpdateTestPoint) {
-                onUpdateTestPoint({ associatedUutIds: newSelection });
-            }
-        }
-        // If it's a REAL point, we DO NOT update immediately. 
-        // Changes are applied via specific actions (Delete) or context logic.
+        // Now just calls the toggle prop, which updates App.jsx state
+        onToggleUut(uutId);
     };
 
-    // 2. Smart Delete / Unassign
-    const handleSmartDelete = () => {
-        if (!testPointData.id) {
-            if (onDeleteTestPoint) onDeleteTestPoint(null);
-            setLocalSelectedUuts([]);
+    const handleRangeChange = (uutId, newIndex, ranges) => {
+        // 1. Update local UI state immediately (fixes spec column bug)
+        setRangeSelections(prev => ({ ...prev, [uutId]: newIndex }));
+
+        // 2. If this UUT is the "Active" one (currently saved to the point), update the point's data too
+        const isLinkedToPoint = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uutId);
+        
+        if (isLinkedToPoint && onUpdateTestPoint) {
+            onUpdateTestPoint({ uutTolerance: ranges[newIndex] });
+        }
+    };
+
+    const handleActionAdd = () => {
+        if (!currentUutSelection || currentUutSelection.length === 0) {
+            // Unassigned case
+            onDefineTestPoint([], null);
             return;
         }
 
-        const uutsToRemoveFrom = localSelectedUuts;
+        // Assigned case: Determine tolerance from Primary UUT (first selected)
+        const primaryId = currentUutSelection[0];
+        const primaryUut = relevantUuts.find(u => u.id === primaryId);
+        let resolvedTolerance = null;
 
-        const remainingUuts = associatedUutIds.filter(id =>
-            !uutsToRemoveFrom.some(removeId => String(removeId) === String(id))
+        if (primaryUut) {
+            const { activeRange } = resolveUutRange(primaryUut);
+            resolvedTolerance = activeRange;
+        }
+
+        onDefineTestPoint(currentUutSelection, resolvedTolerance);
+        
+        // Note: Selection clearing is handled after save in App.jsx or manually here if needed.
+        // But App.jsx handles the save flow.
+    };
+
+    const handleActionRemove = () => {
+        if (!testPointData.id) {
+             // Virtual point -> just clear selection or delete
+             if (onDeleteTestPoint) onDeleteTestPoint(null);
+             // Clear selection done by onToggleUut implicitly if we uncheck
+             return;
+        }
+
+        if (currentUutSelection.length === 0) {
+            setNotification({
+                title: "No UUTs Selected",
+                message: "Please select at least one UUT to remove the measurement point from.",
+                isIconConfirm: false
+            });
+            return;
+        }
+
+        const uutsToRemove = currentUutSelection;
+        const remainingUuts = associatedUutIds.filter(id => 
+            !uutsToRemove.some(remId => String(remId) === String(id))
         );
-
         const isRemovingFromAll = remainingUuts.length === 0;
 
         setNotification({
             title: isRemovingFromAll ? "Delete Measurement Point" : "Unassign Measurement Point",
             message: isRemovingFromAll
                 ? "This will permanently delete the measurement point from all UUTs."
-                : `This will remove the measurement point from ${uutsToRemoveFrom.length} UUT(s), but keep it on ${remainingUuts.length} others.`,
+                : `This will remove the measurement point from ${uutsToRemove.length} UUT(s).`,
             confirmText: isRemovingFromAll ? "Delete" : "Unassign",
             isIconConfirm: isRemovingFromAll,
             onConfirm: () => {
                 if (isRemovingFromAll) {
                     onDeleteTestPoint(testPointData.id);
-                    setLocalSelectedUuts([]);
                 } else {
                     onUpdateTestPoint({ associatedUutIds: remainingUuts });
-                    setLocalSelectedUuts(remainingUuts);
                 }
+                // Clear the global selection
+                // We need to trigger a clear via the prop if available, or assume parent handles it.
+                // Since onToggleUut toggles, we can't easily "clear all". 
+                // However, App.jsx handles clearing on selection changes, so we rely on re-render.
+                // Or better: we should manually uncheck them one by one? 
+                // No, let's assume the user will uncheck them or we force an update.
+                // Ideally, we'd have onClearUutSelection.
+                uutsToRemove.forEach(id => onToggleUut(id)); // Toggle them off
             }
         });
     };
 
+    // ... [Equation and Variable Handlers Omitted for Brevity - Unchanged] ...
     const handleEquationChange = (newEquationString) => {
         let variables = [];
         try {
@@ -465,7 +530,6 @@ const UncertaintyPanel = ({
             return;
         }
 
-        // Find in session tmdes or current tolerances
         const targetTmde = sessionData.tmdes?.find(t => t.id == tmdeIdStr) || tmdeTolerancesData.find(t => t.id == tmdeIdStr);
         if (!targetTmde) return;
 
@@ -543,12 +607,6 @@ const UncertaintyPanel = ({
         calculationError.includes("Internal error")
     );
 
-    const handleClearMeasurementPoint = () => {
-        if (onInlineUutUpdate) {
-            onInlineUutUpdate('nominal', '');
-        }
-    };
-
     const calculatedNominal = calcResults?.calculatedNominalValue;
     const targetNominal = parseFloat(uutNominal?.value);
 
@@ -608,47 +666,16 @@ const UncertaintyPanel = ({
                                                 </td>
                                             </tr>
                                         ) : (
-                                            relevantUuts.map((uut, uutIndex) => {
-                                                // Prepare ranges
-                                                let ranges = [];
-                                                if (Array.isArray(uut.ranges) && uut.ranges.length > 0) {
-                                                    ranges = uut.ranges.map(r => ({ ...r, ...(r.tolerances || r.tolerance || {}) }));
-                                                } else if (Array.isArray(uut.instrument?.functions) && uut.instrument.functions.length > 0) {
-                                                    ranges = uut.instrument.functions.flatMap(fn =>
-                                                        (fn.ranges || []).map(r => ({
-                                                            ...r,
-                                                            ...(r.tolerances || {}),
-                                                            functionName: fn.name,
-                                                            unit: fn.unit || r.unit
-                                                        }))
-                                                    );
-                                                } else if (Array.isArray(uut.instrument?.ranges) && uut.instrument.ranges.length > 0) {
-                                                    ranges = uut.instrument.ranges.map(r => ({ ...r, ...(r.tolerances || {}) }));
-                                                } else {
-                                                    const baseTolerance = uut.tolerance || uut.instrument?.tolerance || {};
-                                                    ranges = [{ id: 'default', range: 'Default', ...baseTolerance }];
-                                                }
-
-                                                // --- STATE CHECKS ---
-                                                // 1. Is checked in local UI? (Controls Add/Delete scope)
-                                                const isChecked = localSelectedUuts.includes(uut.id);
-
-                                                // 2. Is this the active context? (Controls highlighting)
-                                                const isActiveContext = testPointData.activeUutId && (String(testPointData.activeUutId) === String(uut.id));
-
-                                                // 3. Find currently selected range (to display spec)
-                                                let selectedRangeIndex = 0;
-                                                if (testPointData.uutTolerance) {
-                                                    const currentString = JSON.stringify(testPointData.uutTolerance);
-                                                    const matchIdx = ranges.findIndex(r => JSON.stringify(r) === currentString);
-                                                    if (matchIdx !== -1) selectedRangeIndex = matchIdx;
-                                                }
-
-                                                const activeRange = ranges[selectedRangeIndex] || {};
+                                            relevantUuts.map((uut) => {
+                                                // Resolve ranges and active state using new helper
+                                                const { ranges, activeIndex, activeRange } = resolveUutRange(uut);
                                                 const specSummary = getToleranceSummary(activeRange);
-
-                                                // ISSUE 3: Dropdown only if multiple ranges
                                                 const hasMultipleRanges = ranges.length > 1;
+
+                                                // State Checks
+                                                const isChecked = currentUutSelection.includes(uut.id);
+                                                // STRICT Active Check: Only true if the POINT is saved and linked to this UUT ID
+                                                const isActiveContext = testPointData.id && testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id);
 
                                                 return (
                                                     <tr key={uut.id} style={{
@@ -689,24 +716,8 @@ const UncertaintyPanel = ({
                                                                 <select
                                                                     className="mini-select"
                                                                     style={{ width: '100%' }}
-                                                                    value={selectedRangeIndex}
-                                                                    onChange={(e) => {
-                                                                        const newIndex = parseInt(e.target.value, 10);
-                                                                        const newRange = ranges[newIndex];
-                                                                        if (onUpdateTestPoint) {
-                                                                            // When changing range, we update the TP.
-                                                                            // We also assume the user wants this UUT to be associated if it wasn't already.
-                                                                            let newAssociatedIds = [...localSelectedUuts];
-                                                                            if (!newAssociatedIds.includes(uut.id)) {
-                                                                                newAssociatedIds.push(uut.id);
-                                                                                setLocalSelectedUuts(newAssociatedIds);
-                                                                            }
-                                                                            onUpdateTestPoint({
-                                                                                associatedUutIds: newAssociatedIds,
-                                                                                uutTolerance: newRange
-                                                                            });
-                                                                        }
-                                                                    }}
+                                                                    value={activeIndex}
+                                                                    onChange={(e) => handleRangeChange(uut.id, parseInt(e.target.value, 10), ranges)}
                                                                 >
                                                                     {ranges.map((range, idx) => {
                                                                         let rangeText = range.range;
@@ -726,11 +737,21 @@ const UncertaintyPanel = ({
                                                                 </select>
                                                             ) : (
                                                                 <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>
-                                                                    {ranges[0] ? (
-                                                                        ranges[0].functionName
-                                                                            ? `${ranges[0].functionName}: ${ranges[0].range || "Full"} ${ranges[0].unit || ''}`
-                                                                            : `${ranges[0].range || "Full Range"} ${ranges[0].unit || ''}`
-                                                                    ) : "-"}
+                                                                    {(() => {
+                                                                        const r = ranges[0];
+                                                                        if (!r) return "-";
+                                                                        let rangeText = r.range;
+                                                                        if (!rangeText) {
+                                                                             if (r.min !== undefined && r.max !== undefined) {
+                                                                                 rangeText = `${r.min} to ${r.max}`;
+                                                                             } else {
+                                                                                 rangeText = "Full Range";
+                                                                             }
+                                                                        }
+                                                                        return r.functionName
+                                                                            ? `${r.functionName}: ${rangeText} ${r.unit || ''}`
+                                                                            : `${rangeText} ${r.unit || ''}`;
+                                                                    })()}
                                                                 </span>
                                                             )}
                                                         </td>
@@ -749,10 +770,11 @@ const UncertaintyPanel = ({
                         </div>
                     </div>
 
-                    {/* 2. TMDE LIST */}
+                    {/* 2. TMDE LIST Omitted for brevity - No changes needed here */}
                     <div>
-                        <h3 style={sectionTitleStyle}>Measurement Standards (TMDE)</h3>
-                        <div style={cardStyle}>
+                         <h3 style={sectionTitleStyle}>Measurement Standards (TMDE)</h3>
+                         {/* ... TMDE table ... */}
+                          <div style={cardStyle}>
                             <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '400px' }}>
                                 <table className="instrument-summary-table" style={{ width: '100%' }}>
                                     <colgroup>
@@ -891,17 +913,7 @@ const UncertaintyPanel = ({
                                             <th style={{ textAlign: 'center', paddingRight: '20px' }}>
                                                 {!hasMeasurementPoint && (
                                                     <span
-                                                        onClick={() => {
-                                                            if (!localSelectedUuts || localSelectedUuts.length === 0) {
-                                                                setNotification({
-                                                                    title: "Action Required",
-                                                                    message: "Please select at least one UUT from the table on the left.",
-                                                                    isIconConfirm: false
-                                                                });
-                                                                return;
-                                                            }
-                                                            onDefineTestPoint(localSelectedUuts);
-                                                        }}
+                                                        onClick={handleActionAdd} // Use our new logic
                                                         className="action-icon"
                                                         title="Add Measurement Point"
                                                         style={{
@@ -949,7 +961,7 @@ const UncertaintyPanel = ({
                                                     <div style={{ display: 'flex', justifyContent: 'center' }}>
                                                         <span
                                                             className="action-icon"
-                                                            onClick={handleSmartDelete} // CHANGED TO SMART DELETE
+                                                            onClick={handleActionRemove} // Use our new logic
                                                             title="Delete or Unassign"
                                                             style={{
                                                                 cursor: "pointer",
@@ -975,11 +987,10 @@ const UncertaintyPanel = ({
                         </div>
                     </div>
 
-                    {/* 4. MEASUREMENT EQUATION (If derived) */}
+                    {/* ... (Equation Editor - No changes) ... */}
                     {isDerived && equationDisplayData && (
                         <div>
                             <h3 style={sectionTitleStyle}>Measurement Equation</h3>
-
                             <div style={{
                                 backgroundColor: 'var(--content-background)',
                                 border: '1px solid var(--border-color)',
@@ -1122,7 +1133,6 @@ const UncertaintyPanel = ({
                                                                     width: "100px"
                                                                 }}
                                                             />
-                                                            {/* DROPDOWN FOR UNIT SELECTION */}
                                                             <div style={{ width: '85px', marginLeft: '5px', borderBottom: '1px dashed var(--border-color)' }}>
                                                                 <Select
                                                                     options={groupedUnitOptions}

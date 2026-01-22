@@ -54,7 +54,11 @@ function Analysis({
   onDeleteTestPoint,
   // Shared State lifted from App.js
   riskResults: parentRiskResults,
-  setRiskResults: parentSetRiskResults
+  setRiskResults: parentSetRiskResults,
+  
+  // --- NEW: Global UUT Selection Props ---
+  currentUutSelection = [],
+  setCurrentUutSelection
 }) {
   // --- 1. Local UI State ---
   const [analysisMode, setAnalysisMode] = useState("uncertaintyTool");
@@ -168,54 +172,21 @@ function Analysis({
   };
 
   const handleToggleUut = (uutId) => {
-    if (!uutId && uutId !== 0) {
-      console.error("Attempted to toggle UUT with invalid ID:", uutId);
-      return;
-    }
-
-    // Ensure we are working with a clean array
-    const currentIds = Array.isArray(testPointData.associatedUutIds)
-      ? [...testPointData.associatedUutIds]
-      : [];
-
-    // Convert all to strings for comparison safety
-    const isSelected = currentIds.some(id => String(id) === String(uutId));
-
+    if (!uutId && uutId !== 0) return;
+    
+    // Ensure we are working with global selection
+    const isSelected = currentUutSelection.some(id => String(id) === String(uutId));
     let newIds;
+    
     if (isSelected) {
-      // Filter out matching ID (string safe)
-      newIds = currentIds.filter(id => String(id) !== String(uutId));
+      newIds = currentUutSelection.filter(id => String(id) !== String(uutId));
     } else {
-      newIds = [...currentIds, uutId];
+      newIds = [...currentUutSelection, uutId];
     }
-
-    const updates = { associatedUutIds: newIds };
-
-    // Optional: Auto-fill tolerance if this is the ONLY selected UUT
-    // This helps the workflow of "Check UUT -> Tolerance Auto-fills"
-    if (!currentIds.includes(uutId) && newIds.length === 1) {
-      const uutDef = sessionData.uuts?.find(u => u.id === uutId);
-      let newTolerance = null;
-
-      if (uutDef) {
-        if (uutDef.instrument?.functions?.[0]?.ranges?.[0]) {
-          newTolerance = uutDef.instrument.functions[0].ranges[0];
-        } else if (uutDef.instrument?.ranges?.[0]) {
-          newTolerance = uutDef.instrument.ranges[0];
-        } else if (uutDef.tolerance) {
-          newTolerance = uutDef.tolerance;
-        }
-      }
-
-      if (newTolerance) {
-        updates.uutTolerance = newTolerance;
-      }
-    } else if (newIds.length === 0) {
-      // If unchecking everything, maybe clear the custom tolerance?
-      updates.uutTolerance = null;
+    
+    if (setCurrentUutSelection) {
+        setCurrentUutSelection(newIds);
     }
-
-    onDataSave(updates);
   };
 
   const handleSaveUut = ({ description, tolerance, instrument }) => {
@@ -293,6 +264,9 @@ function Analysis({
       onDataSave(updatedData);
     }
     setTestPointModalOpen(false);
+    
+    // Clear Global Selection after saving new point
+    if (setCurrentUutSelection) setCurrentUutSelection([]);
   };
 
   const handleSaveManualComponent = (componentData) => {
@@ -625,10 +599,18 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
 
           onUpdateTestPoint={onDataSave}
 
-          onDefineTestPoint={(selectedUutIds) => {
+          onDefineTestPoint={(selectedUutIds, resolvedTolerance) => {
+             const overrides = {};
+             
              if (selectedUutIds && Array.isArray(selectedUutIds)) {
-                 setModalOverrides({ associatedUutIds: selectedUutIds });
+                 overrides.associatedUutIds = selectedUutIds;
              }
+             
+             if (resolvedTolerance) {
+                 overrides.uutTolerance = resolvedTolerance;
+             }
+             
+             setModalOverrides(overrides);
              setTestPointModalOpen(true);
           }}
 
@@ -639,6 +621,9 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
 
           // --- Pass UUT Toggle Handler ---
           onToggleUut={handleToggleUut}
+          
+          // --- Pass Global UUT Selection Props ---
+          currentUutSelection={currentUutSelection}
 
           setContextMenu={setContextMenu}
           setBreakdownPoint={setBreakdownPoint}
