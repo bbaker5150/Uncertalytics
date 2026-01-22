@@ -392,24 +392,26 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
     };
 
     const handleSave = () => {
+        // 1. Validation Logic
         if (!formData.section || !formData.paramUnit || !formData.paramValue ||
             (formData.measurementType === 'derived' && !formData.equationString) ||
             (formData.measurementType === 'derived' && equationVariables.some(v => !formData.variableMappings[v] || formData.variableMappings[v].trim() === ''))
         ) {
-             setNotification({
-                 title: 'Missing Information',
-                 message: 'Please fill out all required (*) fields:\n' +
-                          '- Section\n' +
-                          '- Parameter Value (Nominal/Reference for derived)\n' +
-                          '- Parameter Unit\n' +
-                          (formData.measurementType === 'derived' ? '- Equation\n' : '') +
-                          (formData.measurementType === 'derived' && equationVariables.some(v => !formData.variableMappings[v] || formData.variableMappings[v].trim() === '') ? '- All Variable Mappings must be named' : '')
-                });
+            setNotification({
+                title: 'Missing Information',
+                message: 'Please fill out all required (*) fields:\n' +
+                    '- Section\n' +
+                    '- Parameter Value (Nominal/Reference for derived)\n' +
+                    '- Parameter Unit\n' +
+                    (formData.measurementType === 'derived' ? '- Equation\n' : '') +
+                    (formData.measurementType === 'derived' && equationVariables.some(v => !formData.variableMappings[v] || formData.variableMappings[v].trim() === '') ? '- All Variable Mappings must be named' : '')
+            });
             return;
         }
 
         const qualifierData = hasQualifier ? { name: formData.qualName, value: formData.qualValue, unit: formData.qualUnit } : null;
 
+        // 2. Construct the Data Object
         const finalData = {
             section: formData.section,
             testPointInfo: {
@@ -419,8 +421,14 @@ const AddTestPointModal = ({ isOpen, onClose, onSave, initialData, hasExistingPo
             measurementType: formData.measurementType,
             equationString: formData.equationString,
             variableMappings: formData.variableMappings,
+
+            // CRITICAL UPDATE: Persist the hierarchical links (Area & UUT)
+            // We look at initialData first (Virtual Point), then fallback to previous point data
+            measurementAreaId: initialData?.measurementAreaId || previousTestPointData?.measurementAreaId || null,
+            associatedUutIds: initialData?.associatedUutIds || previousTestPointData?.associatedUutIds || [],
         };
 
+        // 3. Save
         if (initialData && initialData.id) {
             onSave({ id: initialData.id, ...finalData });
         } else {

@@ -39,7 +39,7 @@ import {
   faBug,
   faQuestionCircle,
   faLayerGroup,
-  faCube, 
+  faCube,
   faMicroscope
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -50,9 +50,9 @@ function App() {
   const {
     sessions,
     instruments,
-    bugReports, 
+    bugReports,
     saveInstrument,
-    saveBugReport, 
+    saveBugReport,
     deleteBugReport,
     deleteInstrument,
     selectedSessionId,
@@ -95,7 +95,7 @@ function App() {
   const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
   const [isInstrumentBuilderOpen, setIsInstrumentBuilderOpen] = useState(false);
-  
+
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isBugReportOpen, setIsBugReportOpen] = useState(false);
 
@@ -149,9 +149,9 @@ function App() {
             const currentZoom = webFrame.getZoomFactor();
             let newZoom = currentZoom;
             if (e.deltaY < 0) {
-               newZoom += 0.1;
+              newZoom += 0.1;
             } else {
-               newZoom -= 0.1;
+              newZoom -= 0.1;
             }
             newZoom = Math.max(0.5, Math.min(newZoom, 3.0));
             webFrame.setZoomFactor(newZoom);
@@ -161,64 +161,69 @@ function App() {
         }
       }
     };
-    
+
     window.addEventListener("wheel", handleZoom, { passive: false });
     return () => window.removeEventListener("wheel", handleZoom);
   }, []);
 
   // --- SELECTION HANDLERS ---
   const handleSelectSession = (newId) => {
-      setSelectedSessionId(newId);
-      // Reset all views
-      setSelectedTestPointId(null);
-      setSelectedAreaId(null);
-      setSelectedUutId(null);
-      setVirtualPoint(null);
+    setSelectedSessionId(newId);
+    // Reset all views
+    setSelectedTestPointId(null);
+    setSelectedAreaId(null);
+    setSelectedUutId(null);
+    setVirtualPoint(null);
   };
 
   const handleSelectArea = (areaId) => {
-      setSelectedAreaId(areaId);
-      setSelectedUutId(null);
-      setSelectedTestPointId(null);
-      
-      // Initialize Virtual Point for this Area
-      setVirtualPoint({
-          ...defaultTestPoint,
-          id: null, // Virtual ID
-          measurementAreaId: areaId,
-          associatedUutIds: [],
-          tmdeTolerances: []
-      });
+    setSelectedAreaId(areaId);
+    setSelectedUutId(null);
+    setSelectedTestPointId(null);
+
+    // Initialize Virtual Point for this Area
+    setVirtualPoint({
+      ...defaultTestPoint,
+      id: null, // Virtual ID
+      measurementAreaId: areaId,
+      associatedUutIds: [],
+      tmdeTolerances: []
+    });
   };
 
   const handleSelectUut = (uutId, areaId, uutObject) => {
-      setSelectedUutId(uutId);
-      setSelectedAreaId(areaId); // Implicitly select area too
-      setSelectedTestPointId(null);
+    setSelectedUutId(uutId);
+    setSelectedAreaId(areaId);
+    setSelectedTestPointId(null);
 
-      // Pre-fill default tolerance from UUT if available
-      let defaultTolerance = {};
-      if (uutObject.instrument?.functions?.[0]?.ranges?.[0]) {
-          defaultTolerance = uutObject.instrument.functions[0].ranges[0];
-      } else if (uutObject.instrument?.ranges?.[0]) {
-          defaultTolerance = uutObject.instrument.ranges[0];
-      }
+    // 1. Find the default tolerance (e.g., first range)
+    let defaultTolerance = {};
+    if (uutObject.instrument?.functions?.[0]?.ranges?.[0]) {
+      defaultTolerance = uutObject.instrument.functions[0].ranges[0];
+    } else if (uutObject.instrument?.ranges?.[0]) {
+      defaultTolerance = uutObject.instrument.ranges[0];
+    } else if (uutObject.tolerance) {
+      defaultTolerance = uutObject.tolerance;
+    }
 
-      setVirtualPoint({
-          ...defaultTestPoint,
-          id: null,
-          measurementAreaId: areaId,
-          associatedUutIds: [uutId],
-          tmdeTolerances: [],
-          uutTolerance: defaultTolerance
-      });
+    // 2. Set the Virtual Point
+    // This makes the "Analysis" panel open in a "New Point" state, 
+    // but with the UUT already checked and tolerance filled.
+    setVirtualPoint({
+      ...defaultTestPoint,
+      id: null, // Indicates it's virtual/new
+      measurementAreaId: areaId,
+      associatedUutIds: [uutId], // <--- PRE-SELECT UUT
+      uutTolerance: defaultTolerance, // <--- PRE-FILL TOLERANCE COLUMN
+      tmdeTolerances: []
+    });
   };
 
   const handleSelectTestPoint = (tpId) => {
-      setSelectedTestPointId(tpId);
-      setSelectedAreaId(null);
-      setSelectedUutId(null);
-      setVirtualPoint(null); // Clear virtual when selecting real
+    setSelectedTestPointId(tpId);
+    setSelectedAreaId(null);
+    setSelectedUutId(null);
+    setVirtualPoint(null); // Clear virtual when selecting real
   };
 
   const handleAddNewSession = () => {
@@ -227,11 +232,11 @@ function App() {
   };
 
   const handleAddNewTestPoint = (areaId = null) => {
-      // If we are already in virtual mode, use the virtual point data
-      const initialData = virtualPoint || (areaId ? { measurementAreaId: areaId } : null);
-      
-      setEditingTestPoint(initialData); 
-      setIsAddModalOpen(true);
+    // If we are already in virtual mode, use the virtual point data
+    const initialData = virtualPoint || (areaId ? { measurementAreaId: areaId } : null);
+
+    setEditingTestPoint(initialData);
+    setIsAddModalOpen(true);
   };
 
   const handleDeleteSession = (sessionId) => {
@@ -246,17 +251,17 @@ function App() {
   };
 
   const handleDeleteBugReport = (reportId) => {
-      setAppNotification({
-          title: "Delete Report",
-          message: "Are you sure you want to delete this report? This action cannot be undone.",
-          confirmText: "Delete",
-          cancelText: "Cancel",
-          isIconConfirm: false,
-          onConfirm: () => {
-              deleteBugReport(reportId);
-              setAppNotification(null);
-          }
-      });
+    setAppNotification({
+      title: "Delete Report",
+      message: "Are you sure you want to delete this report? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      isIconConfirm: false,
+      onConfirm: () => {
+        deleteBugReport(reportId);
+        setAppNotification(null);
+      }
+    });
   };
 
   const handleSessionChange = async (updatedSession, newImageFiles = []) => {
@@ -313,7 +318,7 @@ function App() {
 
   const handleSaveTestPoint = (formData) => {
     const finalData = { ...formData };
-    
+
     // Fallback if null, though modal usually handles it
     if (!finalData.measurementAreaId && selectedAreaId) finalData.measurementAreaId = selectedAreaId;
     if (!finalData.associatedUutIds && selectedUutId) finalData.associatedUutIds = [selectedUutId];
@@ -329,25 +334,27 @@ function App() {
   // --- CRITICAL FIX: Handle Updates from Analysis Panel ---
   // This function decides whether to update the DB (real point) or local state (virtual point)
   const handleAnalysisDataSave = (updates) => {
-      if (selectedTestPointId) {
-          // Real Point: Update DB
-          updateTestPointData(updates);
-      } else {
-          // Virtual Point: Update Local State
-          setVirtualPoint(prev => {
-              if (!prev) return prev;
-              return { ...prev, ...updates };
-          });
-      }
+    if (selectedTestPointId) {
+      // Real Point: Update DB
+      updateTestPointData(updates);
+    } else {
+      // Virtual Point: Update Local State
+      setVirtualPoint(prev => {
+        if (!prev) return prev;
+        return { ...prev, ...updates };
+      });
+    }
   };
 
   const handleDeleteTestPoint = (idToDelete) => {
-    setConfirmationModal({
+    setAppNotification({
       title: "Delete Measurement Point",
       message: "Are you sure you want to delete this measurement point?",
+      confirmText: "Delete",
+      isIconConfirm: true,
       onConfirm: () => {
         deleteTestPoint(idToDelete);
-        setConfirmationModal(null);
+        setAppNotification(null);
       },
     });
   };
@@ -434,19 +441,32 @@ function App() {
     const points = currentTestPoints;
 
     return areas.map(area => {
-        const areaUuts = uuts.filter(u => u.measurementAreaId === area.id);
-        const areaPoints = points.filter(tp => tp.measurementAreaId === area.id);
-
+        // FIX 1: Add Name Fallback (u.measurementArea === area.name)
+        // This ensures UUTs linked by string name are found, resolving the "Orphan" issue.
+        const areaUuts = uuts.filter(u => 
+            u.measurementAreaId === area.id || 
+            (u.measurementArea && u.measurementArea === area.name)
+        );
+        
         const uutGroups = areaUuts.map(uut => {
-            const associatedPoints = areaPoints.filter(tp => tp.associatedUutIds?.includes(uut.id));
+            // FIX 2: Loose Comparison (String vs Number safety)
+            const associatedPoints = points.filter(tp => 
+                tp.associatedUutIds && 
+                tp.associatedUutIds.some(id => String(id) === String(uut.id))
+            );
             return { ...uut, points: associatedPoints };
         });
 
-        const unassignedPoints = areaPoints.filter(tp => 
-            !tp.associatedUutIds || 
-            tp.associatedUutIds.length === 0 || 
-            !areaUuts.some(u => tp.associatedUutIds.includes(u.id))
-        );
+        // 3. Orphans Check
+        const unassignedPoints = points.filter(tp => {
+             if (tp.measurementAreaId !== area.id) return false;
+             const hasParent = tp.associatedUutIds && tp.associatedUutIds.length > 0;
+             // Ensure we check against the FOUND areaUuts
+             const parentExistsInArea = hasParent && areaUuts.some(u => 
+                 tp.associatedUutIds.some(id => String(id) === String(u.id))
+             );
+             return !parentExistsInArea;
+        });
 
         return { ...area, uutGroups, unassignedPoints };
     });
@@ -455,32 +475,32 @@ function App() {
   // --- LOGIC: Compute Data to Display ---
   const displayData = useMemo(() => {
     if (!currentSessionData) return null;
-    
+
     // Case 1: Real Point Selected
     if (selectedTestPointId) {
-        const pointData = currentTestPoints.find((p) => p.id === selectedTestPointId);
-        if (!pointData) return null;
+      const pointData = currentTestPoints.find((p) => p.id === selectedTestPointId);
+      if (!pointData) return null;
 
-        // Effective Tolerance Logic
-        let effectiveUutTolerance = (pointData.uutTolerance !== null && pointData.uutTolerance !== undefined)
-          ? pointData.uutTolerance
-          : currentSessionData.uutTolerance;
+      // Effective Tolerance Logic
+      let effectiveUutTolerance = (pointData.uutTolerance !== null && pointData.uutTolerance !== undefined)
+        ? pointData.uutTolerance
+        : currentSessionData.uutTolerance;
 
-        return {
-          ...pointData,
-          uutDescription: pointData.uutDescription || (
-              pointData.associatedUutIds?.length > 0 
-                ? currentSessionData.uuts?.find(u => u.id === pointData.associatedUutIds[0])?.description 
-                : currentSessionData.uutDescription
-          ),
-          uutTolerance: effectiveUutTolerance,
-        };
+      return {
+        ...pointData,
+        uutDescription: pointData.uutDescription || (
+          pointData.associatedUutIds?.length > 0
+            ? currentSessionData.uuts?.find(u => u.id === pointData.associatedUutIds[0])?.description
+            : currentSessionData.uutDescription
+        ),
+        uutTolerance: effectiveUutTolerance,
+      };
     }
-    
+
     // Case 2: Virtual Point (Draft Mode)
     // Return the local state 'virtualPoint'
     if (virtualPoint) {
-        return virtualPoint;
+      return virtualPoint;
     }
 
     return null;
@@ -511,7 +531,7 @@ function App() {
         <UnresolvedToleranceModal isOpen={!!unresolvedToleranceModal} matches={unresolvedToleranceModal?.matches} instrumentName={unresolvedToleranceModal?.instrumentName} onSelect={(selected) => { unresolvedToleranceModal.onSelect(selected); }} onClose={() => setUnresolvedToleranceModal(null)} />
         <InstrumentBuilderModal isOpen={isInstrumentBuilderOpen} onClose={() => setIsInstrumentBuilderOpen(false)} onSave={handleSaveInstrument} onDelete={deleteInstrument} instruments={instruments} />
         {confirmationModal && (<div className="modal-overlay" style={{ zIndex: 2001 }}> <div className="modal-content"> <button onClick={() => setConfirmationModal(null)} className="modal-close-button" > &times; </button> <h3>{confirmationModal.title}</h3> <p>{confirmationModal.message}</p> <div className="modal-actions" style={{ justifyContent: "center", gap: "15px" }} > <button className="button" style={{ backgroundColor: "var(--status-bad)" }} onClick={confirmationModal.onConfirm} > Delete </button> </div> </div> </div>)}
-        <AddTestPointModal isOpen={isAddModalOpen || !!editingTestPoint} onClose={() => { setIsAddModalOpen(false); setEditingTestPoint(null); }} onSave={handleSaveTestPoint} initialData={editingTestPoint || (selectedAreaId ? { measurementAreaId: selectedAreaId } : null)} hasExistingPoints={currentTestPoints.length > 0} previousTestPointData={ currentTestPoints.length > 0 ? currentTestPoints[currentTestPoints.length - 1] : null } />
+        <AddTestPointModal isOpen={isAddModalOpen || !!editingTestPoint} onClose={() => { setIsAddModalOpen(false); setEditingTestPoint(null); }} onSave={handleSaveTestPoint} initialData={editingTestPoint || (selectedAreaId ? { measurementAreaId: selectedAreaId } : null)} hasExistingPoints={currentTestPoints.length > 0} previousTestPointData={currentTestPoints.length > 0 ? currentTestPoints[currentTestPoints.length - 1] : null} />
         <EditSessionModal isOpen={!!editingSession} onClose={() => { setEditingSession(null); setInitialTmdeToEdit(null); setInitialSessionTab("details"); }} sessionData={editingSession} onSave={handleSessionChange} onSaveToFile={handleSaveToFile} handleLoadFromFile={handleLoadFromFile} initialSection={initialSessionTab} sessionImageCache={sessionImageCache} onImageCacheChange={setSessionImageCache} onRemoveImageFile={deleteSessionImage} instruments={instruments} />
         <OverviewModal isOpen={isOverviewOpen} onClose={() => setIsOverviewOpen(false)} sessionData={currentSessionData} onUpdateTestPoint={handleUpdateSpecificTestPoint} onDeleteTmdeDefinition={handleDeleteTmdeDefinition} onDecrementTmdeQuantity={decrementTmdeQuantity} instruments={instruments} />
         {displayData && displayData.id && (<ToleranceToolModal isOpen={isToleranceModalOpen} onClose={() => setIsToleranceModalOpen(false)} onSave={(data) => { updateTestPointData(data); }} testPointData={displayData} />)}
@@ -526,8 +546,8 @@ function App() {
               <div className="app-title-group"><h2>Uncertalytics</h2><div className="app-subtitle-row"><span className="app-subtitle">Risk Analysis Tool</span><span className="app-version">v1.0.0</span></div></div>
             </div>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button className="toolbox-button" style={{ width: '40px', height: '40px', border: '1px solid var(--border-color)', background: 'var(--input-background)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-color-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', }} onClick={() => setIsBugReportOpen(true)} title="Report Bug / Request Feature" > <FontAwesomeIcon icon={faBug} /> </button>
-                <button className="toolbox-button" style={{ width: '40px', height: '40px', border: '1px solid var(--border-color)', background: 'var(--input-background)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-color-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', }} onClick={() => setIsHelpOpen(true)} title="Help & Tutorial" > <FontAwesomeIcon icon={faQuestionCircle} /> </button>
+              <button className="toolbox-button" style={{ width: '40px', height: '40px', border: '1px solid var(--border-color)', background: 'var(--input-background)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-color-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', }} onClick={() => setIsBugReportOpen(true)} title="Report Bug / Request Feature" > <FontAwesomeIcon icon={faBug} /> </button>
+              <button className="toolbox-button" style={{ width: '40px', height: '40px', border: '1px solid var(--border-color)', background: 'var(--input-background)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-color-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', }} onClick={() => setIsHelpOpen(true)} title="Help & Tutorial" > <FontAwesomeIcon icon={faQuestionCircle} /> </button>
             </div>
             <HeaderToolbox isToolboxCollapsed={isToolboxCollapsed} setIsToolboxCollapsed={setIsToolboxCollapsed} isOverviewOpen={isOverviewOpen} setIsOverviewOpen={setIsOverviewOpen} isInstrumentBuilderOpen={isInstrumentBuilderOpen} setIsInstrumentBuilderOpen={setIsInstrumentBuilderOpen} isTraceabilityOpen={isTraceabilityOpen} setIsTraceabilityOpen={setIsTraceabilityOpen} isNotepadOpen={isNotepadOpen} setIsNotepadOpen={setIsNotepadOpen} isConverterOpen={isConverterOpen} setIsConverterOpen={setIsConverterOpen} handleSaveToFile={handleSaveToFile} handleLoadFromFile={handleLoadFromFile} isHelpOpen={isHelpOpen} setIsHelpOpen={setIsHelpOpen} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} dbPath={dbPath} disconnectDatabase={disconnectDatabase} selectDatabaseFolder={selectDatabaseFolder} />
           </div>
@@ -549,9 +569,9 @@ function App() {
               </div>
 
               <div className="measurement-point-list">
-                {/* LEVEL 1: MEASUREMENT AREA */}
                 {sidebarData.map((areaData) => (
                     <div key={areaData.id} className="measurement-group">
+                        {/* LEVEL 1: MEASUREMENT AREA */}
                         <div 
                             className={`group-header ${selectedAreaId === areaData.id && !selectedUutId && !selectedTestPointId ? 'active-area' : ''}`}
                             onClick={() => handleSelectArea(areaData.id)}
@@ -580,86 +600,98 @@ function App() {
                         {areaData.uutGroups.map(group => {
                             const isUutSelected = selectedUutId === group.id && !selectedTestPointId;
                             return (
-                                <div key={group.id} style={{ marginLeft: '10px', borderLeft: '2px solid var(--border-color)' }}>
+                                <div key={group.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                                    {/* UUT ROW */}
                                     <div 
                                         className={`uut-header ${isUutSelected ? 'active' : ''}`}
                                         onClick={() => handleSelectUut(group.id, areaData.id, group)}
                                         style={{
-                                            padding: '8px 10px',
+                                            padding: '8px 10px 8px 25px', 
                                             cursor: 'pointer',
                                             backgroundColor: isUutSelected ? 'var(--highlight-background)' : 'transparent',
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '8px',
-                                            color: isUutSelected ? 'var(--primary-color)' : 'var(--text-color-muted)'
+                                            color: isUutSelected ? 'var(--primary-color)' : 'var(--text-color-muted)',
+                                            borderLeft: isUutSelected ? '3px solid var(--primary-color)' : '3px solid transparent'
                                         }}
                                     >
-                                        <FontAwesomeIcon icon={faCube} size="sm" />
+                                        {/* ICON SWAP: UUT gets faMicroscope (Instrument) */}
+                                        <FontAwesomeIcon icon={faMicroscope} size="sm" /> 
                                         <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{group.description}</span>
                                     </div>
 
-                                    {/* LEVEL 3: POINTS FOR UUT */}
+                                    {/* LEVEL 3: POINTS FOR THIS UUT */}
                                     {group.points.map(tp => (
                                         <button
                                             key={tp.id}
                                             onClick={() => handleSelectTestPoint(tp.id)}
                                             className={`measurement-point-item nested ${selectedTestPointId === tp.id ? "active" : ""}`}
-                                            style={{ marginLeft: '10px' }}
-                                            onDoubleClick={() => setEditingTestPoint(tp)}
+                                            style={{ 
+                                                marginLeft: '45px',
+                                                width: 'calc(100% - 45px)',
+                                                borderLeft: '1px solid var(--border-color)',
+                                                padding: '6px 10px',
+                                                textAlign: 'left'
+                                            }}
                                             onContextMenu={(e) => {
                                                 e.preventDefault();
                                                 setContextMenu({
                                                     x: e.pageX, y: e.pageY,
                                                     items: [
-                                                        { label: "Edit Details", action: () => setEditingTestPoint(tp), icon: faPencilAlt },
-                                                        { label: "Edit Tolerances", action: () => { setSelectedTestPointId(tp.id); setIsToleranceModalOpen(true); }, icon: faSlidersH },
-                                                        { type: "divider" },
                                                         { label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" },
                                                     ],
                                                 });
                                             }}
                                         >
-                                            <span className="measurement-point-content">
-                                                <span className="point-main">
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                {/* ICON SWAP: Point gets faCube */}
+                                                <FontAwesomeIcon icon={faCube} size="xs" style={{ opacity: 0.5 }}/>
+                                                <span className="point-main" style={{ fontSize: '0.8rem' }}>
                                                     {tp.testPointInfo.parameter.name}: {tp.testPointInfo.parameter.value} {tp.testPointInfo.parameter.unit}
                                                 </span>
-                                            </span>
+                                            </div>
                                         </button>
                                     ))}
                                 </div>
                             );
                         })}
-
-                        {/* ORPHAN POINTS (Unassigned) */}
+                        
+                        {/* UNASSIGNED POINTS (Now with Delete capability) */}
                         {areaData.unassignedPoints.length > 0 && (
-                            <div style={{ marginLeft: '10px', padding: '5px 0' }}>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-color-muted)', paddingLeft: '10px', fontStyle: 'italic' }}>Unassigned to UUT</div>
+                             <div style={{ padding: '5px 0 5px 25px', opacity: 1.0 }}>
+                                <small style={{textTransform:'uppercase', fontSize:'0.7rem', color:'var(--text-color-muted)', fontWeight:700, letterSpacing:'0.5px', marginBottom:'5px', display:'block'}}>Unassigned Points</small>
                                 {areaData.unassignedPoints.map(tp => (
-                                    <button
-                                        key={tp.id}
-                                        onClick={() => handleSelectTestPoint(tp.id)}
+                                    <button 
+                                        key={tp.id} 
+                                        onClick={() => handleSelectTestPoint(tp.id)} 
                                         className={`measurement-point-item nested ${selectedTestPointId === tp.id ? "active" : ""}`}
-                                        style={{ marginLeft: '10px' }}
-                                        onDoubleClick={() => setEditingTestPoint(tp)}
+                                        style={{ 
+                                            width: '100%',
+                                            padding: '6px 10px',
+                                            textAlign: 'left',
+                                            marginBottom: '2px'
+                                        }}
                                         onContextMenu={(e) => {
                                             e.preventDefault();
                                             setContextMenu({
                                                 x: e.pageX, y: e.pageY,
                                                 items: [
-                                                    { label: "Edit Details", action: () => setEditingTestPoint(tp), icon: faPencilAlt },
                                                     { label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" },
                                                 ],
                                             });
                                         }}
                                     >
-                                        <span className="measurement-point-content">
-                                            <span className="point-main">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                             {/* ICON SWAP: Point gets faCube */}
+                                            <FontAwesomeIcon icon={faCube} size="xs" style={{ opacity: 0.5 }}/>
+                                            <span className="point-main" style={{ fontSize: '0.8rem' }}>
                                                 {tp.testPointInfo.parameter.name}: {tp.testPointInfo.parameter.value} {tp.testPointInfo.parameter.unit}
                                             </span>
-                                        </span>
+                                        </div>
                                     </button>
                                 ))}
-                            </div>
+                             </div>
                         )}
                     </div>
                 ))}
@@ -678,7 +710,7 @@ function App() {
                     // IMPORTANT: Pass the wrapped handler that manages Virtual vs Real updates
                     onDataSave={handleAnalysisDataSave}
                     onSessionSave={updateSession}
-                    onSaveTestPoint={handleSaveTestPoint} 
+                    onSaveTestPoint={handleSaveTestPoint}
                     defaultTestPoint={defaultTestPoint}
                     setContextMenu={setContextMenu}
                     setBreakdownPoint={setBreakdownPoint}
@@ -689,6 +721,7 @@ function App() {
                     onDecrementTmdeQuantity={decrementTmdeQuantity}
                     onDeleteUut={handleDeleteUut}
                     instruments={instruments}
+                    onDeleteTestPoint={handleDeleteTestPoint}
                   />
                 </TestPointDetailView>
               ) : (
@@ -697,7 +730,7 @@ function App() {
                     <>
                       <h3>No measurement point selected.</h3>
                       <p>Select a UUT or Measurement Area from the sidebar.</p>
-                       <button className="button primary" onClick={() => handleAddNewTestPoint()}>
+                      <button className="button primary" onClick={() => handleAddNewTestPoint()}>
                         <FontAwesomeIcon icon={faPlus} /> Add New Point
                       </button>
                     </>

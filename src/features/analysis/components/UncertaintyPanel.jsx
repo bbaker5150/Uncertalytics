@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import * as math from 'mathjs'; 
+import * as math from 'mathjs';
 import Select from "react-select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -27,7 +27,7 @@ import {
     getAbsoluteLimits,
     calculateUncertaintyFromToleranceObject,
     convertPpmToUnit,
-    recalculateTolerance, 
+    recalculateTolerance,
     unitSystem,
     unitCategories
 } from "../../../utils/uncertaintyMath";
@@ -39,7 +39,7 @@ const SymbolButton = ({ onSymbolClick, symbol, title }) => (
         className="symbol-button"
         title={title || `Insert ${symbol}`}
         onClick={() => onSymbolClick(symbol)}
-        onMouseDown={(e) => e.preventDefault()} 
+        onMouseDown={(e) => e.preventDefault()}
     >
         {symbol.replace('()', '( )')}
     </button>
@@ -121,7 +121,7 @@ const customUnitSelectStyles = {
         backgroundColor: 'var(--content-background)',
         border: '1px solid var(--border-color)',
         zIndex: 9999,
-        width: '180px', 
+        width: '180px',
         right: 0
     }),
     groupHeading: (provided) => ({
@@ -134,10 +134,10 @@ const customUnitSelectStyles = {
     }),
     option: (provided, state) => ({
         ...provided,
-        backgroundColor: state.isSelected 
-            ? 'var(--primary-color)' 
-            : state.isFocused 
-                ? 'var(--hover-background)' 
+        backgroundColor: state.isSelected
+            ? 'var(--primary-color)'
+            : state.isFocused
+                ? 'var(--hover-background)'
                 : 'transparent',
         color: state.isSelected ? '#fff' : 'var(--text-color)',
         fontSize: '0.8rem',
@@ -228,13 +228,14 @@ const UncertaintyPanel = ({
     setShowContribution,
     onOpenRepeatability,
     onDefineTestPoint,
-    onUpdateTestPoint, 
+    onUpdateTestPoint,
     riskResults,
     setNotification,
     selectedTmdeIds = [],
     onToggleTmdeSelection,
     onToggleAllTmdes,
-    onToggleUut
+    onToggleUut,
+    onDeleteTestPoint,
 }) => {
 
     const [isSymbolMenuOpen, setIsSymbolMenuOpen] = useState(false);
@@ -286,13 +287,13 @@ const UncertaintyPanel = ({
     // --- AREA & UUT RESOLUTION ---
     const activeMeasurementAreaId = testPointData.measurementAreaId;
     const activeArea = sessionData.measurementAreas?.find(a => a.id === activeMeasurementAreaId);
-    
+
     // Filter UUTs: Match by ID OR by Name (fallback for string-entered areas)
     const relevantUuts = useMemo(() => {
         if (!sessionData.uuts) return [];
         return sessionData.uuts.filter(u => {
             const idMatch = u.measurementAreaId === activeMeasurementAreaId;
-            const nameMatch = activeArea && u.measurementArea === activeArea.name; 
+            const nameMatch = activeArea && u.measurementArea === activeArea.name;
             return idMatch || nameMatch;
         });
     }, [sessionData.uuts, activeMeasurementAreaId, activeArea]);
@@ -315,7 +316,7 @@ const UncertaintyPanel = ({
         let variables = [];
         try {
             if (newEquationString && newEquationString.trim()) {
-                let expressionToParse = newEquationString.trim(); 
+                let expressionToParse = newEquationString.trim();
                 const equalsIndex = expressionToParse.indexOf('=');
                 if (equalsIndex !== -1) {
                     expressionToParse = expressionToParse.substring(equalsIndex + 1).trim();
@@ -330,12 +331,12 @@ const UncertaintyPanel = ({
                 });
                 variables = Array.from(varsSet).sort();
             }
-        } catch (e) {}
+        } catch (e) { }
 
         const currentMappings = testPointData.variableMappings || {};
         const newMappings = {};
         variables.forEach(v => {
-            newMappings[v] = currentMappings[v] || ""; 
+            newMappings[v] = currentMappings[v] || "";
         });
 
         if (onUpdateTestPoint) {
@@ -390,23 +391,23 @@ const UncertaintyPanel = ({
 
     const handleAssignTmdeToVariable = (symbol, tmdeIdStr) => {
         const varName = testPointData.variableMappings?.[symbol] || "";
-        if (!varName) return; 
+        if (!varName) return;
 
         if (!tmdeIdStr) {
-             const currentAssigned = tmdeTolerancesData.find(t => t.variableType === varName);
-             if (currentAssigned && onInlineTmdeUpdate) {
-                  onInlineTmdeUpdate(currentAssigned.id, 'variableType', "");
-             }
-             return;
+            const currentAssigned = tmdeTolerancesData.find(t => t.variableType === varName);
+            if (currentAssigned && onInlineTmdeUpdate) {
+                onInlineTmdeUpdate(currentAssigned.id, 'variableType', "");
+            }
+            return;
         }
-        
+
         // Find in session tmdes or current tolerances
         const targetTmde = sessionData.tmdes?.find(t => t.id == tmdeIdStr) || tmdeTolerancesData.find(t => t.id == tmdeIdStr);
-        if (!targetTmde) return; 
-        
+        if (!targetTmde) return;
+
         const realTmdeId = targetTmde.id;
         const previousHolder = tmdeTolerancesData.find(t => t.variableType === varName);
-        
+
         if (previousHolder && previousHolder.id === realTmdeId) return;
 
         if (previousHolder && onInlineTmdeUpdate) {
@@ -415,9 +416,9 @@ const UncertaintyPanel = ({
 
         const isActive = tmdeTolerancesData.some(t => t.id === realTmdeId);
         if (!isActive) {
-             const newTolerance = { ...targetTmde, variableType: varName, quantity: 1 };
-             const newTolerances = [...tmdeTolerancesData, newTolerance];
-             onUpdateTestPoint({ tmdeTolerances: newTolerances });
+            const newTolerance = { ...targetTmde, variableType: varName, quantity: 1 };
+            const newTolerances = [...tmdeTolerancesData, newTolerance];
+            onUpdateTestPoint({ tmdeTolerances: newTolerances });
         } else if (onInlineTmdeUpdate) {
             onInlineTmdeUpdate(realTmdeId, 'variableType', varName);
         }
@@ -438,15 +439,17 @@ const UncertaintyPanel = ({
     };
 
     // --- UUT Range Selection (Checkbox Mode) ---
+    // NOTE: This is partially superseded by the simple checkbox toggle in render
+    // but kept if we need finer grained range selection in future.
     const handleSelectUutSpec = (uutId, rangeId, specObject, isChecked) => {
         let newAssociatedIds = [...associatedUutIds];
-        
+
         if (isChecked) {
             // 1. Ensure UUT is associated
             if (!newAssociatedIds.includes(uutId)) {
-                newAssociatedIds = [uutId]; 
+                newAssociatedIds = [uutId];
             }
-            
+
             // 2. Set the Active Tolerance Spec
             onUpdateTestPoint({
                 associatedUutIds: newAssociatedIds,
@@ -454,10 +457,9 @@ const UncertaintyPanel = ({
                 uutToleranceRangeId: rangeId
             });
         } else {
-            // Uncheck: Remove spec but keep association if preferred, or clear both.
-            // Here we clear the active spec.
+            // Uncheck logic managed by main toggle usually
             onUpdateTestPoint({
-                uutTolerance: null, 
+                uutTolerance: null,
                 uutToleranceRangeId: null
             });
         }
@@ -469,10 +471,10 @@ const UncertaintyPanel = ({
         const currentMappings = testPointData.variableMappings || {};
         const vars = Object.keys(currentMappings).sort().map((symbol) => {
             const name = currentMappings[symbol];
-            const assignedTmde = tmdeTolerancesData.find(t => 
+            const assignedTmde = tmdeTolerancesData.find(t =>
                 t.variableType && name && t.variableType.trim() === name.trim()
             );
-            
+
             return {
                 symbol,
                 name,
@@ -480,7 +482,7 @@ const UncertaintyPanel = ({
                 value: assignedTmde?.measurementPoint?.value,
                 unit: assignedTmde?.measurementPoint?.unit,
                 instrumentName: assignedTmde?.name,
-                tmdeId: assignedTmde?.id 
+                tmdeId: assignedTmde?.id
             };
         });
 
@@ -512,16 +514,16 @@ const UncertaintyPanel = ({
 
     const calculatedNominal = calcResults?.calculatedNominalValue;
     const targetNominal = parseFloat(uutNominal?.value);
-    
+
     const getCalculatedStatus = () => {
         if (isNaN(calculatedNominal) || isNaN(targetNominal)) return 'neutral';
         const diff = Math.abs(calculatedNominal - targetNominal);
-        const tolerance = Math.max(Math.abs(targetNominal * 0.0001), 1e-9); 
+        const tolerance = Math.max(Math.abs(targetNominal * 0.0001), 1e-9);
         return diff <= tolerance ? 'match' : 'mismatch';
     };
-    
+
     const calcStatus = getCalculatedStatus();
-    
+
     const calcStatusStyle = {
         match: { borderColor: 'var(--status-good)', backgroundColor: 'rgba(76, 175, 80, 0.1)', color: 'var(--status-good)', icon: faCheckCircle },
         mismatch: { borderColor: 'var(--status-bad)', backgroundColor: 'rgba(255, 82, 82, 0.1)', color: 'var(--status-bad)', icon: faTimesCircle },
@@ -532,28 +534,28 @@ const UncertaintyPanel = ({
         <div className="configuration-panel">
 
             <div style={mainGridStyle}>
-                
+
                 {/* --- LEFT COLUMN: UUT & TMDEs --- */}
                 <div style={verticalColumnStyle}>
-                    
+
                     {/* 1. UUT INFORMATION */}
                     <div>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
-                            <h3 style={{...sectionTitleStyle, margin: 0}}>Unit Under Test</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <h3 style={{ ...sectionTitleStyle, margin: 0 }}>Unit Under Test</h3>
                         </div>
-                        
+
                         <div style={cardStyle}>
                             <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '300px' }}>
-                                <table className="instrument-summary-table" style={{width: '100%'}}>
+                                <table className="instrument-summary-table" style={{ width: '100%' }}>
                                     <colgroup>
-                                        <col style={{width: '10%'}} />
-                                        <col style={{width: '40%'}} />
-                                        <col style={{width: '25%'}} />
-                                        <col style={{width: '25%'}} />
+                                        <col style={{ width: '10%' }} />
+                                        <col style={{ width: '40%' }} />
+                                        <col style={{ width: '25%' }} />
+                                        <col style={{ width: '25%' }} />
                                     </colgroup>
                                     <thead>
                                         <tr>
-                                            <th style={{textAlign: 'center'}}>Select</th>
+                                            <th style={{ textAlign: 'center' }}>Select</th>
                                             <th>Description</th>
                                             <th>Range</th>
                                             <th>Specification</th>
@@ -564,23 +566,28 @@ const UncertaintyPanel = ({
                                             <tr>
                                                 <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
                                                     No UUTs assigned to this Measurement Area.
-                                                    <br/>
+                                                    <br />
                                                     <small>Add UUTs in the "Instruments" tab of Edit Session.</small>
                                                 </td>
                                             </tr>
                                         ) : (
                                             relevantUuts.flatMap((uut, uutIndex) => {
+                                                // VALIDATION: Ensure UUT has an ID
+                                                if (!uut.id && uut.id !== 0) {
+                                                    console.warn("Render Warning: UUT missing ID", uut);
+                                                }
+
                                                 let ranges = [];
-                                                
+
                                                 if (Array.isArray(uut.ranges) && uut.ranges.length > 0) {
                                                     ranges = uut.ranges;
                                                 } else if (Array.isArray(uut.instrument?.functions) && uut.instrument.functions.length > 0) {
-                                                    ranges = uut.instrument.functions.flatMap(fn => 
+                                                    ranges = uut.instrument.functions.flatMap(fn =>
                                                         (fn.ranges || []).map(r => ({
                                                             ...r,
                                                             ...(r.tolerances || {}),
                                                             functionName: fn.name,
-                                                            unit: fn.unit
+                                                            unit: fn.unit || r.unit
                                                         }))
                                                     );
                                                 } else if (Array.isArray(uut.instrument?.ranges) && uut.instrument.ranges.length > 0) {
@@ -589,49 +596,77 @@ const UncertaintyPanel = ({
                                                     const baseTolerance = uut.tolerance || uut.instrument?.tolerance || {};
                                                     ranges = [{ id: 'default', range: 'Default', ...baseTolerance }];
                                                 }
-                                                
+
                                                 return ranges.map((range, rangeIndex) => {
-                                                    const isActive = JSON.stringify(testPointData.uutTolerance) === JSON.stringify(range); 
+                                                    // STRICT COMPARISON: Ensure IDs match types (String vs Number)
+                                                    const isChecked = associatedUutIds.some(id => String(id) === String(uut.id));
+
                                                     const uniqueKey = `${uut.id}-${rangeIndex}`;
-                                                    
+
+                                                    // FIX RANGE DISPLAY: Handle min/max objects if 'range' string is missing
+                                                    let rangeText = range.range;
+                                                    if (!rangeText) {
+                                                        if (range.min !== undefined && range.max !== undefined) {
+                                                            rangeText = `${range.min} to ${range.max}`;
+                                                        } else {
+                                                            rangeText = "Full Range";
+                                                        }
+                                                    }
+
+                                                    const rangeLabel = range.functionName
+                                                        ? `${range.functionName}: ${rangeText} ${range.unit || ""}`
+                                                        : `${rangeText} ${range.unit || ""}`;
+
                                                     const specSummary = getToleranceSummary(range);
                                                     const specDisplay = (specSummary && !specSummary.includes('null')) ? specSummary : (
-                                                        <span style={{color: 'var(--text-color-muted)', fontStyle: 'italic'}}>No spec defined</span>
+                                                        <span style={{ color: 'var(--text-color-muted)', fontStyle: 'italic' }}>No spec defined</span>
                                                     );
 
-                                                    const rangeLabel = range.functionName 
-                                                        ? `${range.functionName}: ${range.range || "Full"} ${range.unit || ""}`
-                                                        : (range.range || "Full Range");
+                                                    // Highlight if this specific range is the "active" tolerance for the point
+                                                    const isActiveSpec = JSON.stringify(testPointData.uutTolerance) === JSON.stringify(range);
 
                                                     return (
-                                                        <tr key={uniqueKey} style={{ backgroundColor: isActive ? 'var(--highlight-background)' : 'transparent' }}>
-                                                            <td style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => handleSelectUutSpec(uut.id, uniqueKey, range, !isActive)}>
-                                                                {isActive ? (
-                                                                    <FontAwesomeIcon 
-                                                                        icon={faCheckSquare} 
-                                                                        style={{ color: 'var(--primary-color)', fontSize: '1.1rem' }} 
-                                                                    />
-                                                                ) : (
-                                                                    <div style={{ 
-                                                                        width: '14px', 
-                                                                        height: '14px', 
-                                                                        border: '2px solid var(--text-color-muted)', 
-                                                                        borderRadius: '2px', 
-                                                                        display: 'inline-block',
-                                                                        verticalAlign: 'text-bottom'
-                                                                    }}></div>
-                                                                )}
+                                                        <tr key={uniqueKey} style={{ backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent' }}>
+                                                            <td style={{ textAlign: 'center' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={() => {
+                                                                        // 1. Toggle the Instrument ID (Existing Logic)
+                                                                        onToggleUut(uut.id);
+
+                                                                        // 2. NEW: Explicitly set THIS specific range as the active tolerance
+                                                                        // This handles the "Multi-range display" issue by capturing user intent.
+                                                                        if (!isChecked && onUpdateTestPoint) { // If we are checking it ON
+                                                                            onUpdateTestPoint({
+                                                                                uutTolerance: range
+                                                                            });
+                                                                        }
+                                                                    }}
+                                                                    style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                                                />
                                                             </td>
                                                             <td>
-                                                                <div style={{ fontWeight: isActive ? 700 : 400, color: isActive ? 'var(--primary-color)' : 'var(--text-color)' }}>
+                                                                <div style={{ fontWeight: isChecked ? 700 : 400, color: isChecked ? 'var(--primary-color)' : 'var(--text-color)' }}>
                                                                     {uut.description}
                                                                 </div>
                                                             </td>
                                                             <td>
                                                                 <span style={{ fontSize: '0.85rem' }}>{rangeLabel}</span>
                                                             </td>
-                                                            <td>
+                                                            <td
+                                                                style={{
+                                                                    cursor: isChecked ? 'pointer' : 'default',
+                                                                    borderLeft: isActiveSpec ? '3px solid var(--primary-color)' : 'none'
+                                                                }}
+                                                                onClick={() => {
+                                                                    if (isChecked && onUpdateTestPoint) {
+                                                                        onUpdateTestPoint({ uutTolerance: range });
+                                                                    }
+                                                                }}
+                                                            >
                                                                 <span style={{ fontSize: '0.85rem' }}>{specDisplay}</span>
+                                                                {isActiveSpec && <span style={{ marginLeft: '5px', fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 'bold' }}>(Active)</span>}
                                                             </td>
                                                         </tr>
                                                     );
@@ -649,15 +684,15 @@ const UncertaintyPanel = ({
                         <h3 style={sectionTitleStyle}>Measurement Standards (TMDE)</h3>
                         <div style={cardStyle}>
                             <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '400px' }}>
-                                <table className="instrument-summary-table" style={{width: '100%'}}>
-                                        <colgroup>
-                                        <col style={{width: '5%'}} />
-                                        <col style={{width: '25%'}} />
-                                        {isDerived && <col style={{width: '10%'}} />}
-                                        <col style={{width: '15%'}} />
-                                        <col style={{width: '15%'}} />
-                                        <col style={{width: '15%'}} />
-                                        <col style={{width: '10%'}} />
+                                <table className="instrument-summary-table" style={{ width: '100%' }}>
+                                    <colgroup>
+                                        <col style={{ width: '5%' }} />
+                                        <col style={{ width: '25%' }} />
+                                        {isDerived && <col style={{ width: '10%' }} />}
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '10%' }} />
                                     </colgroup>
                                     <thead>
                                         <tr>
@@ -683,24 +718,24 @@ const UncertaintyPanel = ({
                                                 const rowsToRender = activeInstances.length > 0 ? activeInstances : [masterTmde];
 
                                                 return rowsToRender.map((tmdeInstance, idx) => {
-                                                     const isChecked = activeInstances.includes(tmdeInstance);
-                                                     const referencePoint = tmdeInstance.measurementPoint || { value: '', unit: '' };
-                                                     const isError = !referencePoint.value || !referencePoint.unit;
-                                                     
-                                                     const displayValue = isChecked ? referencePoint.value : '';
-                                                     const displayUnit = isChecked ? referencePoint.unit : (masterTmde.measurementPoint?.unit || '');
+                                                    const isChecked = activeInstances.includes(tmdeInstance);
+                                                    const referencePoint = tmdeInstance.measurementPoint || { value: '', unit: '' };
+                                                    const isError = !referencePoint.value || !referencePoint.unit;
 
-                                                     let stdUncDisplay = "-";
-                                                     if (isChecked && !isError) {
+                                                    const displayValue = isChecked ? referencePoint.value : '';
+                                                    const displayUnit = isChecked ? referencePoint.unit : (masterTmde.measurementPoint?.unit || '');
+
+                                                    let stdUncDisplay = "-";
+                                                    if (isChecked && !isError) {
                                                         const { standardUncertainty: uPpm } = calculateUncertaintyFromToleranceObject(tmdeInstance, referencePoint);
                                                         const uAbs = convertPpmToUnit(uPpm, referencePoint.unit, referencePoint);
                                                         stdUncDisplay = typeof uAbs === "number" ? `${uAbs.toPrecision(3)}` : uAbs;
-                                                     }
+                                                    }
 
-                                                     return (
-                                                        <tr key={`${masterTmde.id}-${idx}`} className="tmde-row" style={{opacity: isChecked ? 1 : 0.7}}>
+                                                    return (
+                                                        <tr key={`${masterTmde.id}-${idx}`} className="tmde-row" style={{ opacity: isChecked ? 1 : 0.7 }}>
                                                             <td style={{ textAlign: 'center' }}>
-                                                                <input 
+                                                                <input
                                                                     type="checkbox"
                                                                     checked={isChecked}
                                                                     onChange={(e) => handleToggleTmdeUsage(masterTmde.id, e.target.checked)}
@@ -752,7 +787,7 @@ const UncertaintyPanel = ({
                                                                 ) : "-"}
                                                             </td>
                                                         </tr>
-                                                     );
+                                                    );
                                                 });
                                             })
                                         )}
@@ -771,12 +806,12 @@ const UncertaintyPanel = ({
                         <h3 style={sectionTitleStyle}>Measurement Point</h3>
                         <div style={cardStyle}>
                             <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1, overflowX: 'auto' }}>
-                                <table className="instrument-summary-table" style={{width: '100%', tableLayout: 'fixed'}}>
+                                <table className="instrument-summary-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                                     <colgroup>
-                                        <col style={{width: '35%'}} />
-                                        <col style={{width: '35%'}} />
-                                        <col style={{width: '15%'}} />
-                                        <col style={{width: '15%'}} />
+                                        <col style={{ width: '35%' }} />
+                                        <col style={{ width: '35%' }} />
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '15%' }} />
                                     </colgroup>
                                     <thead>
                                         <tr>
@@ -787,7 +822,18 @@ const UncertaintyPanel = ({
                                                 {/* Allow adding point if none exists */}
                                                 {!hasMeasurementPoint && (
                                                     <span
-                                                        onClick={onDefineTestPoint}
+                                                        onClick={() => {
+                                                            // VALIDATION CHECK: Ensure a UUT is selected
+                                                            if (!testPointData.associatedUutIds || testPointData.associatedUutIds.length === 0) {
+                                                                setNotification({
+                                                                    title: "Action Required",
+                                                                    message: "Please select a UUT from the table on the left before adding a measurement point.",
+                                                                    isIconConfirm: false
+                                                                });
+                                                                return;
+                                                            }
+                                                            onDefineTestPoint();
+                                                        }}
                                                         className="action-icon"
                                                         title="Add Measurement Point"
                                                         style={{
@@ -815,7 +861,7 @@ const UncertaintyPanel = ({
                                                         />
                                                     </div>
                                                 </td>
-                                                <td 
+                                                <td
                                                     className="clickable-spec-cell"
                                                     onClick={onOpenUutModal}
                                                     title="Edit Tolerance Spec"
@@ -840,8 +886,21 @@ const UncertaintyPanel = ({
                                                     <div style={{ display: 'flex', justifyContent: 'center' }}>
                                                         <span
                                                             className="action-icon"
-                                                            onClick={handleClearMeasurementPoint}
-                                                            title="Clear Point"
+                                                            onClick={() => {
+                                                                if (testPointData.id) {
+                                                                    // UPDATED: Use Custom Notification Modal instead of window.confirm
+                                                                    setNotification({
+                                                                        title: "Delete Measurement Point",
+                                                                        message: "Are you sure you want to permanently delete this measurement point?",
+                                                                        onConfirm: () => onDeleteTestPoint(testPointData.id),
+                                                                        isIconConfirm: true // This triggers the Confirm/Cancel button layout in your modal
+                                                                    });
+                                                                } else {
+                                                                    // VIRTUAL POINT: Just clear fields (no confirmation needed)
+                                                                    handleClearMeasurementPoint();
+                                                                }
+                                                            }}
+                                                            title="Delete Point"
                                                             style={{
                                                                 cursor: "pointer",
                                                                 color: "var(--status-bad)",
@@ -870,7 +929,7 @@ const UncertaintyPanel = ({
                     {isDerived && equationDisplayData && (
                         <div>
                             <h3 style={sectionTitleStyle}>Measurement Equation</h3>
-                            
+
                             <div style={{
                                 backgroundColor: 'var(--content-background)',
                                 border: '1px solid var(--border-color)',
@@ -903,25 +962,25 @@ const UncertaintyPanel = ({
 
                                     {/* Symbols Popout */}
                                     {isSymbolMenuOpen && (
-                                        <div 
-                                            className="symbol-popout" 
+                                        <div
+                                            className="symbol-popout"
                                             ref={symbolMenuRef}
                                             style={{ maxHeight: '300px', overflowY: 'auto' }}
                                         >
-                                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '5px', borderBottom: '1px solid var(--border-color)'}}>
-                                                 <span style={{fontWeight: 700, fontSize: '0.85rem'}}>Math Symbols</span>
-                                                 <span onClick={() => setIsSymbolMenuOpen(false)} style={{cursor: 'pointer'}}><FontAwesomeIcon icon={faTimes} /></span>
-                                             </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '5px', borderBottom: '1px solid var(--border-color)' }}>
+                                                <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Math Symbols</span>
+                                                <span onClick={() => setIsSymbolMenuOpen(false)} style={{ cursor: 'pointer' }}><FontAwesomeIcon icon={faTimes} /></span>
+                                            </div>
                                             {Object.entries(symbolCategories).map(([category, symbols]) => (
                                                 <div key={category} className="symbol-category">
                                                     <h5 className="symbol-category-title">{category}</h5>
                                                     <div className="symbol-category-grid">
                                                         {symbols.map(s => (
-                                                            <SymbolButton 
-                                                                key={s.symbol} 
-                                                                symbol={s.symbol} 
-                                                                title={s.title} 
-                                                                onSymbolClick={handleSymbolClick} 
+                                                            <SymbolButton
+                                                                key={s.symbol}
+                                                                symbol={s.symbol}
+                                                                title={s.title}
+                                                                onSymbolClick={handleSymbolClick}
                                                             />
                                                         ))}
                                                     </div>
@@ -930,12 +989,12 @@ const UncertaintyPanel = ({
                                         </div>
                                     )}
                                 </div>
-                                
+
                                 {/* Calculated vs Target Comparison */}
                                 {calcStatus !== 'neutral' && (
                                     <div style={{
-                                        display: 'flex', 
-                                        alignItems: 'center', 
+                                        display: 'flex',
+                                        alignItems: 'center',
                                         justifyContent: 'space-between',
                                         padding: '10px 14px',
                                         borderRadius: '6px',
@@ -945,26 +1004,26 @@ const UncertaintyPanel = ({
                                         fontWeight: 500,
                                         color: calcStatusStyle.color
                                     }}>
-                                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <FontAwesomeIcon icon={calcStatusStyle.icon} />
                                             <span>
                                                 Calculated: <strong>{calculatedNominal?.toPrecision(6)} {uutNominal?.unit}</strong>
                                             </span>
                                         </div>
-                                        <div style={{color: 'var(--text-color-muted)', fontSize: '0.85rem'}}>
+                                        <div style={{ color: 'var(--text-color-muted)', fontSize: '0.85rem' }}>
                                             (Target: {targetNominal?.toPrecision(6)} {uutNominal?.unit})
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {/* Variable Grid */}
-                                <div className="var-map-grid" style={{flex: 1}}>
+                                <div className="var-map-grid" style={{ flex: 1 }}>
                                     {equationDisplayData.variables.map((v) => (
                                         <div key={v.symbol} className={`var-card-modern ${v.isAssigned ? 'assigned' : 'unassigned'}`}>
                                             <div className="var-card-header">
                                                 <div className="var-symbol-badge">{v.symbol}</div>
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     className="var-name-input"
                                                     value={v.name}
                                                     placeholder="Map to (e.g. Volts)..."
@@ -974,19 +1033,19 @@ const UncertaintyPanel = ({
 
                                             <div className="var-card-body">
                                                 <div>
-                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px'}}>
+                                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px' }}>
                                                         ASSIGNED SOURCE
                                                     </label>
-                                                    <select 
+                                                    <select
                                                         className="var-source-select"
                                                         value={v.tmdeId || ""}
                                                         onChange={(e) => handleAssignTmdeToVariable(v.symbol, e.target.value)}
-                                                        disabled={!v.name} 
+                                                        disabled={!v.name}
                                                     >
                                                         <option value="">-- No Source (Manual Entry) --</option>
                                                         {sessionData.tmdes?.map(tmde => (
                                                             <option key={tmde.id} value={tmde.id}>
-                                                                {tmde.name || "Unnamed TMDE"} 
+                                                                {tmde.name || "Unnamed TMDE"}
                                                                 {/* Helper text if mapped to a value */}
                                                             </option>
                                                         ))}
@@ -994,7 +1053,7 @@ const UncertaintyPanel = ({
                                                 </div>
 
                                                 <div>
-                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px'}}>
+                                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px' }}>
                                                         VALUE
                                                     </label>
                                                     {v.isAssigned ? (
@@ -1003,20 +1062,20 @@ const UncertaintyPanel = ({
                                                                 value={v.value}
                                                                 type="number"
                                                                 onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(v.tmdeId, 'nominal', val)}
-                                                                style={{ 
+                                                                style={{
                                                                     fontFamily: "'Consolas', monospace",
                                                                     fontSize: "1.1rem",
                                                                     fontWeight: 700,
                                                                     color: "var(--primary-color)",
-                                                                    backgroundColor: "transparent", 
+                                                                    backgroundColor: "transparent",
                                                                     border: "none",
                                                                     padding: 0,
-                                                                    width: "100px" 
+                                                                    width: "100px"
                                                                 }}
                                                             />
                                                             {/* DROPDOWN FOR UNIT SELECTION */}
                                                             <div style={{ width: '85px', marginLeft: '5px', borderBottom: '1px dashed var(--border-color)' }}>
-                                                                 <Select
+                                                                <Select
                                                                     options={groupedUnitOptions}
                                                                     value={
                                                                         groupedUnitOptions
@@ -1026,15 +1085,15 @@ const UncertaintyPanel = ({
                                                                     onChange={(opt) => onInlineTmdeUpdate && onInlineTmdeUpdate(v.tmdeId, 'unit', opt.value)}
                                                                     styles={customUnitSelectStyles}
                                                                     placeholder="Unit"
-                                                                    menuPortalTarget={document.body} 
+                                                                    menuPortalTarget={document.body}
                                                                     isSearchable={true}
-                                                                 />
+                                                                />
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div className="var-value-display" style={{backgroundColor: 'var(--input-background)'}}>
-                                                            <span style={{color: 'var(--text-color-muted)', fontSize: '0.9rem', fontStyle: 'italic'}}>
-                                                                <FontAwesomeIcon icon={faExclamationTriangle} style={{color: 'var(--status-warning)', marginRight: '6px'}}/>
+                                                        <div className="var-value-display" style={{ backgroundColor: 'var(--input-background)' }}>
+                                                            <span style={{ color: 'var(--text-color-muted)', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                                                                <FontAwesomeIcon icon={faExclamationTriangle} style={{ color: 'var(--status-warning)', marginRight: '6px' }} />
                                                                 Map source above
                                                             </span>
                                                         </div>
@@ -1053,12 +1112,12 @@ const UncertaintyPanel = ({
             {/* --- UNCERTAINTY BUDGET & GRAPH --- */}
             {hasMeasurementPoint ? (
                 hasUnassignedVariables || isBackendMappingError ? (
-                     <div className="placeholder-content" style={{padding: '20px', color: 'var(--text-color-muted)'}}>
-                         {/* Show a helpful message instead of the big error */}
-                         {hasUnassignedVariables 
+                    <div className="placeholder-content" style={{ padding: '20px', color: 'var(--text-color-muted)' }}>
+                        {/* Show a helpful message instead of the big error */}
+                        {hasUnassignedVariables
                             ? "Map all equation variables to a TMDE above to calculate budget."
                             : "Complete the equation configuration to calculate budget."}
-                     </div>
+                    </div>
                 ) : calculationError ? (
                     // Only show this for non-mapping errors (e.g. math errors like divide by zero)
                     <div className="form-section-warning">
@@ -1104,7 +1163,7 @@ const UncertaintyPanel = ({
                     </>
                 )
             ) : (
-                <div className="placeholder-content" style={{marginTop: '30px', borderTop: '1px solid var(--border-color)', paddingTop: '30px'}}>
+                <div className="placeholder-content" style={{ marginTop: '30px', borderTop: '1px solid var(--border-color)', paddingTop: '30px' }}>
                     <h3>Ready to Measure</h3>
                     <p>Select a UUT Specification Range (top left) and define a Measurement Point (top right) to begin analysis.</p>
                 </div>
