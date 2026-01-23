@@ -6142,3 +6142,238 @@ body.theme-cyberpunk .range-header-container:hover {
     color: var(--primary-color);
     text-shadow: 0 0 5px var(--primary-color);
 }
+
+/* =================================================================== */
+/* 20. REDESIGNED SIDEBAR (CLEAN TREE VIEW)                            */
+/* =================================================================== */
+
+/* Container Reset */
+.measurement-point-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0; /* Remove gap, use padding/borders */
+  padding-bottom: 40px;
+}
+
+/* --- Level 0: Session Overview (Dashboard Home) --- */
+.sidebar-session-card {
+  margin: 10px 10px 20px 10px;
+  padding: 12px 15px;
+  background: var(--component-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+
+.sidebar-session-card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+}
+
+.sidebar-session-card.active {
+  background-color: var(--primary-color-light);
+  border-color: var(--primary-color);
+  color: var(--primary-color-dark);
+}
+
+.session-card-icon {
+  font-size: 1.2rem;
+  color: var(--primary-color);
+}
+
+.session-card-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.session-card-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
+.session-card-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-color-muted);
+}
+
+/* --- Level 1: Measurement Area (Sticky Headers) --- */
+.area-header-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--sidebar-background); /* Ensures content doesn't show through */
+  backdrop-filter: blur(10px);
+  padding: 15px 15px 8px 15px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 5px;
+  
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.area-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-color-muted);
+  flex-grow: 1;
+}
+
+.area-header-sticky:hover .area-label {
+  color: var(--primary-color);
+}
+
+/* --- Tree Structure Guide Lines --- */
+.tree-branch {
+  position: relative;
+  margin-left: 22px; /* Indent for UUTs */
+  padding-left: 15px;
+  border-left: 1px solid var(--border-color); /* The vertical guide line */
+}
+
+/* --- Level 2: UUT Row --- */
+.uut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  margin: 2px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+}
+
+/* Connector line to the main branch */
+.uut-row::before {
+  content: '';
+  position: absolute;
+  left: -16px; /* Connects to the border-left of tree-branch */
+  top: 50%;
+  width: 12px;
+  height: 1px;
+  background-color: var(--border-color);
+}
+
+.uut-row:hover {
+  background-color: var(--component-header-bg);
+}
+
+.uut-row.active {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color-dark);
+}
+
+.uut-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
+.uut-actions-group {
+  display: flex;
+  gap: 4px;
+  opacity: 0; /* Hidden by default for cleanliness */
+  transition: opacity 0.2s;
+}
+
+.uut-row:hover .uut-actions-group,
+.uut-row.active .uut-actions-group {
+  opacity: 1;
+}
+
+/* --- Level 3: Range Label --- */
+.range-label-row {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-color-muted);
+  padding: 6px 0 6px 10px;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* --- Level 4: Points (Grid Layout) --- */
+.point-grid-item {
+  display: grid;
+  grid-template-columns: 45px 1fr; /* Fixed width for Section, Flex for Value */
+  gap: 10px;
+  align-items: center;
+  
+  padding: 6px 10px;
+  margin-bottom: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  
+  font-size: 0.85rem;
+  color: var(--text-color);
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+
+.point-grid-item:hover {
+  background-color: var(--background-color);
+  border-color: var(--border-color);
+}
+
+.point-grid-item.active {
+  background-color: var(--primary-color);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* Point Section Column */
+.point-section {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-color-muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+
+.point-grid-item.active .point-section {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Point Value Column */
+.point-value {
+  font-family: 'Consolas', monospace; /* Technical font for numbers */
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty State / No Points */
+.empty-branch-msg {
+  font-size: 0.75rem;
+  color: var(--text-color-muted);
+  font-style: italic;
+  padding: 5px 0 5px 15px;
+  opacity: 0.7;
+}
+
+/* --- Theme Compatibility Overrides --- */
+body.dark-mode .area-header-sticky {
+  background-color: var(--sidebar-background); /* Or specific dark hex */
+}

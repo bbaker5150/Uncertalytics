@@ -191,8 +191,9 @@ function App() {
   const [virtualPoint, setVirtualPoint] = useState(null);
   const [activeRangeIndices, setActiveRangeIndices] = useState({});
 
-  // Replaced global boolean with a Set for per-UUT hiding
-  const [uutsHidingEmptyRanges, setUutsHidingEmptyRanges] = useState(new Set());
+  // UPDATED: Tracks which UUTs are explicitly SHOWING all ranges. 
+  // Default (empty set) means hiding empty ranges.
+  const [uutsShowingAllRanges, setUutsShowingAllRanges] = useState(new Set());
 
   // Tracks which UUT "folder" was clicked in the sidebar to enforce context
   const [selectedTestPointContextUutId, setSelectedTestPointContextUutId] = useState(null);
@@ -299,14 +300,15 @@ function App() {
     setEditingSession(newSession);
   };
 
+  // UPDATED: Toggle adds ID to set to SHOW ranges (default is hidden)
   const toggleUutEmptyRanges = (uutId) => {
-    const newSet = new Set(uutsHidingEmptyRanges);
+    const newSet = new Set(uutsShowingAllRanges);
     if (newSet.has(uutId)) {
-      newSet.delete(uutId);
+      newSet.delete(uutId); // Revert to hiding empty ranges
     } else {
-      newSet.add(uutId);
+      newSet.add(uutId); // Show all ranges
     }
-    setUutsHidingEmptyRanges(newSet);
+    setUutsShowingAllRanges(newSet);
   };
 
   // Enhanced to support direct Range/UUT adds from sidebar
@@ -501,17 +503,15 @@ function App() {
     const idsToDelete = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
 
     const performDelete = () => {
-      // FIX: Robust Batch Deletion
-      // Instead of calling deleteTestPoint inside a loop (which can cause stale state issues),
-      // we filter the list manually and perform a SINGLE updateSession call.
+      // Robust Batch Deletion: Filter list locally & single update
       if (currentSessionData && currentSessionData.testPoints) {
-          const idsSet = new Set(idsToDelete);
-          const updatedTestPoints = currentSessionData.testPoints.filter(tp => !idsSet.has(tp.id));
-          
-          updateSession({
-              ...currentSessionData,
-              testPoints: updatedTestPoints
-          });
+        const idsSet = new Set(idsToDelete);
+        const updatedTestPoints = currentSessionData.testPoints.filter(tp => !idsSet.has(tp.id));
+
+        updateSession({
+          ...currentSessionData,
+          testPoints: updatedTestPoints
+        });
       }
       setAppNotification(null);
     };
@@ -652,9 +652,13 @@ function App() {
         };
       });
 
+      // --- CRITICAL: Logic for Unassigned Points in Area ---
+      // This ensures points that belong to the Area but have no UUT parent are captured.
       const unassignedPoints = points.filter(tp => {
         if (tp.measurementAreaId !== area.id) return false;
         const hasParent = tp.associatedUutIds && tp.associatedUutIds.length > 0;
+        
+        // Ensure parent actually exists in this area (not a ghost ID)
         const parentExistsInArea = hasParent && areaUuts.some(u =>
           tp.associatedUutIds.some(id => String(id) === String(u.id))
         );
@@ -769,6 +773,7 @@ function App() {
   return (
     <ThemeContext.Provider value={isDarkMode}>
       <div className="App">
+        {/* ... (Previous Modals and Overlays remain unchanged) ... */}
         {appNotification && (
           <NotificationModal
             isOpen={true}
@@ -828,245 +833,185 @@ function App() {
                 </div>
               </div>
 
+              {/* === REDESIGNED SIDEBAR LIST === */}
               <div className="measurement-point-list">
-                {/* NEW: Session Overview Item */}
-                <div
-                  className={`group-header ${selectedSessionId && !selectedAreaId && !selectedTestPointId ? 'active-area' : ''}`}
+                
+                {/* 1. DASHBOARD HOME BUTTON */}
+                <div 
+                  className={`sidebar-session-card ${selectedSessionId && !selectedAreaId && !selectedTestPointId ? 'active' : ''}`}
                   onClick={() => handleSelectSession(selectedSessionId)}
-                  style={{
-                    padding: '12px 12px',
-                    borderBottom: '1px solid var(--border-color)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    cursor: 'pointer',
-                    backgroundColor: (selectedSessionId && !selectedAreaId && !selectedTestPointId) ? 'var(--background-secondary)' : 'transparent'
-                  }}
                 >
-                  <FontAwesomeIcon icon={faFolderOpen} style={{ color: (selectedSessionId && !selectedAreaId && !selectedTestPointId) ? 'var(--primary-color)' : 'var(--text-color)' }} />
-                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: (selectedSessionId && !selectedAreaId && !selectedTestPointId) ? 'var(--primary-color)' : 'var(--text-color)' }}>Session Overview</span>
+                  <div className="session-card-icon">
+                    <FontAwesomeIcon icon={faFolderOpen} />
+                  </div>
+                  <div className="session-card-text">
+                    <span className="session-card-title">Session Overview</span>
+                    <span className="session-card-subtitle">{currentTestPoints.length} Points Total</span>
+                  </div>
                 </div>
 
                 {sidebarData.map((areaData) => (
-                  <div key={areaData.id} className="measurement-group">
-                    {/* LEVEL 1: MEASUREMENT AREA */}
-                    <div
-                      className={`group-header ${selectedAreaId === areaData.id && !selectedUutId && !selectedTestPointId ? 'active-area' : ''}`}
+                  <div key={areaData.id} className="measurement-group-container">
+                    
+                    {/* 2. STICKY AREA HEADER */}
+                    <div 
+                      className="area-header-sticky"
                       onClick={() => handleSelectArea(areaData.id)}
-                      style={{
-                        padding: '10px 12px',
-                        backgroundColor: 'var(--background-secondary)',
-                        borderBottom: '1px solid var(--border-color)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        cursor: 'pointer'
-                      }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <FontAwesomeIcon icon={faLayerGroup} style={{ color: areaData.color || '#3498db' }} />
-                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-color)' }}>
-                          {areaData.name}
-                        </span>
-                      </div>
-
-                      {/* Quick Add Button (Area Level) */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <button className="btn-icon-only small" onClick={(e) => { e.stopPropagation(); handleAddNewTestPoint(areaData.id); }} title="Quick Add Point">
-                          <FontAwesomeIcon icon={faPlus} size="xs" />
-                        </button>
-                      </div>
+                      <FontAwesomeIcon icon={faLayerGroup} style={{ color: areaData.color || 'var(--primary-color)', opacity: 0.7 }} size="sm" />
+                      <span className="area-label">{areaData.name}</span>
                     </div>
 
-                    {/* LEVEL 2: UUTs */}
-                    {areaData.uutGroups.map(group => {
-                      const isUutSelected = selectedUutId === group.id && !selectedTestPointId;
-                      const isHidingEmpty = uutsHidingEmptyRanges.has(group.id);
+                    {/* TREE BRANCH LINE (Vertical Guide) */}
+                    <div className="tree-branch">
+                      
+                      {/* 3. UUTs LOOP */}
+                      {areaData.uutGroups.map(group => {
+                        const isUutSelected = selectedUutId === group.id && !selectedTestPointId;
+                        const isShowingAll = uutsShowingAllRanges.has(group.id);
 
-                      return (
-                        <div key={group.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                          {/* UUT ROW */}
-                          <div
-                            className={`uut-header ${isUutSelected ? 'active' : ''}`}
-                            onClick={() => handleSelectUut(group.id, areaData.id, group)}
-                          >
-                            <div className="uut-label">
-                              <FontAwesomeIcon icon={faMicroscope} size="sm" />
-                              <span>{group.description}</span>
+                        return (
+                          <div key={group.id} style={{ marginBottom: '10px' }}>
+                            
+                            {/* UUT ITEM CARD */}
+                            <div 
+                              className={`uut-row ${isUutSelected ? 'active' : ''}`}
+                              onClick={() => handleSelectUut(group.id, areaData.id, group)}
+                            >
+                              <div className="uut-info">
+                                <FontAwesomeIcon icon={faMicroscope} style={{ opacity: 0.6 }} />
+                                <span>{group.description}</span>
+                              </div>
+                              <div className="uut-actions-group">
+                                <button
+                                  className={`btn-icon-only small ${isShowingAll ? 'active' : ''}`}
+                                  onClick={(e) => { e.stopPropagation(); toggleUutEmptyRanges(group.id); }}
+                                  title={isShowingAll ? "Hide Empty Ranges" : "Show All Ranges"}
+                                >
+                                  <FontAwesomeIcon icon={isShowingAll ? faEyeSlash : faEye} size="xs" />
+                                </button>
+                                <button
+                                  className="btn-icon-only small"
+                                  onClick={(e) => { e.stopPropagation(); handleAddNewTestPoint(areaData.id, group.id); }}
+                                  title="Add Point"
+                                >
+                                  <FontAwesomeIcon icon={faPlus} size="xs" />
+                                </button>
+                              </div>
                             </div>
 
-                            {/* This container will now be invisible until hover */}
-                            <div className="uut-actions">
-                              <button
-                                className={`btn-icon-only small ${isHidingEmpty ? 'active' : ''}`}
-                                onClick={(e) => { e.stopPropagation(); toggleUutEmptyRanges(group.id); }}
-                                title={isHidingEmpty ? "Show All Ranges" : "Hide Empty Ranges"}
-                              >
-                                <FontAwesomeIcon icon={isHidingEmpty ? faEyeSlash : faEye} size="xs" />
-                              </button>
+                            {/* 4. RANGES LOOP (Indented inside UUT) */}
+                            <div style={{ paddingLeft: '15px' }}>
+                              {group.rangeGroups.map(range => {
+                                if (!isShowingAll && range.points.length === 0) return null;
 
-                              <button
-                                className="btn-icon-only small"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAddNewTestPoint(areaData.id, group.id);
-                                }}
-                                title="Quick Add Point to UUT"
-                              >
-                                <FontAwesomeIcon icon={faPlus} size="xs" />
-                              </button>
-                            </div>
-                          </div>
+                                return (
+                                  <div key={`range-${range._id}`} style={{ marginBottom: '8px' }}>
+                                    
+                                    {/* Range Mini Header */}
+                                    <div className="range-label-row">
+                                      <FontAwesomeIcon icon={faRulerCombined} size="xs" style={{ opacity: 0.5 }} />
+                                      <span>{range.label}</span>
+                                    </div>
 
-                          {/* LEVEL 3: RANGES */}
-                          {group.rangeGroups.map(range => {
-                            // Hide logic: Check specific UUT state
-                            if (isHidingEmpty && range.points.length === 0) return null;
-
-                            return (
-                              <div key={`range-${range._id}`} style={{ display: 'flex', flexDirection: 'column' }}>
-                                {/* RANGE HEADER */}
-                                <div className="range-header-container">
-                                  <div className="range-label-group">
-                                    <FontAwesomeIcon icon={faRulerCombined} size="xs" />
-                                    <span>{range.label}</span>
+                                    {/* 5. POINTS (Grid Layout) */}
+                                    {range.points.length === 0 ? (
+                                      <div className="empty-branch-msg">No points</div>
+                                    ) : (
+                                      range.points.map(tp => {
+                                        const isSelected = selectedTestPointId === tp.id && selectedTestPointContextUutId === group.id;
+                                        return (
+                                          <div
+                                            key={tp.id}
+                                            className={`point-grid-item ${isSelected ? 'active' : ''}`}
+                                            onClick={() => handleSelectTestPoint(tp.id, group.id)}
+                                            onDoubleClick={(e) => { e.preventDefault(); setEditingTestPoint(tp); setIsAddModalOpen(true); }}
+                                            onContextMenu={(e) => {
+                                              e.preventDefault();
+                                              setContextMenu({
+                                                x: e.pageX, y: e.pageY,
+                                                items: [
+                                                  { label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" },
+                                                ],
+                                              });
+                                            }}
+                                          >
+                                            <span className="point-section">{tp.section || '-'}</span>
+                                            <span className="point-value">
+                                              {tp.testPointInfo.parameter.value} <small>{tp.testPointInfo.parameter.unit}</small>
+                                            </span>
+                                          </div>
+                                        );
+                                      })
+                                    )}
                                   </div>
+                                );
+                              })}
 
-                                  {/* Removed Quick Add Button from here as requested */}
-                                </div>
-
-                                {/* LEVEL 4: POINTS IN RANGE */}
-                                {range.points.length === 0 ? (
-                                  <div style={{ padding: '2px 0 2px 60px', color: 'var(--text-color-muted)', fontSize: '0.7rem', fontStyle: 'italic', opacity: 0.7 }}>
-                                    Empty Range
-                                  </div>
-                                ) : (
-                                  range.points.map(tp => {
-                                    const isSelected = selectedTestPointId === tp.id && selectedTestPointContextUutId === group.id;
-                                    return (
-                                      <button
+                              {/* Uncategorized Points within UUT */}
+                              {group.uncategorizedPoints && group.uncategorizedPoints.length > 0 && (
+                                <div style={{ marginTop: '8px' }}>
+                                   <div className="range-label-row" style={{ color: 'var(--status-warning)' }}>
+                                      <FontAwesomeIcon icon={faLayerGroup} size="xs" />
+                                      <span>Other Points</span>
+                                    </div>
+                                    {group.uncategorizedPoints.map(tp => (
+                                      <div
                                         key={tp.id}
+                                        className={`point-grid-item ${selectedTestPointId === tp.id ? 'active' : ''}`}
                                         onClick={() => handleSelectTestPoint(tp.id, group.id)}
-                                        className={`measurement-point-item nested ${isSelected ? "active" : ""}`}
-                                        style={{
-                                          marginLeft: '60px',
-                                          width: 'calc(100% - 60px)',
-                                          borderLeft: '1px solid var(--border-color)',
-                                          padding: '6px 10px',
-                                          textAlign: 'left'
-                                        }}
+                                        onDoubleClick={(e) => { e.preventDefault(); setEditingTestPoint(tp); setIsAddModalOpen(true); }}
                                         onContextMenu={(e) => {
                                           e.preventDefault();
                                           setContextMenu({
                                             x: e.pageX, y: e.pageY,
-                                            items: [
-                                              { label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" },
-                                            ],
+                                            items: [{ label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" }],
                                           });
                                         }}
                                       >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                          <FontAwesomeIcon icon={faCube} size="xs" style={{ opacity: 0.5 }} />
-                                          {/* Simplified Label: Value + Unit only */}
-                                          <span className="point-main" style={{ fontSize: '0.8rem' }}>
-                                            {tp.testPointInfo.parameter.value} {tp.testPointInfo.parameter.unit}
-                                          </span>
-                                        </div>
-                                      </button>
-                                    );
-                                  })
-                                )}
-                              </div>
-                            );
-                          })}
-
-                          {/* FALLBACK: UNCATEGORIZED POINTS */}
-                          {group.uncategorizedPoints && group.uncategorizedPoints.length > 0 && (
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              {group.rangeGroups.length > 0 && (
-                                <div style={{ padding: '4px 10px 4px 45px', color: 'var(--text-color-muted)', fontSize: '0.7rem', fontStyle: 'italic' }}>
-                                  Out of Range Points
+                                        <span className="point-section">{tp.section || '-'}</span>
+                                        <span className="point-value">{tp.testPointInfo.parameter.value} <small>{tp.testPointInfo.parameter.unit}</small></span>
+                                      </div>
+                                    ))}
                                 </div>
                               )}
-                              {group.uncategorizedPoints.map(tp => {
-                                const isSelected = selectedTestPointId === tp.id && selectedTestPointContextUutId === group.id;
-                                return (
-                                  <button
-                                    key={tp.id}
-                                    onClick={() => handleSelectTestPoint(tp.id, group.id)}
-                                    className={`measurement-point-item nested ${isSelected ? "active" : ""}`}
-                                    style={{
-                                      marginLeft: '45px',
-                                      width: 'calc(100% - 45px)',
-                                      borderLeft: '1px solid var(--border-color)',
-                                      padding: '6px 10px',
-                                      textAlign: 'left'
-                                    }}
-                                    onContextMenu={(e) => {
-                                      e.preventDefault();
-                                      setContextMenu({
-                                        x: e.pageX, y: e.pageY,
-                                        items: [
-                                          { label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" },
-                                        ],
-                                      });
-                                    }}
-                                  >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <FontAwesomeIcon icon={faCube} size="xs" style={{ opacity: 0.5 }} />
-                                      {/* Simplified Label: Value + Unit only */}
-                                      <span className="point-main" style={{ fontSize: '0.8rem' }}>
-                                        {tp.testPointInfo.parameter.value} {tp.testPointInfo.parameter.unit}
-                                      </span>
-                                    </div>
-                                  </button>
-                                );
-                              })}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                          </div>
+                        );
+                      })}
 
-                    {/* UNASSIGNED POINTS */}
-                    {areaData.unassignedPoints.length > 0 && (
-                      <div style={{ padding: '5px 0 5px 25px', opacity: 1.0 }}>
-                        <small style={{ textTransform: 'uppercase', fontSize: '0.7rem', color: 'var(--text-color-muted)', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '5px', display: 'block' }}>Unassigned Points</small>
-                        {areaData.unassignedPoints.map(tp => (
-                          <button
-                            key={tp.id}
-                            onClick={() => handleSelectTestPoint(tp.id, null)}
-                            className={`measurement-point-item nested ${selectedTestPointId === tp.id ? "active" : ""}`}
-                            style={{
-                              width: '100%',
-                              padding: '6px 10px',
-                              textAlign: 'left',
-                              marginBottom: '2px'
-                            }}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              setContextMenu({
-                                x: e.pageX, y: e.pageY,
-                                items: [
-                                  { label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" },
-                                ],
-                              });
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <FontAwesomeIcon icon={faCube} size="xs" style={{ opacity: 0.5 }} />
-                              {/* Simplified Label: Value + Unit only */}
-                              <span className="point-main" style={{ fontSize: '0.8rem' }}>
-                                {tp.testPointInfo.parameter.value} {tp.testPointInfo.parameter.unit}
-                              </span>
+                      {/* --- CRITICAL RE-INSERTION: Unassigned Points (Directly under Area) --- */}
+                      {areaData.unassignedPoints.length > 0 && (
+                          <div style={{ marginTop: '15px' }}>
+                            <div className="range-label-row">
+                              <span>Unassigned Points</span>
                             </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                            {areaData.unassignedPoints.map(tp => (
+                              <div
+                                key={tp.id}
+                                className={`point-grid-item ${selectedTestPointId === tp.id ? 'active' : ''}`}
+                                onClick={() => handleSelectTestPoint(tp.id, null)}
+                                onDoubleClick={(e) => { e.preventDefault(); setEditingTestPoint(tp); setIsAddModalOpen(true); }}
+                                onContextMenu={(e) => {
+                                  e.preventDefault();
+                                  setContextMenu({
+                                    x: e.pageX, y: e.pageY,
+                                    items: [{ label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" }],
+                                  });
+                                }}
+                              >
+                                 <span className="point-section">{tp.section || '-'}</span>
+                                 <span className="point-value">{tp.testPointInfo.parameter.value} <small>{tp.testPointInfo.parameter.unit}</small></span>
+                              </div>
+                            ))}
+                          </div>
+                       )}
+                    </div>
                   </div>
                 ))}
               </div>
+              {/* === END SIDEBAR LIST === */}
+
             </aside>
 
             <main className="results-content">
@@ -1092,8 +1037,6 @@ function App() {
                     onDeleteUut={handleDeleteUut}
                     instruments={instruments}
                     onDeleteTestPoint={handleDeleteTestPoint}
-
-                    // --- Pass Global UUT Selection Props ---
                     currentUutSelection={currentUutSelection}
                     setCurrentUutSelection={setCurrentUutSelection}
                     activeRangeIndices={activeRangeIndices}
