@@ -413,17 +413,39 @@ function Analysis({
     handleSaveTmde(newTmde, false);
   };
 
+  // --- FIX START: Robust Lookup for Measurement Area ID ---
   const handleDefineTestPoint = (selectedUutIds, resolvedTolerance) => {
      const overrides = {};
-     if (selectedUutIds && Array.isArray(selectedUutIds)) {
+     
+     if (selectedUutIds && Array.isArray(selectedUutIds) && selectedUutIds.length > 0) {
          overrides.associatedUutIds = selectedUutIds;
+
+         if (sessionData && sessionData.uuts) {
+             const firstUut = sessionData.uuts.find(u => u.id === selectedUutIds[0]);
+             if (firstUut) {
+                 // Priority 1: Use direct ID if available
+                 if (firstUut.measurementAreaId) {
+                     overrides.measurementAreaId = firstUut.measurementAreaId;
+                 } 
+                 // Priority 2: Lookup Area ID by Name
+                 else if (firstUut.measurementArea) {
+                     const matchingArea = sessionData.measurementAreas?.find(a => a.name === firstUut.measurementArea);
+                     if (matchingArea) {
+                          overrides.measurementAreaId = matchingArea.id;
+                     }
+                 }
+             }
+         }
      }
+     
      if (resolvedTolerance) {
          overrides.uutTolerance = resolvedTolerance;
      }
+     
      setModalOverrides(overrides);
      setTestPointModalOpen(true);
   };
+  // --- FIX END ---
 
   return (
     <div>

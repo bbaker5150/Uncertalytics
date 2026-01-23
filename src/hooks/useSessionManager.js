@@ -515,74 +515,92 @@ const useSessionManager = () => {
   };
 
 
-  // --- 7. Test Point Actions ---
+  // --- 7. Test Point Actions (UPDATED FOR BATCH SAVING) ---
 
-  const saveTestPoint = (formData, sessionUpdates = null) => {
+  const saveTestPoint = (formDataOrArray, sessionUpdates = null) => {
     const session = sessions.find(s => s.id === selectedSessionId);
-    if(!session) return;
-    
+    if (!session) return;
+
     // Start with a copy of the session and apply any immediate session-level overrides
     let updatedSession = { ...session, ...sessionUpdates };
+
+    // Normalize input to an array to handle both Single and Batch saves
+    const dataItems = Array.isArray(formDataOrArray) ? formDataOrArray : [formDataOrArray];
     
-    if (formData.id) {
-        // UPDATE EXISTING POINT
-        const updatedTestPoints = session.testPoints.map((tp) => {
-        if (tp.id === formData.id) {
-            return {
-            ...tp,
-            section: formData.section,
-            testPointInfo: { ...formData.testPointInfo },
-            measurementType: formData.measurementType,
-            equationString: formData.equationString,
-            variableMappings: formData.variableMappings,
-            tmdeTolerances: formData.tmdeTolerances || tp.tmdeTolerances,
-            uutTolerance: formData.uutTolerance || tp.uutTolerance || null,
-            // NEW: Persist Linkages
-            measurementAreaId: formData.measurementAreaId || tp.measurementAreaId || "",
-            associatedUutIds: formData.associatedUutIds || tp.associatedUutIds || []
-            };
-        }
-        return tp;
-        });
-        updatedSession = { ...updatedSession, testPoints: updatedTestPoints };
-    } else {
-        // CREATE NEW POINT
-        const lastTestPoint = session.testPoints.find((tp) => tp.id === selectedTestPointId);
-        
-        let finalTmdes = formData.tmdeTolerances || [];
+    // We'll build the new list of test points based on the current session
+    let currentTestPoints = [...session.testPoints];
+    let lastNewId = null;
 
-        // Only run copy logic if we DON'T have provided tolerances AND copy is requested
-        if (finalTmdes.length === 0 && formData.copyTmdes && lastTestPoint) {
-            finalTmdes = JSON.parse(JSON.stringify(lastTestPoint.tmdeTolerances || []));
-            const originalTestPointParameter = lastTestPoint.testPointInfo.parameter;
-            const newTestPointParameter = formData.testPointInfo.parameter;
-            finalTmdes.forEach((tmde) => {
-              const wasUsingUutRef =
-                tmde.measurementPoint?.value === originalTestPointParameter.value &&
-                tmde.measurementPoint?.unit === originalTestPointParameter.unit;
-              if (wasUsingUutRef) {
-                tmde.measurementPoint = { ...newTestPointParameter };
-              }
+    dataItems.forEach((formData, index) => {
+        if (formData.id) {
+            // --- UPDATE EXISTING POINT ---
+            currentTestPoints = currentTestPoints.map((tp) => {
+                if (tp.id === formData.id) {
+                    return {
+                        ...tp,
+                        section: formData.section,
+                        testPointInfo: { ...formData.testPointInfo },
+                        measurementType: formData.measurementType,
+                        equationString: formData.equationString,
+                        variableMappings: formData.variableMappings,
+                        tmdeTolerances: formData.tmdeTolerances || tp.tmdeTolerances,
+                        uutTolerance: formData.uutTolerance !== undefined ? formData.uutTolerance : tp.uutTolerance,
+                        measurementAreaId: formData.measurementAreaId || tp.measurementAreaId || "",
+                        associatedUutIds: formData.associatedUutIds || tp.associatedUutIds || []
+                    };
+                }
+                return tp;
             });
-        }
+        } else {
+            // --- CREATE NEW POINT ---
+            const lastTestPoint = session.testPoints.find((tp) => tp.id === selectedTestPointId);
+            let finalTmdes = formData.tmdeTolerances || [];
 
-        const newTestPoint = {
-            id: Date.now(),
-            ...defaultTestPoint,
-            section: formData.section,
-            testPointInfo: formData.testPointInfo,
-            tmdeTolerances: finalTmdes,
-            uutTolerance: formData.uutTolerance || null, 
-            measurementType: formData.measurementType,
-            equationString: formData.equationString,
-            variableMappings: formData.variableMappings,
-            // NEW: Persist Linkages
-            measurementAreaId: formData.measurementAreaId || "",
-            associatedUutIds: formData.associatedUutIds || []
-        };
-        setSelectedTestPointId(newTestPoint.id);
-        updatedSession = { ...updatedSession, testPoints: [...session.testPoints, newTestPoint] };
+            if (finalTmdes.length === 0 && formData.copyTmdes && lastTestPoint) {
+                finalTmdes = JSON.parse(JSON.stringify(lastTestPoint.tmdeTolerances || []));
+                const originalTestPointParameter = lastTestPoint.testPointInfo.parameter;
+                const newTestPointParameter = formData.testPointInfo.parameter;
+                finalTmdes.forEach((tmde) => {
+                    const wasUsingUutRef =
+                        tmde.measurementPoint?.value === originalTestPointParameter.value &&
+                        tmde.measurementPoint?.unit === originalTestPointParameter.unit;
+                    if (wasUsingUutRef) {
+                        tmde.measurementPoint = { ...newTestPointParameter };
+                    }
+                });
+            }
+
+            // Generate a robust unique ID (Date + Random + Index) to prevent collisions in batch
+            const newId = Date.now() + Math.floor(Math.random() * 10000) + index;
+            
+            const newTestPoint = {
+                id: newId,
+                ...defaultTestPoint, // Merge defaults
+                ...formData,         // Merge form data
+                section: formData.section, // Explicit overrides to ensure safety
+                testPointInfo: formData.testPointInfo,
+                tmdeTolerances: finalTmdes,
+                uutTolerance: formData.uutTolerance || null,
+                measurementType: formData.measurementType,
+                equationString: formData.equationString,
+                variableMappings: formData.variableMappings,
+                measurementAreaId: formData.measurementAreaId || "",
+                associatedUutIds: formData.associatedUutIds || []
+            };
+
+            currentTestPoints.push(newTestPoint);
+            lastNewId = newId;
+        }
+    });
+
+    // Update Session State
+    updatedSession.testPoints = currentTestPoints;
+    
+    // If we created new points, select the last one
+    if (lastNewId) {
+        setSelectedTestPointId(lastNewId);
     }
+
     updateSession(updatedSession);
   };
 

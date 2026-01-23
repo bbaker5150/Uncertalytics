@@ -39,10 +39,10 @@ import {
   faLayerGroup,
   faCube,
   faMicroscope,
-  faRulerCombined, 
+  faRulerCombined,
   faEye,
   faEyeSlash,
-  faFolderOpen 
+  faFolderOpen
 } from "@fortawesome/free-solid-svg-icons";
 
 const ThemeContext = React.createContext(false);
@@ -349,7 +349,10 @@ function App() {
       const primaryUutId = currentUutSelection[0];
       const primaryUut = currentSessionData?.uuts?.find(u => u.id === primaryUutId);
 
-      if (primaryUut) {
+      // --- FIX: Add check for single selection ---
+      // Only preset the tolerance if we are targeting a SINGLE UUT.
+      // For multiple UUTs, we want the tolerance to be resolved dynamically per UUT.
+      if (primaryUut && currentUutSelection.length === 1) {
         const availableRanges = getAllUutRanges(primaryUut);
         const selectedIndex = activeRangeIndices[primaryUutId];
 
@@ -447,21 +450,39 @@ function App() {
   };
 
   const handleSaveTestPoint = (formData) => {
-    const finalData = { ...formData };
-    if (!finalData.measurementAreaId && selectedAreaId) finalData.measurementAreaId = selectedAreaId;
+    if (!formData.id && formData.associatedUutIds && formData.associatedUutIds.length > 1) {
 
-    if ((!finalData.associatedUutIds || finalData.associatedUutIds.length === 0) && currentUutSelection.length > 0) {
-      finalData.associatedUutIds = currentUutSelection;
+      // Map the UUT IDs to an array of point objects
+      const batchPoints = formData.associatedUutIds.map(uutId => ({
+        ...formData,
+        associatedUutIds: [uutId],
+        uutTolerance: null
+      }));
+
+      // Send ONE call with an array
+      saveTestPoint(batchPoints, null);
+
+      // Select the first UUT context for the user
+      setSelectedTestPointContextUutId(formData.associatedUutIds[0]);
+
+    } else {
+      // Standard Behavior (Single Create or Edit)
+      const finalData = { ...formData };
+      if (!finalData.measurementAreaId && selectedAreaId) finalData.measurementAreaId = selectedAreaId;
+
+      if ((!finalData.associatedUutIds || finalData.associatedUutIds.length === 0) && currentUutSelection.length > 0) {
+        finalData.associatedUutIds = currentUutSelection;
+      }
+
+      saveTestPoint(finalData, null);
+
+      if (finalData.associatedUutIds && finalData.associatedUutIds.length > 0) {
+        setSelectedTestPointContextUutId(finalData.associatedUutIds[0]);
+      }
     }
-
-    saveTestPoint(finalData, null);
     setIsAddModalOpen(false);
     setEditingTestPoint(null);
     setCurrentUutSelection([]);
-
-    if (finalData.associatedUutIds && finalData.associatedUutIds.length > 0) {
-      setSelectedTestPointContextUutId(finalData.associatedUutIds[0]);
-    }
   };
 
   const handleAnalysisDataSave = (updates) => {
@@ -478,21 +499,32 @@ function App() {
   // --- UPDATED: Handle Single OR Batch Deletion ---
   const handleDeleteTestPoint = (idOrIds, immediate = false) => {
     const idsToDelete = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
-    
+
     const performDelete = () => {
-        idsToDelete.forEach(id => deleteTestPoint(id));
-        setAppNotification(null);
+      // FIX: Robust Batch Deletion
+      // Instead of calling deleteTestPoint inside a loop (which can cause stale state issues),
+      // we filter the list manually and perform a SINGLE updateSession call.
+      if (currentSessionData && currentSessionData.testPoints) {
+          const idsSet = new Set(idsToDelete);
+          const updatedTestPoints = currentSessionData.testPoints.filter(tp => !idsSet.has(tp.id));
+          
+          updateSession({
+              ...currentSessionData,
+              testPoints: updatedTestPoints
+          });
+      }
+      setAppNotification(null);
     };
 
     if (immediate) {
-        // Direct delete without confirmation (e.g. Shift+Click or Batch)
-        performDelete();
-        return;
+      // Direct delete without confirmation (e.g. Shift+Click or Batch)
+      performDelete();
+      return;
     }
 
-    const message = idsToDelete.length > 1 
-        ? `Are you sure you want to delete these ${idsToDelete.length} measurement points?`
-        : "Are you sure you want to delete this measurement point?";
+    const message = idsToDelete.length > 1
+      ? `Are you sure you want to delete these ${idsToDelete.length} measurement points?`
+      : "Are you sure you want to delete this measurement point?";
 
     setAppNotification({
       title: idsToDelete.length > 1 ? "Batch Delete" : "Delete Measurement Point",
@@ -719,15 +751,15 @@ function App() {
 
     // 3. HIERARCHICAL SUMMARY VIEWS
     if (selectedUutId) {
-        return { viewMode: 'uut', id: selectedUutId };
+      return { viewMode: 'uut', id: selectedUutId };
     }
-    
+
     if (selectedAreaId) {
-        return { viewMode: 'area', id: selectedAreaId };
+      return { viewMode: 'area', id: selectedAreaId };
     }
 
     if (selectedSessionId) {
-        return { viewMode: 'session', id: selectedSessionId };
+      return { viewMode: 'session', id: selectedSessionId };
     }
 
     return null;
@@ -798,7 +830,7 @@ function App() {
 
               <div className="measurement-point-list">
                 {/* NEW: Session Overview Item */}
-                <div 
+                <div
                   className={`group-header ${selectedSessionId && !selectedAreaId && !selectedTestPointId ? 'active-area' : ''}`}
                   onClick={() => handleSelectSession(selectedSessionId)}
                   style={{
@@ -811,8 +843,8 @@ function App() {
                     backgroundColor: (selectedSessionId && !selectedAreaId && !selectedTestPointId) ? 'var(--background-secondary)' : 'transparent'
                   }}
                 >
-                    <FontAwesomeIcon icon={faFolderOpen} style={{ color: (selectedSessionId && !selectedAreaId && !selectedTestPointId) ? 'var(--primary-color)' : 'var(--text-color)' }} />
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: (selectedSessionId && !selectedAreaId && !selectedTestPointId) ? 'var(--primary-color)' : 'var(--text-color)' }}>Session Overview</span>
+                  <FontAwesomeIcon icon={faFolderOpen} style={{ color: (selectedSessionId && !selectedAreaId && !selectedTestPointId) ? 'var(--primary-color)' : 'var(--text-color)' }} />
+                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: (selectedSessionId && !selectedAreaId && !selectedTestPointId) ? 'var(--primary-color)' : 'var(--text-color)' }}>Session Overview</span>
                 </div>
 
                 {sidebarData.map((areaData) => (
