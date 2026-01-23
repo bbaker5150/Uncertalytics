@@ -202,7 +202,7 @@ const UncertaintyPanel = ({
     calcResults,
     calculationError,
     uutNominal,
-    uutToleranceData: propUutToleranceData, 
+    uutToleranceData: propUutToleranceData,
     tmdeTolerancesData,
     onAddManualComponent,
     onEditManualComponent,
@@ -228,7 +228,7 @@ const UncertaintyPanel = ({
     selectedTmdeIds = [],
     onToggleTmdeSelection,
     onToggleAllTmdes,
-    onToggleUut, 
+    onToggleUut,
     onDeleteTestPoint,
     currentUutSelection = [],
     activeRangeIndices = {},
@@ -253,7 +253,7 @@ const UncertaintyPanel = ({
 
     const uutToleranceData = useMemo(() => {
         const isUnassigned = !testPointData.associatedUutIds || testPointData.associatedUutIds.length === 0;
-        if (isUnassigned) return {}; 
+        if (isUnassigned) return {};
         return propUutToleranceData || {};
     }, [propUutToleranceData, testPointData.associatedUutIds]);
 
@@ -283,14 +283,14 @@ const UncertaintyPanel = ({
         ranges = ranges.map((r, i) => ({ ...r, _index: i }));
 
         let activeIndex = 0;
-        
+
         const hasSavedIds = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id);
         const savedTolerance = uutToleranceData;
 
         // 2. Determine Active Index
         if (activeRangeIndices[uut.id] !== undefined) {
             activeIndex = activeRangeIndices[uut.id];
-        } 
+        }
         else if (hasSavedIds && savedTolerance) {
             const matchIdx = ranges.findIndex(r => {
                 // A. Strict Name Match
@@ -301,12 +301,12 @@ const UncertaintyPanel = ({
                     }
                     return true;
                 }
-                
+
                 // B. Fallback: Value Match
                 const minMatch = r.min == savedTolerance.min;
                 const maxMatch = r.max == savedTolerance.max;
                 const unitMatch = (r.unit || "") === (savedTolerance.unit || "");
-                
+
                 return minMatch && maxMatch && unitMatch;
             });
 
@@ -386,7 +386,7 @@ const UncertaintyPanel = ({
         }
 
         const isLinkedToPoint = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uutId);
-        
+
         if (isLinkedToPoint && onUpdateTestPoint) {
             const selectedRange = ranges[newIndex];
             onUpdateTestPoint({ uutTolerance: selectedRange });
@@ -413,8 +413,8 @@ const UncertaintyPanel = ({
 
     const handleActionRemove = () => {
         if (!testPointData.id) {
-             if (onDeleteTestPoint) onDeleteTestPoint(null);
-             return;
+            if (onDeleteTestPoint) onDeleteTestPoint(null);
+            return;
         }
 
         if (currentUutSelection.length === 0) {
@@ -427,7 +427,7 @@ const UncertaintyPanel = ({
         }
 
         const uutsToRemove = currentUutSelection;
-        const remainingUuts = associatedUutIds.filter(id => 
+        const remainingUuts = associatedUutIds.filter(id =>
             !uutsToRemove.some(remId => String(remId) === String(id))
         );
         const isRemovingFromAll = remainingUuts.length === 0;
@@ -445,7 +445,7 @@ const UncertaintyPanel = ({
                 } else {
                     onUpdateTestPoint({ associatedUutIds: remainingUuts });
                 }
-                uutsToRemove.forEach(id => onToggleUut(id)); 
+                uutsToRemove.forEach(id => onToggleUut(id));
             }
         });
     };
@@ -637,88 +637,109 @@ const UncertaintyPanel = ({
     // --- FIX 1: Resolve Active Tolerance ---
     const primaryUutId = testPointData.associatedUutIds?.[0];
     const primaryUut = relevantUuts.find(u => u.id === primaryUutId);
-    
+
     const activeResolvedTolerance = useMemo(() => {
-        if (!primaryUut) return uutToleranceData; 
-        
+        if (!primaryUut) return uutToleranceData;
+
         const { activeRange } = resolveUutRange(primaryUut);
-        
+
         return (activeRange && Object.keys(activeRange).length > 0) ? activeRange : uutToleranceData;
     }, [primaryUut, activeRangeIndices, uutToleranceData]);
 
-    // --- FIX 2: Robust Tolerance Display Logic ---
-    const calculatedToleranceDisplay = useMemo(() => {
-        // A. Basic Validation
-        if (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) return "No Spec Selected";
-        
-        // B. Try Standard Utility First
-        const utilResult = getToleranceErrorSummary(activeResolvedTolerance, uutNominal);
-        
-        if (utilResult && utilResult !== "Not Calculated" && utilResult !== "± -" && !utilResult.includes("NaN")) {
-            return utilResult;
-        }
+    const numericTotalTolerance = useMemo(() => {
+        if (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) return null;
 
-        // C. Fallback: Manual Calculation (Complex Objects)
         const nominalVal = parseFloat(uutNominal?.value);
-        if (isNaN(nominalVal)) return "± -"; 
+        if (isNaN(nominalVal)) return null;
 
-        // HELPER: Safely extract numeric value from complex tolerance component
+        // 1. Try Meticulous Manual Calculation (Complex Objects)
         const getComponentValue = (comp) => {
             if (comp === undefined || comp === null) return 0;
-            
-            // Handle Object Structure (e.g. { high: '0.05', low: '0.05', ... })
             if (typeof comp === 'object') {
                 const valStr = comp.high || comp.value || comp.tolerance;
                 const parsed = parseFloat(valStr);
                 return isNaN(parsed) ? 0 : parsed;
             }
-            
-            // Handle Primitive (e.g. "0.05" or 0.05)
             const parsed = parseFloat(comp);
             return isNaN(parsed) ? 0 : parsed;
         };
 
-        let totalTolerance = 0;
-        let foundComponent = false;
+        let total = 0;
+        let found = false;
 
-        // C.1. Handle 'Reading' (Percentage)
+        // Reading
         const readingComp = activeResolvedTolerance.reading || activeResolvedTolerance.tolerances?.reading;
         if (readingComp) {
             const readingPcn = getComponentValue(readingComp);
             if (readingPcn !== 0) {
-                totalTolerance += Math.abs(nominalVal * (readingPcn / 100));
-                foundComponent = true;
+                total += Math.abs(nominalVal * (readingPcn / 100));
+                found = true;
             }
         }
 
-        // C.2. Handle 'Floor' (Fixed Value)
+        // Floor
         const floorComp = activeResolvedTolerance.floor || activeResolvedTolerance.tolerances?.floor;
         if (floorComp) {
             const floorVal = getComponentValue(floorComp);
             if (floorVal !== 0) {
-                totalTolerance += Math.abs(floorVal);
-                foundComponent = true;
+                total += Math.abs(floorVal);
+                found = true;
             }
         }
 
-        // C.3. Handle generic 'tolerance' (simple range fallback)
-        if (!foundComponent && (activeResolvedTolerance.tolerance || activeResolvedTolerance.value)) {
-             const tolVal = getComponentValue(activeResolvedTolerance);
-             if (tolVal !== 0) {
-                 totalTolerance += Math.abs(tolVal);
-                 foundComponent = true;
-             }
+        // Generic
+        if (!found && (activeResolvedTolerance.tolerance || activeResolvedTolerance.value)) {
+            const tolVal = getComponentValue(activeResolvedTolerance);
+            if (tolVal !== 0) {
+                total += Math.abs(tolVal);
+                found = true;
+            }
         }
 
-        if (foundComponent) {
-            return `± ${Number(totalTolerance.toPrecision(4))} ${uutNominal.unit || ""}`;
+        if (found) return total;
+
+        // 2. Fallback: Parse Standard Utility String
+        // If manual logic failed (e.g. unknown structure), try the utility and parse the number out of "± 0.05 V"
+        const utilResult = getToleranceErrorSummary(activeResolvedTolerance, uutNominal);
+        if (utilResult && utilResult !== "Not Calculated" && utilResult !== "± -" && !utilResult.includes("NaN")) {
+            // Regex to extract number: matches "± " followed by digits/decimals
+            const match = utilResult.match(/±\s*([\d\.]+)/);
+            if (match && match[1]) {
+                return parseFloat(match[1]);
+            }
         }
 
-        return "Not Calculated";
-
+        return null;
     }, [activeResolvedTolerance, uutNominal]);
 
-    
+    // --- DISPLAY 1: Tolerance String ---
+    const calculatedToleranceDisplay = useMemo(() => {
+        if (numericTotalTolerance !== null) {
+            return `± ${Number(numericTotalTolerance.toPrecision(4))} ${uutNominal?.unit || ""}`;
+        }
+        return "No Spec Selected";
+    }, [numericTotalTolerance, uutNominal]);
+
+    // --- DISPLAY 2: Limits ---
+    const calculatedLimits = useMemo(() => {
+        const nominalVal = parseFloat(uutNominal?.value);
+
+        if (numericTotalTolerance !== null && !isNaN(nominalVal)) {
+            // Calculate limits
+            const low = nominalVal - numericTotalTolerance;
+            const high = nominalVal + numericTotalTolerance;
+
+            // Format to 6 sig figs (or match nominal precision logic if preferred)
+            return {
+                low: low.toPrecision(6),
+                high: high.toPrecision(6)
+            };
+        }
+
+        return { low: "-", high: "-" };
+    }, [numericTotalTolerance, uutNominal]);
+
+
     return (
         <div className="configuration-panel">
 
@@ -766,11 +787,11 @@ const UncertaintyPanel = ({
                                                 const hasMultipleRanges = ranges.length > 1;
 
                                                 const isChecked = currentUutSelection.includes(uut.id);
-                                                
+
                                                 // --- FIX 3: Correct Context Highlighting ---
-                                                const isActiveContext = testPointData.id 
-                                                    ? (testPointData.activeUutId 
-                                                        ? uut.id === testPointData.activeUutId 
+                                                const isActiveContext = testPointData.id
+                                                    ? (testPointData.activeUutId
+                                                        ? uut.id === testPointData.activeUutId
                                                         : (testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id)))
                                                     : false;
 
@@ -839,11 +860,11 @@ const UncertaintyPanel = ({
                                                                         if (!r) return "-";
                                                                         let rangeText = r.range;
                                                                         if (!rangeText) {
-                                                                             if (r.min !== undefined && r.max !== undefined) {
-                                                                                 rangeText = `${r.min} to ${r.max}`;
-                                                                             } else {
-                                                                                 rangeText = "Full Range";
-                                                                             }
+                                                                            if (r.min !== undefined && r.max !== undefined) {
+                                                                                rangeText = `${r.min} to ${r.max}`;
+                                                                            } else {
+                                                                                rangeText = "Full Range";
+                                                                            }
                                                                         }
                                                                         return r.functionName
                                                                             ? `${r.functionName}: ${rangeText} ${r.unit || ''}`
@@ -869,8 +890,8 @@ const UncertaintyPanel = ({
 
                     {/* 2. TMDE LIST */}
                     <div>
-                         <h3 style={sectionTitleStyle}>Measurement Standards (TMDE)</h3>
-                          <div style={cardStyle}>
+                        <h3 style={sectionTitleStyle}>Measurement Standards (TMDE)</h3>
+                        <div style={cardStyle}>
                             <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '400px' }}>
                                 <table className="instrument-summary-table" style={{ width: '100%' }}>
                                     <colgroup>
@@ -989,27 +1010,32 @@ const UncertaintyPanel = ({
 
                 {/* --- RIGHT COLUMN --- */}
                 <div style={verticalColumnStyle}>
-                    {/* 3. MEASUREMENT POINT */}
+                    {/* 3. MEASUREMENT POINT TABLE */}
                     <div>
                         <h3 style={sectionTitleStyle}>Measurement Point</h3>
                         <div style={cardStyle}>
                             <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1, overflowX: 'auto' }}>
                                 <table className="instrument-summary-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                                     <colgroup>
-                                        <col style={{ width: '35%' }} />
-                                        <col style={{ width: '35%' }} />
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '20%' }} /> {/* Point */}
+                                        <col style={{ width: '20%' }} /> {/* Tolerance */}
+                                        <col style={{ width: '20%' }} /> {/* Low Limit */}
+                                        <col style={{ width: '20%' }} /> {/* High Limit */}
+                                        <col style={{ width: '10%' }} /> {/* Unit */}
+                                        <col style={{ width: '10%' }} /> {/* Actions */}
                                     </colgroup>
                                     <thead>
                                         <tr>
                                             <th style={{ paddingLeft: '20px' }}>Point</th>
                                             <th>Tolerance</th>
+                                            {/* UPDATED: Removed inline 'color: muted' to match other headers */}
+                                            <th>Low Limit</th>
+                                            <th>High Limit</th>
                                             <th>Unit</th>
                                             <th style={{ textAlign: 'center', paddingRight: '20px' }}>
                                                 {!hasMeasurementPoint && (
                                                     <span
-                                                        onClick={handleActionAdd} 
+                                                        onClick={handleActionAdd}
                                                         className="action-icon"
                                                         title="Add Measurement Point"
                                                         style={{
@@ -1027,6 +1053,7 @@ const UncertaintyPanel = ({
                                     <tbody>
                                         {hasMeasurementPoint ? (
                                             <tr>
+                                                {/* 1. Point */}
                                                 <td style={{ paddingLeft: '20px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary-color)' }}>
                                                         <EditableCell
@@ -1037,7 +1064,8 @@ const UncertaintyPanel = ({
                                                         />
                                                     </div>
                                                 </td>
-                                                {/* --- FIX 4: Use Calculated Display --- */}
+
+                                                {/* 2. Tolerance */}
                                                 <td>
                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                         {isUnassigned && (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) ? (
@@ -1051,6 +1079,23 @@ const UncertaintyPanel = ({
                                                         )}
                                                     </div>
                                                 </td>
+
+                                                {/* 3. Low Limit (UPDATED STYLE) */}
+                                                <td>
+                                                    {/* Matches Tolerance Column style exactly (Removed hardcoded Consolas/Size) */}
+                                                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
+                                                        {calculatedLimits.low}
+                                                    </span>
+                                                </td>
+
+                                                {/* 4. High Limit (UPDATED STYLE) */}
+                                                <td>
+                                                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
+                                                        {calculatedLimits.high}
+                                                    </span>
+                                                </td>
+
+                                                {/* 5. Unit */}
                                                 <td>
                                                     <div style={{ fontWeight: 600 }}>
                                                         <EditableCell
@@ -1060,6 +1105,8 @@ const UncertaintyPanel = ({
                                                         />
                                                     </div>
                                                 </td>
+
+                                                {/* 6. Actions */}
                                                 <td className="action-cell" style={{ paddingRight: '20px' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'center' }}>
                                                         <span
@@ -1079,7 +1126,7 @@ const UncertaintyPanel = ({
                                             </tr>
                                         ) : (
                                             <tr>
-                                                <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>
+                                                <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>
                                                     No active point. Select a UUT range on the left and define a point.
                                                 </td>
                                             </tr>
