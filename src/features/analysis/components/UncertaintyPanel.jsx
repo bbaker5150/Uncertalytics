@@ -258,6 +258,7 @@ const UncertaintyPanel = ({
     }, [propUutToleranceData, testPointData.associatedUutIds]);
 
 
+    // --- FIX 1: Smart Auto-Ranging Logic ---
     const resolveUutRange = (uut) => {
         // 1. Normalize Ranges
         let ranges = [];
@@ -279,41 +280,68 @@ const UncertaintyPanel = ({
             ranges = [{ id: 'default', range: 'Default', ...baseTolerance }];
         }
 
-        // Add index
         ranges = ranges.map((r, i) => ({ ...r, _index: i }));
 
-        let activeIndex = 0;
-
+        // 2. Determine Active Index
+        let activeIndex = -1;
         const hasSavedIds = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id);
         const savedTolerance = uutToleranceData;
 
-        // 2. Determine Active Index
+        // Helper: does range R match the current value?
+        const doesRangeFit = (r) => {
+            const val = parseFloat(uutNominal?.value);
+            if (isNaN(val)) return false; // If no value typed, we can't fit-check
+            
+            const min = parseFloat(r.min);
+            const max = parseFloat(r.max);
+            
+            // Loose Unit Check
+            const unitMatch = !r.unit || !uutNominal?.unit || r.unit.toLowerCase() === uutNominal.unit.toLowerCase();
+            if (!unitMatch) return false;
+
+            if (!isNaN(min) && !isNaN(max)) {
+                return val >= min && val <= max;
+            }
+            return false; 
+        };
+
+        // A. Priority: Manual Selection / Saved Selection
+        let candidateIndex = -1;
         if (activeRangeIndices[uut.id] !== undefined) {
-            activeIndex = activeRangeIndices[uut.id];
-        }
-        else if (hasSavedIds && savedTolerance) {
-            const matchIdx = ranges.findIndex(r => {
-                // A. Strict Name Match
+            candidateIndex = activeRangeIndices[uut.id];
+        } else if (hasSavedIds && savedTolerance) {
+             // Find saved index by comparison
+             candidateIndex = ranges.findIndex(r => {
                 if (savedTolerance.range && r.range) {
                     if (savedTolerance.range !== r.range) return false;
-                    if (savedTolerance.functionName && r.functionName) {
-                        return savedTolerance.functionName === r.functionName;
-                    }
-                    return true;
+                    return savedTolerance.functionName ? savedTolerance.functionName === r.functionName : true;
                 }
-
-                // B. Fallback: Value Match
                 const minMatch = r.min == savedTolerance.min;
                 const maxMatch = r.max == savedTolerance.max;
                 const unitMatch = (r.unit || "") === (savedTolerance.unit || "");
-
                 return minMatch && maxMatch && unitMatch;
             });
+        }
 
-            if (matchIdx !== -1) {
-                activeIndex = matchIdx;
+        // B. Validate Candidate: If we have a candidate, does it actually fit the value?
+        // If the user has typed a value, and the candidate range DOES NOT fit, discard candidate.
+        // This ensures "0.7V" breaks out of a "0-0.5V" selection.
+        const userHasValue = !isNaN(parseFloat(uutNominal?.value));
+        if (candidateIndex !== -1 && userHasValue) {
+            if (!doesRangeFit(ranges[candidateIndex])) {
+                candidateIndex = -1; // Discard invalid selection to force auto-search
             }
         }
+
+        // C. Auto-Search: If no valid candidate, find one that fits.
+        if (candidateIndex === -1 && userHasValue) {
+            candidateIndex = ranges.findIndex(r => doesRangeFit(r));
+        }
+
+        // D. Fallback: If still nothing, default to 0
+        if (candidateIndex === -1) candidateIndex = 0;
+
+        activeIndex = candidateIndex;
 
         return { ranges, activeIndex, activeRange: ranges[activeIndex] || {} };
     };
@@ -634,23 +662,51 @@ const UncertaintyPanel = ({
         neutral: { borderColor: 'var(--border-color)', backgroundColor: 'transparent', color: 'var(--text-color-muted)', icon: null }
     }[calcStatus];
 
-    // --- FIX 1: Resolve Active Tolerance ---
+    // --- Active Tolerance Calculation ---
     const primaryUutId = testPointData.associatedUutIds?.[0];
     const primaryUut = relevantUuts.find(u => u.id === primaryUutId);
 
     const activeResolvedTolerance = useMemo(() => {
         if (!primaryUut) return uutToleranceData;
 
+        // Pass 1: Resolve Active Range
         const { activeRange } = resolveUutRange(primaryUut);
 
         return (activeRange && Object.keys(activeRange).length > 0) ? activeRange : uutToleranceData;
-    }, [primaryUut, activeRangeIndices, uutToleranceData]);
+    }, [primaryUut, activeRangeIndices, uutToleranceData, uutNominal]); // Re-run when uutNominal changes
+
+    // --- FIX 2: Auto-Save Active Range ---
+    useEffect(() => {
+        if (activeResolvedTolerance && uutToleranceData) {
+            // Check if the auto-resolved tolerance differs from what is saved
+            const isDifferent = 
+                activeResolvedTolerance.range !== uutToleranceData.range ||
+                activeResolvedTolerance.min != uutToleranceData.min ||
+                activeResolvedTolerance.max != uutToleranceData.max ||
+                activeResolvedTolerance.unit !== uutToleranceData.unit;
+
+            if (isDifferent && onUpdateTestPoint) {
+                // Auto-save the new range so UI and Backend stay in sync
+                onUpdateTestPoint({ uutTolerance: activeResolvedTolerance });
+            }
+        }
+    }, [activeResolvedTolerance, uutToleranceData, onUpdateTestPoint]);
+
 
     const numericTotalTolerance = useMemo(() => {
         if (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) return null;
 
         const nominalVal = parseFloat(uutNominal?.value);
         if (isNaN(nominalVal)) return null;
+
+        // --- BUG FIX 1 REVISITED: Check if Point is within Range ---
+        const rMin = parseFloat(activeResolvedTolerance.min);
+        const rMax = parseFloat(activeResolvedTolerance.max);
+        
+        // Strict check: If limits exist and value is outside, invalid.
+        if (!isNaN(rMin) && nominalVal < rMin) return null;
+        if (!isNaN(rMax) && nominalVal > rMax) return null;
+        // ------------------------------------------------
 
         // 1. Try Meticulous Manual Calculation (Complex Objects)
         const getComponentValue = (comp) => {
@@ -699,10 +755,8 @@ const UncertaintyPanel = ({
         if (found) return total;
 
         // 2. Fallback: Parse Standard Utility String
-        // If manual logic failed (e.g. unknown structure), try the utility and parse the number out of "± 0.05 V"
         const utilResult = getToleranceErrorSummary(activeResolvedTolerance, uutNominal);
         if (utilResult && utilResult !== "Not Calculated" && utilResult !== "± -" && !utilResult.includes("NaN")) {
-            // Regex to extract number: matches "± " followed by digits/decimals
             const match = utilResult.match(/±\s*([\d\.]+)/);
             if (match && match[1]) {
                 return parseFloat(match[1]);
@@ -717,7 +771,8 @@ const UncertaintyPanel = ({
         if (numericTotalTolerance !== null) {
             return `± ${Number(numericTotalTolerance.toPrecision(4))} ${uutNominal?.unit || ""}`;
         }
-        return "No Spec Selected";
+        // --- BUG FIX 3: Update Label ---
+        return "No Range / Spec";
     }, [numericTotalTolerance, uutNominal]);
 
     // --- DISPLAY 2: Limits ---
@@ -729,7 +784,6 @@ const UncertaintyPanel = ({
             const low = nominalVal - numericTotalTolerance;
             const high = nominalVal + numericTotalTolerance;
 
-            // Format to 6 sig figs (or match nominal precision logic if preferred)
             return {
                 low: low.toPrecision(6),
                 high: high.toPrecision(6)
@@ -788,7 +842,6 @@ const UncertaintyPanel = ({
 
                                                 const isChecked = currentUutSelection.includes(uut.id);
 
-                                                // --- FIX 3: Correct Context Highlighting ---
                                                 const isActiveContext = testPointData.id
                                                     ? (testPointData.activeUutId
                                                         ? uut.id === testPointData.activeUutId
@@ -846,9 +899,8 @@ const UncertaintyPanel = ({
                                                                                 rangeText = "Full Range";
                                                                             }
                                                                         }
-                                                                        const label = range.functionName
-                                                                            ? `${range.functionName}: ${rangeText} ${range.unit || ''}`
-                                                                            : `${rangeText} ${range.unit || ''}`;
+                                                                        // --- FIX 4: Remove Function Name from Labels ---
+                                                                        const label = `${rangeText} ${range.unit || ''}`;
 
                                                                         return <option key={idx} value={idx}>{label}</option>
                                                                     })}
@@ -866,9 +918,8 @@ const UncertaintyPanel = ({
                                                                                 rangeText = "Full Range";
                                                                             }
                                                                         }
-                                                                        return r.functionName
-                                                                            ? `${r.functionName}: ${rangeText} ${r.unit || ''}`
-                                                                            : `${rangeText} ${r.unit || ''}`;
+                                                                        // --- FIX 4: Remove Function Name ---
+                                                                        return `${rangeText} ${r.unit || ''}`;
                                                                     })()}
                                                                 </span>
                                                             )}
@@ -1097,12 +1148,9 @@ const UncertaintyPanel = ({
 
                                                 {/* 5. Unit */}
                                                 <td>
-                                                    <div style={{ fontWeight: 600 }}>
-                                                        <EditableCell
-                                                            value={uutNominal?.unit}
-                                                            onSave={(val) => onInlineUutUpdate && onInlineUutUpdate('unit', val)}
-                                                            placeholder="Unit"
-                                                        />
+                                                    <div style={{ fontWeight: 600, paddingLeft: '4px' }}>
+                                                        {/* --- BUG FIX 2: Static Display --- */}
+                                                        {uutNominal?.unit}
                                                     </div>
                                                 </td>
 
