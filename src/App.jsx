@@ -39,9 +39,10 @@ import {
   faLayerGroup,
   faCube,
   faMicroscope,
-  faRulerCombined, // Icon for Ranges
+  faRulerCombined, 
   faEye,
-  faEyeSlash
+  faEyeSlash,
+  faFolderOpen 
 } from "@fortawesome/free-solid-svg-icons";
 
 const ThemeContext = React.createContext(false);
@@ -269,13 +270,8 @@ function App() {
     setSelectedTestPointContextUutId(null);
     setCurrentUutSelection([]);
 
-    setVirtualPoint({
-      ...defaultTestPoint,
-      id: null,
-      measurementAreaId: areaId,
-      associatedUutIds: [],
-      tmdeTolerances: []
-    });
+    // Clear virtual point to allow Summary Dashboard to render
+    setVirtualPoint(null);
   };
 
   const handleSelectUut = (uutId, areaId, uutObject) => {
@@ -285,23 +281,8 @@ function App() {
     setSelectedTestPointContextUutId(null);
     setCurrentUutSelection([uutId]);
 
-    let defaultTolerance = {};
-    if (uutObject.instrument?.functions?.[0]?.ranges?.[0]) {
-      defaultTolerance = uutObject.instrument.functions[0].ranges[0];
-    } else if (uutObject.instrument?.ranges?.[0]) {
-      defaultTolerance = uutObject.instrument.ranges[0];
-    } else if (uutObject.tolerance) {
-      defaultTolerance = uutObject.tolerance;
-    }
-
-    setVirtualPoint({
-      ...defaultTestPoint,
-      id: null,
-      measurementAreaId: areaId,
-      associatedUutIds: [uutId],
-      uutTolerance: defaultTolerance,
-      tmdeTolerances: []
-    });
+    // Clear virtual point to allow Summary Dashboard to render
+    setVirtualPoint(null);
   };
 
   const handleSelectTestPoint = (tpId, contextUutId = null) => {
@@ -494,16 +475,31 @@ function App() {
     }
   };
 
-  const handleDeleteTestPoint = (idToDelete) => {
+  // --- UPDATED: Handle Single OR Batch Deletion ---
+  const handleDeleteTestPoint = (idOrIds, immediate = false) => {
+    const idsToDelete = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+    
+    const performDelete = () => {
+        idsToDelete.forEach(id => deleteTestPoint(id));
+        setAppNotification(null);
+    };
+
+    if (immediate) {
+        // Direct delete without confirmation (e.g. Shift+Click or Batch)
+        performDelete();
+        return;
+    }
+
+    const message = idsToDelete.length > 1 
+        ? `Are you sure you want to delete these ${idsToDelete.length} measurement points?`
+        : "Are you sure you want to delete this measurement point?";
+
     setAppNotification({
-      title: "Delete Measurement Point",
-      message: "Are you sure you want to delete this measurement point?",
+      title: idsToDelete.length > 1 ? "Batch Delete" : "Delete Measurement Point",
+      message: message,
       confirmText: "Delete",
       isIconConfirm: true,
-      onConfirm: () => {
-        deleteTestPoint(idToDelete);
-        setAppNotification(null);
-      },
+      onConfirm: performDelete,
     });
   };
 
@@ -641,6 +637,7 @@ function App() {
   const displayData = useMemo(() => {
     if (!currentSessionData) return null;
 
+    // 1. SPECIFIC POINT VIEW (Detailed Analysis)
     if (selectedTestPointId) {
       const pointData = currentTestPoints.find((p) => p.id === selectedTestPointId);
       if (!pointData) return null;
@@ -700,12 +697,14 @@ function App() {
 
       return {
         ...pointData,
+        viewMode: 'point', // EXPLICIT MODE
         uutDescription: effectiveUutDescription,
         uutTolerance: effectiveUutTolerance,
         activeUutId: activeUutId,
       };
     }
 
+    // 2. VIRTUAL POINT (User clicked Add New Point specifically)
     if (virtualPoint) {
       let activeUutId = null;
       if (virtualPoint.associatedUutIds && virtualPoint.associatedUutIds.length > 0) {
@@ -713,12 +712,26 @@ function App() {
       }
       return {
         ...virtualPoint,
+        viewMode: 'point', // EXPLICIT MODE
         activeUutId: activeUutId
       };
     }
 
+    // 3. HIERARCHICAL SUMMARY VIEWS
+    if (selectedUutId) {
+        return { viewMode: 'uut', id: selectedUutId };
+    }
+    
+    if (selectedAreaId) {
+        return { viewMode: 'area', id: selectedAreaId };
+    }
+
+    if (selectedSessionId) {
+        return { viewMode: 'session', id: selectedSessionId };
+    }
+
     return null;
-  }, [currentSessionData, selectedTestPointId, currentTestPoints, virtualPoint, selectedTestPointContextUutId]);
+  }, [currentSessionData, selectedTestPointId, currentTestPoints, virtualPoint, selectedTestPointContextUutId, selectedUutId, selectedAreaId, selectedSessionId]);
 
 
   return (
@@ -748,7 +761,8 @@ function App() {
         <AddTestPointModal isOpen={isAddModalOpen || !!editingTestPoint} onClose={() => { setIsAddModalOpen(false); setEditingTestPoint(null); }} onSave={handleSaveTestPoint} initialData={editingTestPoint || (selectedAreaId ? { measurementAreaId: selectedAreaId } : null)} hasExistingPoints={currentTestPoints.length > 0} previousTestPointData={currentTestPoints.length > 0 ? currentTestPoints[currentTestPoints.length - 1] : null} />
         <EditSessionModal isOpen={!!editingSession} onClose={() => { setEditingSession(null); setInitialTmdeToEdit(null); setInitialSessionTab("details"); }} sessionData={editingSession} onSave={handleSessionChange} onSaveToFile={handleSaveToFile} handleLoadFromFile={handleLoadFromFile} initialSection={initialSessionTab} sessionImageCache={sessionImageCache} onImageCacheChange={setSessionImageCache} onRemoveImageFile={deleteSessionImage} instruments={instruments} />
         <OverviewModal isOpen={isOverviewOpen} onClose={() => setIsOverviewOpen(false)} sessionData={currentSessionData} onUpdateTestPoint={handleUpdateSpecificTestPoint} onDeleteTmdeDefinition={handleDeleteTmdeDefinition} onDecrementTmdeQuantity={decrementTmdeQuantity} instruments={instruments} />
-        {displayData && displayData.id && (<ToleranceToolModal isOpen={isToleranceModalOpen} onClose={() => setIsToleranceModalOpen(false)} onSave={(data) => { updateTestPointData(data); }} testPointData={displayData} />)}
+        {/* Only show Tolerance Modal if in Point View */}
+        {displayData && displayData.id && displayData.viewMode === 'point' && (<ToleranceToolModal isOpen={isToleranceModalOpen} onClose={() => setIsToleranceModalOpen(false)} onSave={(data) => { updateTestPointData(data); }} testPointData={displayData} />)}
         <FullBreakdownModal isOpen={!!breakdownPoint} breakdownData={breakdownPoint} onClose={() => setBreakdownPoint(null)} />
         <TestPointInfoModal isOpen={!!infoModalPoint} testPoint={infoModalPoint} onClose={() => setInfoModalPoint(null)} />
         {contextMenu && (<ContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />)}
@@ -775,7 +789,6 @@ function App() {
                     {sessions.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
                   </select>
                 </div>
-                {/* --- Sidebar View Controls (Updated) --- */}
                 <div className="sidebar-view-controls">
                   <button onClick={handleAddNewSession} title="Add New Session" className="sidebar-action-button"><FontAwesomeIcon icon={faPlus} /></button>
                   <button onClick={() => handleOpenSessionEditor("details")} title="Edit Session" className="sidebar-action-button"><FontAwesomeIcon icon={faEdit} /></button>
@@ -784,6 +797,24 @@ function App() {
               </div>
 
               <div className="measurement-point-list">
+                {/* NEW: Session Overview Item */}
+                <div 
+                  className={`group-header ${selectedSessionId && !selectedAreaId && !selectedTestPointId ? 'active-area' : ''}`}
+                  onClick={() => handleSelectSession(selectedSessionId)}
+                  style={{
+                    padding: '12px 12px',
+                    borderBottom: '1px solid var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    backgroundColor: (selectedSessionId && !selectedAreaId && !selectedTestPointId) ? 'var(--background-secondary)' : 'transparent'
+                  }}
+                >
+                    <FontAwesomeIcon icon={faFolderOpen} style={{ color: (selectedSessionId && !selectedAreaId && !selectedTestPointId) ? 'var(--primary-color)' : 'var(--text-color)' }} />
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: (selectedSessionId && !selectedAreaId && !selectedTestPointId) ? 'var(--primary-color)' : 'var(--text-color)' }}>Session Overview</span>
+                </div>
+
                 {sidebarData.map((areaData) => (
                   <div key={areaData.id} className="measurement-group">
                     {/* LEVEL 1: MEASUREMENT AREA */}
@@ -1009,7 +1040,7 @@ function App() {
             <main className="results-content">
               {displayData ? (
                 <TestPointDetailView
-                  key={displayData.id || `virtual-${selectedAreaId}-${selectedUutId}`}
+                  key={displayData.id || `view-${displayData.viewMode}`}
                   testPointData={displayData}
                 >
                   <Analysis

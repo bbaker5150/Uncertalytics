@@ -2,7 +2,7 @@
  * * Responsibilities:
  * - Manages Top-Level State (Tabs, Modals).
  * - Calls useUncertaintyCalculation & useRiskCalculation hooks.
- * - Renders the appropriate dashboard based on the selected tab.
+ * - Renders the appropriate dashboard based on the selected tab or view mode.
  */
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -27,7 +27,6 @@ import DerivedBreakdownModal from "./components/BreakdownModals/DerivedBreakdown
 import RiskBreakdownModal from "./components/BreakdownModals/RiskBreakdownModals";
 import RepeatabilityModal from "./components/RepeatabilityModal";
 
-// --- FIX: Adjusted import path assuming file is in features/analysis/components/ ---
 import AddTestPointModal from "../testPoints/components/AddTestPointModal";
 
 // --- Utils ---
@@ -56,7 +55,7 @@ function Analysis({
   riskResults: parentRiskResults,
   setRiskResults: parentSetRiskResults,
   
-  // --- NEW: Global UUT Selection Props ---
+  // --- Global UUT Selection Props ---
   currentUutSelection = [],
   setCurrentUutSelection,
   activeRangeIndices,
@@ -90,34 +89,42 @@ function Analysis({
   // --- NEW: TMDE Selection State ---
   const [selectedTmdeIds, setSelectedTmdeIds] = useState([]);
 
-  // --- 2. Memoized Data Lookups ---
+  // --- 2. VIEW MODE & MEMOIZED DATA ---
+  // Determine if we are in "Point View" (Detailed) or "Summary View" (Session/Area/UUT)
+  const viewMode = testPointData.viewMode || 'point';
+  const isPointView = viewMode === 'point';
+
+  // --- 3. Memoized Data Lookups (Safe for all modes) ---
   const uutNominal = useMemo(
-    () => testPointData?.testPointInfo?.parameter,
-    [testPointData?.testPointInfo?.parameter]
+    () => isPointView ? testPointData?.testPointInfo?.parameter : {},
+    [isPointView, testPointData]
   );
 
   const uutToleranceData = useMemo(
-    () => testPointData.uutTolerance || sessionData.uutTolerance || {},
-    [testPointData.uutTolerance, sessionData.uutTolerance]
+    () => isPointView ? (testPointData.uutTolerance || sessionData.uutTolerance || {}) : {},
+    [isPointView, testPointData.uutTolerance, sessionData.uutTolerance]
   );
 
   const tmdeTolerancesData = useMemo(
-    () => testPointData.tmdeTolerances || [],
-    [testPointData.tmdeTolerances]
+    () => isPointView ? (testPointData.tmdeTolerances || []) : [],
+    [isPointView, testPointData.tmdeTolerances]
   );
 
   const manualComponents = useMemo(() => {
-    return testPointData.components || [];
-  }, [testPointData.components]);
+    return isPointView ? (testPointData.components || []) : [];
+  }, [isPointView, testPointData.components]);
 
   // Reset selection when test point changes
   useEffect(() => {
     setSelectedTmdeIds([]);
   }, [testPointData.id]);
 
-  // --- 3. Uncertainty Calculation Hook ---
+  // --- 4. Uncertainty Calculation Hook ---
+  // Note: Hooks must always run. We pass safe/empty data if not in Point View.
+  const hookTestPointData = isPointView ? testPointData : { ...defaultTestPoint, id: 'dummy-summary' };
+
   const { calcResults, calculationError } = useUncertaintyCalculation(
-    testPointData,
+    hookTestPointData,
     sessionData,
     tmdeTolerancesData,
     uutToleranceData,
@@ -126,7 +133,7 @@ function Analysis({
     onDataSave
   );
 
-  // --- 4. Risk Calculation Hook ---
+  // --- 5. Risk Calculation Hook ---
   const handleRiskDataSave = (data) => {
     if (data.riskMetrics !== undefined && parentSetRiskResults) {
       parentSetRiskResults(data.riskMetrics);
@@ -140,7 +147,7 @@ function Analysis({
     notification: riskNotification
   } = useRiskCalculation(
     sessionData,
-    testPointData,
+    hookTestPointData,
     uutToleranceData,
     tmdeTolerancesData,
     uutNominal,
@@ -153,9 +160,8 @@ function Analysis({
     setNotification(riskNotification);
   }
 
-  // --- 5. Handlers ---
+  // --- 6. Handlers ---
 
-  // --- TMDE Selection Handlers ---
   const handleToggleTmdeSelection = (id) => {
     setSelectedTmdeIds(prev => {
       if (prev.includes(id)) {
@@ -175,17 +181,13 @@ function Analysis({
 
   const handleToggleUut = (uutId) => {
     if (!uutId && uutId !== 0) return;
-    
-    // Ensure we are working with global selection
     const isSelected = currentUutSelection.some(id => String(id) === String(uutId));
     let newIds;
-    
     if (isSelected) {
       newIds = currentUutSelection.filter(id => String(id) !== String(uutId));
     } else {
       newIds = [...currentUutSelection, uutId];
     }
-    
     if (setCurrentUutSelection) {
         setCurrentUutSelection(newIds);
     }
@@ -232,42 +234,28 @@ function Analysis({
 
   const handleSaveTestPointInfo = (updatedData) => {
     if (onSaveTestPoint) {
-      // If we are CREATING a new point (no ID yet)
-      // We need to inject the selected TMDEs with RESET values
-
       let finalData = { ...updatedData };
-
-      // Check if this is a creation event (usually implied if passed from AddTestPointModal without an ID)
-      // AddTestPointModal calls onSave({ ...data })
-      // If editing, it calls onSave({ id: ..., ...data })
-
       if (!finalData.id && selectedTmdeIds.length > 0) {
         const selectedTmdes = tmdeTolerancesData.filter(t => selectedTmdeIds.includes(t.id));
-
         const resetTmdes = selectedTmdes.map(t => ({
           ...t,
-          id: Date.now() + Math.random(), // Ensure unique ID for new instance
+          id: Date.now() + Math.random(), 
           measurementPoint: {
             ...t.measurementPoint,
-            value: ""  // RESET VALUE
+            value: "" 
           }
         }));
-
         finalData.tmdeTolerances = resetTmdes;
-        finalData.copyTmdes = false; // Disable default copy behavior since we handled it
+        finalData.copyTmdes = false; 
       } else if (!finalData.id && selectedTmdeIds.length === 0) {
-        // If nothing selected, ensure we don't copy anything implicitly
         finalData.copyTmdes = false;
         finalData.tmdeTolerances = [];
       }
-
       onSaveTestPoint(finalData);
     } else {
       onDataSave(updatedData);
     }
     setTestPointModalOpen(false);
-    
-    // Clear Global Selection after saving new point
     if (setCurrentUutSelection) setCurrentUutSelection([]);
   };
 
@@ -425,6 +413,18 @@ function Analysis({
     handleSaveTmde(newTmde, false);
   };
 
+  const handleDefineTestPoint = (selectedUutIds, resolvedTolerance) => {
+     const overrides = {};
+     if (selectedUutIds && Array.isArray(selectedUutIds)) {
+         overrides.associatedUutIds = selectedUutIds;
+     }
+     if (resolvedTolerance) {
+         overrides.uutTolerance = resolvedTolerance;
+     }
+     setModalOverrides(overrides);
+     setTestPointModalOpen(true);
+  };
+
   return (
     <div>
       <AnalysisHeader
@@ -510,47 +510,67 @@ function Analysis({
         />
       ))}
 
-      <div className="analysis-tabs">
-        <button
-          className={analysisMode === "uncertaintyTool" ? "active" : ""}
-          onClick={() => setAnalysisMode("uncertaintyTool")}
-        >
-          Uncertainty Analysis
-        </button>
-        <button
-          className={analysisMode === "risk" ? "active" : ""}
-          onClick={() => setAnalysisMode("risk")}
-        >
-          Risk Analysis
-        </button>
-        <button
-          className={analysisMode === "riskmitigation" ? "active" : ""}
-          onClick={() => {
-            setAnalysisMode("riskmitigation");
-            const gbLowValid = riskResults?.gbResults?.GBLOW !== undefined && !isNaN(riskResults.gbResults.GBLOW);
-            const gbUpValid = riskResults?.gbResults?.GBUP !== undefined && !isNaN(riskResults.gbResults.GBUP);
+      {/* --- RENDER LOGIC: SUMMARY VS DETAILED --- */}
+      {!isPointView ? (
+         <UncertaintyPanel
+            testPointData={testPointData} // Passed with viewMode
+            sessionData={sessionData}
+            onDefineTestPoint={handleDefineTestPoint}
+            handleOpenSessionEditor={handleOpenSessionEditor}
+            onDeleteTestPoint={onDeleteTestPoint} // <--- ADDED: Pass delete handler to summary view
+            
+            // Passing empty/null props for detailed view specifics to avoid proptype warnings
+            calcResults={null}
+            calculationError={null}
+            uutNominal={null}
+            uutToleranceData={null}
+            tmdeTolerancesData={[]}
+            riskResults={null}
+            manualComponents={[]}
+         />
+      ) : (
+        <>
+          <div className="analysis-tabs">
+            <button
+              className={analysisMode === "uncertaintyTool" ? "active" : ""}
+              onClick={() => setAnalysisMode("uncertaintyTool")}
+            >
+              Uncertainty Analysis
+            </button>
+            <button
+              className={analysisMode === "risk" ? "active" : ""}
+              onClick={() => setAnalysisMode("risk")}
+            >
+              Risk Analysis
+            </button>
+            <button
+              className={analysisMode === "riskmitigation" ? "active" : ""}
+              onClick={() => {
+                setAnalysisMode("riskmitigation");
+                const gbLowValid = riskResults?.gbResults?.GBLOW !== undefined && !isNaN(riskResults.gbResults.GBLOW);
+                const gbUpValid = riskResults?.gbResults?.GBUP !== undefined && !isNaN(riskResults.gbResults.GBUP);
 
-            if (!gbLowValid || !gbUpValid) {
-              const inputs = riskResults?.gbInputs || {};
-              const reqTUR = inputs.reqTUR || "N/A";
-              const achievedTUR = inputs.turVal ? inputs.turVal.toFixed(2) : "N/A";
-              const uCal = inputs.combUnc ? inputs.combUnc.toPrecision(4) : "N/A";
-              const unit = inputs.nominalUnit || "";
-              let topContributorString = "N/A";
-              if (calcResults && calcResults.calculatedBudgetComponents) {
-                const sortedComponents = [...calcResults.calculatedBudgetComponents].sort((a, b) =>
-                  Math.abs(b.contribution || 0) - Math.abs(a.contribution || 0)
-                );
-                const topComp = sortedComponents[0];
-                if (topComp && typeof topComp.contribution === 'number') {
-                  topContributorString = `${topComp.name} (${topComp.contribution.toPrecision(4)} ${unit})`;
-                }
-              }
+                if (!gbLowValid || !gbUpValid) {
+                  const inputs = riskResults?.gbInputs || {};
+                  const reqTUR = inputs.reqTUR || "N/A";
+                  const achievedTUR = inputs.turVal ? inputs.turVal.toFixed(2) : "N/A";
+                  const uCal = inputs.combUnc ? inputs.combUnc.toPrecision(4) : "N/A";
+                  const unit = inputs.nominalUnit || "";
+                  let topContributorString = "N/A";
+                  if (calcResults && calcResults.calculatedBudgetComponents) {
+                    const sortedComponents = [...calcResults.calculatedBudgetComponents].sort((a, b) =>
+                      Math.abs(b.contribution || 0) - Math.abs(a.contribution || 0)
+                    );
+                    const topComp = sortedComponents[0];
+                    if (topComp && typeof topComp.contribution === 'number') {
+                      topContributorString = `${topComp.name} (${topComp.contribution.toPrecision(4)} ${unit})`;
+                    }
+                  }
 
-              setNotification({
-                title: "Math Engine Convergence Failure",
-                isFloating: true,
-                message: `The mathematical engine could not converge on guard band limits because the required TUR is so low, causing the calculated Uncertainty to exceed allowable limits.
+                  setNotification({
+                    title: "Math Engine Convergence Failure",
+                    isFloating: true,
+                    message: `The mathematical engine could not converge on guard band limits because the required TUR is so low, causing the calculated Uncertainty to exceed allowable limits.
 
 Diagnostic Data:
 • Required TUR: ${reqTUR}
@@ -561,142 +581,131 @@ Primary Contributor:
 • ${topContributorString}
 
 Please increase the required TUR or improve your uncertainty to allow for a viable solution.`
-              });
-            }
-          }}
-        >
-          Risk Mitigation
-        </button>
-      </div>
+                  });
+                }
+              }}
+            >
+              Risk Mitigation
+            </button>
+          </div>
 
-      {analysisMode === "uncertaintyTool" && (
-        <UncertaintyPanel
-          testPointData={testPointData}
-          sessionData={sessionData}
-          calcResults={calcResults}
-          calculationError={calculationError}
-          uutNominal={uutNominal}
-          uutToleranceData={uutToleranceData}
-          tmdeTolerancesData={tmdeTolerancesData}
-          riskResults={riskResults}
+          {analysisMode === "uncertaintyTool" && (
+            <UncertaintyPanel
+              testPointData={testPointData}
+              sessionData={sessionData}
+              calcResults={calcResults}
+              calculationError={calculationError}
+              uutNominal={uutNominal}
+              uutToleranceData={uutToleranceData}
+              tmdeTolerancesData={tmdeTolerancesData}
+              riskResults={riskResults}
 
-          showContribution={showContribution}
-          setShowContribution={setShowContribution}
+              showContribution={showContribution}
+              setShowContribution={setShowContribution}
 
-          onAddManualComponent={() => { setEditingComponent(null); setManualModalOpen(true); }}
-          onEditManualComponent={handleEditComponent}
-          onRemoveComponent={handleRemoveComponent}
-          onAddTmde={() => { setTmdeToEdit(null); setAddTmdeModalOpen(true); }}
-          onEditTmde={(tmde) => { setTmdeToEdit(tmde); setAddTmdeModalOpen(true); }}
-          onDeleteTmdeDefinition={onDeleteTmdeDefinition}
-          onDecrementTmdeQuantity={onDecrementTmdeQuantity}
+              onAddManualComponent={() => { setEditingComponent(null); setManualModalOpen(true); }}
+              onEditManualComponent={handleEditComponent}
+              onRemoveComponent={handleRemoveComponent}
+              onAddTmde={() => { setTmdeToEdit(null); setAddTmdeModalOpen(true); }}
+              onEditTmde={(tmde) => { setTmdeToEdit(tmde); setAddTmdeModalOpen(true); }}
+              onDeleteTmdeDefinition={onDeleteTmdeDefinition}
+              onDecrementTmdeQuantity={onDecrementTmdeQuantity}
 
-          onOpenUutModal={() => setIsUutModalOpen(true)}
-          
-          onDeleteUut={onDeleteUut}
-          onInlineUutUpdate={handleInlineUutUpdate}
-          onInlineTmdeUpdate={handleInlineTmdeUpdate}
+              onOpenUutModal={() => setIsUutModalOpen(true)}
+              
+              onDeleteUut={onDeleteUut}
+              onInlineUutUpdate={handleInlineUutUpdate}
+              onInlineTmdeUpdate={handleInlineTmdeUpdate}
 
-          handleOpenSessionEditor={handleOpenSessionEditor}
+              handleOpenSessionEditor={handleOpenSessionEditor}
 
-          onUpdateTestPoint={onDataSave}
+              onUpdateTestPoint={onDataSave}
 
-          onDefineTestPoint={(selectedUutIds, resolvedTolerance) => {
-             const overrides = {};
-             
-             if (selectedUutIds && Array.isArray(selectedUutIds)) {
-                 overrides.associatedUutIds = selectedUutIds;
-             }
-             
-             if (resolvedTolerance) {
-                 overrides.uutTolerance = resolvedTolerance;
-             }
-             
-             setModalOverrides(overrides);
-             setTestPointModalOpen(true);
-          }}
+              onDefineTestPoint={handleDefineTestPoint}
 
-          // --- Pass Selection Props ---
-          selectedTmdeIds={selectedTmdeIds}
-          onToggleTmdeSelection={handleToggleTmdeSelection}
-          onToggleAllTmdes={handleToggleAllTmdes}
+              // --- Pass Selection Props ---
+              selectedTmdeIds={selectedTmdeIds}
+              onToggleTmdeSelection={handleToggleTmdeSelection}
+              onToggleAllTmdes={handleToggleAllTmdes}
 
-          // --- Pass UUT Toggle Handler ---
-          onToggleUut={handleToggleUut}
-          
-          // --- Pass Global UUT Selection Props ---
-          currentUutSelection={currentUutSelection}
+              // --- Pass UUT Toggle Handler ---
+              onToggleUut={handleToggleUut}
+              
+              // --- Pass Global UUT Selection Props ---
+              currentUutSelection={currentUutSelection}
 
-          setContextMenu={setContextMenu}
-          setBreakdownPoint={setBreakdownPoint}
-          onBudgetRowContextMenu={handleBudgetRowContextMenu}
-          onShowDerivedBreakdown={() => {
-            if (calcResults) handleBudgetRowContextMenu({ preventDefault: () => { } });
-          }}
-          onShowRiskBreakdown={handleShowRiskBreakdown}
-          onOpenRepeatability={(e) => {
-            if (e && e.clientY) setModalPosition({ top: e.clientY, left: e.clientX });
-            setEditingComponent(null);
-            setRepeatabilityModalOpen(true);
-          }}
-          setNotification={setNotification}
-          onDeleteTestPoint={onDeleteTestPoint}
-          activeRangeIndices={activeRangeIndices}
-          onRangeSelectionChange={onRangeSelectionChange}
-        />
-      )}
-
-      {analysisMode === "risk" && (
-        <div>
-          {!calcResults ? (
-            <div className="form-section-warning">
-              <p>Uncertainty budget must be calculated first.</p>
-            </div>
-          ) : (
-            <>
-              {riskResults ? (
-                <>
-                  <RiskAnalysisDashboard
-                    results={riskResults}
-                    onShowBreakdown={handleShowRiskBreakdown}
-                    activeModals={activeRiskModals}
-                  />
-                  <RiskScatterplot
-                    results={riskResults}
-                    inputs={{
-                      LLow: parseFloat(riskInputs.LLow),
-                      LUp: parseFloat(riskInputs.LUp),
-                    }}
-                  />
-                </>
-              ) : (
-                <div className="placeholder-content" style={{ minHeight: "200px" }}>
-                  <p>Calculating risk...</p>
-                </div>
-              )}
-            </>
+              setContextMenu={setContextMenu}
+              setBreakdownPoint={setBreakdownPoint}
+              onBudgetRowContextMenu={handleBudgetRowContextMenu}
+              onShowDerivedBreakdown={() => {
+                if (calcResults) handleBudgetRowContextMenu({ preventDefault: () => { } });
+              }}
+              onShowRiskBreakdown={handleShowRiskBreakdown}
+              onOpenRepeatability={(e) => {
+                if (e && e.clientY) setModalPosition({ top: e.clientY, left: e.clientX });
+                setEditingComponent(null);
+                setRepeatabilityModalOpen(true);
+              }}
+              setNotification={setNotification}
+              onDeleteTestPoint={onDeleteTestPoint}
+              activeRangeIndices={activeRangeIndices}
+              onRangeSelectionChange={onRangeSelectionChange}
+            />
           )}
-        </div>
-      )}
 
-      {analysisMode === "riskmitigation" && (
-        <>
-          {!calcResults ? (
-            <div className="form-section-warning">
-              <p>Uncertainty budget must be calculated first.</p>
-            </div>
-          ) : (
-            <>
-              {riskResults ? (
-                <RiskMitigationDashboard
-                  results={riskResults}
-                  onShowBreakdown={handleShowRiskBreakdown}
-                  activeModals={activeRiskModals}
-                />
-              ) : (
-                <div className="placeholder-content" style={{ minHeight: "200px" }}>
-                  <p>Calculating risk...</p>
+          {analysisMode === "risk" && (
+            <div>
+              {!calcResults ? (
+                <div className="form-section-warning">
+                  <p>Uncertainty budget must be calculated first.</p>
                 </div>
+              ) : (
+                <>
+                  {riskResults ? (
+                    <>
+                      <RiskAnalysisDashboard
+                        results={riskResults}
+                        onShowBreakdown={handleShowRiskBreakdown}
+                        activeModals={activeRiskModals}
+                      />
+                      <RiskScatterplot
+                        results={riskResults}
+                        inputs={{
+                          LLow: parseFloat(riskInputs.LLow),
+                          LUp: parseFloat(riskInputs.LUp),
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <div className="placeholder-content" style={{ minHeight: "200px" }}>
+                      <p>Calculating risk...</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {analysisMode === "riskmitigation" && (
+            <>
+              {!calcResults ? (
+                <div className="form-section-warning">
+                  <p>Uncertainty budget must be calculated first.</p>
+                </div>
+              ) : (
+                <>
+                  {riskResults ? (
+                    <RiskMitigationDashboard
+                      results={riskResults}
+                      onShowBreakdown={handleShowRiskBreakdown}
+                      activeModals={activeRiskModals}
+                    />
+                  ) : (
+                    <div className="placeholder-content" style={{ minHeight: "200px" }}>
+                      <p>Calculating risk...</p>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

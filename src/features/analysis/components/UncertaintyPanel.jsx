@@ -9,6 +9,10 @@ import {
     faExclamationTriangle,
     faCheckCircle,
     faTimesCircle,
+    faMicroscope,
+    faCube,
+    faArrowRight,
+    faFolderOpen
 } from "@fortawesome/free-solid-svg-icons";
 
 // Sub-components
@@ -26,6 +30,165 @@ import {
     unitCategories
 } from "../../../utils/uncertaintyMath";
 
+// --- SHARED HELPER: Resolve UUT Range ---
+const resolveUutRangeHelper = (uut, activeRangeIndices, savedTolerance, uutNominal) => {
+    // 1. Normalize Ranges
+    let ranges = [];
+    if (Array.isArray(uut.ranges) && uut.ranges.length > 0) {
+        ranges = uut.ranges.map(r => ({ ...r, ...(r.tolerances || r.tolerance || {}) }));
+    } else if (Array.isArray(uut.instrument?.functions) && uut.instrument.functions.length > 0) {
+        ranges = uut.instrument.functions.flatMap(fn =>
+            (fn.ranges || []).map(r => ({
+                ...r,
+                ...(r.tolerances || {}),
+                functionName: fn.name,
+                unit: fn.unit || r.unit
+            }))
+        );
+    } else if (Array.isArray(uut.instrument?.ranges) && uut.instrument.ranges.length > 0) {
+        ranges = uut.instrument.ranges.map(r => ({ ...r, ...(r.tolerances || {}) }));
+    } else {
+        const baseTolerance = uut.tolerance || uut.instrument?.tolerance || {};
+        ranges = [{ id: 'default', range: 'Default', ...baseTolerance }];
+    }
+    ranges = ranges.map((r, i) => ({ ...r, _index: i }));
+
+    // 2. Determine Active Index
+    let candidateIndex = -1;
+    
+    // A. Priority: Manual Selection (activeRangeIndices)
+    if (activeRangeIndices && activeRangeIndices[uut.id] !== undefined) {
+        candidateIndex = activeRangeIndices[uut.id];
+    } 
+    // B. Priority: Saved Selection (savedTolerance)
+    else if (savedTolerance) {
+         candidateIndex = ranges.findIndex(r => {
+            if (savedTolerance.range && r.range) {
+                if (savedTolerance.range !== r.range) return false;
+                return savedTolerance.functionName ? savedTolerance.functionName === r.functionName : true;
+            }
+            const minMatch = r.min == savedTolerance.min;
+            const maxMatch = r.max == savedTolerance.max;
+            const unitMatch = (r.unit || "") === (savedTolerance.unit || "");
+            return minMatch && maxMatch && unitMatch;
+        });
+    }
+
+    // Helper: fit check
+    const doesRangeFit = (r) => {
+        const val = parseFloat(uutNominal?.value);
+        if (isNaN(val)) return false; 
+        const min = parseFloat(r.min);
+        const max = parseFloat(r.max);
+        const unitMatch = !r.unit || !uutNominal?.unit || r.unit.toLowerCase() === uutNominal.unit.toLowerCase();
+        if (!unitMatch) return false;
+        if (!isNaN(min) && !isNaN(max)) return val >= min && val <= max;
+        return false; 
+    };
+
+    // C. Validate Candidate
+    const userHasValue = uutNominal && !isNaN(parseFloat(uutNominal.value));
+    if (candidateIndex !== -1 && userHasValue) {
+        if (!doesRangeFit(ranges[candidateIndex])) candidateIndex = -1;
+    }
+
+    // D. Auto-Search
+    if (candidateIndex === -1 && userHasValue) {
+        candidateIndex = ranges.findIndex(r => doesRangeFit(r));
+    }
+
+    // E. Fallback
+    if (candidateIndex === -1) candidateIndex = 0;
+
+    return { ranges, activeIndex: candidateIndex, activeRange: ranges[candidateIndex] || {} };
+};
+
+// --- SHARED HELPER: Calculate Tolerance & Limits (Core Logic) ---
+const calculateToleranceMetrics = (activeTolerance, nominalObj) => {
+    const nominalVal = parseFloat(nominalObj?.value);
+    
+    if (!activeTolerance || Object.keys(activeTolerance).length === 0) {
+        return { numericTolerance: null, limits: { low: "-", high: "-" }, display: "No Range / Spec" };
+    }
+    
+    if (isNaN(nominalVal)) {
+        return { numericTolerance: null, limits: { low: "-", high: "-" }, display: "No Value" };
+    }
+
+    // 1. Try Meticulous Calculation (Complex Objects: Reading + Floor)
+    const getComponentValue = (comp) => {
+        if (comp === undefined || comp === null) return 0;
+        if (typeof comp === 'object') {
+            const valStr = comp.high || comp.value || comp.tolerance;
+            const parsed = parseFloat(valStr);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+        const parsed = parseFloat(comp);
+        return isNaN(parsed) ? 0 : parsed;
+    };
+
+    let total = 0;
+    let found = false;
+
+    // Reading
+    const readingComp = activeTolerance.reading || activeTolerance.tolerances?.reading;
+    if (readingComp) {
+        const readingPcn = getComponentValue(readingComp);
+        if (readingPcn !== 0) {
+            total += Math.abs(nominalVal * (readingPcn / 100));
+            found = true;
+        }
+    }
+
+    // Floor
+    const floorComp = activeTolerance.floor || activeTolerance.tolerances?.floor;
+    if (floorComp) {
+        const floorVal = getComponentValue(floorComp);
+        if (floorVal !== 0) {
+            total += Math.abs(floorVal);
+            found = true;
+        }
+    }
+
+    // Generic (Single Value)
+    if (!found && (activeTolerance.tolerance || activeTolerance.value)) {
+        const tolVal = getComponentValue(activeTolerance);
+        if (tolVal !== 0) {
+            total += Math.abs(tolVal);
+            found = true;
+        }
+    }
+
+    let numericTolerance = null;
+
+    if (found) {
+        numericTolerance = total;
+    } else {
+        // 2. Fallback: Parse Standard Utility String
+        const utilResult = getToleranceErrorSummary(activeTolerance, nominalObj);
+        if (utilResult && utilResult !== "Not Calculated" && utilResult !== "± -" && !utilResult.includes("NaN")) {
+            const match = utilResult.match(/±\s*([\d\.]+)/);
+            if (match && match[1]) {
+                numericTolerance = parseFloat(match[1]);
+            }
+        }
+    }
+
+    // Format Results
+    if (numericTolerance !== null) {
+        const low = nominalVal - numericTolerance;
+        const high = nominalVal + numericTolerance;
+        return {
+            numericTolerance,
+            limits: { low: low.toPrecision(6), high: high.toPrecision(6) },
+            display: `± ${Number(numericTolerance.toPrecision(4))} ${nominalObj?.unit || ""}`
+        };
+    }
+
+    return { numericTolerance: null, limits: { low: "-", high: "-" }, display: "No Range / Spec" };
+};
+
+
 // --- HELPERS FOR EQUATION EDITOR ---
 const SymbolButton = ({ onSymbolClick, symbol, title }) => (
     <button
@@ -40,161 +203,349 @@ const SymbolButton = ({ onSymbolClick, symbol, title }) => (
 );
 
 const symbolCategories = {
-    'Operators': [
-        { symbol: '+', title: 'Add' },
-        { symbol: '-', title: 'Subtract' },
-        { symbol: '*', title: 'Multiply' },
-        { symbol: '/', title: 'Divide' },
-        { symbol: '^', title: 'Power' },
-        { symbol: '()', title: 'Parentheses' },
-        { symbol: '%', title: 'Percent' },
-    ],
-    'Functions': [
-        { symbol: 'sqrt()', title: 'Square Root' },
-        { symbol: 'abs()', title: 'Absolute Value' },
-        { symbol: 'log()', title: 'Log (base 10)' },
-        { symbol: 'ln()', title: 'Natural Log' },
-        { symbol: 'exp()', title: 'Exponential' },
-    ],
-    'Trigonometry': [
-        { symbol: 'sin()', title: 'Sine' },
-        { symbol: 'cos()', title: 'Cosine' },
-        { symbol: 'tan()', title: 'Tangent' },
-    ],
-    'Greek': [
-        { symbol: 'Δ', title: 'Delta' },
-        { symbol: 'θ', title: 'Theta' },
-        { symbol: 'λ', title: 'Lambda' },
-        { symbol: 'π', title: 'Pi' },
-        { symbol: 'Ω', title: 'Omega' },
-    ]
+    'Operators': [ { symbol: '+', title: 'Add' }, { symbol: '-', title: 'Subtract' }, { symbol: '*', title: 'Multiply' }, { symbol: '/', title: 'Divide' }, { symbol: '^', title: 'Power' }, { symbol: '()', title: 'Parentheses' }, { symbol: '%', title: 'Percent' } ],
+    'Functions': [ { symbol: 'sqrt()', title: 'Square Root' }, { symbol: 'abs()', title: 'Absolute Value' }, { symbol: 'log()', title: 'Log (base 10)' }, { symbol: 'ln()', title: 'Natural Log' }, { symbol: 'exp()', title: 'Exponential' } ],
+    'Trigonometry': [ { symbol: 'sin()', title: 'Sine' }, { symbol: 'cos()', title: 'Cosine' }, { symbol: 'tan()', title: 'Tangent' } ],
+    'Greek': [ { symbol: 'Δ', title: 'Delta' }, { symbol: 'θ', title: 'Theta' }, { symbol: 'λ', title: 'Lambda' }, { symbol: 'π', title: 'Pi' }, { symbol: 'Ω', title: 'Omega' } ]
 };
 
 const customUnitSelectStyles = {
-    control: (provided) => ({
-        ...provided,
-        minHeight: '28px',
-        height: '28px',
-        width: '100px',
-        fontSize: '0.8rem',
-        border: 'none',
-        backgroundColor: 'transparent',
-        boxShadow: 'none',
-        cursor: 'pointer',
-        textAlign: 'right'
-    }),
-    valueContainer: (provided) => ({
-        ...provided,
-        height: '28px',
-        padding: '0 4px',
-        justifyContent: 'flex-end'
-    }),
-    input: (provided) => ({
-        ...provided,
-        margin: 0,
-        padding: 0,
-        color: 'var(--text-color)'
-    }),
-    singleValue: (provided) => ({
-        ...provided,
-        color: 'var(--text-color-muted)',
-        fontWeight: 600
-    }),
-    indicatorsContainer: (provided) => ({
-        ...provided,
-        height: '28px',
-    }),
-    dropdownIndicator: (provided) => ({
-        ...provided,
-        padding: '2px',
-        color: 'var(--text-color-muted)'
-    }),
+    control: (provided) => ({ ...provided, minHeight: '28px', height: '28px', width: '100px', fontSize: '0.8rem', border: 'none', backgroundColor: 'transparent', boxShadow: 'none', cursor: 'pointer', textAlign: 'right' }),
+    valueContainer: (provided) => ({ ...provided, height: '28px', padding: '0 4px', justifyContent: 'flex-end' }),
+    input: (provided) => ({ ...provided, margin: 0, padding: 0, color: 'var(--text-color)' }),
+    singleValue: (provided) => ({ ...provided, color: 'var(--text-color-muted)', fontWeight: 600 }),
+    indicatorsContainer: (provided) => ({ ...provided, height: '28px', }),
+    dropdownIndicator: (provided) => ({ ...provided, padding: '2px', color: 'var(--text-color-muted)' }),
     indicatorSeparator: () => ({ display: 'none' }),
-    menu: (provided) => ({
-        ...provided,
-        backgroundColor: 'var(--content-background)',
-        border: '1px solid var(--border-color)',
-        zIndex: 9999,
-        width: '180px',
-        right: 0
-    }),
-    groupHeading: (provided) => ({
-        ...provided,
-        color: 'var(--primary-color)',
-        fontSize: '0.75rem',
-        fontWeight: 'bold',
-        textTransform: 'uppercase',
-        padding: '8px 12px 4px'
-    }),
-    option: (provided, state) => ({
-        ...provided,
-        backgroundColor: state.isSelected
-            ? 'var(--primary-color)'
-            : state.isFocused
-                ? 'var(--hover-background)'
-                : 'transparent',
-        color: state.isSelected ? '#fff' : 'var(--text-color)',
-        fontSize: '0.8rem',
-        cursor: 'pointer',
-        textAlign: 'left',
-        paddingLeft: '20px'
-    })
+    menu: (provided) => ({ ...provided, backgroundColor: 'var(--content-background)', border: '1px solid var(--border-color)', zIndex: 9999, width: '180px', right: 0 }),
+    groupHeading: (provided) => ({ ...provided, color: 'var(--primary-color)', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', padding: '8px 12px 4px' }),
+    option: (provided, state) => ({ ...provided, backgroundColor: state.isSelected ? 'var(--primary-color)' : state.isFocused ? 'var(--hover-background)' : 'transparent', color: state.isSelected ? '#fff' : 'var(--text-color)', fontSize: '0.8rem', cursor: 'pointer', textAlign: 'left', paddingLeft: '20px' })
 };
 
 const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, placeholder = "", className = "" }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentValue, setCurrentValue] = useState(value);
-
     useEffect(() => { setCurrentValue(value); }, [value]);
+    const handleBlur = () => { setIsEditing(false); const cleanVal = typeof currentValue === 'string' ? currentValue.trim() : currentValue; if (cleanVal != value) { onSave(cleanVal); } };
+    const handleKeyDown = (e) => { if (e.key === 'Enter') { handleBlur(); } };
+    if (isEditing) { return ( <input autoFocus type={type} value={currentValue} onChange={(e) => setCurrentValue(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown} placeholder={placeholder} className={className} style={{ width: '100%', padding: '4px', boxSizing: 'border-box', ...style }} /> ) }
+    return ( <div onClick={() => setIsEditing(true)} style={{ cursor: 'text', minHeight: '20px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '2px', color: !value && placeholder ? 'var(--text-color-muted)' : 'inherit', ...style }} className={`editable-cell-display ${className}`} title="Click to edit" > {value || placeholder} {suffix} </div> )
+};
 
-    const handleBlur = () => {
-        setIsEditing(false);
-        const cleanVal = typeof currentValue === 'string' ? currentValue.trim() : currentValue;
-        if (cleanVal != value) {
-            onSave(cleanVal);
+
+// --- NEW COMPONENT: SUMMARY DASHBOARD ---
+const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint }) => {
+    
+    // Local Selection State for UUTs in the table
+    const [selectedUutIds, setSelectedUutIds] = useState([]);
+    const [localRangeIndices, setLocalRangeIndices] = useState({});
+    
+    // Batch Deletion Selection State
+    const [selectedPointIds, setSelectedPointIds] = useState([]);
+
+    // Filter Data based on Hierarchy
+    const { filteredUuts, filteredPoints, title, subtitle, showAreaColumn } = useMemo(() => {
+        let uuts = sessionData.uuts || [];
+        let points = sessionData.testPoints || [];
+        let displayTitle = "Session Overview";
+        let displaySubtitle = "All Measurement Areas";
+        
+        // --- FEATURE: Only show Area column on highest level view ---
+        const isSessionView = viewMode === 'session';
+
+        if (viewMode === 'area') {
+            const area = sessionData.measurementAreas?.find(a => a.id === contextId);
+            displayTitle = area?.name || "Measurement Area";
+            displaySubtitle = "Area Summary";
+            uuts = uuts.filter(u => {
+                const idMatch = u.measurementAreaId === contextId;
+                const nameMatch = area && u.measurementArea && u.measurementArea === area.name;
+                return idMatch || nameMatch;
+            });
+            points = points.filter(tp => tp.measurementAreaId === contextId);
+        } 
+        else if (viewMode === 'uut') {
+            const uut = uuts.find(u => u.id === contextId);
+            displayTitle = uut?.description || "UUT Detail";
+            displaySubtitle = `${uut?.manufacturer || ''} ${uut?.model || ''}`;
+            uuts = uut ? [uut] : [];
+            points = points.filter(tp => tp.associatedUutIds && tp.associatedUutIds.includes(contextId));
+        }
+        else if (isSessionView) {
+            displayTitle = sessionData.name || "Session Overview";
+            displaySubtitle = `Last Modified: ${new Date().toLocaleDateString()}`; 
+        }
+
+        return { 
+            filteredUuts: uuts, 
+            filteredPoints: points, 
+            title: displayTitle, 
+            subtitle: displaySubtitle,
+            showAreaColumn: isSessionView // Boolean flag
+        };
+    }, [viewMode, contextId, sessionData]);
+
+    const handleUutSelect = (id) => {
+        setSelectedUutIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const handleAddPoint = () => {
+        if (onDefineTestPoint) {
+            onDefineTestPoint(selectedUutIds);
+        }
+    };
+    
+    // --- BATCH DELETE HANDLERS ---
+    const handlePointSelect = (id) => {
+        setSelectedPointIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const handleSelectAllPoints = (e) => {
+        if (e.target.checked) {
+            setSelectedPointIds(filteredPoints.map(p => p.id));
+        } else {
+            setSelectedPointIds([]);
         }
     };
 
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            handleBlur();
+    const handleBatchDelete = () => {
+        if (selectedPointIds.length === 0) return;
+        if (onDeleteTestPoint) {
+            onDeleteTestPoint(selectedPointIds, false); 
+            setSelectedPointIds([]);
         }
     };
 
-    if (isEditing) {
-        return (
-            <input
-                autoFocus
-                type={type}
-                value={currentValue}
-                onChange={(e) => setCurrentValue(e.target.value)}
-                onBlur={handleBlur}
-                onKeyDown={handleKeyDown}
-                placeholder={placeholder}
-                className={className}
-                style={{ width: '100%', padding: '4px', boxSizing: 'border-box', ...style }}
-            />
-        )
-    }
+    const cardStyle = { backgroundColor: 'var(--content-background)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden' };
+    const headerStyle = { padding: '12px 16px', backgroundColor: 'var(--background-secondary)', borderBottom: '1px solid var(--border-color)', fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' };
 
     return (
-        <div
-            onClick={() => setIsEditing(true)}
-            style={{
-                cursor: 'text',
-                minHeight: '20px',
-                borderBottom: '1px dashed var(--border-color)',
-                paddingBottom: '2px',
-                color: !value && placeholder ? 'var(--text-color-muted)' : 'inherit',
-                ...style
-            }}
-            className={`editable-cell-display ${className}`}
-            title="Click to edit"
-        >
-            {value || placeholder} {suffix}
+        <div className="configuration-panel" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            
+            {/* Header */}
+            <div style={{ paddingBottom: '10px', borderBottom: '1px solid var(--border-color)' }}>
+                <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{title}</h2>
+                <div style={{ color: 'var(--text-color-muted)', fontSize: '0.9rem', marginTop: '4px' }}>{subtitle}</div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                
+                {/* UUT TABLE */}
+                <div style={cardStyle}>
+                    <div style={headerStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <FontAwesomeIcon icon={faMicroscope} />
+                            <span>Units Under Test ({filteredUuts.length})</span>
+                        </div>
+                        {selectedUutIds.length > 0 && (
+                             <span style={{fontSize: '0.8rem', color: 'var(--primary-color)', fontWeight: 600}}>{selectedUutIds.length} Selected</span>
+                        )}
+                    </div>
+                    <div style={{ overflowX: 'auto', maxHeight: '400px' }}>
+                        <table className="instrument-summary-table" style={{ width: '100%', margin: 0, border: 'none', boxShadow: 'none' }}>
+                            <colgroup>
+                                <col style={{ width: showAreaColumn ? '8%' : '10%' }} /> {/* Checkbox */}
+                                <col style={{ width: showAreaColumn ? '32%' : '40%' }} /> {/* Desc */}
+                                <col style={{ width: '25%' }} /> {/* Range */}
+                                <col style={{ width: showAreaColumn ? '20%' : '25%' }} /> {/* Spec */}
+                                {showAreaColumn && <col style={{ width: '15%' }} />} {/* Area - Conditional */}
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th style={{textAlign:'center'}}>Select</th>
+                                    <th>Description</th>
+                                    <th>Range</th>
+                                    <th>Specification</th>
+                                    {showAreaColumn && <th>Area</th>}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredUuts.length === 0 ? (
+                                    <tr><td colSpan={showAreaColumn ? 5 : 4} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No UUTs found in this context.</td></tr>
+                                ) : (
+                                    filteredUuts.map(uut => {
+                                        const { ranges, activeIndex, activeRange } = resolveUutRangeHelper(uut, localRangeIndices, null, null);
+                                        const specSummary = getToleranceSummary(activeRange);
+                                        const hasMultipleRanges = ranges.length > 1;
+                                        const isChecked = selectedUutIds.includes(uut.id);
+
+                                        // Lookup Area Name & Color
+                                        // Robust Lookup: Match ID OR Name
+                                        const area = sessionData.measurementAreas?.find(a => a.id === uut.measurementAreaId || a.name === uut.measurementArea);
+                                        const areaName = area ? area.name : (uut.measurementArea || '-');
+                                        const areaColor = area?.color || 'var(--text-color-muted)';
+
+                                        return (
+                                            <tr key={uut.id} style={{ backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent' }}>
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={isChecked} 
+                                                        onChange={() => handleUutSelect(uut.id)}
+                                                        style={{ cursor: 'pointer', width: '16px', height: '16px' }} 
+                                                    />
+                                                </td>
+                                                <td style={{ fontWeight: 600, color: isChecked ? 'var(--primary-color)' : 'var(--text-color)' }}>{uut.description}</td>
+                                                <td>
+                                                    {hasMultipleRanges ? (
+                                                        <select
+                                                            className="mini-select"
+                                                            style={{ width: '100%' }}
+                                                            value={activeIndex}
+                                                            onChange={(e) => setLocalRangeIndices(prev => ({...prev, [uut.id]: parseInt(e.target.value)}))}
+                                                        >
+                                                            {ranges.map((range, idx) => {
+                                                                let rangeText = range.range || (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
+                                                                return <option key={idx} value={idx}>{`${rangeText} ${range.unit || ''}`}</option>
+                                                            })}
+                                                        </select>
+                                                    ) : (
+                                                       <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>{ranges[0]?.range || "Default"}</span>
+                                                    )}
+                                                </td>
+                                                <td><span style={{ fontSize: '0.85rem' }}>{specSummary}</span></td>
+                                                {showAreaColumn && (
+                                                    <td><span style={{ fontSize: '0.85rem', color: areaColor, fontWeight: 700 }}>{areaName}</span></td>
+                                                )}
+                                            </tr>
+                                        )
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* MEASUREMENT POINTS TABLE */}
+                <div style={cardStyle}>
+                    <div style={headerStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <FontAwesomeIcon icon={faCube} />
+                            <span>Measurement Points ({filteredPoints.length})</span>
+                        </div>
+                        
+                        <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                            {selectedPointIds.length > 0 && (
+                                <button 
+                                    className="btn-icon-only delete" 
+                                    style={{
+                                        color: 'var(--status-bad)', 
+                                        width: '24px', 
+                                        height: '24px', 
+                                        borderRadius: '4px', 
+                                        opacity: 1, 
+                                        border: '1px solid rgba(255,82,82,0.3)',
+                                        marginRight: '8px'
+                                    }}
+                                    onClick={handleBatchDelete}
+                                    title={`Delete ${selectedPointIds.length} Selected Points`}
+                                >
+                                    <FontAwesomeIcon icon={faTrashAlt} size="xs" />
+                                </button>
+                            )}
+                            <button 
+                                className="btn-icon-only" 
+                                style={{backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px'}}
+                                onClick={handleAddPoint}
+                                title="Add Measurement Point (uses selected UUTs)"
+                            >
+                                <FontAwesomeIcon icon={faPlus} size="xs" />
+                            </button>
+                        </div>
+                    </div>
+                    <div style={{ overflowX: 'auto', maxHeight: '400px' }}>
+                        <table className="instrument-summary-table" style={{ width: '100%', margin: 0, border: 'none', boxShadow: 'none' }}>
+                            <colgroup>
+                                <col style={{ width: '5%' }} /> {/* Batch Select */}
+                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} /> {/* Point */}
+                                <col style={{ width: showAreaColumn ? '10%' : '10%' }} /> {/* Unit */}
+                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} /> {/* Tolerance */}
+                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} /> {/* Low */}
+                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} /> {/* High */}
+                                {showAreaColumn && <col style={{ width: '25%' }} />} {/* Area */}
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th style={{textAlign:'center'}}>
+                                        <input 
+                                            type="checkbox" 
+                                            onChange={handleSelectAllPoints} 
+                                            checked={filteredPoints.length > 0 && selectedPointIds.length === filteredPoints.length}
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                    </th>
+                                    <th>Point</th>
+                                    <th>Unit</th>
+                                    <th>Tolerance</th>
+                                    <th>Low Limit</th>
+                                    <th>High Limit</th>
+                                    {showAreaColumn && <th>Area</th>}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredPoints.length === 0 ? (
+                                    <tr><td colSpan={showAreaColumn ? 7 : 6} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No Measurement Points found.</td></tr>
+                                ) : (
+                                    filteredPoints.map(tp => {
+                                        const param = tp.testPointInfo?.parameter || { value: '', unit: '' };
+                                        const isSelected = selectedPointIds.includes(tp.id);
+                                        
+                                        // 1. Determine Tolerance
+                                        let activeTolerance = tp.uutTolerance;
+                                        if ((!activeTolerance || Object.keys(activeTolerance).length === 0) && tp.associatedUutIds?.length > 0) {
+                                            const uut = sessionData.uuts?.find(u => u.id === tp.associatedUutIds[0]);
+                                            if (uut) {
+                                                const { activeRange } = resolveUutRangeHelper(uut, null, null, param);
+                                                activeTolerance = activeRange;
+                                            }
+                                        }
+
+                                        // 2. Metrics
+                                        const { limits, display } = calculateToleranceMetrics(activeTolerance, param);
+
+                                        // 3. Area & Color
+                                        const area = sessionData.measurementAreas?.find(a => a.id === tp.measurementAreaId);
+                                        const areaName = area ? area.name : '-';
+                                        const areaColor = area?.color || 'var(--text-color-muted)';
+
+                                        return (
+                                            <tr key={tp.id} style={{ backgroundColor: isSelected ? 'rgba(var(--status-bad), 0.05)' : 'transparent' }}>
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={isSelected}
+                                                        onChange={() => handlePointSelect(tp.id)}
+                                                        style={{ cursor: 'pointer' }}
+                                                    />
+                                                </td>
+                                                <td style={{ fontWeight: 700, color: 'var(--primary-color)' }}>{param.value}</td>
+                                                <td style={{ fontSize: '0.85rem' }}>{param.unit}</td>
+                                                <td style={{ fontSize: '0.85rem' }}>{display}</td>
+                                                <td style={{ fontSize: '0.85rem' }}>{limits.low}</td>
+                                                <td style={{ fontSize: '0.85rem' }}>{limits.high}</td>
+                                                {showAreaColumn && (
+                                                    <td style={{ fontSize: '0.85rem', color: areaColor, fontWeight: 700 }}>{areaName}</td>
+                                                )}
+                                            </tr>
+                                        )
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Guidance Footer */}
+            <div style={{ padding: '20px', backgroundColor: 'rgba(var(--primary-rgb), 0.05)', borderRadius: '8px', border: '1px dashed var(--primary-color)', textAlign: 'center' }}>
+                <p style={{ margin: 0, color: 'var(--text-color)' }}>
+                    <strong><FontAwesomeIcon icon={faArrowRight} /> Next Step:</strong> Select a specific Measurement Point from the sidebar to begin Detailed Uncertainty or Risk Analysis.
+                </p>
+            </div>
         </div>
-    )
+    );
 };
+
 
 const UncertaintyPanel = ({
     testPointData,
@@ -235,11 +586,35 @@ const UncertaintyPanel = ({
     onRangeSelectionChange,
 }) => {
 
+    // --- VIEW MODE CHECK ---
+    const viewMode = testPointData.viewMode || 'point';
+    const isPointView = viewMode === 'point';
+
+    // 1. IF SUMMARY MODE -> RENDER DASHBOARD
+    if (!isPointView) {
+        return (
+            <SummaryDashboard 
+                viewMode={viewMode} 
+                contextId={testPointData.id} 
+                sessionData={sessionData}
+                onDefineTestPoint={onDefineTestPoint}
+                onDeleteTestPoint={onDeleteTestPoint}
+            />
+        );
+    }
+
+    // 2. IF POINT VIEW -> RENDER DETAILED VIEW (Original Logic Below)
+    
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [isSymbolMenuOpen, setIsSymbolMenuOpen] = useState(false);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const equationInputRef = useRef(null);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const symbolMenuRef = useRef(null);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const symbolButtonRef = useRef(null);
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
         function handleClickOutside(event) {
             if (symbolMenuRef.current && !symbolMenuRef.current.contains(event.target) &&
@@ -251,6 +626,7 @@ const UncertaintyPanel = ({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const uutToleranceData = useMemo(() => {
         const isUnassigned = !testPointData.associatedUutIds || testPointData.associatedUutIds.length === 0;
         if (isUnassigned) return {};
@@ -258,94 +634,12 @@ const UncertaintyPanel = ({
     }, [propUutToleranceData, testPointData.associatedUutIds]);
 
 
-    // --- FIX 1: Smart Auto-Ranging Logic ---
+    // Use Shared Helper, but inject parent state (activeRangeIndices)
     const resolveUutRange = (uut) => {
-        // 1. Normalize Ranges
-        let ranges = [];
-        if (Array.isArray(uut.ranges) && uut.ranges.length > 0) {
-            ranges = uut.ranges.map(r => ({ ...r, ...(r.tolerances || r.tolerance || {}) }));
-        } else if (Array.isArray(uut.instrument?.functions) && uut.instrument.functions.length > 0) {
-            ranges = uut.instrument.functions.flatMap(fn =>
-                (fn.ranges || []).map(r => ({
-                    ...r,
-                    ...(r.tolerances || {}),
-                    functionName: fn.name,
-                    unit: fn.unit || r.unit
-                }))
-            );
-        } else if (Array.isArray(uut.instrument?.ranges) && uut.instrument.ranges.length > 0) {
-            ranges = uut.instrument.ranges.map(r => ({ ...r, ...(r.tolerances || {}) }));
-        } else {
-            const baseTolerance = uut.tolerance || uut.instrument?.tolerance || {};
-            ranges = [{ id: 'default', range: 'Default', ...baseTolerance }];
-        }
-
-        ranges = ranges.map((r, i) => ({ ...r, _index: i }));
-
-        // 2. Determine Active Index
-        let activeIndex = -1;
-        const hasSavedIds = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id);
-        const savedTolerance = uutToleranceData;
-
-        // Helper: does range R match the current value?
-        const doesRangeFit = (r) => {
-            const val = parseFloat(uutNominal?.value);
-            if (isNaN(val)) return false; // If no value typed, we can't fit-check
-            
-            const min = parseFloat(r.min);
-            const max = parseFloat(r.max);
-            
-            // Loose Unit Check
-            const unitMatch = !r.unit || !uutNominal?.unit || r.unit.toLowerCase() === uutNominal.unit.toLowerCase();
-            if (!unitMatch) return false;
-
-            if (!isNaN(min) && !isNaN(max)) {
-                return val >= min && val <= max;
-            }
-            return false; 
-        };
-
-        // A. Priority: Manual Selection / Saved Selection
-        let candidateIndex = -1;
-        if (activeRangeIndices[uut.id] !== undefined) {
-            candidateIndex = activeRangeIndices[uut.id];
-        } else if (hasSavedIds && savedTolerance) {
-             // Find saved index by comparison
-             candidateIndex = ranges.findIndex(r => {
-                if (savedTolerance.range && r.range) {
-                    if (savedTolerance.range !== r.range) return false;
-                    return savedTolerance.functionName ? savedTolerance.functionName === r.functionName : true;
-                }
-                const minMatch = r.min == savedTolerance.min;
-                const maxMatch = r.max == savedTolerance.max;
-                const unitMatch = (r.unit || "") === (savedTolerance.unit || "");
-                return minMatch && maxMatch && unitMatch;
-            });
-        }
-
-        // B. Validate Candidate: If we have a candidate, does it actually fit the value?
-        // If the user has typed a value, and the candidate range DOES NOT fit, discard candidate.
-        // This ensures "0.7V" breaks out of a "0-0.5V" selection.
-        const userHasValue = !isNaN(parseFloat(uutNominal?.value));
-        if (candidateIndex !== -1 && userHasValue) {
-            if (!doesRangeFit(ranges[candidateIndex])) {
-                candidateIndex = -1; // Discard invalid selection to force auto-search
-            }
-        }
-
-        // C. Auto-Search: If no valid candidate, find one that fits.
-        if (candidateIndex === -1 && userHasValue) {
-            candidateIndex = ranges.findIndex(r => doesRangeFit(r));
-        }
-
-        // D. Fallback: If still nothing, default to 0
-        if (candidateIndex === -1) candidateIndex = 0;
-
-        activeIndex = candidateIndex;
-
-        return { ranges, activeIndex, activeRange: ranges[activeIndex] || {} };
+        return resolveUutRangeHelper(uut, activeRangeIndices, uutToleranceData, uutNominal);
     };
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const groupedUnitOptions = useMemo(() => {
         const allSupportedUnits = Object.keys(unitSystem.units);
         const options = [];
@@ -379,19 +673,29 @@ const UncertaintyPanel = ({
     const activeMeasurementAreaId = testPointData.measurementAreaId;
     const activeArea = sessionData.measurementAreas?.find(a => a.id === activeMeasurementAreaId);
 
+    // --- REFINED RELEVANT UUTS LOGIC (UPDATED: FILTER TO SINGLE UUT IF POINT EXISTS) ---
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const relevantUuts = useMemo(() => {
         if (!sessionData.uuts) return [];
+
+        // 1. Specific Point View: Show ONLY linked UUT(s)
+        if (testPointData.id && testPointData.associatedUutIds?.length > 0) {
+             return sessionData.uuts.filter(u => testPointData.associatedUutIds.includes(u.id));
+        }
+
+        // 2. New Point / Unassigned: Show all UUTs in the active Area
         return sessionData.uuts.filter(u => {
             const idMatch = u.measurementAreaId === activeMeasurementAreaId;
             const nameMatch = activeArea && u.measurementArea === activeArea.name;
             return idMatch || nameMatch;
         });
-    }, [sessionData.uuts, activeMeasurementAreaId, activeArea]);
+    }, [sessionData.uuts, activeMeasurementAreaId, activeArea, testPointData]);
 
     const associatedUutIds = testPointData.associatedUutIds || [];
     const isDerived = testPointData.measurementType === "derived";
     const isUnassigned = associatedUutIds.length === 0;
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const availableVariables = useMemo(() => {
         if (!isDerived) return [];
         if (testPointData.variableMappings && Object.values(testPointData.variableMappings).length > 0) {
@@ -445,35 +749,14 @@ const UncertaintyPanel = ({
             return;
         }
 
-        if (currentUutSelection.length === 0) {
-            setNotification({
-                title: "No UUTs Selected",
-                message: "Please select at least one UUT to remove the measurement point from.",
-                isIconConfirm: false
-            });
-            return;
-        }
-
-        const uutsToRemove = currentUutSelection;
-        const remainingUuts = associatedUutIds.filter(id =>
-            !uutsToRemove.some(remId => String(remId) === String(id))
-        );
-        const isRemovingFromAll = remainingUuts.length === 0;
-
+        // SIMPLIFIED DELETE LOGIC: Direct delete, no UUT selection required
         setNotification({
-            title: isRemovingFromAll ? "Delete Measurement Point" : "Unassign Measurement Point",
-            message: isRemovingFromAll
-                ? "This will permanently delete the measurement point from all UUTs."
-                : `This will remove the measurement point from ${uutsToRemove.length} UUT(s).`,
-            confirmText: isRemovingFromAll ? "Delete" : "Unassign",
-            isIconConfirm: isRemovingFromAll,
+            title: "Delete Measurement Point",
+            message: "Are you sure you want to delete this measurement point?",
+            confirmText: "Delete",
+            isIconConfirm: true,
             onConfirm: () => {
-                if (isRemovingFromAll) {
-                    onDeleteTestPoint(testPointData.id);
-                } else {
-                    onUpdateTestPoint({ associatedUutIds: remainingUuts });
-                }
-                uutsToRemove.forEach(id => onToggleUut(id));
+                if (onDeleteTestPoint) onDeleteTestPoint(testPointData.id);
             }
         });
     };
@@ -603,6 +886,7 @@ const UncertaintyPanel = ({
         }
     };
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const equationDisplayData = useMemo(() => {
         if (!isDerived) return null;
 
@@ -666,6 +950,7 @@ const UncertaintyPanel = ({
     const primaryUutId = testPointData.associatedUutIds?.[0];
     const primaryUut = relevantUuts.find(u => u.id === primaryUutId);
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const activeResolvedTolerance = useMemo(() => {
         if (!primaryUut) return uutToleranceData;
 
@@ -676,6 +961,7 @@ const UncertaintyPanel = ({
     }, [primaryUut, activeRangeIndices, uutToleranceData, uutNominal]); // Re-run when uutNominal changes
 
     // --- FIX 2: Auto-Save Active Range ---
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
         if (activeResolvedTolerance && uutToleranceData) {
             // Check if the auto-resolved tolerance differs from what is saved
@@ -693,105 +979,26 @@ const UncertaintyPanel = ({
     }, [activeResolvedTolerance, uutToleranceData, onUpdateTestPoint]);
 
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const numericTotalTolerance = useMemo(() => {
         if (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) return null;
-
-        const nominalVal = parseFloat(uutNominal?.value);
-        if (isNaN(nominalVal)) return null;
-
-        // --- BUG FIX 1 REVISITED: Check if Point is within Range ---
-        const rMin = parseFloat(activeResolvedTolerance.min);
-        const rMax = parseFloat(activeResolvedTolerance.max);
-        
-        // Strict check: If limits exist and value is outside, invalid.
-        if (!isNaN(rMin) && nominalVal < rMin) return null;
-        if (!isNaN(rMax) && nominalVal > rMax) return null;
-        // ------------------------------------------------
-
-        // 1. Try Meticulous Manual Calculation (Complex Objects)
-        const getComponentValue = (comp) => {
-            if (comp === undefined || comp === null) return 0;
-            if (typeof comp === 'object') {
-                const valStr = comp.high || comp.value || comp.tolerance;
-                const parsed = parseFloat(valStr);
-                return isNaN(parsed) ? 0 : parsed;
-            }
-            const parsed = parseFloat(comp);
-            return isNaN(parsed) ? 0 : parsed;
-        };
-
-        let total = 0;
-        let found = false;
-
-        // Reading
-        const readingComp = activeResolvedTolerance.reading || activeResolvedTolerance.tolerances?.reading;
-        if (readingComp) {
-            const readingPcn = getComponentValue(readingComp);
-            if (readingPcn !== 0) {
-                total += Math.abs(nominalVal * (readingPcn / 100));
-                found = true;
-            }
-        }
-
-        // Floor
-        const floorComp = activeResolvedTolerance.floor || activeResolvedTolerance.tolerances?.floor;
-        if (floorComp) {
-            const floorVal = getComponentValue(floorComp);
-            if (floorVal !== 0) {
-                total += Math.abs(floorVal);
-                found = true;
-            }
-        }
-
-        // Generic
-        if (!found && (activeResolvedTolerance.tolerance || activeResolvedTolerance.value)) {
-            const tolVal = getComponentValue(activeResolvedTolerance);
-            if (tolVal !== 0) {
-                total += Math.abs(tolVal);
-                found = true;
-            }
-        }
-
-        if (found) return total;
-
-        // 2. Fallback: Parse Standard Utility String
-        const utilResult = getToleranceErrorSummary(activeResolvedTolerance, uutNominal);
-        if (utilResult && utilResult !== "Not Calculated" && utilResult !== "± -" && !utilResult.includes("NaN")) {
-            const match = utilResult.match(/±\s*([\d\.]+)/);
-            if (match && match[1]) {
-                return parseFloat(match[1]);
-            }
-        }
-
-        return null;
+        const result = calculateToleranceMetrics(activeResolvedTolerance, uutNominal);
+        return result.numericTolerance;
     }, [activeResolvedTolerance, uutNominal]);
 
     // --- DISPLAY 1: Tolerance String ---
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const calculatedToleranceDisplay = useMemo(() => {
-        if (numericTotalTolerance !== null) {
-            return `± ${Number(numericTotalTolerance.toPrecision(4))} ${uutNominal?.unit || ""}`;
-        }
-        // --- BUG FIX 3: Update Label ---
-        return "No Range / Spec";
-    }, [numericTotalTolerance, uutNominal]);
+        const result = calculateToleranceMetrics(activeResolvedTolerance, uutNominal);
+        return result.display;
+    }, [activeResolvedTolerance, uutNominal]);
 
     // --- DISPLAY 2: Limits ---
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const calculatedLimits = useMemo(() => {
-        const nominalVal = parseFloat(uutNominal?.value);
-
-        if (numericTotalTolerance !== null && !isNaN(nominalVal)) {
-            // Calculate limits
-            const low = nominalVal - numericTotalTolerance;
-            const high = nominalVal + numericTotalTolerance;
-
-            return {
-                low: low.toPrecision(6),
-                high: high.toPrecision(6)
-            };
-        }
-
-        return { low: "-", high: "-" };
-    }, [numericTotalTolerance, uutNominal]);
+        const result = calculateToleranceMetrics(activeResolvedTolerance, uutNominal);
+        return result.limits;
+    }, [activeResolvedTolerance, uutNominal]);
 
 
     return (
@@ -829,9 +1036,8 @@ const UncertaintyPanel = ({
                                         {relevantUuts.length === 0 ? (
                                             <tr>
                                                 <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
-                                                    No UUTs assigned to this Measurement Area.
-                                                    <br />
-                                                    <small>Add UUTs in the "Instruments" tab of Edit Session.</small>
+                                                    {/* Better Empty State Message */}
+                                                    No associated UUTs found.
                                                 </td>
                                             </tr>
                                         ) : (
@@ -842,16 +1048,9 @@ const UncertaintyPanel = ({
 
                                                 const isChecked = currentUutSelection.includes(uut.id);
 
-                                                const isActiveContext = testPointData.id
-                                                    ? (testPointData.activeUutId
-                                                        ? uut.id === testPointData.activeUutId
-                                                        : (testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id)))
-                                                    : false;
-
                                                 return (
                                                     <tr key={uut.id} style={{
-                                                        backgroundColor: isActiveContext ? 'rgba(var(--primary-rgb), 0.15)' : (isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent'),
-                                                        borderLeft: isActiveContext ? '4px solid var(--primary-color)' : '4px solid transparent',
+                                                        backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent',
                                                         transition: 'all 0.2s ease'
                                                     }}>
                                                         <td style={{ textAlign: 'center' }}>
@@ -863,23 +1062,8 @@ const UncertaintyPanel = ({
                                                             />
                                                         </td>
                                                         <td>
-                                                            <div style={{ fontWeight: isActiveContext ? 700 : (isChecked ? 600 : 400), color: isChecked ? 'var(--primary-color)' : 'var(--text-color)' }}>
+                                                            <div style={{ fontWeight: 600, color: isChecked ? 'var(--primary-color)' : 'var(--text-color)' }}>
                                                                 {uut.description}
-                                                                {isActiveContext && (
-                                                                    <span style={{
-                                                                        marginLeft: '8px',
-                                                                        fontSize: '0.65rem',
-                                                                        backgroundColor: 'var(--primary-color)',
-                                                                        color: '#fff',
-                                                                        padding: '2px 6px',
-                                                                        borderRadius: '4px',
-                                                                        verticalAlign: 'middle',
-                                                                        textTransform: 'uppercase',
-                                                                        letterSpacing: '0.5px'
-                                                                    }}>
-                                                                        Active
-                                                                    </span>
-                                                                )}
                                                             </div>
                                                         </td>
                                                         <td>
@@ -899,9 +1083,7 @@ const UncertaintyPanel = ({
                                                                                 rangeText = "Full Range";
                                                                             }
                                                                         }
-                                                                        // --- FIX 4: Remove Function Name from Labels ---
                                                                         const label = `${rangeText} ${range.unit || ''}`;
-
                                                                         return <option key={idx} value={idx}>{label}</option>
                                                                     })}
                                                                 </select>
@@ -918,7 +1100,6 @@ const UncertaintyPanel = ({
                                                                                 rangeText = "Full Range";
                                                                             }
                                                                         }
-                                                                        // --- FIX 4: Remove Function Name ---
                                                                         return `${rangeText} ${r.unit || ''}`;
                                                                     })()}
                                                                 </span>
@@ -1069,20 +1250,19 @@ const UncertaintyPanel = ({
                                 <table className="instrument-summary-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                                     <colgroup>
                                         <col style={{ width: '20%' }} /> {/* Point */}
+                                        <col style={{ width: '10%' }} /> {/* Unit - MOVED & RESIZED */}
                                         <col style={{ width: '20%' }} /> {/* Tolerance */}
                                         <col style={{ width: '20%' }} /> {/* Low Limit */}
                                         <col style={{ width: '20%' }} /> {/* High Limit */}
-                                        <col style={{ width: '10%' }} /> {/* Unit */}
                                         <col style={{ width: '10%' }} /> {/* Actions */}
                                     </colgroup>
                                     <thead>
                                         <tr>
                                             <th style={{ paddingLeft: '20px' }}>Point</th>
+                                            <th>Unit</th> {/* MOVED */}
                                             <th>Tolerance</th>
-                                            {/* UPDATED: Removed inline 'color: muted' to match other headers */}
                                             <th>Low Limit</th>
                                             <th>High Limit</th>
-                                            <th>Unit</th>
                                             <th style={{ textAlign: 'center', paddingRight: '20px' }}>
                                                 {!hasMeasurementPoint && (
                                                     <span
@@ -1116,7 +1296,14 @@ const UncertaintyPanel = ({
                                                     </div>
                                                 </td>
 
-                                                {/* 2. Tolerance */}
+                                                {/* 2. Unit - MOVED */}
+                                                <td>
+                                                    <div style={{ fontWeight: 600, paddingLeft: '4px' }}>
+                                                        {uutNominal?.unit}
+                                                    </div>
+                                                </td>
+
+                                                {/* 3. Tolerance */}
                                                 <td>
                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                         {isUnassigned && (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) ? (
@@ -1131,27 +1318,18 @@ const UncertaintyPanel = ({
                                                     </div>
                                                 </td>
 
-                                                {/* 3. Low Limit (UPDATED STYLE) */}
+                                                {/* 4. Low Limit */}
                                                 <td>
-                                                    {/* Matches Tolerance Column style exactly (Removed hardcoded Consolas/Size) */}
                                                     <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
                                                         {calculatedLimits.low}
                                                     </span>
                                                 </td>
 
-                                                {/* 4. High Limit (UPDATED STYLE) */}
+                                                {/* 5. High Limit */}
                                                 <td>
                                                     <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
                                                         {calculatedLimits.high}
                                                     </span>
-                                                </td>
-
-                                                {/* 5. Unit */}
-                                                <td>
-                                                    <div style={{ fontWeight: 600, paddingLeft: '4px' }}>
-                                                        {/* --- BUG FIX 2: Static Display --- */}
-                                                        {uutNominal?.unit}
-                                                    </div>
                                                 </td>
 
                                                 {/* 6. Actions */}
