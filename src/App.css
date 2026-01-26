@@ -38,6 +38,7 @@
   --primary-color: #007bff;
   --primary-color-dark: #2c5282;
   --primary-color-light: #e7f1ff;
+  --primary-rgb: 0, 123, 255;
   
   --text-color: #212529;
   --text-color-muted: #6c757d;
@@ -51,7 +52,7 @@
   --component-header-bg: #f1f3f5;
   
   /* UI Elements */
-  --border-color: #dee2e6;
+  --border-color: rgba(15, 23, 42, 0.25);
   --border-width: 1px;
   --border-radius: 6px;
   --modal-radius: 16px;
@@ -112,7 +113,9 @@ body.dark-mode {
   --primary-color: #3b82f6;
   --primary-color-dark: #63b3ed;
   --primary-color-light: #2a3a5a;
-  
+  --primary-color: #90caf9;
+  --primary-rgb: 144, 202, 249;
+
   --text-color: #e0e0e0;
   --text-color-muted: #a0a0a0;
   
@@ -213,10 +216,11 @@ body.theme-orbital {
   --component-bg: rgba(255, 255, 255, 0.6);
   --component-header-bg: rgba(248, 250, 252, 0.8);
   
-  --border-color: rgba(15, 23, 42, 0.1); 
+  --border-color: rgba(15, 23, 42, 0.25); 
   --primary-color: var(--orbital-cyan);
   --primary-color-dark: #0e7490;
   --primary-color-light: rgba(8, 145, 178, 0.1);
+  --primary-rgb: 0, 212, 255;
   
   /* Status */
   --status-good: var(--orbital-emerald);
@@ -1001,6 +1005,52 @@ body.theme-cyberpunk .button {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
+}
+
+/* --- Sidebar Inline Editing Styles --- */
+.sidebar-inline-input {
+  width: 100%;       /* Fill the grid cell */
+  min-width: 0;      /* Allow shrinking in flex/grid contexts */
+  padding: 0 4px;
+  height: 24px;      /* Fixed height for alignment */
+  font-size: 0.85rem;
+  border: 1px solid var(--primary-color);
+  border-radius: 2px;
+  background-color: var(--input-background);
+  color: var(--text-color);
+  font-family: inherit;
+  box-sizing: border-box; /* Crucial for width: 100% */
+}
+
+.sidebar-inline-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 6px rgba(0, 123, 255, 0.4);
+}
+
+.sidebar-inline-input.section {
+  text-align: right;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding-right: 2px; /* Slight padding for text */
+}
+
+.sidebar-inline-input.value {
+  flex-grow: 1; /* Take up all space not used by the unit */
+  font-family: 'Consolas', monospace;
+  font-weight: 600;
+}
+
+.sidebar-inline-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.sidebar-inline-input-wrapper small {
+    color: var(--text-color-muted);
+    font-size: 0.75rem;
 }
 
 .add-point-button {
@@ -6300,44 +6350,114 @@ body.theme-cyberpunk .range-header-container:hover {
   font-size: 0.7rem;
   font-weight: 700;
   color: var(--text-color-muted);
-  padding: 6px 0 6px 10px;
+  padding: 6px 10px; /* Adjusted padding for hit area */
   margin-top: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px; /* Slightly more gap for icon */
+  
+  /* Interactivity */
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid transparent; /* Prevents layout jump on active border */
+  transition: all 0.2s ease;
 }
 
-/* --- Level 4: Points (Grid Layout) --- */
+/* 2. Hover State */
+.range-label-row:hover {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+}
+
+/* 3. Active/Selected State */
+.range-label-row.active {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+  font-weight: 800;
+  border-color: rgba(0,0,0,0.05);
+}
+
+/* --- THEME OVERRIDES --- */
+
+/* Dark Mode Hover */
+body.dark-mode .range-label-row:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-color);
+}
+body.dark-mode .range-label-row.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--primary-color);
+  border-color: transparent;
+}
+
+/* Cyberpunk Theme (Neon Glow) */
+body.theme-cyberpunk .range-label-row {
+  border-radius: 0;
+}
+
+body.theme-cyberpunk .range-label-row:hover {
+  background-color: transparent;
+  color: var(--primary-color);
+  text-shadow: 0 0 5px var(--primary-color);
+  border-color: transparent;
+}
+
+body.theme-cyberpunk .range-label-row.active {
+  background-color: rgba(0, 0, 0, 0.6);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  box-shadow: 0 0 5px var(--primary-color);
+  text-shadow: none;
+}
+
+/* Cyberpunk Light Mode Specific Fix */
+body.theme-cyberpunk:not(.dark-mode) .range-label-row.active {
+  background-color: #000000;
+  color: #ffffff;
+  border: 1px solid var(--cyber-magenta);
+}
+
+/* =================================================================== */
+/* --- Level 4: Points (Grid Layout) - REFINED & CONSISTENT ---        */
+/* =================================================================== */
+
 .point-grid-item {
   display: grid;
   grid-template-columns: 45px 1fr; /* Fixed width for Section, Flex for Value */
   gap: 10px;
   align-items: center;
-  
-  padding: 6px 10px;
+  min-height: 34px;
+  padding: 8px 12px;
   margin-bottom: 2px;
-  border-radius: 4px;
+  border-radius: 4px; /* Match Range/UUT border radius */
   cursor: pointer;
-  transition: all 0.15s ease;
-  
+  transition: all 0.2s ease-in-out;
   font-size: 0.85rem;
-  color: var(--text-color);
+  color: var(--text-color); /* Default text color */
   text-decoration: none;
   border: 1px solid transparent;
+  position: relative;
 }
 
+/* Hover State - Subtle */
 .point-grid-item:hover {
-  background-color: var(--background-color);
-  border-color: var(--border-color);
+  background-color: var(--hover-background);
+  color: var(--primary-color);
 }
 
+/* --- ACTIVE STATE (Consistent "Text Highlight" Style) --- */
+/* This matches the logic used for Ranges: Subtle BG + Highlighted Text */
 .point-grid-item.active {
-  background-color: var(--primary-color);
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  background-color: rgba(var(--primary-rgb), 0.1); /* Subtle highlight BG */
+  color: var(--primary-color); /* Highlighted Text */
+  font-weight: 700;
+  border-color: transparent;
+  border-left: 3px solid var(--primary-color); /* Selection Indicator */
 }
+
+/* --- POINT FIELDS (The Editable Text) --- */
 
 /* Point Section Column */
 .point-section {
@@ -6345,35 +6465,343 @@ body.theme-cyberpunk .range-header-container:hover {
   font-weight: 700;
   color: var(--text-color-muted);
   text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   text-align: right;
-}
-
-.point-grid-item.active .point-section {
-  color: rgba(255, 255, 255, 0.8);
+  
+  /* UPDATED: Prepare for Edit Mode visuals */
+  transition: all 0.1s ease-in-out;
+  border: 1px solid transparent; /* Reserve space for hover border */
+  border-radius: 2px;
+  padding: 0 2px; /* Breathing room for the highlight box */
 }
 
 /* Point Value Column */
 .point-value {
-  font-family: 'Consolas', monospace; /* Technical font for numbers */
+  font-family: 'Consolas', monospace;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  /* UPDATED: Prepare for Edit Mode visuals */
+  transition: all 0.1s ease-in-out;
+  border: 1px solid transparent; 
+  border-radius: 2px;
+  padding: 0 2px;
 }
 
-/* Empty State / No Points */
-.empty-branch-msg {
-  font-size: 0.75rem;
+/* --- INTERACTION STATES (Visual Cues) --- */
+
+/* 1. EDITABLE CUE: Only when row is ACTIVE */
+/* When the row is selected, hovering the text shows it can be edited */
+.point-grid-item.active .point-section:hover,
+.point-grid-item.active .point-value:hover {
+  cursor: text;
+  background-color: var(--input-background);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 2px rgba(var(--primary-rgb), 0.3);
+  color: var(--text-color); /* Ensure high contrast when editing */
+  opacity: 1;
+}
+
+/* 2. SELECTABLE CUE: When row is NOT active */
+/* Normal pointer behavior for selection */
+.point-grid-item:not(.active) .point-section:hover,
+.point-grid-item:not(.active) .point-value:hover {
+  cursor: pointer;
+}
+
+/* Active State: Highlight the Section Label too (when not hovering) */
+.point-grid-item.active .point-section {
+  color: var(--primary-color);
+  opacity: 0.8;
+}
+
+/* ------------------------------------------------------------------- */
+/* THEME OVERRIDES FOR POINTS                                          */
+/* ------------------------------------------------------------------- */
+
+/* 1. Dark Mode Override */
+body.dark-mode .point-grid-item.active {
+  background-color: rgba(var(--primary-rgb), 0.15); /* Slightly stronger in dark mode */
+  color: var(--primary-color);
+  border-left: 3px solid var(--primary-color);
+}
+
+/* 2. Orbital Theme Override */
+body.theme-orbital .point-grid-item.active {
+  background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.1) 0%, transparent 100%);
+  color: var(--primary-color-dark);
+  border-left: 3px solid var(--primary-color);
+  box-shadow: none; 
+}
+
+/* 3. Cyberpunk Theme Override - REFINED (Readable) */
+body.theme-cyberpunk .point-grid-item {
+  border-radius: 0; /* Square edges */
+  border: 1px solid transparent; /* Prepare for border */
+}
+
+body.theme-cyberpunk .point-grid-item:hover {
+  background-color: rgba(0, 0, 0, 0.5); /* Darken bg */
+  color: var(--primary-color);
+  border-color: var(--primary-color); /* Neon border on hover */
+  box-shadow: 0 0 5px var(--primary-color); /* Subtle glow */
+  text-shadow: 0 0 2px var(--primary-color);
+}
+
+body.theme-cyberpunk .point-grid-item.active {
+  /* READABLE ACTIVE STATE */
+  background-color: rgba(0, 0, 0, 0.7); /* Dark background for contrast */
+  color: var(--primary-color);          /* Neon Text */
+  border: 1px solid var(--primary-color); /* Full Neon Border */
+  border-left: 5px solid var(--primary-color); /* Thicker left indicator */
+  
+  box-shadow: inset 0 0 10px rgba(var(--primary-rgb), 0.2); /* Inner Glow */
+  text-shadow: 0 0 3px var(--primary-color); /* Text Glow */
+  animation: none; /* No dramatic pulsing */
+}
+
+body.theme-cyberpunk .point-grid-item.active .point-section {
+  color: var(--primary-color);
+  text-shadow: none;
+}
+
+/* =================================================================== */
+/* DRAG AND DROP & CONTEXT MENU STYLES                                 */
+/* =================================================================== */
+
+.point-grid-item[draggable="true"] {
+  cursor: grab;
+}
+
+.point-grid-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Drop Target Visuals */
+.uut-row.drag-over,
+.range-label-row.drag-over {
+  background-color: var(--primary-color-light) !important;
+  outline: 2px dashed var(--primary-color);
+  outline-offset: -2px;
+}
+
+.range-label-row.drag-over {
+  border-radius: 4px;
+}
+
+/* Context Menu Disabled State */
+.context-menu li.disabled {
   color: var(--text-color-muted);
-  font-style: italic;
-  padding: 5px 0 5px 15px;
-  opacity: 0.7;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
-/* --- Theme Compatibility Overrides --- */
-body.dark-mode .area-header-sticky {
-  background-color: var(--sidebar-background); /* Or specific dark hex */
+.context-menu li.disabled:hover {
+  background-color: transparent;
+  color: var(--text-color-muted);
+}
+
+/* =================================================================== */
+/* TOAST NOTIFICATION STYLES                                           */
+/* =================================================================== */
+
+.toast-notification {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 50px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  z-index: 10000;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: toastSlideUp 0.3s ease-out forwards;
+  pointer-events: none; /* Let clicks pass through if it overlaps something */
+}
+
+/* In Dark Mode, invert the colors for contrast */
+.dark-mode .toast-notification {
+  background-color: #fff;
+  color: #333;
+}
+
+@keyframes toastSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* =================================================================== */
+/* DRAG AND DROP & CONTEXT MENU STYLES (Existing)                      */
+/* =================================================================== */
+
+.point-grid-item[draggable="true"] {
+  cursor: grab;
+}
+
+.point-grid-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Drop Target Visuals */
+.uut-row.drag-over,
+.range-label-row.drag-over {
+  background-color: var(--primary-color-light) !important;
+  outline: 2px dashed var(--primary-color);
+  outline-offset: -2px;
+}
+
+.range-label-row.drag-over {
+  border-radius: 4px;
+}
+
+/* Context Menu Disabled State */
+.context-menu li.disabled {
+  color: var(--text-color-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.context-menu li.disabled:hover {
+  background-color: transparent;
+  color: var(--text-color-muted);
+}
+
+/* =================================================================== */
+/* FIX: TREE VIEW LINE VISIBILITY (Light Modes)                        */
+/* =================================================================== */
+
+/* 1. Make the main vertical tree line darker in light modes */
+.tree-branch {
+    /* Use a darker, explicit color for structure lines in default/light themes */
+    border-left-color: rgba(0, 0, 0, 0.2) !important; 
+}
+
+/* 2. Make the horizontal connector lines match */
+.uut-row::before {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* --- Dark Mode Override (Keep subtle) --- */
+body.dark-mode .tree-branch {
+    border-left-color: var(--border-color) !important;
+}
+
+body.dark-mode .uut-row::before {
+    background-color: var(--border-color) !important;
+}
+
+/* --- Cyberpunk Override (Keep sharp) --- */
+body.theme-cyberpunk .tree-branch {
+    border-left-color: var(--border-color) !important;
+}
+body.theme-cyberpunk .uut-row::before {
+    background-color: var(--border-color) !important;
+}
+
+
+/* =================================================================== */
+/* FIX: CYBERPUNK LIGHT MODE SELECTION READABILITY                     */
+/* =================================================================== */
+
+/* Problem: Cyberpunk Light Primary Color is Black. 
+   Previous CSS put Black Text on Dark Background.
+   Fix: Force White text on Black background for high contrast active state.
+*/
+
+body.theme-cyberpunk:not(.dark-mode) .point-grid-item.active {
+    background-color: #000000 !important;   /* Solid Black Background */
+    color: #ffffff !important;              /* Solid White Text */
+    border: 2px solid var(--cyber-magenta) !important; /* Pop color border */
+    border-left: 6px solid var(--cyber-magenta) !important;
+    
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.2); /* Hard shadow depth */
+    text-shadow: none; /* Clean text for readability */
+}
+
+/* Ensure the sub-label (Section) is also white/readable */
+body.theme-cyberpunk:not(.dark-mode) .point-grid-item.active .point-section {
+    color: var(--cyber-cyan) !important; /* Cyan accent for section label */
+    opacity: 1;
+}
+
+/* Hover state fix for Cyberpunk Light */
+body.theme-cyberpunk:not(.dark-mode) .point-grid-item:hover:not(.active) {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #000000;
+    box-shadow: 2px 2px 0px var(--cyber-cyan);
+}
+
+/* =================================================================== */
+/* FIX: TABLE ROW HIGHLIGHTING LOGIC                                   */
+/* =================================================================== */
+/* Replace the existing "TABLE ROW INTERACTION STYLES" section at the 
+   bottom of your CSS with this refined version: */
+
+/* Standardize pointer cursor */
+.instrument-summary-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-left-color 0.15s ease;
+}
+
+/* 1. Normal Hover (Unselected) */
+.instrument-summary-table tbody tr:hover {
+    background-color: rgba(var(--primary-rgb), 0.05);
+}
+
+/* 2. Selected State (Handled by inline JS, but reinforced here to ensure contrast) */
+/* The inline style sets bg to rgba(var(--primary-rgb), 0.15) */
+
+/* 3. Selected + Hover State (Prevent "Fading Out" effect) */
+/* We target rows that have the active border-left style applied by React */
+.instrument-summary-table tbody tr[style*="border-left: 4px solid var(--primary-color)"]:hover {
+    /* Make it slightly DARKER than the normal selected state (0.15 -> 0.25) */
+    background-color: rgba(var(--primary-rgb), 0.25);
+}
+
+/* =================================================================== */
+/* CYBERPUNK SPECIFIC OVERRIDES (For high contrast)                    */
+/* =================================================================== */
+
+/* Make selected text pop in Cyberpunk mode */
+body.theme-cyberpunk .instrument-summary-table tbody tr[style*="border-left: 4px solid var(--primary-color)"] {
+    box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.4);
+    background-color: rgba(var(--primary-rgb), 0.2) !important;
+}
+
+body.theme-cyberpunk .instrument-summary-table tbody tr[style*="border-left: 4px solid var(--primary-color)"] td {
+    color: #fff !important;
+    text-shadow: 0 0 5px var(--primary-color);
+}
+
+/* 1. Base Highlight (Default Light Mode) */
+.instrument-summary-table tbody tr.selected-row {
+    /* Boosted to 0.3 (30%) opacity for better visibility on white backgrounds */
+    background-color: rgba(var(--primary-rgb), 0.3) !important; 
+    font-weight: 600;
+}
+
+/* 2. Default Dark Mode Override */
+body.dark-mode .instrument-summary-table tbody tr.selected-row {
+    /* Reduced to 0.2 (20%) because 30% is too bright on dark backgrounds.
+       This works now because we added --primary-rgb to body.dark-mode */
+    background-color: rgba(var(--primary-rgb), 0.2) !important;
+}
+
+/* 3. Orbital Theme Override */
+body.theme-orbital:not(.dark-mode) .instrument-summary-table tbody tr.selected-row {
+     background-color: rgba(var(--primary-rgb), 0.25) !important;
 }

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from "react";
 
 // --- Components ---
@@ -42,11 +43,143 @@ import {
   faRulerCombined,
   faEye,
   faEyeSlash,
-  faFolderOpen
+  faFolderOpen,
+  faCopy,
+  faPaste,
+  faCheckCircle
 } from "@fortawesome/free-solid-svg-icons";
 
 const ThemeContext = React.createContext(false);
 export const useTheme = () => React.useContext(ThemeContext);
+
+// --- HELPER COMPONENT: Sidebar Point Item (Supports Inline Editing) ---
+const SidebarPointItem = ({ 
+  point, 
+  isSelected, 
+  onSelect, 
+  onModalOpen, 
+  onSave, 
+  onContextMenu,
+  onDragStart 
+}) => {
+  const [editingField, setEditingField] = useState(null); // 'section' | 'value' | null
+  const [tempValue, setTempValue] = useState("");
+
+  const startEdit = (e, field, currentVal) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setEditingField(field);
+    setTempValue(currentVal !== undefined && currentVal !== null ? currentVal : "");
+  };
+
+  const handleSingleClickEdit = (e, field, currentVal) => {
+    if (isSelected) {
+        startEdit(e, field, currentVal);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingField(null);
+    setTempValue("");
+  };
+
+  const commitEdit = () => {
+    if (editingField === 'section') {
+       onSave({ ...point, section: tempValue });
+    } else if (editingField === 'value') {
+       const prevInfo = point.testPointInfo || {};
+       const prevParam = prevInfo.parameter || {};
+       
+       const newInfo = { 
+         ...prevInfo, 
+         parameter: { ...prevParam, value: tempValue } 
+       };
+       onSave({ ...point, testPointInfo: newInfo });
+    }
+    setEditingField(null);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+        e.target.blur(); // Triggers onBlur which commits
+    }
+    if (e.key === 'Escape') cancelEdit();
+  };
+
+  // Safe Accessors
+  const displayValue = point.testPointInfo?.parameter?.value;
+  const displayUnit = point.testPointInfo?.parameter?.unit;
+
+  return (
+    <div
+      draggable={!editingField}
+      className={`point-grid-item ${isSelected ? 'active' : ''}`}
+      onClick={(e) => { 
+        if(!editingField) {
+          e.stopPropagation(); 
+          onSelect(point); 
+        }
+      }}
+      onDragStart={(e) => onDragStart(e, point.id)}
+      onDoubleClick={(e) => { 
+        if(!editingField) {
+            e.preventDefault(); 
+            onModalOpen(point); 
+        }
+      }}
+      onContextMenu={(e) => onContextMenu(e, point)}
+    >
+       {/* Section Column */}
+       {editingField === 'section' ? (
+          <input 
+            autoFocus 
+            className="sidebar-inline-input section"
+            value={tempValue} 
+            onChange={e => setTempValue(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={handleKeyDown}
+            onClick={e => e.stopPropagation()}
+            placeholder="-"
+          />
+       ) : (
+          <span 
+            className="point-section" 
+            onClick={(e) => handleSingleClickEdit(e, 'section', point.section)}
+            title="Click to edit Section"
+          >
+            {point.section || '-'}
+          </span>
+       )}
+
+       {/* Value Column */}
+       {editingField === 'value' ? (
+          <div className="sidebar-inline-input-wrapper">
+             <input 
+                autoFocus 
+                className="sidebar-inline-input value"
+                value={tempValue} 
+                onChange={e => setTempValue(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={handleKeyDown}
+                onClick={e => e.stopPropagation()}
+             />
+             <small>{displayUnit}</small>
+          </div>
+       ) : (
+          <span 
+            className="point-value"
+            onClick={(e) => handleSingleClickEdit(e, 'value', displayValue)}
+            title="Click to edit Value"
+          >
+            {/* If value is empty, show a placeholder so it's clickable */}
+            {displayValue || <span style={{opacity:0.3}}>-</span>} 
+            {displayValue && <small style={{marginLeft:'4px', color:'var(--text-color-muted)'}}>{displayUnit}</small>}
+          </span>
+       )}
+    </div>
+  );
+};
+
 
 // --- HELPER: Extract All Ranges from UUT ---
 const getAllUutRanges = (uut) => {
@@ -188,11 +321,11 @@ function App() {
   // --- SELECTION & VIRTUAL STATE ---
   const [selectedAreaId, setSelectedAreaId] = useState(null);
   const [selectedUutId, setSelectedUutId] = useState(null);
+  const [selectedRangeContext, setSelectedRangeContext] = useState(null); // { uutId, range }
   const [virtualPoint, setVirtualPoint] = useState(null);
   const [activeRangeIndices, setActiveRangeIndices] = useState({});
 
   // UPDATED: Tracks which UUTs are explicitly SHOWING all ranges. 
-  // Default (empty set) means hiding empty ranges.
   const [uutsShowingAllRanges, setUutsShowingAllRanges] = useState(new Set());
 
   // Tracks which UUT "folder" was clicked in the sidebar to enforce context
@@ -201,16 +334,128 @@ function App() {
   // --- Global UUT Selection State ---
   const [currentUutSelection, setCurrentUutSelection] = useState([]);
 
+  // --- DRAG AND DROP & CLIPBOARD STATE ---
+  const [draggedPointId, setDraggedPointId] = useState(null);
+  const [dragOverTargetId, setDragOverTargetId] = useState(null);
+  const [clipboardPoint, setClipboardPoint] = useState(null); // The point currently in the "clipboard"
+
+  // --- TOAST STATE ---
+  const [toast, setToast] = useState(null);
+
+  // Toast Helper
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => {
+      setToast(null);
+    }, 3000); // clear after 3 seconds
+  };
+
+  // --- DELETE HELPER (Defined before useEffect so it can be used inside) ---
+  const handleDeleteTestPoint = (idOrIds, immediate = false) => {
+    const idsToDelete = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+
+    const performDelete = () => {
+      if (currentSessionData && currentSessionData.testPoints) {
+        const idsSet = new Set(idsToDelete);
+        const updatedTestPoints = currentSessionData.testPoints.filter(tp => !idsSet.has(tp.id));
+
+        updateSession({
+          ...currentSessionData,
+          testPoints: updatedTestPoints
+        });
+      }
+      setAppNotification(null);
+      // If the selected point was deleted, clear selection
+      if (idsToDelete.includes(selectedTestPointId)) {
+        setSelectedTestPointId(null);
+      }
+    };
+
+    if (immediate) {
+      performDelete();
+      return;
+    }
+
+    const message = idsToDelete.length > 1
+      ? `Are you sure you want to delete these ${idsToDelete.length} measurement points?`
+      : "Are you sure you want to delete this measurement point?";
+
+    setAppNotification({
+      title: idsToDelete.length > 1 ? "Batch Delete" : "Delete Measurement Point",
+      message: message,
+      confirmText: "Delete",
+      isIconConfirm: true,
+      onConfirm: performDelete,
+    });
+  };
+
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // 1. Ctrl+Shift+M for Migrate (Existing)
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'M') {
         e.preventDefault();
         migrateToDisk();
       }
+
+      // 2. Ctrl+C for Copy Point
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        // Only trigger if a single point is selected and we aren't in an input
+        if (selectedTestPointId && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+          const point = currentTestPoints.find(p => p.id === selectedTestPointId);
+          if (point) {
+            e.preventDefault();
+            handleCopyPoint(point);
+          }
+        }
+      }
+
+      // 3. Ctrl+V for Paste Point
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        if (clipboardPoint && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          // Determine target from selection state
+          let targetUutId = null;
+          let targetAreaId = selectedAreaId;
+          let targetRange = null;
+
+          // Priority 0: Selected Range
+          if (selectedRangeContext) {
+            targetUutId = selectedRangeContext.uutId;
+            targetRange = selectedRangeContext.range;
+          }
+          // Priority 1: Selected UUT Folder
+          else if (selectedUutId) {
+            targetUutId = selectedUutId;
+          }
+          // Priority 2: Selected Point's Context UUT
+          else if (selectedTestPointId && selectedTestPointContextUutId) {
+            targetUutId = selectedTestPointContextUutId;
+          }
+
+          if (targetUutId) {
+            // Find area if needed
+            if (!targetAreaId) {
+              const uut = currentSessionData?.uuts?.find(u => u.id === targetUutId);
+              if (uut) targetAreaId = uut.measurementAreaId;
+            }
+            handlePastePoint(targetUutId, targetAreaId, targetRange);
+          }
+        }
+      }
+
+      // 4. Delete Key
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (e.key === 'Delete') {
+          if (selectedTestPointId && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            handleDeleteTestPoint(selectedTestPointId);
+          }
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [migrateToDisk]);
+  }, [migrateToDisk, selectedTestPointId, selectedUutId, selectedTestPointContextUutId, clipboardPoint, currentTestPoints, currentSessionData, selectedAreaId, selectedRangeContext]);
 
   useEffect(() => {
     const body = document.body;
@@ -253,12 +498,123 @@ function App() {
     return () => window.removeEventListener("wheel", handleZoom);
   }, []);
 
+  // --- COPY / PASTE HANDLERS ---
+  const handleCopyPoint = (point) => {
+    setClipboardPoint(point);
+    showToast("Measurement point copied to clipboard");
+    setContextMenu(null);
+  };
+
+  const handlePastePoint = (targetUutId, targetAreaId, targetRange = null) => {
+    if (!clipboardPoint) return;
+
+    const targetUut = currentSessionData.uuts.find(u => u.id === targetUutId);
+
+    // FIX: Robust Area ID Lookup
+    let resolvedAreaId = targetAreaId;
+    if (!resolvedAreaId && targetUut) {
+         resolvedAreaId = targetUut.measurementAreaId;
+         // Fallback: Try finding area by name if ID is missing (common with imported legacy sessions)
+         if (!resolvedAreaId && targetUut.measurementArea) {
+             const area = currentSessionData.measurementAreas?.find(a => a.name === targetUut.measurementArea);
+             if (area) resolvedAreaId = area.id;
+         }
+    }
+
+    // Create new point object (Clean ID)
+    const newPointData = { ...clipboardPoint };
+    delete newPointData.id;
+
+    // Update Location with RESOLVED Area ID
+    newPointData.measurementAreaId = resolvedAreaId;
+    newPointData.associatedUutIds = [targetUutId];
+
+    // Resolve Tolerance
+    if (targetRange) {
+      newPointData.uutTolerance = targetRange;
+    } else if (targetUut) {
+      const val = newPointData.testPointInfo?.parameter?.value;
+      const unit = newPointData.testPointInfo?.parameter?.unit;
+      const matched = findMatchingRange(targetUut, val, unit);
+      newPointData.uutTolerance = matched || null;
+    }
+
+    saveTestPoint(newPointData, null);
+    showToast("Measurement point pasted successfully");
+    setContextMenu(null);
+    setSelectedTestPointContextUutId(targetUutId);
+  };
+
+  // --- DRAG AND DROP HANDLERS (AUTO-MOVE) ---
+
+  const handleDragStart = (e, pointId) => {
+    setDraggedPointId(pointId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e, targetId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverTargetId !== targetId) {
+      setDragOverTargetId(targetId);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    // Optional cleanup
+  };
+
+  const handleDrop = (e, targetUutId, targetAreaId, targetRange = null) => {
+    e.preventDefault();
+    setDragOverTargetId(null);
+
+    if (!draggedPointId) return;
+
+    const pointToProcess = currentTestPoints.find(p => p.id === draggedPointId);
+    if (!pointToProcess) return;
+
+    const targetUut = currentSessionData.uuts.find(u => u.id === targetUutId);
+
+    // FIX: Robust Area ID Lookup
+    let resolvedAreaId = targetAreaId;
+    if (!resolvedAreaId && targetUut) {
+         resolvedAreaId = targetUut.measurementAreaId;
+         if (!resolvedAreaId && targetUut.measurementArea) {
+             const area = currentSessionData.measurementAreas?.find(a => a.name === targetUut.measurementArea);
+             if (area) resolvedAreaId = area.id;
+         }
+    }
+
+    const updatedPointData = {
+      ...pointToProcess,
+      measurementAreaId: resolvedAreaId, // Use resolved ID
+      associatedUutIds: [targetUutId],
+    };
+
+    // Tolerance Logic
+    if (targetRange) {
+      updatedPointData.uutTolerance = targetRange;
+    } else if (targetUut) {
+      const val = pointToProcess.testPointInfo?.parameter?.value;
+      const unit = pointToProcess.testPointInfo?.parameter?.unit;
+      const matched = findMatchingRange(targetUut, val, unit);
+      updatedPointData.uutTolerance = matched || null;
+    }
+
+    // Save (Update existing ID)
+    saveTestPoint(updatedPointData, null);
+    showToast("Measurement point moved");
+    setSelectedTestPointContextUutId(targetUutId);
+    setDraggedPointId(null);
+  };
+
   // --- SELECTION HANDLERS ---
   const handleSelectSession = (newId) => {
     setSelectedSessionId(newId);
     setSelectedTestPointId(null);
     setSelectedAreaId(null);
     setSelectedUutId(null);
+    setSelectedRangeContext(null); // Clear range
     setVirtualPoint(null);
     setSelectedTestPointContextUutId(null);
     setCurrentUutSelection([]);
@@ -267,27 +623,40 @@ function App() {
   const handleSelectArea = (areaId) => {
     setSelectedAreaId(areaId);
     setSelectedUutId(null);
+    setSelectedRangeContext(null); // Clear range
     setSelectedTestPointId(null);
     setSelectedTestPointContextUutId(null);
     setCurrentUutSelection([]);
-
-    // Clear virtual point to allow Summary Dashboard to render
     setVirtualPoint(null);
   };
 
   const handleSelectUut = (uutId, areaId, uutObject) => {
     setSelectedUutId(uutId);
     setSelectedAreaId(areaId);
+    setSelectedRangeContext(null); // Clear range
     setSelectedTestPointId(null);
     setSelectedTestPointContextUutId(null);
     setCurrentUutSelection([uutId]);
-
-    // Clear virtual point to allow Summary Dashboard to render
     setVirtualPoint(null);
+  };
+
+  // --- NEW: Handle Range Selection ---
+  const handleSelectRange = (uutId, range, areaId) => {
+    setSelectedRangeContext({ uutId, range });
+    setSelectedUutId(null);
+    setSelectedTestPointId(null);
+    setVirtualPoint(null);
+    setSelectedAreaId(areaId);
+
+    // Auto-select the UUT so the "Add Point" button knows what to link to
+    setCurrentUutSelection([uutId]);
+    // Set the active range index so the "Add Point" modal pre-selects this range
+    setActiveRangeIndices(prev => ({ ...prev, [uutId]: range._id }));
   };
 
   const handleSelectTestPoint = (tpId, contextUutId = null) => {
     setSelectedTestPointId(tpId);
+    setSelectedRangeContext(null); // Clear range
     setSelectedAreaId(null);
     setSelectedUutId(null);
     setVirtualPoint(null);
@@ -300,22 +669,19 @@ function App() {
     setEditingSession(newSession);
   };
 
-  // UPDATED: Toggle adds ID to set to SHOW ranges (default is hidden)
   const toggleUutEmptyRanges = (uutId) => {
     const newSet = new Set(uutsShowingAllRanges);
     if (newSet.has(uutId)) {
-      newSet.delete(uutId); // Revert to hiding empty ranges
+      newSet.delete(uutId);
     } else {
-      newSet.add(uutId); // Show all ranges
+      newSet.add(uutId);
     }
     setUutsShowingAllRanges(newSet);
   };
 
-  // Enhanced to support direct Range/UUT adds from sidebar
   const handleAddNewTestPoint = (areaId = null, specificUutId = null, specificRange = null) => {
     let initialData = {};
 
-    // 1. Direct Add from Sidebar Range (Priority)
     if (specificUutId && specificRange) {
       initialData = {
         measurementAreaId: areaId,
@@ -324,18 +690,14 @@ function App() {
         testPointInfo: {
           parameter: {
             value: '',
-            unit: specificRange.unit || '' // Auto-fill unit if available
+            unit: specificRange.unit || ''
           }
         }
       };
-      // Update context so UI highlights the correct parent
       setSelectedTestPointContextUutId(specificUutId);
-      // Ensure the Analysis panel dropdown matches the clicked range
       setActiveRangeIndices(prev => ({ ...prev, [specificUutId]: specificRange._id || 0 }));
     }
-    // 2. Add via Header Button (Uses active selection)
     else if (specificUutId) {
-      // Logic for adding to UUT without specific range (auto-sort logic handles it)
       initialData = {
         measurementAreaId: areaId,
         associatedUutIds: [specificUutId],
@@ -351,9 +713,6 @@ function App() {
       const primaryUutId = currentUutSelection[0];
       const primaryUut = currentSessionData?.uuts?.find(u => u.id === primaryUutId);
 
-      // --- FIX: Add check for single selection ---
-      // Only preset the tolerance if we are targeting a SINGLE UUT.
-      // For multiple UUTs, we want the tolerance to be resolved dynamically per UUT.
       if (primaryUut && currentUutSelection.length === 1) {
         const availableRanges = getAllUutRanges(primaryUut);
         const selectedIndex = activeRangeIndices[primaryUutId];
@@ -365,7 +724,6 @@ function App() {
         }
       }
     }
-    // 3. Fallback / Blank Add
     else {
       initialData = virtualPoint || (areaId ? { measurementAreaId: areaId, associatedUutIds: [] } : null);
     }
@@ -453,22 +811,14 @@ function App() {
 
   const handleSaveTestPoint = (formData) => {
     if (!formData.id && formData.associatedUutIds && formData.associatedUutIds.length > 1) {
-
-      // Map the UUT IDs to an array of point objects
       const batchPoints = formData.associatedUutIds.map(uutId => ({
         ...formData,
         associatedUutIds: [uutId],
         uutTolerance: null
       }));
-
-      // Send ONE call with an array
       saveTestPoint(batchPoints, null);
-
-      // Select the first UUT context for the user
       setSelectedTestPointContextUutId(formData.associatedUutIds[0]);
-
     } else {
-      // Standard Behavior (Single Create or Edit)
       const finalData = { ...formData };
       if (!finalData.measurementAreaId && selectedAreaId) finalData.measurementAreaId = selectedAreaId;
 
@@ -487,6 +837,11 @@ function App() {
     setCurrentUutSelection([]);
   };
 
+  // --- NEW: Inline update handler for sidebar edits ---
+  const handleInlinePointUpdate = (updatedPoint) => {
+      saveTestPoint(updatedPoint, null);
+  };
+
   const handleAnalysisDataSave = (updates) => {
     if (selectedTestPointId) {
       updateTestPointData(updates);
@@ -496,43 +851,6 @@ function App() {
         return { ...prev, ...updates };
       });
     }
-  };
-
-  // --- UPDATED: Handle Single OR Batch Deletion ---
-  const handleDeleteTestPoint = (idOrIds, immediate = false) => {
-    const idsToDelete = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
-
-    const performDelete = () => {
-      // Robust Batch Deletion: Filter list locally & single update
-      if (currentSessionData && currentSessionData.testPoints) {
-        const idsSet = new Set(idsToDelete);
-        const updatedTestPoints = currentSessionData.testPoints.filter(tp => !idsSet.has(tp.id));
-
-        updateSession({
-          ...currentSessionData,
-          testPoints: updatedTestPoints
-        });
-      }
-      setAppNotification(null);
-    };
-
-    if (immediate) {
-      // Direct delete without confirmation (e.g. Shift+Click or Batch)
-      performDelete();
-      return;
-    }
-
-    const message = idsToDelete.length > 1
-      ? `Are you sure you want to delete these ${idsToDelete.length} measurement points?`
-      : "Are you sure you want to delete this measurement point?";
-
-    setAppNotification({
-      title: idsToDelete.length > 1 ? "Batch Delete" : "Delete Measurement Point",
-      message: message,
-      confirmText: "Delete",
-      isIconConfirm: true,
-      onConfirm: performDelete,
-    });
   };
 
   const handleDeleteTmdeDefinition = (tmdeId) => {
@@ -617,29 +935,22 @@ function App() {
           tp.associatedUutIds.some(id => String(id) === String(uut.id))
         );
 
-        // Logic to Sort Points into Ranges
         const availableRanges = getAllUutRanges(uut);
 
         const categorizedPoints = new Set();
         const rangesWithPoints = availableRanges.map(range => {
           const pointsInRange = associatedPoints.filter(tp => {
             if (categorizedPoints.has(tp.id)) return false;
-
             const val = parseFloat(tp.testPointInfo?.parameter?.value);
             const unit = tp.testPointInfo?.parameter?.unit;
-
             if (isNaN(val)) return false;
-
             const min = parseFloat(range.min);
             const max = parseFloat(range.max);
-
             const unitMatch = !unit || !range.unit || unit.toLowerCase() === range.unit.toLowerCase();
             const inRange = !isNaN(min) && !isNaN(max) && unitMatch && val >= min && val <= max;
-
             if (inRange) categorizedPoints.add(tp.id);
             return inRange;
           });
-
           return { ...range, points: pointsInRange };
         });
 
@@ -669,12 +980,10 @@ function App() {
   const displayData = useMemo(() => {
     if (!currentSessionData) return null;
 
-    // 1. SPECIFIC POINT VIEW (Detailed Analysis)
     if (selectedTestPointId) {
       const pointData = currentTestPoints.find((p) => p.id === selectedTestPointId);
       if (!pointData) return null;
 
-      // Default: Start with stored values
       let effectiveUutTolerance = (pointData.uutTolerance !== null && pointData.uutTolerance !== undefined && Object.keys(pointData.uutTolerance).length > 0)
         ? pointData.uutTolerance
         : currentSessionData.uutTolerance;
@@ -687,14 +996,12 @@ function App() {
 
       let activeUutId = null;
 
-      // CONTEXT: Specific UUT folder clicked
       if (selectedTestPointContextUutId) {
         const contextUut = currentSessionData.uuts?.find(u => u.id === selectedTestPointContextUutId);
         if (contextUut) {
           effectiveUutDescription = contextUut.description;
           activeUutId = contextUut.id;
 
-          // Only fallback to auto-matching if no specific tolerance is saved on the point
           if (!pointData.uutTolerance || Object.keys(pointData.uutTolerance).length === 0) {
             const pointValue = pointData.testPointInfo?.parameter?.value;
             const pointUnit = pointData.testPointInfo?.parameter?.unit;
@@ -708,10 +1015,8 @@ function App() {
         }
       }
 
-      // FALLBACK CONTEXT: No specific folder clicked
       if (!activeUutId && pointData.associatedUutIds && pointData.associatedUutIds.length > 0) {
         activeUutId = pointData.associatedUutIds[0];
-
         if (!pointData.uutTolerance || Object.keys(pointData.uutTolerance).length === 0) {
           const fallbackUut = currentSessionData.uuts?.find(u => u.id === activeUutId);
           if (fallbackUut) {
@@ -729,14 +1034,13 @@ function App() {
 
       return {
         ...pointData,
-        viewMode: 'point', // EXPLICIT MODE
+        viewMode: 'point',
         uutDescription: effectiveUutDescription,
         uutTolerance: effectiveUutTolerance,
         activeUutId: activeUutId,
       };
     }
 
-    // 2. VIRTUAL POINT (User clicked Add New Point specifically)
     if (virtualPoint) {
       let activeUutId = null;
       if (virtualPoint.associatedUutIds && virtualPoint.associatedUutIds.length > 0) {
@@ -744,12 +1048,22 @@ function App() {
       }
       return {
         ...virtualPoint,
-        viewMode: 'point', // EXPLICIT MODE
+        viewMode: 'point',
         activeUutId: activeUutId
       };
     }
 
-    // 3. HIERARCHICAL SUMMARY VIEWS
+    // --- NEW: Range View Mode ---
+    if (selectedRangeContext) {
+      return {
+        viewMode: 'range',
+        id: `${selectedRangeContext.uutId}-${selectedRangeContext.range._id}`, // Unique ID for React keys
+        rangeData: selectedRangeContext.range,
+        uutId: selectedRangeContext.uutId,
+        measurementAreaId: selectedAreaId
+      };
+    }
+
     if (selectedUutId) {
       return { viewMode: 'uut', id: selectedUutId };
     }
@@ -763,13 +1077,21 @@ function App() {
     }
 
     return null;
-  }, [currentSessionData, selectedTestPointId, currentTestPoints, virtualPoint, selectedTestPointContextUutId, selectedUutId, selectedAreaId, selectedSessionId]);
+  }, [currentSessionData, selectedTestPointId, currentTestPoints, virtualPoint, selectedTestPointContextUutId, selectedUutId, selectedAreaId, selectedSessionId, selectedRangeContext]);
 
 
   return (
     <ThemeContext.Provider value={isDarkMode}>
       <div className="App">
-        {/* ... (Previous Modals and Overlays remain unchanged) ... */}
+        {/* --- TOAST NOTIFICATION --- */}
+        {toast && (
+          <div className="toast-notification">
+            <FontAwesomeIcon icon={faCheckCircle} />
+            <span>{toast}</span>
+          </div>
+        )}
+
+        {/* ... (Existing Modals) ... */}
         {appNotification && (
           <NotificationModal
             isOpen={true}
@@ -785,6 +1107,7 @@ function App() {
             onConfirm={appNotification.onConfirm}
           />
         )}
+
         <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
         <BugReportModal isOpen={isBugReportOpen} onClose={() => setIsBugReportOpen(false)} reports={bugReports} onSave={saveBugReport} onDelete={handleDeleteBugReport} />
         {currentSessionData && (<> <FloatingNotepad isOpen={isNotepadOpen} onClose={() => setIsNotepadOpen(false)} notes={currentSessionData.notes || ""} onSave={handleUpdateNotes} /> <UnitConverter isOpen={isConverterOpen} onClose={() => setIsConverterOpen(false)} /> <ReverseTraceabilityTool isOpen={isTraceabilityOpen} onClose={() => setIsTraceabilityOpen(false)} /> </>)}
@@ -794,7 +1117,6 @@ function App() {
         <AddTestPointModal isOpen={isAddModalOpen || !!editingTestPoint} onClose={() => { setIsAddModalOpen(false); setEditingTestPoint(null); }} onSave={handleSaveTestPoint} initialData={editingTestPoint || (selectedAreaId ? { measurementAreaId: selectedAreaId } : null)} hasExistingPoints={currentTestPoints.length > 0} previousTestPointData={currentTestPoints.length > 0 ? currentTestPoints[currentTestPoints.length - 1] : null} />
         <EditSessionModal isOpen={!!editingSession} onClose={() => { setEditingSession(null); setInitialTmdeToEdit(null); setInitialSessionTab("details"); }} sessionData={editingSession} onSave={handleSessionChange} onSaveToFile={handleSaveToFile} handleLoadFromFile={handleLoadFromFile} initialSection={initialSessionTab} sessionImageCache={sessionImageCache} onImageCacheChange={setSessionImageCache} onRemoveImageFile={deleteSessionImage} instruments={instruments} />
         <OverviewModal isOpen={isOverviewOpen} onClose={() => setIsOverviewOpen(false)} sessionData={currentSessionData} onUpdateTestPoint={handleUpdateSpecificTestPoint} onDeleteTmdeDefinition={handleDeleteTmdeDefinition} onDecrementTmdeQuantity={decrementTmdeQuantity} instruments={instruments} />
-        {/* Only show Tolerance Modal if in Point View */}
         {displayData && displayData.id && displayData.viewMode === 'point' && (<ToleranceToolModal isOpen={isToleranceModalOpen} onClose={() => setIsToleranceModalOpen(false)} onSave={(data) => { updateTestPointData(data); }} testPointData={displayData} />)}
         <FullBreakdownModal isOpen={!!breakdownPoint} breakdownData={breakdownPoint} onClose={() => setBreakdownPoint(null)} />
         <TestPointInfoModal isOpen={!!infoModalPoint} testPoint={infoModalPoint} onClose={() => setInfoModalPoint(null)} />
@@ -829,11 +1151,11 @@ function App() {
                 </div>
               </div>
 
-              {/* === REDESIGNED SIDEBAR LIST === */}
+              {/* === SIDEBAR LIST === */}
               <div className="measurement-point-list">
-                
+
                 {/* 1. DASHBOARD HOME BUTTON */}
-                <div 
+                <div
                   className={`sidebar-session-card ${selectedSessionId && !selectedAreaId && !selectedTestPointId ? 'active' : ''}`}
                   onClick={() => handleSelectSession(selectedSessionId)}
                 >
@@ -846,33 +1168,65 @@ function App() {
                   </div>
                 </div>
 
-                {sidebarData.map((areaData) => (
+                {sidebarData.map((areaData) => {
+                // NEW: Determine if this Area is the strictly selected item
+                const isAreaActive =
+                  selectedAreaId === areaData.id &&
+                  !selectedUutId &&
+                  !selectedTestPointId &&
+                  !selectedRangeContext;
+
+                return (
                   <div key={areaData.id} className="measurement-group-container">
                     
-                    {/* 2. STICKY AREA HEADER */}
+                    {/* 2. STICKY AREA HEADER (Now uses 'active' class) */}
                     <div 
-                      className="area-header-sticky"
+                      className={`area-header-sticky ${isAreaActive ? 'active' : ''}`}
                       onClick={() => handleSelectArea(areaData.id)}
                     >
-                      <FontAwesomeIcon icon={faLayerGroup} style={{ color: areaData.color || 'var(--primary-color)', opacity: 0.7 }} size="sm" />
+                      <FontAwesomeIcon 
+                        icon={faLayerGroup} 
+                        style={{ 
+                          color: isAreaActive ? 'var(--primary-color)' : (areaData.color || 'var(--primary-color)'), 
+                          opacity: isAreaActive ? 1 : 0.7 
+                        }} 
+                        size="sm" 
+                      />
                       <span className="area-label">{areaData.name}</span>
                     </div>
 
-                    {/* TREE BRANCH LINE (Vertical Guide) */}
                     <div className="tree-branch">
                       
                       {/* 3. UUTs LOOP */}
                       {areaData.uutGroups.map(group => {
-                        const isUutSelected = selectedUutId === group.id && !selectedTestPointId;
+                        const isUutSelected = selectedUutId === group.id && !selectedTestPointId && !selectedRangeContext;
                         const isShowingAll = uutsShowingAllRanges.has(group.id);
+                        const isDragOver = dragOverTargetId === group.id;
 
                         return (
                           <div key={group.id} style={{ marginBottom: '10px' }}>
                             
                             {/* UUT ITEM CARD */}
                             <div 
-                              className={`uut-row ${isUutSelected ? 'active' : ''}`}
+                              className={`uut-row ${isUutSelected ? 'active' : ''} ${isDragOver ? 'drag-over' : ''}`}
                               onClick={() => handleSelectUut(group.id, areaData.id, group)}
+                              onDragOver={(e) => handleDragOver(e, group.id)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => handleDrop(e, group.id, areaData.id)}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                setContextMenu({
+                                  x: e.pageX, y: e.pageY,
+                                  items: [
+                                    { 
+                                      label: "Paste Point Here", 
+                                      action: () => handlePastePoint(group.id, areaData.id), 
+                                      icon: faPaste,
+                                      className: !clipboardPoint ? 'disabled' : '' 
+                                    },
+                                  ],
+                                });
+                              }}
                             >
                               <div className="uut-info">
                                 <FontAwesomeIcon icon={faMicroscope} style={{ opacity: 0.6 }} />
@@ -896,47 +1250,75 @@ function App() {
                               </div>
                             </div>
 
-                            {/* 4. RANGES LOOP (Indented inside UUT) */}
+                            {/* 4. RANGES LOOP */}
                             <div style={{ paddingLeft: '15px' }}>
                               {group.rangeGroups.map(range => {
                                 if (!isShowingAll && range.points.length === 0) return null;
+                                const rangeKey = `${group.id}-${range._id}`;
+                                const isRangeDragOver = dragOverTargetId === rangeKey;
+                                
+                                const isRangeSelected = selectedRangeContext && 
+                                                        selectedRangeContext.uutId === group.id && 
+                                                        selectedRangeContext.range._id === range._id;
 
                                 return (
                                   <div key={`range-${range._id}`} style={{ marginBottom: '8px' }}>
                                     
-                                    {/* Range Mini Header */}
-                                    <div className="range-label-row">
-                                      <FontAwesomeIcon icon={faRulerCombined} size="xs" style={{ opacity: 0.5 }} />
+                                    {/* RANGE HEADER */}
+                                    <div 
+                                      className={`range-label-row ${isRangeDragOver ? 'drag-over' : ''} ${isRangeSelected ? 'active' : ''}`}
+                                      onClick={(e) => { 
+                                          e.stopPropagation(); 
+                                          handleSelectRange(group.id, range, areaData.id); 
+                                      }}
+                                      onDragOver={(e) => handleDragOver(e, rangeKey)}
+                                      onDrop={(e) => handleDrop(e, group.id, areaData.id, range)}
+                                      onContextMenu={(e) => {
+                                        e.preventDefault();
+                                        setContextMenu({
+                                          x: e.pageX, y: e.pageY,
+                                          items: [
+                                            { 
+                                              label: "Paste Point in Range", 
+                                              action: () => handlePastePoint(group.id, areaData.id, range), 
+                                              icon: faPaste,
+                                              className: !clipboardPoint ? 'disabled' : '' 
+                                            },
+                                          ],
+                                        });
+                                      }}
+                                    >
+                                      <FontAwesomeIcon icon={faRulerCombined} size="xs" style={{ opacity: isRangeSelected ? 1 : 0.5 }} />
                                       <span>{range.label}</span>
                                     </div>
 
-                                    {/* 5. POINTS (Grid Layout) */}
+                                    {/* 5. POINTS */}
                                     {range.points.length === 0 ? (
-                                      <div className="empty-branch-msg">No points</div>
+                                      <div className="empty-branch-msg"></div>
                                     ) : (
                                       range.points.map(tp => {
                                         const isSelected = selectedTestPointId === tp.id && selectedTestPointContextUutId === group.id;
                                         return (
-                                          <div
+                                          <SidebarPointItem 
                                             key={tp.id}
-                                            className={`point-grid-item ${isSelected ? 'active' : ''}`}
-                                            onClick={() => handleSelectTestPoint(tp.id, group.id)}
-                                            onDoubleClick={(e) => { e.preventDefault(); setEditingTestPoint(tp); setIsAddModalOpen(true); }}
-                                            onContextMenu={(e) => {
-                                              e.preventDefault();
-                                              setContextMenu({
-                                                x: e.pageX, y: e.pageY,
-                                                items: [
-                                                  { label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" },
-                                                ],
-                                              });
+                                            point={tp}
+                                            isSelected={isSelected}
+                                            onSelect={() => handleSelectTestPoint(tp.id, group.id)}
+                                            onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
+                                            onSave={handleInlinePointUpdate}
+                                            onDragStart={handleDragStart}
+                                            onContextMenu={(e, p) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setContextMenu({
+                                                    x: e.pageX, y: e.pageY,
+                                                    items: [
+                                                    { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                                    { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                                    ],
+                                                });
                                             }}
-                                          >
-                                            <span className="point-section">{tp.section || '-'}</span>
-                                            <span className="point-value">
-                                              {tp.testPointInfo.parameter.value} <small>{tp.testPointInfo.parameter.unit}</small>
-                                            </span>
-                                          </div>
+                                          />
                                         );
                                       })
                                     )}
@@ -952,22 +1334,26 @@ function App() {
                                       <span>Other Points</span>
                                     </div>
                                     {group.uncategorizedPoints.map(tp => (
-                                      <div
+                                      <SidebarPointItem 
                                         key={tp.id}
-                                        className={`point-grid-item ${selectedTestPointId === tp.id ? 'active' : ''}`}
-                                        onClick={() => handleSelectTestPoint(tp.id, group.id)}
-                                        onDoubleClick={(e) => { e.preventDefault(); setEditingTestPoint(tp); setIsAddModalOpen(true); }}
-                                        onContextMenu={(e) => {
-                                          e.preventDefault();
-                                          setContextMenu({
-                                            x: e.pageX, y: e.pageY,
-                                            items: [{ label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" }],
-                                          });
+                                        point={tp}
+                                        isSelected={selectedTestPointId === tp.id}
+                                        onSelect={() => handleSelectTestPoint(tp.id, group.id)}
+                                        onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
+                                        onSave={handleInlinePointUpdate}
+                                        onDragStart={handleDragStart}
+                                        onContextMenu={(e, p) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setContextMenu({
+                                                x: e.pageX, y: e.pageY,
+                                                items: [
+                                                { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                                { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                                ],
+                                            });
                                         }}
-                                      >
-                                        <span className="point-section">{tp.section || '-'}</span>
-                                        <span className="point-value">{tp.testPointInfo.parameter.value} <small>{tp.testPointInfo.parameter.unit}</small></span>
-                                      </div>
+                                      />
                                     ))}
                                 </div>
                               )}
@@ -976,7 +1362,7 @@ function App() {
                         );
                       })}
 
-                      {/* Unassigned Points (Directly under Area) - RESTORED LOGIC */}
+                      {/* Unassigned Points */}
                       {areaData.unassignedPoints.length > 0 && (
                           <div style={{ marginTop: '15px', paddingLeft: '10px' }}>
                            <div className="range-label-row" style={{ color: 'var(--text-color-muted)' }}>
@@ -984,31 +1370,34 @@ function App() {
                               <span>Unassigned Points</span>
                            </div>
                            {areaData.unassignedPoints.map(tp => (
-                             <div
-                               key={tp.id}
-                               className={`point-grid-item ${selectedTestPointId === tp.id ? 'active' : ''}`}
-                               onClick={() => handleSelectTestPoint(tp.id, null)}
-                               onDoubleClick={(e) => { e.preventDefault(); setEditingTestPoint(tp); setIsAddModalOpen(true); }}
-                               onContextMenu={(e) => {
-                                  e.preventDefault();
-                                  setContextMenu({
-                                    x: e.pageX, y: e.pageY,
-                                    items: [{ label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" }],
-                                  });
-                               }}
-                             >
-                                <span className="point-section">{tp.section || '-'}</span>
-                                <span className="point-value">{tp.testPointInfo.parameter.value} <small>{tp.testPointInfo.parameter.unit}</small></span>
-                             </div>
+                             <SidebarPointItem 
+                                key={tp.id}
+                                point={tp}
+                                isSelected={selectedTestPointId === tp.id}
+                                onSelect={() => handleSelectTestPoint(tp.id, null)}
+                                onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
+                                onSave={handleInlinePointUpdate}
+                                onDragStart={handleDragStart}
+                                onContextMenu={(e, p) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setContextMenu({
+                                        x: e.pageX, y: e.pageY,
+                                        items: [
+                                        { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                        { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                        ],
+                                    });
+                                }}
+                             />
                            ))}
                          </div>
                       )}
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
-              {/* === END SIDEBAR LIST === */}
-
             </aside>
 
             <main className="results-content">

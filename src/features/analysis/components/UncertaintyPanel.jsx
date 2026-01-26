@@ -12,7 +12,10 @@ import {
     faMicroscope,
     faCube,
     faArrowRight,
-    faFolderOpen
+    faFolderOpen,
+    faRulerCombined,
+    faSave,
+    faLevelDownAlt
 } from "@fortawesome/free-solid-svg-icons";
 
 // Sub-components
@@ -232,9 +235,174 @@ const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, p
     return ( <div onClick={() => setIsEditing(true)} style={{ cursor: 'text', minHeight: '20px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '2px', color: !value && placeholder ? 'var(--text-color-muted)' : 'inherit', ...style }} className={`editable-cell-display ${className}`} title="Click to edit" > {value || placeholder} {suffix} </div> )
 };
 
+// --- NEW: Inline Quick Add Row Component ---
+const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSave, showAreaColumn, sessionData }) => {
+    // Local state for the inputs
+    const [val, setVal] = useState("");
+    const [unit, setUnit] = useState("");
+    const isDisabled = selectedUuts.length === 0;
+    
+    // Auto-detect unit from selected UUT when selection changes
+    useEffect(() => {
+        if (selectedUuts.length > 0) {
+            const primaryUut = selectedUuts[0];
+            const { activeRange } = resolveRangeHelper(primaryUut, localRangeIndices, null, null);
+            if (activeRange?.unit && !unit) {
+                setUnit(activeRange.unit);
+            }
+        }
+    }, [selectedUuts, localRangeIndices, resolveRangeHelper]); 
 
-// --- NEW COMPONENT: SUMMARY DASHBOARD ---
-const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint }) => {
+    // Real-time Preview Calculation
+    const previewMetrics = useMemo(() => {
+        if (!val) return { display: "-", limits: { low: "-", high: "-" } };
+
+        let activeTolerance = {};
+        
+        // If UUTs selected, use the first one's active range logic
+        if (selectedUuts.length > 0) {
+            const primaryUut = selectedUuts[0];
+            const nominalObj = { value: val, unit: unit };
+            
+            // We pass the nominalObj to the helper so it can find the best fitting range if in auto-mode
+            const { activeRange } = resolveRangeHelper(primaryUut, localRangeIndices, null, nominalObj);
+            activeTolerance = activeRange || {};
+        }
+
+        // Calculate limits
+        return calculateToleranceMetrics(activeTolerance, { value: val, unit: unit });
+    }, [val, unit, selectedUuts, localRangeIndices, resolveRangeHelper]);
+
+    const handleSave = () => {
+        if (!val || !unit) return;
+
+        // Determine Measurement Area ID (Robust Lookup)
+        let areaId = null;
+        if (selectedUuts.length > 0) {
+            const primaryUut = selectedUuts[0];
+            
+            // 1. Direct ID if available
+            if (primaryUut.measurementAreaId) {
+                areaId = primaryUut.measurementAreaId;
+            } 
+            // 2. Lookup by Name via sessionData
+            else if (primaryUut.measurementArea && sessionData?.measurementAreas) {
+                const matchedArea = sessionData.measurementAreas.find(a => a.name === primaryUut.measurementArea);
+                if (matchedArea) {
+                    areaId = matchedArea.id;
+                }
+            }
+        }
+
+        // Construct payload compatible with onSaveTestPoint
+        const newPoint = {
+            section: "General", // CHANGED: Default to "General" to avoid creating a "New" sidebar tag
+            measurementType: "direct",
+            testPointInfo: {
+                parameter: { name: "Measurement", value: val, unit: unit }
+            },
+            associatedUutIds: selectedUuts.map(u => u.id),
+            measurementAreaId: areaId
+        };
+
+        onSave(newPoint);
+        setVal(""); // Reset value for next point
+        // Note: We deliberately do NOT reset unit, to facilitate rapid entry of points in the same unit
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') handleSave();
+    };
+
+    return (
+        <tr style={{ 
+            borderBottom: '2px solid var(--primary-color)', 
+            backgroundColor: 'rgba(var(--primary-rgb), 0.05)',
+            opacity: isDisabled ? 0.7 : 1,
+            transition: 'opacity 0.2s ease'
+        }}>
+            <td style={{ padding: '8px' }}>
+                <input 
+                    type="text" 
+                    placeholder={isDisabled ? "Select a UUT first..." : "Enter Value..."}
+                    value={val}
+                    onChange={e => setVal(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={isDisabled}
+                    style={{ 
+                        width: '100%', 
+                        border: '1px solid var(--border-color)', 
+                        borderRadius: '4px', 
+                        padding: '6px 10px',
+                        fontWeight: 'bold',
+                        color: 'var(--primary-color)',
+                        backgroundColor: isDisabled ? 'transparent' : 'var(--input-background)',
+                        outline: 'none',
+                        cursor: isDisabled ? 'not-allowed' : 'text',
+                        boxShadow: isDisabled ? 'none' : 'inset 0 1px 2px rgba(0,0,0,0.1)'
+                    }}
+                    title={isDisabled ? "Select a UUT from the list on the left to enable quick add" : "Enter value and press Enter"}
+                />
+            </td>
+            <td style={{ padding: '8px' }}>
+                <input 
+                    type="text" 
+                    placeholder="Unit" 
+                    value={unit}
+                    onChange={e => setUnit(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={isDisabled}
+                    style={{ 
+                        width: '100%', 
+                        border: '1px solid var(--border-color)', 
+                        borderRadius: '4px', 
+                        padding: '6px 10px',
+                        fontSize: '0.85rem',
+                        backgroundColor: isDisabled ? 'transparent' : 'var(--input-background)',
+                        color: 'var(--text-color)',
+                        outline: 'none',
+                        cursor: isDisabled ? 'not-allowed' : 'text'
+                    }} 
+                />
+            </td>
+            {/* Live Preview Columns */}
+            <td style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)', fontStyle: 'italic', paddingLeft:'8px' }}>
+                {previewMetrics.display}
+            </td>
+            <td style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)', paddingLeft:'8px' }}>
+                {previewMetrics.limits.low}
+            </td>
+            <td style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)', paddingLeft:'8px' }}>
+                {previewMetrics.limits.high}
+            </td>
+            {showAreaColumn && <td></td>}
+            
+            {/* Action Button: Floating at end of row if needed, or we rely on Enter. 
+                We can add a small button in the last cell for better UX. */}
+             {!isDisabled && val && (
+                <td style={{ width: '40px', textAlign: 'center' }}>
+                    <button 
+                        onClick={handleSave}
+                        className="btn-icon-only"
+                        style={{
+                            color: 'var(--primary-color)', 
+                            background: 'transparent', 
+                            border: 'none', 
+                            cursor: 'pointer'
+                        }}
+                        title="Save Point (Enter)"
+                    >
+                        <FontAwesomeIcon icon={faLevelDownAlt} rotation={90} />
+                    </button>
+                </td>
+            )}
+        </tr>
+    );
+};
+
+
+// --- UPDATED: SUMMARY DASHBOARD ---
+const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint, rangeData, uutId, onSaveTestPoint }) => {
     
     // Local Selection State for UUTs in the table
     const [selectedUutIds, setSelectedUutIds] = useState([]);
@@ -250,7 +418,6 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
         let displayTitle = "Session Overview";
         let displaySubtitle = "All Measurement Areas";
         
-        // --- FEATURE: Only show Area column on highest level view ---
         const isSessionView = viewMode === 'session';
 
         if (viewMode === 'area') {
@@ -263,13 +430,43 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                 return idMatch || nameMatch;
             });
             points = points.filter(tp => tp.measurementAreaId === contextId);
-        } 
+        }
         else if (viewMode === 'uut') {
             const uut = uuts.find(u => u.id === contextId);
             displayTitle = uut?.description || "UUT Detail";
             displaySubtitle = `${uut?.manufacturer || ''} ${uut?.model || ''}`;
             uuts = uut ? [uut] : [];
             points = points.filter(tp => tp.associatedUutIds && tp.associatedUutIds.includes(contextId));
+        }
+        else if (viewMode === 'range') {
+            // --- NEW: Range View Logic ---
+            const uut = uuts.find(u => u.id === uutId);
+            
+            // 1. Filter UUTs: Only the parent UUT
+            uuts = uut ? [uut] : [];
+            
+            // 2. Filter Points: Matches UUT AND Matches Range Characteristics
+            points = points.filter(tp => {
+                // Must belong to the UUT
+                if (!tp.associatedUutIds || !tp.associatedUutIds.includes(uutId)) return false;
+                
+                // Must match the Range
+                const ptTol = tp.uutTolerance;
+                if (!ptTol) return false;
+
+                // Match based on key properties (Min/Max/Unit/Function/Index)
+                // If range objects have distinct IDs or indices, use them. Otherwise compare props.
+                const minMatch = ptTol.min == rangeData.min;
+                const maxMatch = ptTol.max == rangeData.max;
+                const unitMatch = (ptTol.unit || "") === (rangeData.unit || "");
+                const funcMatch = rangeData.functionName ? ptTol.functionName === rangeData.functionName : true;
+                
+                return minMatch && maxMatch && unitMatch && funcMatch;
+            });
+
+            // 3. Set Titles
+            displayTitle = rangeData.label || "Range Detail";
+            displaySubtitle = `${uut?.description || 'UUT'} (${uut?.model || ''})`;
         }
         else if (isSessionView) {
             displayTitle = sessionData.name || "Session Overview";
@@ -283,7 +480,17 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
             subtitle: displaySubtitle,
             showAreaColumn: isSessionView // Boolean flag
         };
-    }, [viewMode, contextId, sessionData]);
+    }, [viewMode, contextId, sessionData, rangeData, uutId]);
+
+    // Pre-select UUT if in single UUT or Range view
+    useEffect(() => {
+        if (viewMode === 'uut' || viewMode === 'range') {
+            const targetId = viewMode === 'range' ? uutId : contextId;
+            if (targetId && !selectedUutIds.includes(targetId)) {
+                setSelectedUutIds([targetId]);
+            }
+        }
+    }, [viewMode, contextId, uutId]);
 
     const handleUutSelect = (id) => {
         setSelectedUutIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -291,29 +498,54 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
 
     const handleAddPoint = () => {
         if (onDefineTestPoint) {
-            onDefineTestPoint(selectedUutIds);
+            // If in Range View, auto-pass UUT and Range
+            if (viewMode === 'range') {
+                onDefineTestPoint([uutId], rangeData);
+            } else {
+                onDefineTestPoint(selectedUutIds);
+            }
         }
     };
     
     // --- BATCH DELETE HANDLERS ---
-    const handlePointSelect = (id) => {
-        setSelectedPointIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-    };
-
-    const handleSelectAllPoints = (e) => {
-        if (e.target.checked) {
-            setSelectedPointIds(filteredPoints.map(p => p.id));
-        } else {
-            setSelectedPointIds([]);
-        }
-    };
-
     const handleBatchDelete = () => {
         if (selectedPointIds.length === 0) return;
         if (onDeleteTestPoint) {
             onDeleteTestPoint(selectedPointIds, false); 
             setSelectedPointIds([]);
         }
+    };
+
+    // NEW: Handle Row Selection via Click and Modifiers (Ctrl/Meta)
+    const handleRowClick = (e, id) => {
+        if (e.ctrlKey || e.metaKey) {
+            // Toggle selection if modifier key is held
+            setSelectedPointIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+        } else {
+            // Single select if simply clicked
+            setSelectedPointIds([id]);
+        }
+    };
+
+    // NEW: Keyboard Listener for Delete
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedPointIds.length > 0) {
+                // Prevent backspace from navigating back if not in an input
+                if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                     e.preventDefault();
+                     handleBatchDelete();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedPointIds, onDeleteTestPoint]);
+
+    // Wrapper for the helper to pass to QuickAddRow
+    const resolveRangeWrapper = (uut, indices, savedTol, nominal) => {
+        return resolveUutRangeHelper(uut, indices, savedTol, nominal);
     };
 
     const cardStyle = { backgroundColor: 'var(--content-background)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden' };
@@ -324,7 +556,10 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
             
             {/* Header */}
             <div style={{ paddingBottom: '10px', borderBottom: '1px solid var(--border-color)' }}>
-                <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{title}</h2>
+                <h2 style={{ margin: 0, fontSize: '1.4rem' }}>
+                    {viewMode === 'range' && <FontAwesomeIcon icon={faRulerCombined} style={{marginRight: '10px', color:'var(--primary-color)'}} />}
+                    {title}
+                </h2>
                 <div style={{ color: 'var(--text-color-muted)', fontSize: '0.9rem', marginTop: '4px' }}>{subtitle}</div>
             </div>
 
@@ -344,11 +579,11 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                     <div style={{ overflowX: 'auto', maxHeight: '400px' }}>
                         <table className="instrument-summary-table" style={{ width: '100%', margin: 0, border: 'none', boxShadow: 'none' }}>
                             <colgroup>
-                                <col style={{ width: showAreaColumn ? '8%' : '10%' }} /> {/* Checkbox */}
-                                <col style={{ width: showAreaColumn ? '32%' : '40%' }} /> {/* Desc */}
-                                <col style={{ width: '25%' }} /> {/* Range */}
-                                <col style={{ width: showAreaColumn ? '20%' : '25%' }} /> {/* Spec */}
-                                {showAreaColumn && <col style={{ width: '15%' }} />} {/* Area - Conditional */}
+                                <col style={{ width: showAreaColumn ? '8%' : '10%' }} />
+                                <col style={{ width: showAreaColumn ? '32%' : '40%' }} />
+                                <col style={{ width: '25%' }} />
+                                <col style={{ width: showAreaColumn ? '20%' : '25%' }} />
+                                {showAreaColumn && <col style={{ width: '15%' }} />}
                             </colgroup>
                             <thead>
                                 <tr>
@@ -376,7 +611,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                         const areaColor = area?.color || 'var(--text-color-muted)';
 
                                         return (
-                                            <tr key={uut.id} style={{ backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent' }}>
+                                            <tr key={uut.id} className={isChecked ? "selected-row" : ""} style={{ backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent' }}>
                                                 <td style={{ textAlign: 'center' }}>
                                                     <input 
                                                         type="checkbox" 
@@ -416,7 +651,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                     </div>
                 </div>
 
-                {/* MEASUREMENT POINTS TABLE */}
+                {/* MEASUREMENT POINTS TABLE (UPDATED: NO CHECKBOXES, CTRL CLICK SELECT) */}
                 <div style={cardStyle}>
                     <div style={headerStyle}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -447,33 +682,24 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                 className="btn-icon-only" 
                                 style={{backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px'}}
                                 onClick={handleAddPoint}
-                                title="Add Measurement Point (uses selected UUTs)"
+                                title={viewMode === 'range' ? "Add Point to this Range" : "Add Measurement Point (uses selected UUTs)"}
                             >
                                 <FontAwesomeIcon icon={faPlus} size="xs" />
                             </button>
                         </div>
                     </div>
-                    <div style={{ overflowX: 'auto', maxHeight: '400px' }}>
+                    <div style={{ overflowX: 'auto', maxHeight: '400px' }} tabIndex="0">
                         <table className="instrument-summary-table" style={{ width: '100%', margin: 0, border: 'none', boxShadow: 'none' }}>
                             <colgroup>
-                                <col style={{ width: '5%' }} /> {/* Batch Select */}
-                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} /> {/* Point */}
-                                <col style={{ width: showAreaColumn ? '10%' : '10%' }} /> {/* Unit */}
-                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} /> {/* Tolerance */}
-                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} /> {/* Low */}
-                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} /> {/* High */}
-                                {showAreaColumn && <col style={{ width: '25%' }} />} {/* Area */}
+                                <col style={{ width: showAreaColumn ? '20%' : '25%' }} />
+                                <col style={{ width: showAreaColumn ? '10%' : '10%' }} />
+                                <col style={{ width: showAreaColumn ? '20%' : '25%' }} />
+                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} />
+                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} />
+                                {showAreaColumn && <col style={{ width: '20%' }} />}
                             </colgroup>
                             <thead>
                                 <tr>
-                                    <th style={{textAlign:'center'}}>
-                                        <input 
-                                            type="checkbox" 
-                                            onChange={handleSelectAllPoints} 
-                                            checked={filteredPoints.length > 0 && selectedPointIds.length === filteredPoints.length}
-                                            style={{ cursor: 'pointer' }}
-                                        />
-                                    </th>
                                     <th>Point</th>
                                     <th>Unit</th>
                                     <th>Tolerance</th>
@@ -483,8 +709,19 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                 </tr>
                             </thead>
                             <tbody>
+                                {/* --- NEW: QUICK ADD ROW --- */}
+                                <QuickAddRow 
+                                    selectedUuts={sessionData.uuts.filter(u => selectedUutIds.includes(u.id))}
+                                    localRangeIndices={localRangeIndices}
+                                    resolveRangeHelper={resolveRangeWrapper}
+                                    onSave={onSaveTestPoint}
+                                    showAreaColumn={showAreaColumn}
+                                    sessionData={sessionData} // <--- PASSING SESSION DATA FOR AREA LOOKUP
+                                />
+
                                 {filteredPoints.length === 0 ? (
-                                    <tr><td colSpan={showAreaColumn ? 7 : 6} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No Measurement Points found.</td></tr>
+                                    /* No message here anymore, just empty rows below QuickAddRow */
+                                    null
                                 ) : (
                                     filteredPoints.map(tp => {
                                         const param = tp.testPointInfo?.parameter || { value: '', unit: '' };
@@ -509,15 +746,17 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                         const areaColor = area?.color || 'var(--text-color-muted)';
 
                                         return (
-                                            <tr key={tp.id} style={{ backgroundColor: isSelected ? 'rgba(var(--status-bad), 0.05)' : 'transparent' }}>
-                                                <td style={{ textAlign: 'center' }}>
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={isSelected}
-                                                        onChange={() => handlePointSelect(tp.id)}
-                                                        style={{ cursor: 'pointer' }}
-                                                    />
-                                                </td>
+                                            <tr 
+                                                key={tp.id} 
+                                                className={isSelected ? "selected-row" : ""}
+                                                onClick={(e) => handleRowClick(e, tp.id)}
+                                                style={{ 
+                                                    backgroundColor: isSelected ? 'rgba(var(--primary-rgb), 0.15)' : 'transparent',
+                                                    borderLeft: isSelected ? '4px solid var(--primary-color)' : '4px solid transparent',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.1s ease'
+                                                }}
+                                            >
                                                 <td style={{ fontWeight: 700, color: 'var(--primary-color)' }}>{param.value}</td>
                                                 <td style={{ fontSize: '0.85rem' }}>{param.unit}</td>
                                                 <td style={{ fontSize: '0.85rem' }}>{display}</td>
@@ -529,6 +768,9 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                             </tr>
                                         )
                                     })
+                                )}
+                                {filteredPoints.length === 0 && (
+                                     <tr><td colSpan={showAreaColumn ? 6 : 5} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No Measurement Points found. Use the input row above to add one.</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -581,6 +823,7 @@ const UncertaintyPanel = ({
     onToggleAllTmdes,
     onToggleUut,
     onDeleteTestPoint,
+    onSaveTestPoint, // <--- NEW PROP
     currentUutSelection = [],
     activeRangeIndices = {},
     onRangeSelectionChange,
@@ -596,9 +839,12 @@ const UncertaintyPanel = ({
             <SummaryDashboard 
                 viewMode={viewMode} 
                 contextId={testPointData.id} 
+                rangeData={testPointData.rangeData}
+                uutId={testPointData.uutId}
                 sessionData={sessionData}
                 onDefineTestPoint={onDefineTestPoint}
                 onDeleteTestPoint={onDeleteTestPoint}
+                onSaveTestPoint={onSaveTestPoint} // <--- Pass down to Dashboard
             />
         );
     }
@@ -1049,7 +1295,7 @@ const UncertaintyPanel = ({
                                                 const isChecked = currentUutSelection.includes(uut.id);
 
                                                 return (
-                                                    <tr key={uut.id} style={{
+                                                    <tr key={uut.id} className={isChecked ? "selected-row" : ""} style={{
                                                         backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent',
                                                         transition: 'all 0.2s ease'
                                                     }}>
@@ -1249,17 +1495,17 @@ const UncertaintyPanel = ({
                             <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1, overflowX: 'auto' }}>
                                 <table className="instrument-summary-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                                     <colgroup>
-                                        <col style={{ width: '20%' }} /> {/* Point */}
-                                        <col style={{ width: '10%' }} /> {/* Unit - MOVED & RESIZED */}
-                                        <col style={{ width: '20%' }} /> {/* Tolerance */}
-                                        <col style={{ width: '20%' }} /> {/* Low Limit */}
-                                        <col style={{ width: '20%' }} /> {/* High Limit */}
-                                        <col style={{ width: '10%' }} /> {/* Actions */}
+                                        <col style={{ width: '20%' }} />
+                                        <col style={{ width: '10%' }} />
+                                        <col style={{ width: '20%' }} />
+                                        <col style={{ width: '20%' }} />
+                                        <col style={{ width: '20%' }} />
+                                        <col style={{ width: '10%' }} />
                                     </colgroup>
                                     <thead>
                                         <tr>
                                             <th style={{ paddingLeft: '20px' }}>Point</th>
-                                            <th>Unit</th> {/* MOVED */}
+                                            <th>Unit</th>
                                             <th>Tolerance</th>
                                             <th>Low Limit</th>
                                             <th>High Limit</th>

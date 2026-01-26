@@ -233,6 +233,7 @@ function Analysis({
   };
 
   const handleSaveTestPointInfo = (updatedData) => {
+    // This is the main save handler that routes to onSaveTestPoint (App.jsx)
     if (onSaveTestPoint) {
       let finalData = { ...updatedData };
       if (!finalData.id && selectedTmdeIds.length > 0) {
@@ -539,7 +540,10 @@ function Analysis({
             sessionData={sessionData}
             onDefineTestPoint={handleDefineTestPoint}
             handleOpenSessionEditor={handleOpenSessionEditor}
-            onDeleteTestPoint={onDeleteTestPoint} // <--- ADDED: Pass delete handler to summary view
+            onDeleteTestPoint={onDeleteTestPoint}
+            
+            // --- NEW: Pass the save handler for Inline Creation ---
+            onSaveTestPoint={handleSaveTestPointInfo} // Using the local wrapper to ensure consistency
             
             // Passing empty/null props for detailed view specifics to avoid proptype warnings
             calcResults={null}
