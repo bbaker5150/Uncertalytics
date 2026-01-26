@@ -652,13 +652,9 @@ function App() {
         };
       });
 
-      // --- CRITICAL: Logic for Unassigned Points in Area ---
-      // This ensures points that belong to the Area but have no UUT parent are captured.
       const unassignedPoints = points.filter(tp => {
         if (tp.measurementAreaId !== area.id) return false;
         const hasParent = tp.associatedUutIds && tp.associatedUutIds.length > 0;
-        
-        // Ensure parent actually exists in this area (not a ghost ID)
         const parentExistsInArea = hasParent && areaUuts.some(u =>
           tp.associatedUutIds.some(id => String(id) === String(u.id))
         );
@@ -948,7 +944,7 @@ function App() {
                                 );
                               })}
 
-                              {/* Uncategorized Points within UUT */}
+                              {/* Uncategorized Points */}
                               {group.uncategorizedPoints && group.uncategorizedPoints.length > 0 && (
                                 <div style={{ marginTop: '8px' }}>
                                    <div className="range-label-row" style={{ color: 'var(--status-warning)' }}>
@@ -980,32 +976,33 @@ function App() {
                         );
                       })}
 
-                      {/* --- CRITICAL RE-INSERTION: Unassigned Points (Directly under Area) --- */}
+                      {/* Unassigned Points (Directly under Area) - RESTORED LOGIC */}
                       {areaData.unassignedPoints.length > 0 && (
-                          <div style={{ marginTop: '15px' }}>
-                            <div className="range-label-row">
+                          <div style={{ marginTop: '15px', paddingLeft: '10px' }}>
+                           <div className="range-label-row" style={{ color: 'var(--text-color-muted)' }}>
+                              <FontAwesomeIcon icon={faLayerGroup} size="xs" style={{opacity: 0.5}}/>
                               <span>Unassigned Points</span>
-                            </div>
-                            {areaData.unassignedPoints.map(tp => (
-                              <div
-                                key={tp.id}
-                                className={`point-grid-item ${selectedTestPointId === tp.id ? 'active' : ''}`}
-                                onClick={() => handleSelectTestPoint(tp.id, null)}
-                                onDoubleClick={(e) => { e.preventDefault(); setEditingTestPoint(tp); setIsAddModalOpen(true); }}
-                                onContextMenu={(e) => {
+                           </div>
+                           {areaData.unassignedPoints.map(tp => (
+                             <div
+                               key={tp.id}
+                               className={`point-grid-item ${selectedTestPointId === tp.id ? 'active' : ''}`}
+                               onClick={() => handleSelectTestPoint(tp.id, null)}
+                               onDoubleClick={(e) => { e.preventDefault(); setEditingTestPoint(tp); setIsAddModalOpen(true); }}
+                               onContextMenu={(e) => {
                                   e.preventDefault();
                                   setContextMenu({
                                     x: e.pageX, y: e.pageY,
                                     items: [{ label: "Delete Point", action: () => handleDeleteTestPoint(tp.id), icon: faTrashAlt, className: "destructive" }],
                                   });
-                                }}
-                              >
-                                 <span className="point-section">{tp.section || '-'}</span>
-                                 <span className="point-value">{tp.testPointInfo.parameter.value} <small>{tp.testPointInfo.parameter.unit}</small></span>
-                              </div>
-                            ))}
-                          </div>
-                       )}
+                               }}
+                             >
+                                <span className="point-section">{tp.section || '-'}</span>
+                                <span className="point-value">{tp.testPointInfo.parameter.value} <small>{tp.testPointInfo.parameter.unit}</small></span>
+                             </div>
+                           ))}
+                         </div>
+                      )}
                     </div>
                   </div>
                 ))}
