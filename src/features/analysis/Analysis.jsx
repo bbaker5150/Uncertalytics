@@ -450,11 +450,6 @@ function Analysis({
 
   return (
     <div>
-      <AnalysisHeader
-        sessionData={sessionData}
-        onEditSession={handleOpenSessionEditor}
-      />
-
       <NotificationModal
         isOpen={!!notification}
         onClose={() => setNotification(null)}

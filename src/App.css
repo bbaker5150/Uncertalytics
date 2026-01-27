@@ -21,7 +21,6 @@
  */
 /* =================================================================== */
 
-
 /* =================================================================== */
 /* 1. :ROOT & THEME VARIABLES                                          */
 /* =================================================================== */
@@ -29,7 +28,9 @@
 /* --- 1A. BASE LIGHT THEME (Default) --- */
 :root {
   /* Typography: Modern, clean, high-readability */
-  --main-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --main-font:
+    "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
   --heading-font-weight: 700;
   --letter-spacing: normal;
 
@@ -39,10 +40,10 @@
   --primary-color-dark: #2c5282;
   --primary-color-light: #e7f1ff;
   --primary-rgb: 0, 123, 255;
-  
+
   --text-color: #212529;
   --text-color-muted: #6c757d;
-  
+
   /* Surfaces */
   --header-background: #ffffff;
   --content-background: #ffffff;
@@ -50,14 +51,14 @@
   --sidebar-background: transparent;
   --component-bg: #ffffff;
   --component-header-bg: #f1f3f5;
-  
+
   /* UI Elements */
   --border-color: rgba(15, 23, 42, 0.25);
   --border-width: 1px;
   --border-radius: 6px;
   --modal-radius: 16px;
   --seal-radius: 30px;
-  
+
   /* Toggles */
   --toggle-bg-off: #dee2e6;
   --toggle-knob: #ffffff;
@@ -65,7 +66,7 @@
   /* Buttons */
   --button-primary-bg: #007bff;
   --button-primary-hover: #0069d9;
-  
+
   /* Status */
   --status-good: #198754;
   --status-warning: #ffc107;
@@ -73,7 +74,7 @@
   --status-good-bg: #d1e7dd;
   --status-warning-bg: #fff3cd;
   --status-bad-bg: #f8d7da;
-  
+
   /* Risk Colors */
   --risk-pfa-good-color: #198754;
   --risk-pfa-warning-color: #ffc107;
@@ -89,10 +90,16 @@
   --scrollbar-track: #f1f1f1;
   --scrollbar-thumb: #c1c1c1;
   --scrollbar-thumb-hover: #a8a8a8;
-  --border-gradient: linear-gradient(135deg, rgba(0, 123, 255, 0.5), rgba(138, 76, 175, 0.5));
-  --box-shadow-glow: 0 10px 40px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 123, 255, 0.05);
-  --box-shadow-glow-hover: 0 15px 40px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 123, 255, 0.2);
-  
+  --border-gradient: linear-gradient(
+    135deg,
+    rgba(0, 123, 255, 0.5),
+    rgba(138, 76, 175, 0.5)
+  );
+  --box-shadow-glow:
+    0 10px 40px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 123, 255, 0.05);
+  --box-shadow-glow-hover:
+    0 15px 40px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 123, 255, 0.2);
+
   /* Glass Control */
   --backdrop-filter: none;
   --sidebar-backdrop-filter: none;
@@ -118,28 +125,28 @@ body.dark-mode {
 
   --text-color: #e0e0e0;
   --text-color-muted: #a0a0a0;
-  
+
   --header-background: #1e1e1e;
   --content-background: #1e1e1e;
   --input-background: #2c2c2c;
   --sidebar-background: transparent;
   --component-bg: #1e1e1e;
   --component-header-bg: #2d3748;
-  
+
   --border-color: #424242;
   --toggle-bg-off: #4a5568;
   --toggle-knob: #e2e8f0;
-  
+
   --button-primary-bg: #0d6efd;
   --button-primary-hover: #3b82f6;
-  
+
   --status-good: #28a745;
   --status-warning: #ffc107;
   --status-bad: #dc3545;
   --status-good-bg: #142e22;
   --status-warning-bg: #33270b;
   --status-bad-bg: #2f1b20;
-  
+
   --risk-pfa-good-color: #28a745;
   --risk-pfa-warning-color: #ffc107;
   --risk-pfa-bad-color: #dc3545;
@@ -148,14 +155,16 @@ body.dark-mode {
   --seal-background-color: #007bff;
   --seal-background-color-derived: #b794d1;
   --seal-tmde-background-color: #a0aec0;
-  
+
   --scrollbar-track: #121212;
   --scrollbar-thumb: #424242;
   --scrollbar-thumb-hover: #686868;
 
   --border-gradient: linear-gradient(135deg, #00d2ff, #3a7bd5);
-  --box-shadow-glow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 210, 255, 0.15);
-  --box-shadow-glow-hover: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 210, 255, 0.3);
+  --box-shadow-glow:
+    0 4px 15px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 210, 255, 0.15);
+  --box-shadow-glow-hover:
+    0 10px 30px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 210, 255, 0.3);
 
   --button-secondary-bg: #4a5568;
   --button-secondary-hover: #2d3748;
@@ -177,10 +186,10 @@ body.dark-mode {
 /* --- SHARED GEOMETRY & FONTS (Both Modes) --- */
 body.theme-orbital {
   /* Font: High-tech, legible sans-serif */
-  --main-font: 'Inter', 'Roboto', system-ui, sans-serif;
+  --main-font: "Inter", "Roboto", system-ui, sans-serif;
   --heading-font-weight: 800;
   --letter-spacing: 0.5px;
-  
+
   /* Radii: Smooth, modern curves */
   --border-radius: 6px;
   --modal-radius: 12px;
@@ -191,60 +200,64 @@ body.theme-orbital {
 /* --- LIGHT MODE PALETTE (Default: "Solar Command") --- */
 body.theme-orbital {
   /* Core Colors */
-  --orbital-bg-base: #f8fafc;  /* Slate 50 */
+  --orbital-bg-base: #f8fafc; /* Slate 50 */
   --orbital-surface: #ffffff;
   --orbital-text-main: #0f172a; /* Slate 900 */
   --orbital-text-muted: #475569; /* Slate 600 */
-  
+
   /* Accents */
-  --orbital-cyan: #0891b2;    /* Darker Cyan for Light Mode contrast */
-  --orbital-gold: #d97706;    
-  --orbital-crimson: #e11d48; 
-  --orbital-emerald: #059669; 
-  
+  --orbital-cyan: #0891b2; /* Darker Cyan for Light Mode contrast */
+  --orbital-gold: #d97706;
+  --orbital-crimson: #e11d48;
+  --orbital-emerald: #059669;
+
   /* Semantic Assignments */
   --background-color: var(--orbital-bg-base);
   --text-color: var(--orbital-text-main);
   --text-color-muted: var(--orbital-text-muted);
-  
+
   /* Glass Layers (Light) */
   --header-background: rgba(255, 255, 255, 0.75);
-  --content-background: rgba(255, 255, 255, 0.65); 
+  --content-background: rgba(255, 255, 255, 0.65);
   --sidebar-background: transparent;
   --input-background: rgba(255, 255, 255, 0.8);
-  
+
   --component-bg: rgba(255, 255, 255, 0.6);
   --component-header-bg: rgba(248, 250, 252, 0.8);
-  
-  --border-color: rgba(15, 23, 42, 0.25); 
+
+  --border-color: rgba(15, 23, 42, 0.25);
   --primary-color: var(--orbital-cyan);
   --primary-color-dark: #0e7490;
   --primary-color-light: rgba(8, 145, 178, 0.1);
   --primary-rgb: 0, 212, 255;
-  
+
   /* Status */
   --status-good: var(--orbital-emerald);
   --status-warning: var(--orbital-gold);
   --status-bad: var(--orbital-crimson);
-  
+
   /* Seals */
   --seal-background-color: var(--orbital-cyan);
-  --seal-background-color-derived: #7c3aed; 
+  --seal-background-color-derived: #7c3aed;
   --seal-tmde-background-color: #64748b;
-  
+
   /* Effects */
   --backdrop-filter: blur(12px) saturate(140%);
   --sidebar-backdrop-filter: none;
-  --box-shadow-glow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-  --border-gradient: linear-gradient(180deg, rgba(15,23,42,0.1) 0%, rgba(15,23,42,0.05) 100%);
-  
+  --box-shadow-glow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --border-gradient: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.1) 0%,
+    rgba(15, 23, 42, 0.05) 100%
+  );
+
   /* Toggle */
   --toggle-bg-off: #cbd5e1;
   --toggle-knob: #ffffff;
 
   /* Risk Colors */
   --risk-value-color: #0891b2;
-  
 }
 
 /* --- DARK MODE PALETTE (Override: "Deep Space") --- */
@@ -253,10 +266,10 @@ body.theme-orbital.dark-mode {
   --orbital-bg-base: #050509; /* Deep Black/Blue */
   --orbital-text-main: #e2e8f0;
   --orbital-text-muted: #94a3b8;
-  
+
   /* Neon Accents */
-  --orbital-cyan: #06b6d4;   /* Brighter Cyan for Dark Mode */
-  --orbital-gold: #f59e0b;   
+  --orbital-cyan: #06b6d4; /* Brighter Cyan for Dark Mode */
+  --orbital-gold: #f59e0b;
   --orbital-crimson: #f43f5e;
   --orbital-emerald: #10b981;
 
@@ -267,23 +280,28 @@ body.theme-orbital.dark-mode {
 
   /* Dark Glass Layers */
   --header-background: rgba(15, 23, 42, 0.7);
-  --content-background: rgba(15, 23, 42, 0.4); 
+  --content-background: rgba(15, 23, 42, 0.4);
   --sidebar-background: transparent;
   --input-background: rgba(0, 0, 0, 0.4);
-  
+
   --component-bg: rgba(30, 41, 59, 0.4);
   --component-header-bg: rgba(51, 65, 85, 0.5);
-  
+
   --border-color: rgba(148, 163, 184, 0.15);
   --primary-color: var(--orbital-cyan);
   --primary-color-light: rgba(6, 182, 212, 0.15);
-  
+
   /* Effects */
   --backdrop-filter: blur(20px) saturate(180%);
   --sidebar-backdrop-filter: none;
-  --box-shadow-glow: 0 0 20px rgba(6, 182, 212, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-  --border-gradient: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-  
+  --box-shadow-glow:
+    0 0 20px rgba(6, 182, 212, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --border-gradient: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+
   /* Toggle */
   --toggle-bg-off: rgba(255, 255, 255, 0.1);
 }
@@ -295,11 +313,14 @@ body.theme-orbital.dark-mode {
 /* Light Mode Background */
 body.theme-orbital {
   background-color: var(--orbital-bg-base);
-  background-image: 
+  background-image:
     linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
     radial-gradient(circle at 50% 0%, rgba(8, 145, 178, 0.15), transparent 60%);
-  background-size: 40px 40px, 40px 40px, 100% 100%;
+  background-size:
+    40px 40px,
+    40px 40px,
+    100% 100%;
   background-position: center top;
   background-attachment: fixed;
   animation: none;
@@ -307,18 +328,26 @@ body.theme-orbital {
 
 /* Dark Mode Background */
 @keyframes deepSpaceDrift {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 100% 100%; }
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 100%;
+  }
 }
 
 body.theme-orbital.dark-mode {
   background-color: var(--orbital-bg-base);
-  background-image: 
+  background-image:
     radial-gradient(circle at 15% 50%, rgba(59, 7, 100, 0.15), transparent 25%),
     radial-gradient(circle at 85% 30%, rgba(6, 182, 212, 0.1), transparent 25%),
     radial-gradient(white 1px, transparent 1px),
     radial-gradient(white 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 550px 550px, 350px 350px;
+  background-size:
+    100% 100%,
+    100% 100%,
+    550px 550px,
+    350px 350px;
   animation: deepSpaceDrift 120s linear infinite;
 }
 
@@ -327,9 +356,9 @@ body.theme-orbital.dark-mode {
 /* ------------------------------------------------------------------- */
 
 /* Typography */
-body.theme-orbital h1, 
-body.theme-orbital h2, 
-body.theme-orbital h3, 
+body.theme-orbital h1,
+body.theme-orbital h2,
+body.theme-orbital h3,
 body.theme-orbital h4 {
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -340,7 +369,7 @@ body.theme-orbital h4 {
 /* Main Content Card (The HUD Frame) */
 body.theme-orbital .content-area {
   border: 1px solid var(--border-color);
-  border-top: 2px solid var(--primary-color); 
+  border-top: 2px solid var(--primary-color);
   background-image: none;
   background-color: var(--content-background);
   box-shadow: var(--box-shadow-glow);
@@ -349,19 +378,19 @@ body.theme-orbital .content-area {
 }
 
 /* Inputs (Data Entry Fields) */
-body.theme-orbital input, 
-body.theme-orbital select, 
+body.theme-orbital input,
+body.theme-orbital select,
 body.theme-orbital textarea {
   background-color: var(--input-background);
   border: 1px solid var(--border-color);
   border-left: 2px solid var(--border-color); /* Tech accent */
   color: var(--primary-color);
-  font-family: 'Consolas', monospace;
+  font-family: "Consolas", monospace;
   font-weight: 600;
   transition: all 0.2s ease;
 }
 
-body.theme-orbital input:focus, 
+body.theme-orbital input:focus,
 body.theme-orbital select:focus {
   background-color: var(--primary-color-light);
   border-color: var(--primary-color);
@@ -403,24 +432,24 @@ body.theme-orbital .button[style*="status-bad"] {
 }
 
 /* Seals (Data Cards) */
-body.theme-orbital .uut-seal, 
+body.theme-orbital .uut-seal,
 body.theme-orbital .tmde-seal {
   background: var(--component-bg);
   border: 1px solid var(--border-color);
   border-radius: 0px 8px 8px 8px; /* Dog-ear effect */
   border-top: 3px solid var(--seal-background-color);
   animation: none;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
 body.theme-orbital .seal-title {
   color: var(--text-color);
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   letter-spacing: 0.5px;
 }
 
 body.theme-orbital .calculated-limit {
-  font-family: 'Consolas', monospace;
+  font-family: "Consolas", monospace;
   color: var(--primary-color);
   font-weight: 700;
 }
@@ -440,7 +469,10 @@ body.theme-orbital .metric-pod {
 body.theme-orbital .metric-pod::after {
   content: "";
   position: absolute;
-  top: 0; left: 0; right: 0; height: 1px;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
   background: var(--primary-color);
   opacity: 0.1;
   animation: orbitalScanline 4s linear infinite;
@@ -452,23 +484,41 @@ body.theme-orbital.dark-mode .metric-pod::after {
 }
 
 @keyframes orbitalScanline {
-  0% { transform: translateY(-10px); opacity: 0; }
-  10% { opacity: 0.1; }
-  90% { opacity: 0.1; }
-  100% { transform: translateY(100px); opacity: 0; }
+  0% {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.1;
+  }
+  90% {
+    opacity: 0.1;
+  }
+  100% {
+    transform: translateY(100px);
+    opacity: 0;
+  }
 }
 
 body.theme-orbital .metric-pod-value {
-  font-family: 'Consolas', monospace;
+  font-family: "Consolas", monospace;
   font-weight: 700;
   color: var(--text-color);
 }
 
 /* Pod Text Colors */
-body.theme-orbital .metric-pod.status-good .metric-pod-value { color: var(--orbital-emerald); }
-body.theme-orbital .metric-pod.status-warning .metric-pod-value { color: var(--orbital-gold); }
-body.theme-orbital .metric-pod.status-bad .metric-pod-value { color: var(--orbital-crimson); }
-body.theme-orbital .metric-pod.tur .metric-pod-value { color: var(--orbital-cyan); }
+body.theme-orbital .metric-pod.status-good .metric-pod-value {
+  color: var(--orbital-emerald);
+}
+body.theme-orbital .metric-pod.status-warning .metric-pod-value {
+  color: var(--orbital-gold);
+}
+body.theme-orbital .metric-pod.status-bad .metric-pod-value {
+  color: var(--orbital-crimson);
+}
+body.theme-orbital .metric-pod.tur .metric-pod-value {
+  color: var(--orbital-cyan);
+}
 
 /* Sidebar (Navigation Deck) */
 body.theme-orbital .results-sidebar {
@@ -479,7 +529,11 @@ body.theme-orbital .results-sidebar {
 }
 
 body.theme-orbital .measurement-point-item.active {
-  background: linear-gradient(90deg, var(--primary-color-light) 0%, transparent 100%);
+  background: linear-gradient(
+    90deg,
+    var(--primary-color-light) 0%,
+    transparent 100%
+  );
   border-left: 3px solid var(--primary-color);
   color: var(--primary-color);
   font-weight: 700;
@@ -503,7 +557,7 @@ body.theme-orbital .uncertainty-budget-table thead th {
 body.theme-orbital .uncertainty-budget-table td {
   border-bottom: 1px solid var(--border-color);
   color: var(--text-color);
-  font-family: 'Consolas', monospace;
+  font-family: "Consolas", monospace;
 }
 body.theme-orbital .uncertainty-budget-table tbody tr:hover {
   background-color: var(--primary-color-light);
@@ -514,20 +568,20 @@ body.theme-orbital .modal-content {
   background-image: none;
   background-color: var(--header-background); /* Use header bg for opacity */
   border: 1px solid var(--border-color);
-  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
 }
 
 /* --- ORBITAL DARK MODE: FIX TABLE BUTTON VISIBILITY --- */
 body.theme-orbital.dark-mode .btn-icon-only {
   /* Give the button its own semi-transparent background so it doesn't vanish */
-  background-color: rgba(15, 23, 42, 0.8); 
-  
+  background-color: rgba(15, 23, 42, 0.8);
+
   /* Make the border visible but subtle */
-  border-color: rgba(148, 163, 184, 0.3); 
-  
+  border-color: rgba(148, 163, 184, 0.3);
+
   /* Force the icon color to the bright Neon Cyan variable */
-  color: var(--orbital-cyan); 
-  
+  color: var(--orbital-cyan);
+
   /* Add a small glow so it looks active */
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
 }
@@ -543,41 +597,41 @@ body.theme-orbital.dark-mode .btn-icon-only:hover {
 /* --- 1D. THEME: CYBERPUNK (Night City & High-Tech) --- */
 body.theme-cyberpunk {
   /* Font: Tech/Terminal */
-  --main-font: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  --main-font: "JetBrains Mono", "Consolas", "Monaco", monospace;
   --heading-font-weight: 800;
   --letter-spacing: 1px;
-  
+
   /* Geometry: Sharp, angular, aggressive */
   --border-radius: 0px;
   --modal-radius: 0px;
   --seal-radius: 0px;
   --border-width: 2px;
-  
+
   /* Glass: Holographic, not frosted */
   --backdrop-filter: none;
   --sidebar-backdrop-filter: none;
-  
+
   /* --- LIGHT MODE: "THE LAB" (Mirror's Edge inspired) --- */
-  --background-color: #f0f2f5; 
+  --background-color: #f0f2f5;
   --content-background: rgba(255, 255, 255, 0.9);
   --sidebar-background: transparent;
   --input-background: #ffffff;
-  
-  --primary-color: #000000;      /* Stark Black Contrast */
+
+  --primary-color: #000000; /* Stark Black Contrast */
   --primary-color-dark: #333333;
   --primary-color-light: #e0e0e0;
-  
+
   --text-color: #000000;
   --text-color-muted: #666666;
-  
-  --border-color: #000000;       /* Hard borders */
+
+  --border-color: #000000; /* Hard borders */
   --toggle-bg-off: #cccccc;
-  
+
   /* Accents */
   --cyber-magenta: #ff00ff;
   --cyber-cyan: #00ffff;
   --cyber-yellow: #ffff00;
-  
+
   /* Status Colors (Vibrant) */
   --status-good: #00cc00;
   --status-warning: #ffcc00;
@@ -585,67 +639,68 @@ body.theme-cyberpunk {
   --status-good-bg: #ccffcc;
   --status-bad-bg: #ffcccc;
   --status-warning-bg: #ffffcc;
-  
+
   /* Seals & Highlights */
-  --seal-background-color: #ff00ff;         /* Magenta */
+  --seal-background-color: #ff00ff; /* Magenta */
   --seal-background-color-derived: #00ffff; /* Cyan */
-  --seal-tmde-background-color: #000000;    
+  --seal-tmde-background-color: #000000;
   --risk-value-color: #ff00ff;
-  
+
   /* Effects */
-  --box-shadow-glow: 4px 4px 0px rgba(0,0,0,0.2); 
+  --box-shadow-glow: 4px 4px 0px rgba(0, 0, 0, 0.2);
   --border-gradient: linear-gradient(90deg, #ff00ff, #00ffff);
-  
+
   /* Background: Clean tech grid */
-  background-image: 
-    linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
   background-size: 50px 50px;
   background-attachment: fixed;
 }
 
 /* --- DARK MODE: "NIGHT CITY" (Neon/Grid) --- */
 body.theme-cyberpunk.dark-mode {
-  --background-color: #050510;   /* Deep Tech Blue/Black */
+  --background-color: #050510; /* Deep Tech Blue/Black */
   --content-background: rgba(10, 10, 20, 0.9);
   --header-background: rgba(20, 20, 40, 0.95);
   --sidebar-background: transparent;
   --input-background: #000000;
-  
-  --primary-color: #fcee0a;      /* Cyber Yellow */
+
+  --primary-color: #fcee0a; /* Cyber Yellow */
   --primary-color-dark: #c5b800;
   --primary-color-light: rgba(252, 238, 10, 0.15);
-  
+
   --text-color: #e0e0e0;
   --text-color-muted: #888888;
-  
+
   --border-color: #333333;
   --toggle-bg-off: #333333;
-  
+
   /* Neon Accents */
-  --cyber-magenta: #ff0055;      /* Hot Pink/Red */
-  --cyber-cyan: #00f3ff;         /* Electric Blue */
+  --cyber-magenta: #ff0055; /* Hot Pink/Red */
+  --cyber-cyan: #00f3ff; /* Electric Blue */
   --cyber-yellow: #fcee0a;
-  
+
   /* Component Colors */
   --component-bg: #000000;
   --component-header-bg: #1a1a1a;
-  
+
   /* Status */
-  --status-good: #00ff41;        /* Matrix Green */
+  --status-good: #00ff41; /* Matrix Green */
   --status-warning: #fcee0a;
   --status-bad: #ff0055;
   --status-good-bg: #003300;
-  
+
   /* Seals */
-  --seal-background-color: var(--cyber-magenta); 
-  --seal-background-color-derived: var(--cyber-cyan); 
-  --seal-tmde-background-color: var(--cyber-yellow);    
-  
+  --seal-background-color: var(--cyber-magenta);
+  --seal-background-color-derived: var(--cyber-cyan);
+  --seal-tmde-background-color: var(--cyber-yellow);
+
   /* Effects */
-  --box-shadow-glow: 0 0 10px rgba(252, 238, 10, 0.4), inset 0 0 5px rgba(252, 238, 10, 0.1);
+  --box-shadow-glow:
+    0 0 10px rgba(252, 238, 10, 0.4), inset 0 0 5px rgba(252, 238, 10, 0.1);
   --border-gradient: linear-gradient(135deg, #ff0055, #00f3ff);
-  
+
   /* 3D Grid Animation */
   background-image:
     linear-gradient(rgba(0, 243, 255, 0.2) 1px, transparent 1px),
@@ -656,8 +711,12 @@ body.theme-cyberpunk.dark-mode {
 }
 
 @keyframes cyberGridPan {
-  0% { background-position: 0px 0px; }
-  100% { background-position: 60px 60px; }
+  0% {
+    background-position: 0px 0px;
+  }
+  100% {
+    background-position: 60px 60px;
+  }
 }
 
 /* =================================================================== */
@@ -668,25 +727,24 @@ body.theme-cyberpunk.dark-mode {
 body.theme-cyberpunk .content-area {
   border: 2px solid var(--border-color);
   clip-path: polygon(
-    0 0, 
-    20px 0, 
-    0 20px, 
-    0 100%, 
-    100% 100%, 
-    100% 20px, 
+    0 0,
+    20px 0,
+    0 20px,
+    0 100%,
+    100% 100%,
+    100% 20px,
     calc(100% - 20px) 0
   ); /* Cut corners effect requires custom handling, simplifies to basic borders if clip-path fights layout */
   /* Resetting clip-path for now as it cuts off scrollbars/content. Using pseudo-elements for corners instead. */
-  clip-path: none; 
+  clip-path: none;
   position: relative;
-  
-  background-image: 
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 0, 0, 0.05) 3px
-    );
+
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.05) 3px
+  );
   background-size: 100% 4px;
 }
 
@@ -703,12 +761,16 @@ body.theme-cyberpunk .content-area::after {
 }
 
 body.theme-cyberpunk .content-area::before {
-  top: -2px; left: -2px;
-  border-right: none; border-bottom: none;
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
 }
 body.theme-cyberpunk .content-area::after {
-  bottom: -2px; right: -2px;
-  border-left: none; border-top: none;
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
 }
 
 body.theme-cyberpunk.dark-mode .content-area {
@@ -735,10 +797,11 @@ body.theme-cyberpunk.dark-mode .results-sidebar {
 body.theme-cyberpunk .button,
 body.theme-cyberpunk .sidebar-action-button {
   clip-path: polygon(
-    10px 0, 100% 0, 
-    100% calc(100% - 10px), 
-    calc(100% - 10px) 100%, 
-    0 100%, 
+    10px 0,
+    100% 0,
+    100% calc(100% - 10px),
+    calc(100% - 10px) 100%,
+    0 100%,
     0 10px
   );
   border: none; /* Borders handled by background trick or outline doesn't work well with clip-path */
@@ -757,7 +820,7 @@ body.theme-cyberpunk .sidebar-action-button:hover {
   transform: translate(-2px, -2px);
   background-color: var(--cyber-cyan);
   box-shadow: 4px 4px 0px var(--cyber-magenta);
-  text-shadow: 2px 0px 0px rgba(255,0,255,0.5);
+  text-shadow: 2px 0px 0px rgba(255, 0, 255, 0.5);
 }
 
 /* 3. INPUTS (Terminal Style) */
@@ -767,7 +830,7 @@ body.theme-cyberpunk textarea {
   border: 1px solid var(--border-color);
   border-left: 5px solid var(--border-color);
   background-color: var(--input-background);
-  font-family: 'Consolas', monospace;
+  font-family: "Consolas", monospace;
 }
 
 body.theme-cyberpunk input:focus,
@@ -797,14 +860,104 @@ body.theme-cyberpunk .metric-pod::before {
   /* Angled corner decal */
   content: "";
   position: absolute;
-  top: 0; right: 0;
+  top: 0;
+  right: 0;
   border-width: 0 15px 15px 0;
   border-style: solid;
   border-color: transparent var(--border-color) transparent transparent;
 }
 
 
+/* 5. LIGHT MODE POLISH (Clean & Professional) */
+body.theme-cyberpunk:not(.dark-mode) {
+  --selection-bg: rgba(0, 255, 255, 0.08); /* Crisp Cyan Tint */
+  --selection-border: 4px solid var(--cyber-magenta);
+}
 
+/* Sidebar Active States */
+body.theme-cyberpunk:not(.dark-mode) .sidebar-session-card.active,
+body.theme-cyberpunk:not(.dark-mode) .area-header-sticky.active,
+body.theme-cyberpunk:not(.dark-mode) .uut-row.active,
+body.theme-cyberpunk:not(.dark-mode) .range-label-row.active,
+body.theme-cyberpunk:not(.dark-mode) .point-grid-item.active {
+    background-color: var(--selection-bg) !important;
+    border-left: var(--selection-border) !important;
+    color: #000 !important;
+    border-radius: 0 !important;
+    box-shadow: inset 1px 1px 0px rgba(255, 255, 255, 0.7);
+}
+
+/* Sidebar Hover (Non-Active) */
+body.theme-cyberpunk:not(.dark-mode) .sidebar-session-card:hover:not(.active),
+body.theme-cyberpunk:not(.dark-mode) .area-header-sticky:hover:not(.active),
+body.theme-cyberpunk:not(.dark-mode) .uut-row:hover:not(.active),
+body.theme-cyberpunk:not(.dark-mode) .range-label-row:hover:not(.active),
+body.theme-cyberpunk:not(.dark-mode) .point-grid-item:hover:not(.active) {
+    background-color: rgba(0, 0, 0, 0.03);
+    border-left: 4px solid #ccc;
+    border-radius: 0 !important;
+}
+
+/* Measurement Point Table Clean-up */
+body.theme-cyberpunk:not(.dark-mode) .instrument-summary-table {
+    border-collapse: separate;
+    border-spacing: 0 4px; /* Slight gaps for card effect */
+    table-layout: fixed;
+}
+
+body.theme-cyberpunk:not(.dark-mode) .instrument-summary-table tr.selected-row {
+    background-color: var(--selection-bg) !important;
+    /* Use box-shadow for left border effect inside the table cell */
+    box-shadow: inset 3px 0 0 var(--cyber-magenta) !important; 
+    font-weight: 600;
+}
+
+body.theme-cyberpunk:not(.dark-mode) .instrument-summary-table th {
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    color: var(--text-color-muted);
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+}
+
+/* Cyberpunk value cells should not wrap */
+body.theme-cyberpunk:not(.dark-mode) .instrument-summary-table td.cell-nowrap,
+body.theme-cyberpunk:not(.dark-mode) .instrument-summary-table td.cell-value,
+body.theme-cyberpunk:not(.dark-mode) .instrument-summary-table td.cell-limit {
+    white-space: nowrap;
+}
+
+body.theme-cyberpunk:not(.dark-mode) .instrument-summary-table td {
+    font-size: 0.8rem;
+}
+
+/* Ensure icons in active sidebar items pop */
+body.theme-cyberpunk:not(.dark-mode) .active svg {
+    color: var(--cyber-magenta) !important;
+}
+
+/* Cyberpunk Dark Mode Table Styling */
+body.theme-cyberpunk.dark-mode .instrument-summary-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+body.theme-cyberpunk.dark-mode .instrument-summary-table th {
+    white-space: nowrap;
+}
+
+body.theme-cyberpunk.dark-mode .instrument-summary-table td {
+    font-size: 0.8rem;
+}
+
+/* Cyberpunk dark mode value cells */
+body.theme-cyberpunk.dark-mode .instrument-summary-table td.cell-nowrap,
+body.theme-cyberpunk.dark-mode .instrument-summary-table td.cell-value,
+body.theme-cyberpunk.dark-mode .instrument-summary-table td.cell-limit {
+    white-space: nowrap;
+}
 
 /* =================================================================== */
 /* 2. BASE STYLES                                                      */
@@ -814,16 +967,25 @@ body {
   /* UPDATED: Uses variable to switch based on theme */
   font-family: var(--main-font);
   letter-spacing: var(--letter-spacing);
-  
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--background-color);
   color: var(--text-color);
   line-height: 1.6;
-  transition: background-color 0.3s ease, color 0.3s ease, background-image 0.3s ease, font-family 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    background-image 0.3s ease,
+    font-family 0.3s ease;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: var(--heading-font-weight);
 }
 
@@ -851,7 +1013,9 @@ select {
   width: 100%;
   background-color: var(--input-background);
   color: var(--text-color);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 input[type="text"]:focus,
@@ -877,13 +1041,18 @@ select:focus {
   font-weight: 500;
   cursor: pointer;
   border-radius: var(--border-radius);
-  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.1s ease,
+    box-shadow 0.2s ease;
   box-shadow: 0 1px 3px var(--shadow-color); /* Updated to use var */
 }
 
 .button:hover {
   background-color: var(--button-primary-hover);
-  box-shadow: 0 4px 6px var(--shadow-color), 0 1px 3px var(--shadow-color); /* Updated to use var */
+  box-shadow:
+    0 4px 6px var(--shadow-color),
+    0 1px 3px var(--shadow-color); /* Updated to use var */
 }
 
 .button:active {
@@ -918,7 +1087,7 @@ body.theme-cyberpunk .button {
   /* Reset the outer container to be a full-screen flex wrapper */
   text-align: center;
   margin: 0;
-  padding: 1rem; /* Space between window edge and your app card */
+  padding: 40px 20px; /* Increased padding for better framing */
   min-height: 100vh;
   width: 100vw;
   display: flex;
@@ -929,28 +1098,28 @@ body.theme-cyberpunk .button {
 
 .content-area {
   /* This is now your main "Application Window" */
-  width: 100%;
-  max-width: 95vw; /* Controls the max width of your UI */
-  min-height: 85vh;  /* Ensures it has substantial presence */
-  
+  width: 95%;
+  max-width: 1600px; /* Constrained width so background is visible */
+  min-height: 85vh; /* Ensures it has substantial presence */
+
   /* Layout Internals */
   text-align: left;
   padding: 2.5rem;
-  margin: 0; /* Remove margin as .App padding handles spacing */
-  border-radius: 20px; /* Modern large radius */
+  margin: 0 auto; /* Center alignment */
+  border-radius: 24px; /* Enhanced modern radius */
 
   /* --- FUTURISTIC BORDER SETTINGS --- */
   background-color: var(--content-background);
   border: 2px solid transparent;
-  background-image: 
-    linear-gradient(var(--content-background), var(--content-background)), 
+  background-image:
+    linear-gradient(var(--content-background), var(--content-background)),
     var(--border-gradient);
   background-origin: border-box;
   background-clip: padding-box, border-box;
-  
+
   /* The Glow */
   box-shadow: var(--box-shadow-glow);
-  
+
   /* Smooth transition for resizing/theme changes */
   transition: all 0.3s ease-in-out;
 
@@ -958,7 +1127,6 @@ body.theme-cyberpunk .button {
   -webkit-backdrop-filter: var(--backdrop-filter);
   backdrop-filter: var(--backdrop-filter);
 }
-
 
 .uncertainty-analysis-page h2 {
   font-size: 1.75rem;
@@ -976,19 +1144,21 @@ body.theme-cyberpunk .button {
   flex: 0 0 350px;
   display: flex;
   flex-direction: column;
-  
+
   /* Themed Background */
   background-color: var(--sidebar-background);
-  
+
   /* Borders */
   border-right: 1px solid var(--border-color);
   padding-right: 20px;
-  
+
   /* Glass support specifically for sidebar if needed */
   -webkit-backdrop-filter: var(--sidebar-backdrop-filter);
   backdrop-filter: var(--sidebar-backdrop-filter);
-  
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease;
 }
 
 .sidebar-header {
@@ -1009,10 +1179,10 @@ body.theme-cyberpunk .button {
 
 /* --- Sidebar Inline Editing Styles --- */
 .sidebar-inline-input {
-  width: 100%;       /* Fill the grid cell */
-  min-width: 0;      /* Allow shrinking in flex/grid contexts */
+  width: 100%; /* Fill the grid cell */
+  min-width: 0; /* Allow shrinking in flex/grid contexts */
   padding: 0 4px;
-  height: 24px;      /* Fixed height for alignment */
+  height: 24px; /* Fixed height for alignment */
   font-size: 0.85rem;
   border: 1px solid var(--primary-color);
   border-radius: 2px;
@@ -1023,9 +1193,9 @@ body.theme-cyberpunk .button {
 }
 
 .sidebar-inline-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 6px rgba(0, 123, 255, 0.4);
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 6px rgba(0, 123, 255, 0.4);
 }
 
 .sidebar-inline-input.section {
@@ -1037,7 +1207,7 @@ body.theme-cyberpunk .button {
 
 .sidebar-inline-input.value {
   flex-grow: 1; /* Take up all space not used by the unit */
-  font-family: 'Consolas', monospace;
+  font-family: "Consolas", monospace;
   font-weight: 600;
 }
 
@@ -1049,8 +1219,8 @@ body.theme-cyberpunk .button {
 }
 
 .sidebar-inline-input-wrapper small {
-    color: var(--text-color-muted);
-    font-size: 0.75rem;
+  color: var(--text-color-muted);
+  font-size: 0.75rem;
 }
 
 .add-point-button {
@@ -1100,7 +1270,6 @@ body.theme-cyberpunk .button {
   margin-bottom: 10px;
 }
 
-
 .measurement-point-list {
   display: flex;
   flex-direction: column;
@@ -1108,7 +1277,6 @@ body.theme-cyberpunk .button {
   overflow-y: auto;
   /* Allow scrolling for long lists */
 }
-
 
 .measurement-point-item {
   display: flex;
@@ -1125,9 +1293,7 @@ body.theme-cyberpunk .button {
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   font-size: 1rem;
-  
 }
-
 
 .point-main {
   font-weight: 500;
@@ -1138,10 +1304,10 @@ body.theme-cyberpunk .button {
   color: var(--text-color-muted);
 }
 
-
-
 .measurement-point-item:hover {
-  background-color: var(--primary-color-light); /* Better contrast than plain grey */
+  background-color: var(
+    --primary-color-light
+  ); /* Better contrast than plain grey */
   color: var(--primary-color-dark);
 }
 
@@ -1157,35 +1323,39 @@ body.theme-cyberpunk .button {
 @keyframes listActiveGlow {
   from {
     /* Use the variable instead of the hex */
-    box-shadow: 
-      inset 4px 0 0 var(--primary-color), 
-      0 2px 4px var(--primary-color-light);   
+    box-shadow:
+      inset 4px 0 0 var(--primary-color),
+      0 2px 4px var(--primary-color-light);
   }
   to {
-    box-shadow: 
-      inset 4px 0 0 var(--primary-color), 
-      0 4px 15px var(--primary-color), /* You might need an opacity variable here */
-      inset 0 0 20px var(--primary-color-light);
+    box-shadow:
+      inset 4px 0 0 var(--primary-color),
+      0 4px 15px var(--primary-color),
+      /* You might need an opacity variable here */ inset 0 0 20px
+        var(--primary-color-light);
   }
 }
 
-
 .measurement-point-item.active {
   /* Futuristic Gradient Background */
-  background: linear-gradient(90deg, var(--primary-color-light) 0%, rgba(255,255,255,0) 100%);
-  
+  background: linear-gradient(
+    90deg,
+    var(--primary-color-light) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+
   /* Text Color */
   color: var(--primary-color-dark);
   font-weight: 700;
-  
+
   /* Remove default border if any */
   border: 1px solid transparent;
-  
+
   /* Apply the animation */
   animation: listActiveGlow 2s infinite alternate ease-in-out;
-  
+
   /* Ensure text doesn't jitter */
-  transform: translateZ(0); 
+  transform: translateZ(0);
   position: relative;
   overflow: hidden;
 }
@@ -1245,7 +1415,9 @@ body.theme-cyberpunk .button {
   position: relative;
   bottom: -2px;
   border-bottom: 3px solid transparent;
-  transition: color 0.2s ease, border-color 0.2s ease;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
   margin: 0;
   border-radius: 0;
   box-shadow: none;
@@ -1275,7 +1447,7 @@ body.theme-cyberpunk .button {
 
 .form-section input[type="date"]:hover {
   background-color: var(--primary-color-light);
-  border-color:var(--primary-color);
+  border-color: var(--primary-color);
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
   cursor: pointer;
 }
@@ -1289,20 +1461,25 @@ body.theme-cyberpunk .button {
   vertical-align: middle;
 }
 
-.dark-mode-toggle input { 
-  opacity: 0; 
-  width: 0; 
-  height: 0; 
+.dark-mode-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 .dark-mode-toggle .slider {
   position: absolute;
   cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: var(--toggle-bg-off);
   border: 1px solid var(--border-color);
   border-radius: 28px;
-  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  transition:
+    background-color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out;
 }
 
 .dark-mode-toggle .slider:before {
@@ -1315,7 +1492,7 @@ body.theme-cyberpunk .button {
   background-color: var(--toggle-knob);
   border-radius: 50%;
   transition: transform 0.2s ease-in-out;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .dark-mode-toggle input:checked + .slider {
@@ -1362,20 +1539,26 @@ body.theme-cyberpunk .button {
   /* 2. Layered Backgrounds: 
         Layer 1 (Top): The content background color (padding-box)
         Layer 2 (Bottom): The gradient for the border (border-box) */
-  background-image: 
-    linear-gradient(var(--content-background), var(--content-background)), 
-    linear-gradient(135deg, var(--primary-color), var(--seal-background-color-derived));
-  
+  background-image:
+    linear-gradient(var(--content-background), var(--content-background)),
+    linear-gradient(
+      135deg,
+      var(--primary-color),
+      var(--seal-background-color-derived)
+    );
+
   /* 3. Clip the backgrounds so the gradient only shows in the border area */
   background-origin: border-box;
   background-clip: padding-box, border-box;
-  
+
   /* 4. Futuristic Glow Shadow */
-  box-shadow: 
-    0 15px 35px rgba(0, 0, 0, 0.2), /* Depth Shadow */
-    0 0 15px rgba(0, 123, 255, 0.2); /* Subtle colored glow */
-    
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  box-shadow:
+    0 15px 35px rgba(0, 0, 0, 0.2),
+    /* Depth Shadow */ 0 0 15px rgba(0, 123, 255, 0.2); /* Subtle colored glow */
+
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
 
   /* GLASSMORPHISM SUPPORT */
   -webkit-backdrop-filter: var(--backdrop-filter);
@@ -1407,7 +1590,9 @@ body.theme-cyberpunk .button {
   color: var(--text-color-muted);
   cursor: pointer;
   padding: 0;
-  transition: color 0.2s ease, transform 0.2s ease;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .modal-close-button:hover {
@@ -1460,15 +1645,15 @@ body.theme-cyberpunk .button {
 /* --- Styles for Multi-TMDE Tabs in Tolerance Modal --- */
 
 .modal-content.edit-session-modal {
-    display: flex;
-    flex-direction: column;
-    width: 90vw;
-    max-width: 1000px;
-    height: 80vh;
-    padding: 0;
-    padding-top: 40px; 
-    padding-right: 30px; 
-    text-align: left;
+  display: flex;
+  flex-direction: column;
+  width: 90vw;
+  max-width: 1000px;
+  height: 80vh;
+  padding: 0;
+  padding-top: 40px;
+  padding-right: 30px;
+  text-align: left;
 }
 
 .tmde-management-container {
@@ -1505,54 +1690,58 @@ body.theme-cyberpunk .button {
   font-size: 0.9rem;
 }
 
-.toggle-switch-checkbox { 
-  display: none; 
+.toggle-switch-checkbox {
+  display: none;
 }
 
 .toggle-switch-label {
-  display: block; 
+  display: block;
   position: relative;
-  width: 50px; 
+  width: 50px;
   height: 28px;
   background-color: var(--toggle-bg-off);
   border: 1px solid var(--border-color); /* Added border for definition */
   border-radius: 28px;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  transition:
+    background-color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out;
   flex-shrink: 0;
 }
 
 .toggle-switch-switch {
-  display: block; 
+  display: block;
   position: absolute;
-  width: 22px; 
+  width: 22px;
   height: 22px;
   border-radius: 50%;
   background-color: var(--toggle-knob);
-  
+
   /* Exact alignment with Dark Mode toggle */
-  top: 2px; 
+  top: 2px;
   left: 2px;
-  
+
   transition: transform 0.2s ease-in-out;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* Checked State */
-.toggle-switch-checkbox:checked + .toggle-switch-label { 
-  background-color: var(--primary-color); 
+.toggle-switch-checkbox:checked + .toggle-switch-label {
+  background-color: var(--primary-color);
   border-color: var(--primary-color);
 }
 
-.toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-switch { 
-  transform: translateX(22px); 
+.toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-switch {
+  transform: translateX(22px);
 }
 
 .manual-input-container {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border-color);
-  transition: opacity 0.3s ease, filter 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    filter 0.3s ease;
 }
 
 .manual-input-container.disabled {
@@ -1562,31 +1751,31 @@ body.theme-cyberpunk .button {
 }
 
 .modal-main-content {
-    flex-grow: 1;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
+  flex-grow: 1;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .modal-main-content h4 {
-    margin: 0 0 25px 0;
-    font-size: 1.5rem;
+  margin: 0 0 25px 0;
+  font-size: 1.5rem;
 }
 
 .details-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 25px 30px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px 30px;
 }
 
 .details-grid .form-section {
-    padding: 0;
-    margin: 0;
+  padding: 0;
+  margin: 0;
 }
 
 .details-grid .full-span {
-    grid-column: 1 / -1;
+  grid-column: 1 / -1;
 }
 
 .tmde-header {
@@ -1607,35 +1796,38 @@ body.theme-cyberpunk .button {
 /* UUT Seal/Stamp Card Styling */
 
 .uut-seal-container {
-    display: flex;
-    justify-content: center;
-    padding: 20px 0;
-    margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+  margin-bottom: 20px;
 }
 
 /* In App.css */
 
 .uut-seal {
-    min-width: 360px;
-    max-width: 400px;
-    height: 380px;
-    border-radius: var(--seal-radius);
-    background-color: var(--background-color);
-    border: 4px solid var(--seal-background-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
-                inset 0 0 15px rgba(0, 0, 0, 0.05);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 30px;
-    box-sizing: border-box;
-    transition: background-color 0.3s, border-color 0.3s;
-    animation: seal-glow 3s infinite alternate;
-    cursor: pointer;
+  min-width: 360px;
+  max-width: 400px;
+  height: 380px;
+  border-radius: var(--seal-radius);
+  background-color: var(--background-color);
+  border: 4px solid var(--seal-background-color);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 0 15px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px;
+  box-sizing: border-box;
+  transition:
+    background-color 0.3s,
+    border-color 0.3s;
+  animation: seal-glow 3s infinite alternate;
+  cursor: pointer;
 
-    /* GLASSMORPHISM SUPPORT */
-    -webkit-backdrop-filter: var(--backdrop-filter);
-    backdrop-filter: var(--backdrop-filter);
+  /* GLASSMORPHISM SUPPORT */
+  -webkit-backdrop-filter: var(--backdrop-filter);
+  backdrop-filter: var(--backdrop-filter);
 }
 
 .uut-seal.derived-point {
@@ -1645,86 +1837,94 @@ body.theme-cyberpunk .button {
 
 @keyframes seal-glow {
   from {
-    box-shadow: 
-      0 4px 12px rgba(0, 0, 0, 0.1), 
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.1),
       inset 0 0 15px rgba(0, 0, 0, 0.05),
       0 0 0px 0px transparent;
   }
   to {
-    box-shadow: 
-      0 4px 12px rgba(0, 0, 0, 0.1), 
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.1),
       inset 0 0 15px rgba(0, 0, 0, 0.05),
-      /* Dynamic Glow: Uses the theme's seal color with 50% opacity */
-      0 0 20px 5px color-mix(in srgb, var(--seal-background-color), transparent 50%);
+      /* Dynamic Glow: Uses the theme's seal color with 50% opacity */ 0 0 20px
+        5px color-mix(in srgb, var(--seal-background-color), transparent 50%);
   }
 }
 
 @keyframes seal-glow-derived {
   from {
-    box-shadow: 
-      0 4px 12px rgba(0, 0, 0, 0.1), 
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.1),
       inset 0 0 15px rgba(0, 0, 0, 0.05),
       0 0 0px 0px transparent;
   }
   to {
-    box-shadow: 
-      0 4px 12px rgba(0, 0, 0, 0.1), 
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.1),
       inset 0 0 15px rgba(0, 0, 0, 0.05),
       /* Dynamic Derived Glow: Uses the theme's derived color with 50% opacity */
-      0 0 20px 5px color-mix(in srgb, var(--seal-background-color-derived), transparent 50%);
+        0 0 20px 5px
+        color-mix(
+          in srgb,
+          var(--seal-background-color-derived),
+          transparent 50%
+        );
   }
 }
 
-.uut-seal, .tmde-seal {
+.uut-seal,
+.tmde-seal {
   cursor: pointer;
 }
 
 .uut-seal-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 6px;
-    width: 100%;
-    /* max-width: 85%; */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  width: 100%;
+  /* max-width: 85%; */
 }
 
 .uut-seal:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), inset 0 0 10px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    inset 0 0 10px rgba(0, 0, 0, 0.04);
 }
 
 .seal-label {
-    font-size: 0.8rem;
-    color: var(--text-color-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
+  font-size: 0.8rem;
+  color: var(--text-color-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .seal-title {
-    margin: 0;
-    font-size: 1.3rem;
-    color: var(--seal-background-color);
-    font-weight: 600;
-    word-break: break-word;
+  margin: 0;
+  font-size: 1.3rem;
+  color: var(--seal-background-color);
+  font-weight: 600;
+  word-break: break-word;
 }
 
 .seal-info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 0.9rem;
-    color: var(--text-color);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.9rem;
+  color: var(--text-color);
 }
 
 .seal-info-item span {
-    font-size: 0.8rem;
-    color: var(--text-color-muted);
+  font-size: 0.8rem;
+  color: var(--text-color-muted);
 }
 
 .seal-info-item strong {
-    font-weight: 500;
-    word-break: break-word;
+  font-weight: 500;
+  word-break: break-word;
 }
 
 .seal-instance-label {
@@ -1736,75 +1936,80 @@ body.theme-cyberpunk .button {
 }
 
 .seal-limits-split {
-    display: flex;
-    flex-wrap: wrap;         /* This allows the items to stack vertically if they don't fit side-by-side */
-    justify-content: center; /* This will center them whether they are in one row or two */
-    gap: 20px;               /* This provides spacing between them */
-    width: 100%;
-    margin-top: 0.05px;
-    border-top: 1px solid var(--border-color);
-    padding-top: 3px;
+  display: flex;
+  flex-wrap: wrap; /* This allows the items to stack vertically if they don't fit side-by-side */
+  justify-content: center; /* This will center them whether they are in one row or two */
+  gap: 20px; /* This provides spacing between them */
+  width: 100%;
+  margin-top: 0.05px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 3px;
 }
 
 .calculated-limit {
-    font-size: 0.85rem;     /* Smaller font for the long numbers */
-    font-weight: 600;
-    word-break: break-all;  /* Force wrapping for any overflow */
-    line-height: 1.1;
-    color: var(--seal-background-color);
+  font-size: 0.85rem; /* Smaller font for the long numbers */
+  font-weight: 600;
+  word-break: break-all; /* Force wrapping for any overflow */
+  line-height: 1.1;
+  color: var(--seal-background-color);
 }
 
 .seal-limits-split .calculated-limit {
-    color: var(--accent-color-secondary);
-    font-weight: 600;
+  color: var(--accent-color-secondary);
+  font-weight: 600;
 }
 
 .tmde-seal {
-    min-width: 325px;
-    max-width: 350px;
-    height: auto;
-    min-height: 325px;
-    border-radius: var(--seal-radius);
-    background-color: var(--background-color);
-    border: 4px solid var(--seal-tmde-background-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.04);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 25px;
-    box-sizing: border-box;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    animation: tmdeFuturisticGlow 3s infinite alternate;
+  min-width: 325px;
+  max-width: 350px;
+  height: auto;
+  min-height: 325px;
+  border-radius: var(--seal-radius);
+  background-color: var(--background-color);
+  border: 4px solid var(--seal-tmde-background-color);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    inset 0 0 10px rgba(0, 0, 0, 0.04);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 25px;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  animation: tmdeFuturisticGlow 3s infinite alternate;
 
-    /* GLASSMORPHISM SUPPORT */
-    backdrop-filter: var(--backdrop-filter);
-    -webkit-backdrop-filter: var(--backdrop-filter);
+  /* GLASSMORPHISM SUPPORT */
+  backdrop-filter: var(--backdrop-filter);
+  -webkit-backdrop-filter: var(--backdrop-filter);
 }
 
 @keyframes tmdeFuturisticGlow {
   from {
-    box-shadow: 
-      0 4px 12px rgba(0, 0, 0, 0.08), 
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.08),
       inset 0 0 10px rgba(0, 0, 0, 0.04),
       0 0 0px 0px transparent;
   }
   to {
-    box-shadow: 
-      0 4px 12px rgba(0, 0, 0, 0.08), 
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.08),
       inset 0 0 10px rgba(0, 0, 0, 0.04),
       /* Dynamic TMDE Glow: Uses the theme's TMDE color (usually grey/silver) with 40% opacity */
-      0 0 15px 5px color-mix(in srgb, var(--seal-tmde-background-color), transparent 60%);
+        0 0 15px 5px
+        color-mix(in srgb, var(--seal-tmde-background-color), transparent 60%);
   }
 }
 
 .tmde-seal:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), inset 0 0 10px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    inset 0 0 10px rgba(0, 0, 0, 0.04);
 }
 
 .tmde-seal .seal-title {
-    color: var(--text-color);
+  color: var(--text-color);
 }
 
 .tmde-test-point-group {
@@ -1819,16 +2024,15 @@ body.theme-cyberpunk .button {
   gap: 20px;
 
   /* GLASSMORPHISM SUPPORT */
-  
+
   -webkit-backdrop-filter: var(--backdrop-filter);
   backdrop-filter: var(--backdrop-filter);
 }
 
 .tmde-test-point-group:last-child {
-  border-bottom: 1px solid var(--border-color); 
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: 0;
 }
-
 
 body.dark-mode .tmde-test-point-group {
   background-color: var(--content-background);
@@ -1902,23 +2106,23 @@ body.dark-mode .tp-value {
 }
 
 .tmde-seal-clickable .seal-info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 0.9rem;
-    color: var(--text-color);
-    text-align: center;
-    align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  text-align: center;
+  align-items: center;
 }
 
 .tmde-seal-clickable .seal-info-item span {
-    font-size: 0.8rem;
-    color: var(--text-color-muted);
+  font-size: 0.8rem;
+  color: var(--text-color-muted);
 }
 
 .tmde-seal-clickable .seal-info-item strong {
-    font-weight: 500;
-    word-break: break-word;
+  font-weight: 500;
+  word-break: break-word;
 }
 
 .tmde-seals-grid {
@@ -1965,7 +2169,7 @@ body.dark-mode .tp-value {
 
 .tmde-seal-clickable:hover {
   transform: translateY(-5px);
-  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
   cursor: pointer;
 }
 
@@ -1979,7 +2183,7 @@ body.dark-mode .tp-value {
 }
 
 .tmde-seal-clickable .seal-title {
-  font-size: 1.0rem;
+  font-size: 1rem;
   margin-bottom: 2px;
 }
 
@@ -2050,18 +2254,20 @@ body.dark-mode .tp-value {
 }
 
 .info-icon-modal {
-    position: absolute;
-    top: 17px;
-    left: 15px;
-    color: var(--text-color-muted);
-    cursor: pointer;
-    font-size: 1.1rem;
-    transition: color 0.2s ease, transform 0.2s ease;
+  position: absolute;
+  top: 17px;
+  left: 15px;
+  color: var(--text-color-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .info-icon-modal:hover {
-    color: var(--primary-color);
-    transform: scale(1.1);
+  color: var(--primary-color);
+  transform: scale(1.1);
 }
 
 .add-component-wrapper {
@@ -2099,20 +2305,22 @@ body.dark-mode .tp-value {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  
+
   /* DEFAULT THEME (Light) - Force Solid Background */
-  background-color: #ffffff; 
+  background-color: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   color: var(--text-color);
-  
+
   /* Depth */
-  box-shadow: 0 10px 40px rgba(0,0,0,0.15), 0 0 0 1px var(--border-color);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.15),
+    0 0 0 1px var(--border-color);
   z-index: 99999; /* Highest priority */
-  
+
   /* Animation */
   animation: context-menu-fade-in 0.1s ease-out;
-  
+
   /* Sizing */
   min-width: 220px;
   padding: 6px;
@@ -2134,7 +2342,9 @@ body.dark-mode .tp-value {
   display: flex;
   align-items: center;
   gap: 10px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .add-component-dropdown li:hover {
@@ -2146,7 +2356,7 @@ body.dark-mode .tp-value {
 body.dark-mode .add-component-dropdown {
   background-color: #1e1e1e; /* Solid dark grey - NOT transparent */
   border-color: #424242;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 body.dark-mode .add-component-dropdown li:hover {
@@ -2157,7 +2367,7 @@ body.dark-mode .add-component-dropdown li:hover {
 /* --- GLASS THEME OVERRIDES --- */
 body.theme-glass .add-component-dropdown {
   /* Very high opacity for readability on top of wallpapers */
-  background-color: rgba(255, 255, 255, 0.95); 
+  background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.6);
@@ -2173,12 +2383,12 @@ body.theme-cyberpunk .add-component-dropdown {
   border-radius: 0;
   border: 2px solid var(--primary-color); /* Neon border */
   background-color: #ffffff; /* Solid White for Light Mode */
-  box-shadow: 6px 6px 0px rgba(0,0,0,1); /* Hard shadow */
+  box-shadow: 6px 6px 0px rgba(0, 0, 0, 1); /* Hard shadow */
 }
 
 body.theme-cyberpunk .add-component-dropdown li {
   color: #000000; /* Black text for high contrast on white */
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -2245,7 +2455,6 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
   margin-bottom: 8px;
 }
 
-
 /* --- Modal Tabs --- */
 .modal-tabs {
   display: flex;
@@ -2267,7 +2476,9 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
   position: relative;
   bottom: -2px;
   border-bottom: 3px solid transparent;
-  transition: color 0.2s ease, border-color 0.2s ease;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .modal-tab:hover {
@@ -2285,7 +2496,7 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
 
 .modal-body-scrollable {
   max-height: 55vh; /* Limit height to 55% of the viewport */
-  overflow-y: auto;  /* Add scrollbar only when content overflows */
+  overflow-y: auto; /* Add scrollbar only when content overflows */
   padding-right: 10px; /* Add space to prevent content from touching the scrollbar */
 }
 
@@ -2302,7 +2513,7 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
   background-color: var(--component-background); /* Use specific variable */
   overflow: hidden;
   /* Ensure it doesn't double-blur if inside a glass modal */
-  backdrop-filter: none; 
+  backdrop-filter: none;
 }
 
 .component-header {
@@ -2418,9 +2629,9 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
 }
 
 .input-group-asymmetric {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
 }
 
 .searchable-dropdown {
@@ -2439,7 +2650,7 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
   z-index: 1010;
   max-height: 150px;
   overflow-y: auto;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .dropdown-item {
@@ -2496,7 +2707,6 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
 
 /* 2. Expanded Layout (5 Columns) */
 
-
 /* --- Action Button Alignment --- */
 /* Ensures the small add/remove buttons are styled and aligned */
 
@@ -2531,7 +2741,7 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
   border-radius: 0 6px 6px 0;
   cursor: pointer;
   font-size: 1.1rem;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-family: "Menlo", "Monaco", "Courier New", monospace;
   font-weight: 600;
   transition: all 0.2s ease;
 }
@@ -2544,17 +2754,17 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
 /* --- Symbol Pop-out Categories --- */
 .symbol-popout {
   position: absolute;
-  top: 100%; 
-  right: 0; 
-  z-index: 1010; 
+  top: 100%;
+  right: 0;
+  z-index: 1010;
   background-color: var(--content-background);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   padding: 10px;
   margin-top: 4px;
   animation: context-menu-fade-in 0.1s ease-out;
-  min-width: 300px; 
+  min-width: 300px;
 }
 
 .symbol-category {
@@ -2587,13 +2797,13 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
   border: 1px solid var(--border-color);
   color: var(--text-color);
   border-radius: 4px;
-  padding: 6px 10px; 
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  padding: 6px 10px;
+  font-family: "Menlo", "Monaco", "Courier New", monospace;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-width: 40px; 
+  min-width: 40px;
   text-align: center;
 }
 
@@ -2603,7 +2813,6 @@ body.theme-cyberpunk.dark-mode .add-component-dropdown li:hover {
   border-color: var(--primary-color);
   transform: translateY(-1px);
 }
-
 
 /* --- DARK MODE --- */
 body.dark-mode .symbol-toggle-button {
@@ -2620,7 +2829,7 @@ body.dark-mode .symbol-toggle-button:hover {
 body.dark-mode .symbol-popout {
   background-color: #2c2c2c;
   border-color: #424242;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 body.dark-mode .symbol-category-title {
@@ -2726,8 +2935,8 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 
   /* Futuristic Border Logic */
   border: 2px solid transparent;
-  background-image: 
-    linear-gradient(var(--background-color), var(--background-color)), 
+  background-image:
+    linear-gradient(var(--background-color), var(--background-color)),
     var(--border-gradient);
   background-origin: border-box;
   background-clip: padding-box, border-box;
@@ -2767,28 +2976,28 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 }
 
 .analyzed-components-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text-color);
-    margin-top: 1rem;
-    padding-top: 2rem;
-    border-top: 1px solid var(--border-color);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-top: 1rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
 }
 
 .uut-components-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text-color);
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
 }
 
 .analyzed-components-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .analysis-dashboard {
@@ -2889,43 +3098,43 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 }
 
 .add-tmde-card {
-    width: 325px;
-    min-height: 325px;
-    height: 100%;
-    border-radius: var(--seal-radius);
-    background-color: transparent;
-    border: 2px dashed var(--border-color);
-    box-shadow: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease-in-out;
+  width: 325px;
+  min-height: 325px;
+  height: 100%;
+  border-radius: var(--seal-radius);
+  background-color: transparent;
+  border: 2px dashed var(--border-color);
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease-in-out;
 }
 
 .add-tmde-card:hover {
-    border-color: var(--primary-color);
-    background-color: var(--primary-color-light);
+  border-color: var(--primary-color);
+  background-color: var(--primary-color-light);
 }
 
 .add-tmde-button {
-    background: none;
-    border: none;
-    color: var(--text-color-muted);
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    height: 100%;
-    transition: color 0.2s ease-in-out;
+  background: none;
+  border: none;
+  color: var(--text-color-muted);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  transition: color 0.2s ease-in-out;
 }
 
 .add-tmde-card:hover .add-tmde-button {
-    color: var(--primary-color);
+  color: var(--primary-color);
 }
 
 /* =================================================================== */
@@ -2941,7 +3150,10 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 
 .risk-analysis-dashboard {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Adjusted for smaller cards */
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(250px, 1fr)
+  ); /* Adjusted for smaller cards */
   gap: 20px;
 }
 
@@ -2954,7 +3166,9 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   display: flex;
   flex-direction: column;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition:
+    transform 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
   min-height: 180px; /* Adjusted card height */
 
   /* GLASSMORPHISM SUPPORT */
@@ -3101,7 +3315,7 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 
 .metric-pod {
   /* Flexible width: grows/shrinks but tries to be ~130px */
-  flex: 1 1 130px; 
+  flex: 1 1 130px;
   max-width: 200px; /* Prevents them from getting too wide on large screens */
   background-color: var(--content-background);
   border: 1px solid var(--border-color); /* Thinner border (1px) looks cleaner */
@@ -3112,7 +3326,7 @@ body.dark-mode .symbol-popout .symbol-button:hover {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 
   /* GLASSMORPHISM SUPPORT */
   backdrop-filter: var(--backdrop-filter);
@@ -3125,7 +3339,7 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 
 .metric-pod.clickable:hover {
   transform: translateY(-3px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
 }
 
 .metric-pod-label {
@@ -3142,7 +3356,7 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 }
 
 .metric-pod-value {
-  font-size: 1.0rem; /* Slightly smaller to fit better */
+  font-size: 1rem; /* Slightly smaller to fit better */
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap; /* CRITICAL: Prevents value wrapping */
@@ -3229,28 +3443,52 @@ body.dark-mode .symbol-popout .symbol-button:hover {
 
 /* --- Metric Pod Glow Animations --- */
 @keyframes glow-good {
-  from { box-shadow: 0 0 3px 0px var(--status-good); }
-  to { box-shadow: 0 0 8px 2px var(--status-good); }
+  from {
+    box-shadow: 0 0 3px 0px var(--status-good);
+  }
+  to {
+    box-shadow: 0 0 8px 2px var(--status-good);
+  }
 }
 @keyframes glow-warning {
-  from { box-shadow: 0 0 3px 0px var(--status-warning); }
-  to { box-shadow: 0 0 8px 2px var(--status-warning); }
+  from {
+    box-shadow: 0 0 3px 0px var(--status-warning);
+  }
+  to {
+    box-shadow: 0 0 8px 2px var(--status-warning);
+  }
 }
 @keyframes glow-bad {
-  from { box-shadow: 0 0 3px 0px var(--status-bad); }
-  to { box-shadow: 0 0 8px 2px var(--status-bad); }
+  from {
+    box-shadow: 0 0 3px 0px var(--status-bad);
+  }
+  to {
+    box-shadow: 0 0 8px 2px var(--status-bad);
+  }
 }
 @keyframes glow-primary {
-  from { box-shadow: 0 0 3px 0px var(--primary-color); }
-  to { box-shadow: 0 0 8px 2px var(--primary-color); }
+  from {
+    box-shadow: 0 0 3px 0px var(--primary-color);
+  }
+  to {
+    box-shadow: 0 0 8px 2px var(--primary-color);
+  }
 }
 @keyframes glow-muted {
-  from { box-shadow: 0 0 3px 0px var(--text-color-muted); }
-  to { box-shadow: 0 0 8px 2px var(--text-color-muted); }
+  from {
+    box-shadow: 0 0 3px 0px var(--text-color-muted);
+  }
+  to {
+    box-shadow: 0 0 8px 2px var(--text-color-muted);
+  }
 }
 @keyframes glow-theme {
-  from { box-shadow: 0 0 3px 0px var(--risk-value-color); }
-  to { box-shadow: 0 0 8px 2px var(--risk-value-color); }
+  from {
+    box-shadow: 0 0 3px 0px var(--risk-value-color);
+  }
+  to {
+    box-shadow: 0 0 8px 2px var(--risk-value-color);
+  }
 }
 
 /* --- Dark Mode Overrides --- */
@@ -3259,7 +3497,7 @@ body.dark-mode .metric-pod {
 }
 
 body.dark-mode .metrics-separator span {
-  background: #1A202C; /* Matches dark mode final result bg */
+  background: #1a202c; /* Matches dark mode final result bg */
 }
 
 body.dark-mode .metric-pod.tur,
@@ -3298,7 +3536,7 @@ body.dark-mode .metric-pod.pfr .metric-pod-value {
 }
 
 .metric-pods-row-condensed .metric-pod-value {
-  font-size: 1.0rem;
+  font-size: 1rem;
 }
 
 .risk-not-calculated {
@@ -3318,7 +3556,9 @@ body.dark-mode .metric-pod.pfr .metric-pod-value {
   border-radius: 8px;
   overflow: hidden;
   background-color: var(--content-background);
-  transition: border-color 0.3s ease, background-color 0.3s ease;
+  transition:
+    border-color 0.3s ease,
+    background-color 0.3s ease;
 }
 
 body.dark-mode .scatterplot-container {
@@ -3333,7 +3573,7 @@ body.dark-mode .scatterplot-container {
   display: flex;
   align-items: center;
   gap: 10px;
-  
+
   /* Glassmorphism Effect */
   background-color: var(--header-background);
   -webkit-backdrop-filter: blur(8px);
@@ -3342,7 +3582,10 @@ body.dark-mode .scatterplot-container {
   border-radius: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: all 0.2s ease;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
 }
 
 /* Hover State: make it slightly more solid */
@@ -3405,19 +3648,22 @@ body.dark-mode .plot-floating-control input {
   color: var(--primary-color-dark);
 }
 
-.bargraph-container, .scatterplot-container {
+.bargraph-container,
+.scatterplot-container {
   width: 100%;
   height: 500px;
   margin-top: 2rem;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   overflow: hidden;
-  
+
   /* Fix for Glass Theme Graphs */
   background-color: var(--component-bg); /* Semi-transparent in Glass */
   backdrop-filter: none; /* Avoid visual artifacts */
-  
-  transition: border-color 0.3s ease, background-color 0.3s ease;
+
+  transition:
+    border-color 0.3s ease,
+    background-color 0.3s ease;
 }
 
 /* --- Edit Session Modal - Overview Text Row --- */
@@ -3428,8 +3674,8 @@ body.dark-mode .plot-floating-control input {
 
 /* Modal Content: Use variables so Glass themes pass through */
 body.dark-mode .modal-content {
-  background-image: 
-    linear-gradient(var(--content-background), var(--content-background)), 
+  background-image:
+    linear-gradient(var(--content-background), var(--content-background)),
     var(--border-gradient);
   box-shadow: var(--box-shadow-glow);
   border-color: var(--border-color);
@@ -3454,13 +3700,17 @@ body.dark-mode .form-section label {
 
 /* Sidebar Hover: Use variable for transparency support */
 body.dark-mode .measurement-point-item:hover {
-  background-color: var(--primary-color-light); 
+  background-color: var(--primary-color-light);
   color: var(--primary-color);
 }
 
 /* Sidebar Active: Gradient based on primary color var */
 body.dark-mode .measurement-point-item.active {
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.25) 0%, transparent 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(59, 130, 246, 0.25) 0%,
+    transparent 100%
+  );
   color: var(--primary-color);
 }
 
@@ -3488,7 +3738,10 @@ body.dark-mode .uncertainty-budget-table tfoot tr {
   background-color: transparent;
 }
 
-body.dark-mode .uncertainty-budget-table tfoot tr:first-child:not(.final-uncertainty-row) {
+body.dark-mode
+  .uncertainty-budget-table
+  tfoot
+  tr:first-child:not(.final-uncertainty-row) {
   border-top: 2px solid var(--primary-color-dark);
 }
 
@@ -3524,7 +3777,7 @@ body.dark-mode .component-header h5 {
 
 /* Warnings */
 body.dark-mode .form-section-warning {
-  background-color: rgba(66, 50, 10, 0.6); 
+  background-color: rgba(66, 50, 10, 0.6);
   border-color: var(--status-warning);
   color: #f6e05e;
 }
@@ -3548,26 +3801,27 @@ body.dark-mode .add-tmde-card-small:hover {
 /* SCROLLBAR STYLING                                                   */
 /* =================================================================== */
 
-
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--scrollbar-track); 
+  background: var(--scrollbar-track);
   transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb); 
+  background: var(--scrollbar-thumb);
   border-radius: 5px;
   border: 2px solid var(--scrollbar-track); /* Creates a nice padding effect */
-  transition: background 0.3s ease, border-color 0.3s ease;
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover); 
+  background: var(--scrollbar-thumb-hover);
 }
 
 ::-webkit-scrollbar-corner {
@@ -3575,7 +3829,7 @@ body.dark-mode .add-tmde-card-small:hover {
 }
 
 body.dark-mode .placeholder-content p {
-    color: var(--text-color-muted);
+  color: var(--text-color-muted);
 }
 
 body.dark-mode .sidebar-action-button.delete {
@@ -3590,11 +3844,11 @@ body.dark-mode .sidebar-action-button.delete:hover {
 }
 
 body.dark-mode .analyzed-components-title {
-    border-bottom-color: #4A5568;
+  border-bottom-color: #4a5568;
 }
 
 body.dark-mode .final-result-display {
-  background-color: #1A202C; /* A dark background */
+  background-color: #1a202c; /* A dark background */
 }
 
 /* =================================================================== */
@@ -3636,7 +3890,9 @@ body.dark-mode .final-result-display {
   background-color: var(--content-background);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.1),
+    0 3px 6px rgba(0, 0, 0, 0.08);
   padding: 6px;
   z-index: 1001;
   min-width: 240px;
@@ -3671,7 +3927,9 @@ body.dark-mode .final-result-display {
   font-weight: 500;
   color: var(--text-color);
   border-radius: 6px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .context-menu li:not(.context-menu-divider):hover {
@@ -3735,7 +3993,7 @@ body.dark-mode .final-result-display {
 .session-controls {
   display: flex;
   flex-direction: column;
-  gap: .5rem;
+  gap: 0.5rem;
   flex-grow: 1;
 }
 
@@ -3847,8 +4105,7 @@ body.theme-orbital.dark-mode .session-selector option {
   object-fit: cover;
 }
 
-
- .form-section .image-add-button {
+.form-section .image-add-button {
   /* Sizing */
   width: 100px;
   height: 100px;
@@ -3858,14 +4115,14 @@ body.theme-orbital.dark-mode .session-selector option {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  
+
   /* Style */
   border: 1px dashed var(--border-color);
   border-radius: 6px;
   color: var(--text-color-muted);
   font-size: 0.9rem;
   gap: 4px;
-  
+
   /* Interaction */
   cursor: pointer;
   transition: all 0.2s ease;
@@ -3937,7 +4194,9 @@ body.theme-orbital.dark-mode .session-selector option {
   color: white;
   opacity: 0.8;
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .image-viewer-close:hover {
@@ -4033,8 +4292,6 @@ body.theme-cyberpunk .react-select__menu {
   border-width: 2px !important;
 }
 
-
-
 /* =================================================================== */
 /* 15. PROFESSIONAL APP HEADER (Redesigned)                            */
 /* =================================================================== */
@@ -4061,28 +4318,28 @@ body.theme-cyberpunk .react-select__menu {
   width: 40px;
   height: 40px;
   /* Default background for transparent icons */
-  background: var(--primary-color); 
+  background: var(--primary-color);
   color: white;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.2rem;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  overflow: hidden; 
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
   flex-shrink: 0;
 }
 
 /* Standard Icon Sizing */
 .app-logo-mark img {
-  width: 24px; 
+  width: 24px;
   height: 24px;
   object-fit: contain;
 }
 
 /* Full Bleed Variant (For App Icons/Complex SVGs) */
 .app-logo-mark.full-bleed {
-  background: transparent; 
+  background: transparent;
   box-shadow: none;
 }
 
@@ -4151,7 +4408,7 @@ body.theme-cyberpunk .react-select__menu {
   background-color: var(--input-background);
   border: 1px solid var(--border-color);
   border-radius: 99px; /* Pill shape */
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   backdrop-filter: var(--backdrop-filter);
   -webkit-backdrop-filter: var(--backdrop-filter);
   height: 48px;
@@ -4161,7 +4418,7 @@ body.theme-cyberpunk .react-select__menu {
 }
 
 .header-toolbox.dragging {
-  box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
   opacity: 0.95;
   z-index: 10000 !important; /* Ensure it stays on top */
 }
@@ -4182,7 +4439,9 @@ body.theme-cyberpunk .react-select__menu {
   gap: 0;
   opacity: 1;
   transform: translateX(0);
-  transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s;
+  transition:
+    opacity 0.3s ease 0.1s,
+    transform 0.3s ease 0.1s;
   will-change: opacity, transform;
 }
 
@@ -4245,7 +4504,7 @@ body.theme-cyberpunk .react-select__menu {
   border: none;
   background: transparent;
   color: var(--text-color-muted);
-  font-size: 1.0rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -4256,13 +4515,13 @@ body.theme-cyberpunk .react-select__menu {
   background-color: var(--primary-color-light);
   color: var(--primary-color);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .toolbox-button.active {
   background-color: var(--primary-color);
   color: #ffffff; /* Force white for active consistency */
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Status Pill (Adapted for Toolbox) */
@@ -4284,7 +4543,7 @@ body.theme-cyberpunk .react-select__menu {
 }
 
 .header-toolbox .status-pill:hover {
-  background-color: rgba(0,0,0,0.05);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .status-dot {
@@ -4362,7 +4621,6 @@ body.theme-cyberpunk .react-select__menu {
   display: none;
 }
 
-
 /* Theme Selector (Minimal) */
 .theme-selector-minimal {
   position: relative;
@@ -4436,7 +4694,7 @@ body.dark-mode .moon-toggle {
     width: 100%;
     justify-content: space-between;
   }
-  
+
   /* Make Toolbox scrollable or wrap on very small screens */
   .header-toolbox {
     width: 100%;
@@ -4462,9 +4720,9 @@ body.dark-mode .moon-toggle {
   overflow: hidden;
   min-width: 200px;
   min-height: 200px;
-  
+
   /* Allow CSS resizing */
-  resize: both; 
+  resize: both;
   overflow: auto;
 
   /* Glassmorphism Support */
@@ -4558,12 +4816,12 @@ body.dark-mode .moon-toggle {
   background-color: var(--content-background);
   border: 1px solid var(--border-color);
   border-radius: 20px; /* Pill shape */
-  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
   padding: 8px 15px;
   cursor: move;
   width: auto;
   min-width: 150px;
-  
+
   /* Glass Support */
   backdrop-filter: var(--backdrop-filter);
 }
@@ -4588,7 +4846,7 @@ body.dark-mode .moon-toggle {
 body.theme-cyberpunk .floating-notepad {
   border-width: 2px;
   border-radius: 0;
-  box-shadow: 5px 5px 0px rgba(0,0,0,1);
+  box-shadow: 5px 5px 0px rgba(0, 0, 0, 1);
 }
 
 /* =================================================================== */
@@ -4652,7 +4910,7 @@ body.theme-cyberpunk .floating-notepad {
   background-color: var(--content-background);
   border: 1px solid var(--border-color);
   border-radius: 20px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
   padding: 8px 15px;
   cursor: move;
   display: flex;
@@ -4702,7 +4960,9 @@ body.theme-cyberpunk .floating-notepad {
   margin-bottom: 5px;
 }
 
-.conv-side input, .conv-side select, .result-display {
+.conv-side input,
+.conv-side select,
+.result-display {
   width: 100%;
   margin-bottom: 8px;
   padding: 8px;
@@ -4715,7 +4975,7 @@ body.theme-cyberpunk .floating-notepad {
 
 .result-display {
   background-color: var(--background-color);
-  font-family: 'Consolas', monospace;
+  font-family: "Consolas", monospace;
   font-weight: 700;
   color: var(--primary-color);
   position: relative;
@@ -4731,7 +4991,9 @@ body.theme-cyberpunk .floating-notepad {
   cursor: pointer;
   font-size: 0.8rem;
 }
-.copy-btn-mini:hover { color: var(--primary-color); }
+.copy-btn-mini:hover {
+  color: var(--primary-color);
+}
 
 .conv-middle {
   display: flex;
@@ -4805,7 +5067,7 @@ body.theme-cyberpunk .floating-tool {
 }
 
 .floating-window-content {
-  box-shadow: 0 15px 50px rgba(0,0,0,0.3) !important;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3) !important;
   border: 1px solid var(--border-color);
   resize: both; /* Allow resizing by user */
   overflow: hidden; /* Contain resize handle */
@@ -4813,7 +5075,7 @@ body.theme-cyberpunk .floating-tool {
 
 /* Ensure resize handle is visible in themes */
 body.dark-mode .floating-window-content {
-  box-shadow: 0 15px 50px rgba(0,0,0,0.6) !important;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6) !important;
 }
 
 /* =================================================================== */
@@ -4823,10 +5085,10 @@ body.dark-mode .floating-window-content {
 /* --- Base Floating Window (All Themes) --- */
 .floating-window-content {
   /* Critical for centering: override any theme-specific margins */
-  margin: 0 !important; 
+  margin: 0 !important;
   transform: none !important; /* Prevent theme animations from shifting positions */
-  
-  box-shadow: 0 15px 50px rgba(0,0,0,0.3) !important;
+
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3) !important;
   border: 1px solid var(--border-color);
   resize: both;
   overflow: hidden;
@@ -4844,15 +5106,15 @@ body.dark-mode .floating-window-content {
 /* 1. The Overlay (Backdrop) */
 body.theme-orbital .modal-overlay {
   /* LIGHT MODE: Lighter, solar-tinted blur */
-  background-color: rgba(255, 255, 255, 0.2); 
-  backdrop-filter: blur(8px) saturate(120%); 
+  background-color: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px) saturate(120%);
   -webkit-backdrop-filter: blur(8px) saturate(120%);
   transition: all 0.3s ease;
 }
 
 body.theme-orbital.dark-mode .modal-overlay {
   /* DARK MODE: Deep space tint */
-  background-color: rgba(0, 0, 0, 0.6); 
+  background-color: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(12px) grayscale(40%);
   -webkit-backdrop-filter: blur(12px) grayscale(40%);
 }
@@ -4860,18 +5122,18 @@ body.theme-orbital.dark-mode .modal-overlay {
 /* 2. The Floating Window (Orbital Specifics) */
 body.theme-orbital .floating-window-content {
   /* LIGHT MODE: Solar Command HUD (White/Glass) */
-  background-color: rgba(255, 255, 255, 0.85); 
+  background-color: rgba(255, 255, 255, 0.85);
   border: 1px solid var(--primary-color);
   border-top: 4px solid var(--primary-color); /* Thicker top accent */
-  
-  background-image: none; 
-  
+
+  background-image: none;
+
   /* Day-time Glow */
-  box-shadow: 
-    0 20px 60px rgba(0,0,0,0.1),
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.1),
     0 0 0 1px rgba(8, 145, 178, 0.1),
-    0 0 20px rgba(8, 145, 178, 0.1); 
-    
+    0 0 20px rgba(8, 145, 178, 0.1);
+
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-radius: 12px;
@@ -4879,19 +5141,20 @@ body.theme-orbital .floating-window-content {
 
 body.theme-orbital.dark-mode .floating-window-content {
   /* DARK MODE: Deep Space HUD (Dark/Glass) */
-  background-color: rgba(10, 20, 30, 0.85); 
+  background-color: rgba(10, 20, 30, 0.85);
   border-color: var(--primary-color);
-  box-shadow: 
-    0 25px 80px rgba(0,0,0,0.8),
+  box-shadow:
+    0 25px 80px rgba(0, 0, 0, 0.8),
     0 0 0 1px var(--primary-color-dark),
-    0 0 30px rgba(6, 182, 212, 0.15); 
+    0 0 30px rgba(6, 182, 212, 0.15);
 }
 
 /* 3. Header/Footer inside Floating Window */
 body.theme-orbital .floating-window-content > div:first-child, /* Header */
-body.theme-orbital .floating-window-content .modal-actions {   /* Footer */
+body.theme-orbital .floating-window-content .modal-actions {
+  /* Footer */
   /* LIGHT MODE: White semi-transparent */
-  background-color: rgba(255, 255, 255, 0.5); 
+  background-color: rgba(255, 255, 255, 0.5);
   border-color: rgba(148, 163, 184, 0.2);
   color: var(--text-color);
 }
@@ -4899,7 +5162,7 @@ body.theme-orbital .floating-window-content .modal-actions {   /* Footer */
 body.theme-orbital.dark-mode .floating-window-content > div:first-child,
 body.theme-orbital.dark-mode .floating-window-content .modal-actions {
   /* DARK MODE: Dark semi-transparent */
-  background-color: rgba(15, 23, 42, 0.6); 
+  background-color: rgba(15, 23, 42, 0.6);
   border-color: rgba(148, 163, 184, 0.2);
 }
 
@@ -4913,7 +5176,7 @@ body.theme-orbital .floating-window-content .lookup-table-container {
 body.theme-orbital .floating-window-content input,
 body.theme-orbital .floating-window-content select {
   /* LIGHT MODE: White inputs for cleanliness */
-  background-color: rgba(255, 255, 255, 0.8); 
+  background-color: rgba(255, 255, 255, 0.8);
   border-color: var(--border-color);
   color: var(--text-color);
 }
@@ -4921,7 +5184,7 @@ body.theme-orbital .floating-window-content select {
 body.theme-orbital.dark-mode .floating-window-content input,
 body.theme-orbital.dark-mode .floating-window-content select {
   /* DARK MODE: Dark glass inputs */
-  background-color: rgba(0, 0, 0, 0.3); 
+  background-color: rgba(0, 0, 0, 0.3);
   border-color: rgba(148, 163, 184, 0.3);
   color: var(--text-color);
 }
@@ -4978,7 +5241,9 @@ body.theme-orbital.dark-mode .floating-window-content select:focus {
 /* Sidebar */
 .help-sidebar {
   width: 260px;
-  background-color: var(--background-secondary); /* Matches header/sidebar theme */
+  background-color: var(
+    --background-secondary
+  ); /* Matches header/sidebar theme */
   border-right: 1px solid var(--border-color);
   padding: 15px;
   display: flex;
@@ -5004,12 +5269,12 @@ body.theme-orbital.dark-mode .floating-window-content select:focus {
 }
 
 .sidebar-btn:hover {
-  background-color: var(--hover-background, rgba(0,0,0,0.05));
+  background-color: var(--hover-background, rgba(0, 0, 0, 0.05));
 }
 
 /* Active Sidebar Button - Uses Primary Color Variables */
 .sidebar-btn.active {
-  background-color: var(--primary-color-light); 
+  background-color: var(--primary-color-light);
   color: var(--primary-color-dark, var(--primary-color));
   border-color: var(--primary-color);
 }
@@ -5038,7 +5303,7 @@ body.theme-orbital.dark-mode .floating-window-content select:focus {
 }
 
 .step-item:hover {
-  background-color: var(--hover-background, rgba(0,0,0,0.05));
+  background-color: var(--hover-background, rgba(0, 0, 0, 0.05));
   color: var(--text-color);
 }
 
@@ -5047,7 +5312,7 @@ body.theme-orbital.dark-mode .floating-window-content select:focus {
   color: var(--primary-color);
   font-weight: 700;
   border: 1px solid var(--border-color);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .step-item.completed-step .step-num {
@@ -5234,7 +5499,7 @@ body.theme-orbital.dark-mode .floating-window-content select:focus {
 
 /* Light Mode: Darken slightly to stand out */
 .nav-btn.primary:hover:not(:disabled) {
-  filter: brightness(0.85); 
+  filter: brightness(0.85);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -5252,8 +5517,8 @@ body.dark-mode .nav-btn.primary:hover:not(:disabled) {
 
 /* Tools View Grid */
 .tools-view h2 {
-    color: var(--text-color);
-    margin-bottom: 20px;
+  color: var(--text-color);
+  margin-bottom: 20px;
 }
 
 .tools-grid {
@@ -5270,12 +5535,14 @@ body.dark-mode .nav-btn.primary:hover:not(:disabled) {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background-color: var(--content-background);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .tool-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
   border-color: var(--primary-color);
 }
 
@@ -5321,16 +5588,16 @@ body.theme-cyberpunk .step-item.active-step {
   box-shadow: 0 0 10px var(--primary-color);
 }
 
-
-
 /* --- TOOLBOX THEME OVERRIDES --- */
 
 /* Cyberpunk: Boxy, Neon */
 body.theme-cyberpunk .header-toolbox {
   border-radius: 0;
   border: 2px solid var(--primary-color);
-  background-color: var(--component-header-bg); /* Use theme bg (Cyan in light, dark in dark) */
-  box-shadow: 4px 4px 0px rgba(0,0,0,0.8);
+  background-color: var(
+    --component-header-bg
+  ); /* Use theme bg (Cyan in light, dark in dark) */
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.8);
 }
 /* Cyberpunk Light Mode Specific Override if needed to be lighter than header */
 body.theme-cyberpunk:not(.dark-mode) .header-toolbox {
@@ -5338,23 +5605,31 @@ body.theme-cyberpunk:not(.dark-mode) .header-toolbox {
   border: 2px solid #d600c0; /* Magenta Border for contrast */
 }
 body.theme-cyberpunk:not(.dark-mode) .header-toolbox.collapsed {
-    background-color: #00eaff; /* Cyan when collapsed button */
+  background-color: #00eaff; /* Cyan when collapsed button */
 }
 body.theme-cyberpunk .toolbox-button {
   border-radius: 0;
 }
 body.theme-cyberpunk .toolbox-button.active {
-  box-shadow: 2px 2px 0px rgba(255,255,255,0.5);
+  box-shadow: 2px 2px 0px rgba(255, 255, 255, 0.5);
 }
 
 /* Orbital: Enhanced Glass */
 body.theme-orbital .header-toolbox {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0)
+  );
   border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1); 
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
 }
 body.theme-orbital.dark-mode .header-toolbox {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.3));
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.6),
+    rgba(15, 23, 42, 0.3)
+  );
   border: 1px solid rgba(148, 163, 184, 0.1);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
@@ -5372,7 +5647,7 @@ body.theme-orbital.dark-mode .header-toolbox {
 }
 
 .bug-report-window .window-header {
-  background-color: var(--background-secondary); 
+  background-color: var(--background-secondary);
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -5383,7 +5658,7 @@ body.theme-orbital.dark-mode .header-toolbox {
   font-size: 0.8rem;
   font-weight: 700;
   /* Use theme font variable to ensure it matches (Inter vs JetBrains Mono) */
-  font-family: var(--main-font); 
+  font-family: var(--main-font);
   color: var(--text-color-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -5421,7 +5696,7 @@ body.theme-orbital.dark-mode .header-toolbox {
 
 .bug-card:hover {
   border-color: var(--primary-color) !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   transform: translateY(-2px);
 }
 
@@ -5437,9 +5712,9 @@ body.theme-cyberpunk .bug-report-window {
 
 body.theme-cyberpunk .bug-report-window .form-group label {
   color: var(--primary-color); /* Neon color for labels */
-  font-family: 'Courier New', monospace; /* Force tech font */
+  font-family: "Courier New", monospace; /* Force tech font */
   letter-spacing: 1px;
-  text-shadow: 0 0 2px rgba(0,0,0,0.5);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
 body.theme-cyberpunk .bug-report-window input,
@@ -5475,10 +5750,10 @@ body.dark-mode .bug-card {
 
 .notification-window {
   /* Default Solid Backgrounds (prevents transparency) */
-  background-color: #ffffff; 
+  background-color: #ffffff;
   color: var(--text-color);
   animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 15px 50px rgba(0,0,0,0.3);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
 }
 
 .notification-window .window-header {
@@ -5493,14 +5768,20 @@ body.dark-mode .bug-card {
 
 /* Animation for smooth appearance */
 @keyframes popIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* --- DARK MODE SOLID BACKGROUND --- */
 body.dark-mode .notification-window {
   background-color: #1e1e1e; /* Solid Dark Grey */
-  box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6);
 }
 
 /* --- ORBITAL THEME SOLID OVERRIDES (Fixes Transparency) --- */
@@ -5518,14 +5799,14 @@ body.theme-orbital.dark-mode .notification-window {
 /* --- CYBERPUNK THEME SOLID OVERRIDES --- */
 body.theme-cyberpunk .notification-window {
   background-color: #ffffff !important; /* Solid White */
-  box-shadow: 6px 6px 0px rgba(0,0,0,1);
+  box-shadow: 6px 6px 0px rgba(0, 0, 0, 1);
   border: 2px solid var(--border-color);
 }
 
 body.theme-cyberpunk.dark-mode .notification-window {
   background-color: #000000 !important; /* Solid Black */
   border: 2px solid var(--primary-color);
-  box-shadow: 0 0 20px rgba(0,0,0,0.8);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
 }
 
 body.theme-cyberpunk .notification-window .window-header {
@@ -5542,8 +5823,8 @@ body.theme-cyberpunk .notification-window .window-header {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   /* Allows horizontal scrolling if content (like long numbers) overflows */
-  overflow-x: auto; 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  overflow-x: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   margin-bottom: 25px;
   background-color: var(--content-background);
 }
@@ -5552,7 +5833,7 @@ body.theme-cyberpunk .notification-window .window-header {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  /* Inherits global font size (usually 1rem) to match Budget Table */
+  /* Remove table-layout: fixed - let columns auto-size based on content */
 }
 
 .instrument-summary-table th {
@@ -5561,32 +5842,53 @@ body.theme-cyberpunk .notification-window .window-header {
   font-weight: 600;
   text-transform: none;
   letter-spacing: normal;
-  padding: 10px 12px;
+  padding: 10px 14px;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   border-top: 1px solid var(--border-color);
+  white-space: nowrap; /* Headers should never wrap */
 }
 
 .instrument-summary-table thead th {
   text-transform: uppercase;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.05em;
 }
 
 .instrument-summary-table td {
-  padding: 10px 12px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-color);
   vertical-align: middle;
-  font-family: inherit; /* Default: Inherits theme's main font (Inter/Roboto) */
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  /* Default: allow wrapping for text-heavy columns */
 }
 
-/* PREVENT WRAPPING: Keeps Parameter/Range and Std Unc on single lines */
-.instrument-summary-table td:nth-child(3), /* Parameter / Range */
-.instrument-summary-table td:nth-child(5) { /* Std. Unc (k=1) */
+/* Numeric/Value columns should NOT wrap - these are critical for readability */
+.instrument-summary-table td.cell-nowrap,
+.instrument-summary-table td.cell-value,
+.instrument-summary-table td.cell-unit,
+.instrument-summary-table td.cell-limit,
+.instrument-summary-table td.cell-tolerance {
   white-space: nowrap;
+}
+
+/* Description columns CAN wrap, but with a minimum width for readability */
+.instrument-summary-table td.cell-description {
+  min-width: 140px;
+  max-width: 250px;
+  word-wrap: break-word;
+}
+
+/* Compact columns (checkbox, actions) */
+.instrument-summary-table td.cell-compact {
+  width: 50px;
+  text-align: center;
+  padding: 8px;
 }
 
 .instrument-summary-table tr:last-child td {
@@ -5595,6 +5897,65 @@ body.theme-cyberpunk .notification-window .window-header {
 
 .instrument-summary-table tbody tr:hover {
   background-color: var(--background-color);
+}
+
+/* Mini Select Dropdown for Table Cells */
+.mini-select {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--input-background);
+  color: var(--text-color);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  padding-right: 24px;
+}
+
+.mini-select:hover {
+  border-color: var(--primary-color);
+  background-color: var(--hover-background);
+}
+
+.mini-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
+}
+
+/* Dark Mode Mini Select */
+body.dark-mode .mini-select {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.15);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+body.dark-mode .mini-select:hover {
+  border-color: var(--primary-color);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Cyberpunk Theme Mini Select */
+body.theme-cyberpunk .mini-select {
+  border-radius: 0;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+/* Orbital Theme Mini Select */
+body.theme-orbital .mini-select {
+  font-family: "Consolas", monospace;
+  font-size: 0.75rem;
 }
 
 /* Role Badges */
@@ -5657,7 +6018,7 @@ body.theme-cyberpunk .notification-window .window-header {
   font-family: inherit;
   font-size: 0.9rem;
   /* PREVENT WRAPPING: Keeps Min/To/Max on one line */
-  white-space: nowrap; 
+  white-space: nowrap;
 }
 
 .limit-val {
@@ -5688,7 +6049,7 @@ body.theme-cyberpunk .notification-window .window-header {
 }
 
 .icon-action-btn:hover {
-  background-color: rgba(0,0,0,0.05);
+  background-color: rgba(0, 0, 0, 0.05);
   color: var(--text-color);
 }
 
@@ -5718,6 +6079,72 @@ body.theme-cyberpunk .notification-window .window-header {
 }
 
 /* =================================================================== */
+/* QUICK ADD INPUT STYLES                                              */
+/* =================================================================== */
+.quick-add-input {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-color);
+    background-color: var(--input-background);
+    outline: none;
+    transition: all 0.2s ease;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); /* Subtle depth */
+}
+
+/* Interaction States */
+.quick-add-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
+    background-color: var(--background-color);
+}
+
+.quick-add-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.quick-add-input::placeholder {
+    color: var(--text-color-muted);
+    font-weight: 400;
+    font-style: italic;
+}
+
+/* Theme overrides for consistency */
+body.dark-mode .quick-add-input {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .quick-add-input:focus {
+    background-color: rgba(0, 0, 0, 0.4);
+    border-color: var(--primary-color);
+}
+
+/* Cyberpunk Specifics */
+body.theme-cyberpunk .quick-add-input {
+    border-radius: 0;
+    font-family: 'Share Tech Mono', monospace;
+}
+
+body.theme-cyberpunk:not(.dark-mode) .quick-add-input {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid #ccc;
+    color: #000;
+}
+
+body.theme-cyberpunk:not(.dark-mode) .quick-add-input:focus {
+    border-color: var(--cyber-magenta);
+    box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+}
+
+/* =================================================================== */
 /* THEME OVERRIDES FOR INSTRUMENT TABLE                                */
 /* =================================================================== */
 
@@ -5737,7 +6164,7 @@ body.dark-mode .instrument-summary-table tbody tr:hover {
 }
 
 body.dark-mode .clickable-spec-cell:hover {
-  background-color: rgba(255,255,255,0.05);
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* --- Orbital Theme Specifics (Matches Budget Table) --- */
@@ -5759,8 +6186,15 @@ body.theme-orbital .instrument-summary-table thead th {
 body.theme-orbital .instrument-summary-table td {
   border-bottom: 1px solid var(--border-color);
   /* FORCE CONSOLAS: Matches .uncertainty-budget-table styling in Orbital */
-  font-family: 'Consolas', monospace; 
-  font-size: 0.9rem; 
+  font-family: "Consolas", monospace;
+  font-size: 0.8rem;
+}
+
+/* Orbital value cells should not wrap */
+body.theme-orbital .instrument-summary-table td.cell-nowrap,
+body.theme-orbital .instrument-summary-table td.cell-value,
+body.theme-orbital .instrument-summary-table td.cell-limit {
+  white-space: nowrap;
 }
 
 body.theme-orbital .instrument-summary-table tbody tr:hover {
@@ -5770,7 +6204,7 @@ body.theme-orbital .instrument-summary-table tbody tr:hover {
 body.theme-orbital .clickable-spec-cell,
 body.theme-orbital .limits-cell {
   /* Ensure interactive cells also respect the Orbital font rule */
-  font-family: 'Consolas', monospace;
+  font-family: "Consolas", monospace;
 }
 
 /* Orbital Dark Mode */
@@ -5821,7 +6255,7 @@ body.theme-orbital.dark-mode .instrument-summary-table thead th {
   padding: 4px 12px;
   border-radius: 20px;
   letter-spacing: 1px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .equation-hero-input-wrapper {
@@ -5837,7 +6271,7 @@ body.theme-orbital.dark-mode .instrument-summary-table thead th {
   border: none;
   background: transparent;
   border-bottom: 2px solid var(--border-color);
-  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-family: "JetBrains Mono", "Consolas", monospace;
   font-size: 1.8rem;
   font-weight: 700;
   color: var(--text-color);
@@ -5866,7 +6300,7 @@ body.theme-orbital.dark-mode .instrument-summary-table thead th {
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-color-muted);
-  width: 36px; 
+  width: 36px;
   height: 36px;
   border-radius: 8px;
   display: flex;
@@ -5899,13 +6333,16 @@ body.theme-orbital.dark-mode .instrument-summary-table thead th {
   padding: 0; /* Internal layout handles padding */
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
   overflow: hidden;
 }
 
 .var-card-modern:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
 }
 
 .var-card-modern.assigned {
@@ -5930,7 +6367,7 @@ body.theme-orbital.dark-mode .instrument-summary-table thead th {
   background-color: var(--input-background);
   border: 1px solid var(--border-color);
   color: var(--primary-color);
-  font-family: 'Consolas', monospace;
+  font-family: "Consolas", monospace;
   font-weight: 800;
   font-size: 1.2rem;
   width: 36px;
@@ -6006,7 +6443,7 @@ body.theme-orbital.dark-mode .instrument-summary-table thead th {
 }
 
 .var-val {
-  font-family: 'Consolas', monospace;
+  font-family: "Consolas", monospace;
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--primary-color);
@@ -6019,32 +6456,32 @@ body.theme-orbital.dark-mode .instrument-summary-table thead th {
 }
 
 .var-manual-input-group {
-    display: flex;
-    gap: 8px;
+  display: flex;
+  gap: 8px;
 }
 
 .var-manual-input-group input {
-    padding: 6px;
-    font-size: 0.9rem;
-    border: 1px solid var(--border-color);
-    background-color: var(--input-background);
-    color: var(--text-color);
-    border-radius: 4px;
+  padding: 6px;
+  font-size: 0.9rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-background);
+  color: var(--text-color);
+  border-radius: 4px;
 }
 
 /* Theme Overrides for Measurement Equation */
 body.dark-mode .equation-hero-container {
-    background-color: rgba(255,255,255,0.02);
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 body.theme-orbital .equation-hero-input {
-    text-shadow: 0 0 15px rgba(8, 145, 178, 0.3);
+  text-shadow: 0 0 15px rgba(8, 145, 178, 0.3);
 }
 
 body.theme-cyberpunk .equation-hero-container,
 body.theme-cyberpunk .var-card-modern {
-    border-radius: 0;
-    border-width: 2px;
+  border-radius: 0;
+  border-width: 2px;
 }
 
 /* =================================================================== */
@@ -6053,144 +6490,144 @@ body.theme-cyberpunk .var-card-modern {
 
 /* --- Header Toggle Controls --- */
 .sidebar-view-controls {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .sidebar-view-controls .sidebar-action-button.active {
-    background-color: var(--primary-color-light);
-    color: var(--primary-color);
-    border-color: var(--primary-color);
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
 }
 
 /* --- UUT Header Enhancements --- */
 .uut-header {
-    padding: 8px 10px 8px 25px; 
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between; /* Pushes actions to the right */
-    align-items: center;
-    gap: 8px;
-    border-left: 3px solid transparent;
-    transition: background-color 0.2s ease;
+  padding: 8px 10px 8px 25px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between; /* Pushes actions to the right */
+  align-items: center;
+  gap: 8px;
+  border-left: 3px solid transparent;
+  transition: background-color 0.2s ease;
 }
 
 .uut-header:hover {
-    background-color: rgba(0, 0, 0, 0.03); /* Subtle hover */
+  background-color: rgba(0, 0, 0, 0.03); /* Subtle hover */
 }
 
 /* Container for Icon + Text */
 .uut-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--text-color-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-color-muted);
 }
 
 /* Active State Styles */
 .uut-header.active {
-    background-color: var(--highlight-background);
-    color: var(--primary-color);
-    border-left-color: var(--primary-color);
+  background-color: var(--highlight-background);
+  color: var(--primary-color);
+  border-left-color: var(--primary-color);
 }
 
 .uut-header.active .uut-label {
-    color: var(--primary-color);
+  color: var(--primary-color);
 }
 
 /* --- UUT Action Buttons (Right Side) --- */
 .uut-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    opacity: 0; /* Changed from 0.5 to 0 to completely hide them */
-    transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0; /* Changed from 0.5 to 0 to completely hide them */
+  transition: opacity 0.2s ease;
 }
 
 /* Reveal actions on hover or if active */
 .uut-header:hover .uut-actions,
 .uut-header.active .uut-actions {
-    opacity: 1;
+  opacity: 1;
 }
 
 /* Ensure buttons are clickable when visible */
 .uut-actions .btn-icon-only {
-    width: 24px;
-    height: 24px;
-    border: none;
-    background: transparent;
-    cursor: pointer; /* Ensure pointer cursor */
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer; /* Ensure pointer cursor */
 }
 
 .uut-actions .btn-icon-only:hover {
-    background-color: var(--primary-color-light);
-    color: var(--primary-color);
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
 }
 
 .uut-actions .btn-icon-only.active {
-    color: var(--primary-color);
-    opacity: 1;
+  color: var(--primary-color);
+  opacity: 1;
 }
 
 /* --- Range Header with Hover Effect --- */
 .range-header-container {
-    padding: 4px 10px 4px 45px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    color: var(--text-color-muted);
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    position: relative;
-    border-radius: 4px;
-    transition: background-color 0.2s ease;
+  padding: 4px 10px 4px 45px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-color-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
 }
 
 .range-header-container:hover {
-    background-color: var(--primary-color-light);
-    color: var(--primary-color);
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
 }
 
 .range-label-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* --- Theme Compatibility Overrides --- */
 
 /* Dark Mode */
 body.dark-mode .range-header-container:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 body.dark-mode .uut-header:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Orbital Theme */
 body.theme-orbital .range-header-container {
-    font-family: 'Consolas', monospace; /* Tech feel for ranges */
+  font-family: "Consolas", monospace; /* Tech feel for ranges */
 }
 
 /* Cyberpunk Theme */
 body.theme-cyberpunk .range-header-container {
-    border-left: 2px solid transparent;
+  border-left: 2px solid transparent;
 }
 
 body.theme-cyberpunk .range-header-container:hover {
-    border-left-color: var(--primary-color);
-    background-color: transparent;
-    color: var(--primary-color);
-    text-shadow: 0 0 5px var(--primary-color);
+  border-left-color: var(--primary-color);
+  background-color: transparent;
+  color: var(--primary-color);
+  text-shadow: 0 0 5px var(--primary-color);
 }
 
 /* =================================================================== */
@@ -6217,13 +6654,13 @@ body.theme-cyberpunk .range-header-container:hover {
   gap: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
 }
 
 .sidebar-session-card:hover {
   border-color: var(--primary-color);
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
 }
 
 .sidebar-session-card.active {
@@ -6258,12 +6695,14 @@ body.theme-cyberpunk .range-header-container:hover {
   position: sticky;
   top: 0;
   z-index: 10;
-  background-color: var(--sidebar-background); /* Ensures content doesn't show through */
+  background-color: var(
+    --sidebar-background
+  ); /* Ensures content doesn't show through */
   backdrop-filter: blur(10px);
   padding: 15px 15px 8px 15px;
   border-bottom: 1px solid var(--border-color);
   margin-bottom: 5px;
-  
+
   display: flex;
   align-items: center;
   gap: 8px;
@@ -6306,7 +6745,7 @@ body.theme-cyberpunk .range-header-container:hover {
 
 /* Connector line to the main branch */
 .uut-row::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -16px; /* Connects to the border-left of tree-branch */
   top: 50%;
@@ -6357,7 +6796,7 @@ body.theme-cyberpunk .range-header-container:hover {
   display: flex;
   align-items: center;
   gap: 8px; /* Slightly more gap for icon */
-  
+
   /* Interactivity */
   cursor: pointer;
   border-radius: 4px;
@@ -6376,7 +6815,7 @@ body.theme-cyberpunk .range-header-container:hover {
   background-color: var(--primary-color-light);
   color: var(--primary-color);
   font-weight: 800;
-  border-color: rgba(0,0,0,0.05);
+  border-color: rgba(0, 0, 0, 0.05);
 }
 
 /* --- THEME OVERRIDES --- */
@@ -6466,7 +6905,7 @@ body.theme-cyberpunk:not(.dark-mode) .range-label-row.active {
   color: var(--text-color-muted);
   text-transform: uppercase;
   text-align: right;
-  
+
   /* UPDATED: Prepare for Edit Mode visuals */
   transition: all 0.1s ease-in-out;
   border: 1px solid transparent; /* Reserve space for hover border */
@@ -6476,7 +6915,7 @@ body.theme-cyberpunk:not(.dark-mode) .range-label-row.active {
 
 /* Point Value Column */
 .point-value {
-  font-family: 'Consolas', monospace;
+  font-family: "Consolas", monospace;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -6484,7 +6923,7 @@ body.theme-cyberpunk:not(.dark-mode) .range-label-row.active {
 
   /* UPDATED: Prepare for Edit Mode visuals */
   transition: all 0.1s ease-in-out;
-  border: 1px solid transparent; 
+  border: 1px solid transparent;
   border-radius: 2px;
   padding: 0 2px;
 }
@@ -6522,46 +6961,52 @@ body.theme-cyberpunk:not(.dark-mode) .range-label-row.active {
 
 /* 1. Dark Mode Override */
 body.dark-mode .point-grid-item.active {
-  background-color: rgba(var(--primary-rgb), 0.15); /* Slightly stronger in dark mode */
+  background-color: rgba(
+    var(--primary-rgb),
+    0.15
+  ); /* Slightly stronger in dark mode */
   color: var(--primary-color);
   border-left: 3px solid var(--primary-color);
 }
 
 /* 2. Orbital Theme Override */
 body.theme-orbital .point-grid-item.active {
-  background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.1) 0%, transparent 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(var(--primary-rgb), 0.1) 0%,
+    transparent 100%
+  );
   color: var(--primary-color-dark);
   border-left: 3px solid var(--primary-color);
-  box-shadow: none; 
+  box-shadow: none;
 }
 
 /* 3. Cyberpunk Theme Override - REFINED (Readable) */
-body.theme-cyberpunk .point-grid-item {
-  border-radius: 0; /* Square edges */
-  border: 1px solid transparent; /* Prepare for border */
+/* 3. Cyberpunk Theme Override - DARK MODE ONLY */
+body.theme-cyberpunk.dark-mode .point-grid-item {
+  border-radius: 0;
+  border: 1px solid transparent;
 }
 
-body.theme-cyberpunk .point-grid-item:hover {
-  background-color: rgba(0, 0, 0, 0.5); /* Darken bg */
+body.theme-cyberpunk.dark-mode .point-grid-item:hover {
+  background-color: rgba(0, 0, 0, 0.5);
   color: var(--primary-color);
-  border-color: var(--primary-color); /* Neon border on hover */
-  box-shadow: 0 0 5px var(--primary-color); /* Subtle glow */
+  border-color: var(--primary-color);
+  box-shadow: 0 0 5px var(--primary-color);
   text-shadow: 0 0 2px var(--primary-color);
 }
 
-body.theme-cyberpunk .point-grid-item.active {
-  /* READABLE ACTIVE STATE */
-  background-color: rgba(0, 0, 0, 0.7); /* Dark background for contrast */
-  color: var(--primary-color);          /* Neon Text */
-  border: 1px solid var(--primary-color); /* Full Neon Border */
-  border-left: 5px solid var(--primary-color); /* Thicker left indicator */
-  
-  box-shadow: inset 0 0 10px rgba(var(--primary-rgb), 0.2); /* Inner Glow */
-  text-shadow: 0 0 3px var(--primary-color); /* Text Glow */
-  animation: none; /* No dramatic pulsing */
+body.theme-cyberpunk.dark-mode .point-grid-item.active {
+  background-color: rgba(0, 0, 0, 0.7);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  border-left: 5px solid var(--primary-color);
+  box-shadow: inset 0 0 10px rgba(var(--primary-rgb), 0.2);
+  text-shadow: 0 0 3px var(--primary-color);
+  animation: none;
 }
 
-body.theme-cyberpunk .point-grid-item.active .point-section {
+body.theme-cyberpunk.dark-mode .point-grid-item.active .point-section {
   color: var(--primary-color);
   text-shadow: none;
 }
@@ -6615,7 +7060,7 @@ body.theme-cyberpunk .point-grid-item.active .point-section {
   color: #fff;
   padding: 10px 20px;
   border-radius: 50px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   z-index: 10000;
   font-size: 0.9rem;
   font-weight: 500;
@@ -6685,32 +7130,31 @@ body.theme-cyberpunk .point-grid-item.active .point-section {
 
 /* 1. Make the main vertical tree line darker in light modes */
 .tree-branch {
-    /* Use a darker, explicit color for structure lines in default/light themes */
-    border-left-color: rgba(0, 0, 0, 0.2) !important; 
+  /* Use a darker, explicit color for structure lines in default/light themes */
+  border-left-color: rgba(0, 0, 0, 0.2) !important;
 }
 
 /* 2. Make the horizontal connector lines match */
 .uut-row::before {
-    background-color: rgba(0, 0, 0, 0.2) !important;
+  background-color: rgba(0, 0, 0, 0.2) !important;
 }
 
 /* --- Dark Mode Override (Keep subtle) --- */
 body.dark-mode .tree-branch {
-    border-left-color: var(--border-color) !important;
+  border-left-color: var(--border-color) !important;
 }
 
 body.dark-mode .uut-row::before {
-    background-color: var(--border-color) !important;
+  background-color: var(--border-color) !important;
 }
 
 /* --- Cyberpunk Override (Keep sharp) --- */
 body.theme-cyberpunk .tree-branch {
-    border-left-color: var(--border-color) !important;
+  border-left-color: var(--border-color) !important;
 }
 body.theme-cyberpunk .uut-row::before {
-    background-color: var(--border-color) !important;
+  background-color: var(--border-color) !important;
 }
-
 
 /* =================================================================== */
 /* FIX: CYBERPUNK LIGHT MODE SELECTION READABILITY                     */
@@ -6718,32 +7162,7 @@ body.theme-cyberpunk .uut-row::before {
 
 /* Problem: Cyberpunk Light Primary Color is Black. 
    Previous CSS put Black Text on Dark Background.
-   Fix: Force White text on Black background for high contrast active state.
-*/
 
-body.theme-cyberpunk:not(.dark-mode) .point-grid-item.active {
-    background-color: #000000 !important;   /* Solid Black Background */
-    color: #ffffff !important;              /* Solid White Text */
-    border: 2px solid var(--cyber-magenta) !important; /* Pop color border */
-    border-left: 6px solid var(--cyber-magenta) !important;
-    
-    box-shadow: 4px 4px 0px rgba(0,0,0,0.2); /* Hard shadow depth */
-    text-shadow: none; /* Clean text for readability */
-}
-
-/* Ensure the sub-label (Section) is also white/readable */
-body.theme-cyberpunk:not(.dark-mode) .point-grid-item.active .point-section {
-    color: var(--cyber-cyan) !important; /* Cyan accent for section label */
-    opacity: 1;
-}
-
-/* Hover state fix for Cyberpunk Light */
-body.theme-cyberpunk:not(.dark-mode) .point-grid-item:hover:not(.active) {
-    background-color: #ffffff;
-    color: #000000;
-    border: 1px solid #000000;
-    box-shadow: 2px 2px 0px var(--cyber-cyan);
-}
 
 /* =================================================================== */
 /* FIX: TABLE ROW HIGHLIGHTING LOGIC                                   */
@@ -6753,13 +7172,15 @@ body.theme-cyberpunk:not(.dark-mode) .point-grid-item:hover:not(.active) {
 
 /* Standardize pointer cursor */
 .instrument-summary-table tbody tr {
-    cursor: pointer;
-    transition: background-color 0.15s ease, border-left-color 0.15s ease;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-left-color 0.15s ease;
 }
 
 /* 1. Normal Hover (Unselected) */
 .instrument-summary-table tbody tr:hover {
-    background-color: rgba(var(--primary-rgb), 0.05);
+  background-color: rgba(var(--primary-rgb), 0.05);
 }
 
 /* 2. Selected State (Handled by inline JS, but reinforced here to ensure contrast) */
@@ -6767,9 +7188,11 @@ body.theme-cyberpunk:not(.dark-mode) .point-grid-item:hover:not(.active) {
 
 /* 3. Selected + Hover State (Prevent "Fading Out" effect) */
 /* We target rows that have the active border-left style applied by React */
-.instrument-summary-table tbody tr[style*="border-left: 4px solid var(--primary-color)"]:hover {
-    /* Make it slightly DARKER than the normal selected state (0.15 -> 0.25) */
-    background-color: rgba(var(--primary-rgb), 0.25);
+.instrument-summary-table
+  tbody
+  tr[style*="border-left: 4px solid var(--primary-color)"]:hover {
+  /* Make it slightly DARKER than the normal selected state (0.15 -> 0.25) */
+  background-color: rgba(var(--primary-rgb), 0.25);
 }
 
 /* =================================================================== */
@@ -6777,31 +7200,417 @@ body.theme-cyberpunk:not(.dark-mode) .point-grid-item:hover:not(.active) {
 /* =================================================================== */
 
 /* Make selected text pop in Cyberpunk mode */
-body.theme-cyberpunk .instrument-summary-table tbody tr[style*="border-left: 4px solid var(--primary-color)"] {
-    box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.4);
-    background-color: rgba(var(--primary-rgb), 0.2) !important;
+body.theme-cyberpunk
+  .instrument-summary-table
+  tbody
+  tr[style*="border-left: 4px solid var(--primary-color)"] {
+  box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.4);
+  background-color: rgba(var(--primary-rgb), 0.2) !important;
 }
 
-body.theme-cyberpunk .instrument-summary-table tbody tr[style*="border-left: 4px solid var(--primary-color)"] td {
-    color: #fff !important;
-    text-shadow: 0 0 5px var(--primary-color);
+body.theme-cyberpunk
+  .instrument-summary-table
+  tbody
+  tr[style*="border-left: 4px solid var(--primary-color)"]
+  td {
+  color: #fff !important;
+  text-shadow: 0 0 5px var(--primary-color);
 }
 
 /* 1. Base Highlight (Default Light Mode) */
 .instrument-summary-table tbody tr.selected-row {
-    /* Boosted to 0.3 (30%) opacity for better visibility on white backgrounds */
-    background-color: rgba(var(--primary-rgb), 0.3) !important; 
-    font-weight: 600;
+  /* Boosted to 0.3 (30%) opacity for better visibility on white backgrounds */
+  background-color: rgba(var(--primary-rgb), 0.3) !important;
+  font-weight: 600;
 }
 
 /* 2. Default Dark Mode Override */
 body.dark-mode .instrument-summary-table tbody tr.selected-row {
-    /* Reduced to 0.2 (20%) because 30% is too bright on dark backgrounds.
+  /* Reduced to 0.2 (20%) because 30% is too bright on dark backgrounds.
        This works now because we added --primary-rgb to body.dark-mode */
-    background-color: rgba(var(--primary-rgb), 0.2) !important;
+  background-color: rgba(var(--primary-rgb), 0.2) !important;
 }
 
 /* 3. Orbital Theme Override */
-body.theme-orbital:not(.dark-mode) .instrument-summary-table tbody tr.selected-row {
-     background-color: rgba(var(--primary-rgb), 0.25) !important;
+body.theme-orbital:not(.dark-mode)
+  .instrument-summary-table
+  tbody
+  tr.selected-row {
+  background-color: rgba(var(--primary-rgb), 0.25) !important;
+}
+
+/* Disable hover effect for non-interactive cells in UUT table (Description & Spec) */
+.instrument-summary-table tr:hover td.no-hover-cell {
+  background-color: var(--content-background) !important;
+  color: var(--text-color) !important;
+  cursor: default;
+}
+
+/* =================================================================== */
+/* POLISHED COMPACT TABLES - Minimal Scrollbars & Auto-Width Columns   */
+/* =================================================================== */
+
+/* --- Table Container: Refined Scrollbar Behavior --- */
+.instrument-summary-table-wrapper {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 360px; /* Slightly reduced for tighter fit */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* Webkit Scrollbars (Chrome, Safari, Edge) */
+.instrument-summary-table-wrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.instrument-summary-table-wrapper::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 3px;
+}
+
+.instrument-summary-table-wrapper::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.instrument-summary-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Hide scrollbar when not needed - only show on hover/focus */
+.instrument-summary-table-wrapper:not(:hover)::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.instrument-summary-table-wrapper:not(:hover) {
+  scrollbar-color: transparent var(--scrollbar-track);
+}
+
+/* --- Auto-Width Columns: Let content dictate size --- */
+.instrument-summary-table.compact-table {
+  width: auto;
+  min-width: 100%;
+  table-layout: auto;
+}
+
+.instrument-summary-table.compact-table th,
+.instrument-summary-table.compact-table td {
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+/* Allow description columns to wrap when needed */
+.instrument-summary-table.compact-table td.cell-description {
+  white-space: normal;
+  max-width: 200px;
+  min-width: 100px;
+}
+
+/* Compact checkbox column */
+.instrument-summary-table.compact-table td.cell-compact,
+.instrument-summary-table.compact-table th.cell-compact {
+  width: 40px;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+/* --- Global Scrollbar Styling for Table Containers --- */
+div[style*="overflowX: auto"],
+div[style*="overflow-x: auto"] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+div[style*="overflowX: auto"]::-webkit-scrollbar,
+div[style*="overflow-x: auto"]::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+div[style*="overflowX: auto"]::-webkit-scrollbar-track,
+div[style*="overflow-x: auto"]::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+div[style*="overflowX: auto"]::-webkit-scrollbar-thumb,
+div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+div[style*="overflowX: auto"]::-webkit-scrollbar-thumb:hover,
+div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* =================================================================== */
+/* TIGHTENED SIDEBAR - Measurement Point List Spacing                  */
+/* =================================================================== */
+
+/* Sidebar overall padding reduction */
+.measurement-point-list {
+  padding: 8px 10px;
+  gap: 4px;
+}
+
+/* Area group container tightening */
+.measurement-group-container {
+  margin-bottom: 12px;
+}
+
+/* Area header sticky - more compact */
+.area-header-sticky {
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  font-size: 0.75rem;
+}
+
+/* UUT Row - tighter spacing */
+.uut-row {
+  padding: 6px 10px;
+  margin-bottom: 3px;
+  min-height: 30px;
+}
+
+.uut-row .uut-info {
+  gap: 6px;
+  font-size: 0.8rem;
+}
+
+.uut-row .uut-info svg {
+  font-size: 0.75rem;
+}
+
+/* Range label row - compact */
+.range-label-row {
+  padding: 4px 10px;
+  margin-bottom: 2px;
+  font-size: 0.75rem;
+  min-height: 24px;
+}
+
+/* Point grid items - tighter */
+.point-grid-item {
+  min-height: 28px;
+  padding: 5px 10px;
+  margin-bottom: 1px;
+  font-size: 0.8rem;
+  gap: 8px;
+}
+
+.point-grid-item .point-section {
+  font-size: 0.65rem;
+}
+
+.point-grid-item .point-value {
+  font-size: 0.8rem;
+}
+
+/* Session overview card - compact */
+.sidebar-session-card {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.sidebar-session-card .session-card-title {
+  font-size: 0.85rem;
+}
+
+.sidebar-session-card .session-card-subtitle {
+  font-size: 0.7rem;
+}
+
+/* Tree branch - tighter */
+.tree-branch {
+  padding-left: 12px;
+  margin-left: 6px;
+}
+
+/* Empty branch message - minimal padding */
+.empty-branch-msg {
+  padding: 2px 0;
+  min-height: 0;
+}
+
+/* Button actions - smaller */
+.uut-actions-group .btn-icon-only.small {
+  width: 20px;
+  height: 20px;
+  font-size: 0.65rem;
+}
+
+/* =================================================================== */
+/* DARK MODE SCROLLBAR REFINEMENTS                                     */
+/* =================================================================== */
+
+body.dark-mode {
+  --scrollbar-track: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.35);
+}
+
+body.dark-mode div[style*="overflowX: auto"]::-webkit-scrollbar-thumb,
+body.dark-mode div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+body.dark-mode div[style*="overflowX: auto"]::-webkit-scrollbar-thumb:hover,
+body.dark-mode div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* =================================================================== */
+/* ORBITAL THEME SCROLLBAR REFINEMENTS                                 */
+/* =================================================================== */
+
+body.theme-orbital {
+  --scrollbar-track: rgba(15, 23, 42, 0.05);
+  --scrollbar-thumb: rgba(8, 145, 178, 0.3);
+  --scrollbar-thumb-hover: rgba(8, 145, 178, 0.5);
+}
+
+body.theme-orbital.dark-mode {
+  --scrollbar-track: rgba(255, 255, 255, 0.03);
+  --scrollbar-thumb: rgba(34, 211, 238, 0.25);
+  --scrollbar-thumb-hover: rgba(34, 211, 238, 0.45);
+}
+
+/* Orbital compact sidebar spacing refinements */
+body.theme-orbital .point-grid-item {
+  border-radius: 3px;
+}
+
+body.theme-orbital .range-label-row {
+  border-radius: 3px;
+}
+
+/* =================================================================== */
+/* CYBERPUNK THEME SCROLLBAR REFINEMENTS                               */
+/* =================================================================== */
+
+body.theme-cyberpunk {
+  --scrollbar-track: rgba(0, 0, 0, 0.1);
+  --scrollbar-thumb: rgba(214, 0, 192, 0.4);
+  --scrollbar-thumb-hover: rgba(214, 0, 192, 0.6);
+}
+
+body.theme-cyberpunk.dark-mode {
+  --scrollbar-track: rgba(0, 0, 0, 0.3);
+  --scrollbar-thumb: rgba(0, 234, 255, 0.3);
+  --scrollbar-thumb-hover: rgba(0, 234, 255, 0.5);
+}
+
+/* Cyberpunk compact sidebar - sharp edges */
+body.theme-cyberpunk .point-grid-item {
+  border-radius: 0;
+}
+
+body.theme-cyberpunk .range-label-row {
+  border-radius: 0;
+}
+
+body.theme-cyberpunk .area-header-sticky {
+  border-radius: 0;
+}
+
+/* =================================================================== */
+/* TABLE WRAPPER COMPACT STYLING (Applied via inline in JSX)           */
+/* =================================================================== */
+
+/* Max height constraint for table containers in panels */
+.panel-table-container {
+  max-height: 340px;
+  overflow-y: auto;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.panel-table-container::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.panel-table-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-table-container::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+.panel-table-container::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Only show scrollbar on hover */
+.panel-table-container::-webkit-scrollbar-thumb:not(:hover) {
+  background: rgba(128, 128, 128, 0.2);
+}
+
+/* Hide horizontal scrollbar if not needed */
+.panel-table-container.no-h-scroll {
+  overflow-x: hidden;
+}
+
+/* =================================================================== */
+/* POLISHED TABLE CELL SIZING                                          */
+/* =================================================================== */
+
+/* Make value cells compact but readable */
+.instrument-summary-table td.cell-value {
+  font-variant-numeric: tabular-nums;
+  min-width: 60px;
+  max-width: 120px;
+  font-weight: 700;
+  color: var(--primary-color);
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.instrument-summary-table td.cell-unit {
+  min-width: 40px;
+  max-width: 80px;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--text-color-muted);
+}
+
+.instrument-summary-table td.cell-tolerance {
+  min-width: 80px;
+  max-width: 150px;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+.instrument-summary-table td.cell-limit {
+  min-width: 100px;
+  max-width: 180px;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+/* Section cell - fixed narrow width */
+.instrument-summary-table td.cell-section {
+  width: 70px;
+  max-width: 90px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--text-color-muted);
+  white-space: nowrap;
+}
+
+/* Area cell - compact */
+.instrument-summary-table td.cell-area {
+  min-width: 60px;
+  max-width: 100px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 0.8rem;
 }

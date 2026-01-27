@@ -213,9 +213,12 @@ const getAllUutRanges = (uut) => {
 
   // Add a display label for the sidebar
   const finalRanges = ranges.map((r, index) => {
-    let label = r.range || "Range";
-    if (!r.range && r.min !== undefined && r.max !== undefined) {
+    let label = ""; 
+    // Prioritize explicit Min/Max range display
+    if (r.min !== undefined && r.max !== undefined) {
       label = `${r.min} to ${r.max}`;
+    } else {
+      label = r.range || "Range";
     }
 
     // Add Unit to label if not present
@@ -941,6 +944,24 @@ function App() {
         const rangesWithPoints = availableRanges.map(range => {
           const pointsInRange = associatedPoints.filter(tp => {
             if (categorizedPoints.has(tp.id)) return false;
+
+            // 1. Explicit Assignment: Check if tolerance is set
+            if (tp.uutTolerance && Object.keys(tp.uutTolerance).length > 0) {
+                 const t = tp.uutTolerance;
+                 const minMatch = t.min == range.min;
+                 const maxMatch = t.max == range.max;
+                 const unitMatch = (t.unit || "") === (range.unit || "");
+                 const funcMatch = range.functionName ? t.functionName === range.functionName : true;
+                 
+                 if (minMatch && maxMatch && unitMatch && funcMatch) {
+                     categorizedPoints.add(tp.id);
+                     return true;
+                 }
+                 // If tolerance is set explicitly but doesn't match this range, do NOT fallback to value
+                 return false;
+            }
+
+            // 2. Implicit Assignment: Value Check
             const val = parseFloat(tp.testPointInfo?.parameter?.value);
             const unit = tp.testPointInfo?.parameter?.unit;
             if (isNaN(val)) return false;
@@ -1296,7 +1317,25 @@ function App() {
                                     {range.points.length === 0 ? (
                                       <div className="empty-branch-msg"></div>
                                     ) : (
-                                      range.points.map(tp => {
+                                      <>
+                                      {/* Column Headers for Points */}
+                                      <div style={{ 
+                                          display: 'grid',  /* Changed to Grid to match item */
+                                          gridTemplateColumns: '45px 1fr', /* Match item columns */
+                                          fontSize: '0.7rem', 
+                                          color: 'var(--text-color-muted)', 
+                                          padding: '0 12px 4px 12px', 
+                                          marginBottom: '2px',
+                                          borderBottom: '1px solid var(--border-color)',
+                                          borderLeft: '4px solid transparent',
+                                          opacity: 0.7,
+                                          gap: '10px' 
+                                      }}>
+                                          <span style={{textAlign: 'right', paddingRight: '2px'}}>Sect.</span>
+                                          <span>Point</span>
+                                      </div>
+                                      {range.points.map(tp => {
+
                                         const isSelected = selectedTestPointId === tp.id && selectedTestPointContextUutId === group.id;
                                         return (
                                           <SidebarPointItem 
@@ -1320,7 +1359,8 @@ function App() {
                                             }}
                                           />
                                         );
-                                      })
+                                      })}
+                                      </>
                                     )}
                                   </div>
                                 );

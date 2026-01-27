@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+/* eslint-disable no-unused-vars */
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import * as math from 'mathjs';
 import Select from "react-select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -12,10 +13,7 @@ import {
     faMicroscope,
     faCube,
     faArrowRight,
-    faFolderOpen,
-    faRulerCombined,
-    faSave,
-    faLevelDownAlt
+    faRulerCombined
 } from "@fortawesome/free-solid-svg-icons";
 
 // Sub-components
@@ -36,11 +34,11 @@ import {
 // --- SHARED HELPER: Resolve UUT Range ---
 const resolveUutRangeHelper = (uut, activeRangeIndices, savedTolerance, uutNominal) => {
     // 1. Normalize Ranges
-    let ranges = [];
+    let allRanges = [];
     if (Array.isArray(uut.ranges) && uut.ranges.length > 0) {
-        ranges = uut.ranges.map(r => ({ ...r, ...(r.tolerances || r.tolerance || {}) }));
+        allRanges = uut.ranges.map(r => ({ ...r, ...(r.tolerances || r.tolerance || {}) }));
     } else if (Array.isArray(uut.instrument?.functions) && uut.instrument.functions.length > 0) {
-        ranges = uut.instrument.functions.flatMap(fn =>
+        allRanges = uut.instrument.functions.flatMap(fn =>
             (fn.ranges || []).map(r => ({
                 ...r,
                 ...(r.tolerances || {}),
@@ -49,33 +47,12 @@ const resolveUutRangeHelper = (uut, activeRangeIndices, savedTolerance, uutNomin
             }))
         );
     } else if (Array.isArray(uut.instrument?.ranges) && uut.instrument.ranges.length > 0) {
-        ranges = uut.instrument.ranges.map(r => ({ ...r, ...(r.tolerances || {}) }));
+        allRanges = uut.instrument.ranges.map(r => ({ ...r, ...(r.tolerances || {}) }));
     } else {
         const baseTolerance = uut.tolerance || uut.instrument?.tolerance || {};
-        ranges = [{ id: 'default', range: 'Default', ...baseTolerance }];
+        allRanges = [{ id: 'default', range: 'Default', ...baseTolerance }];
     }
-    ranges = ranges.map((r, i) => ({ ...r, _index: i }));
-
-    // 2. Determine Active Index
-    let candidateIndex = -1;
-    
-    // A. Priority: Manual Selection (activeRangeIndices)
-    if (activeRangeIndices && activeRangeIndices[uut.id] !== undefined) {
-        candidateIndex = activeRangeIndices[uut.id];
-    } 
-    // B. Priority: Saved Selection (savedTolerance)
-    else if (savedTolerance) {
-         candidateIndex = ranges.findIndex(r => {
-            if (savedTolerance.range && r.range) {
-                if (savedTolerance.range !== r.range) return false;
-                return savedTolerance.functionName ? savedTolerance.functionName === r.functionName : true;
-            }
-            const minMatch = r.min == savedTolerance.min;
-            const maxMatch = r.max == savedTolerance.max;
-            const unitMatch = (r.unit || "") === (savedTolerance.unit || "");
-            return minMatch && maxMatch && unitMatch;
-        });
-    }
+    allRanges = allRanges.map((r, i) => ({ ...r, _index: i }));
 
     // Helper: fit check
     const doesRangeFit = (r) => {
@@ -83,27 +60,69 @@ const resolveUutRangeHelper = (uut, activeRangeIndices, savedTolerance, uutNomin
         if (isNaN(val)) return false; 
         const min = parseFloat(r.min);
         const max = parseFloat(r.max);
+        
+        // Check unit
         const unitMatch = !r.unit || !uutNominal?.unit || r.unit.toLowerCase() === uutNominal.unit.toLowerCase();
         if (!unitMatch) return false;
+
+        // Check value bounds
         if (!isNaN(min) && !isNaN(max)) return val >= min && val <= max;
-        return false; 
+        
+        // If no bounds, assume fit
+        return true; 
     };
 
-    // C. Validate Candidate
+    // 2. Identify Display Ranges
     const userHasValue = uutNominal && !isNaN(parseFloat(uutNominal.value));
-    if (candidateIndex !== -1 && userHasValue) {
-        if (!doesRangeFit(ranges[candidateIndex])) candidateIndex = -1;
+    let displayRanges = allRanges;
+
+    // FILTER: Only show ranges that fit the value (if value exists)
+    if (userHasValue) {
+        const fittingRanges = allRanges.filter(r => doesRangeFit(r));
+        if (fittingRanges.length > 0) {
+            displayRanges = fittingRanges;
+        }
     }
 
-    // D. Auto-Search
-    if (candidateIndex === -1 && userHasValue) {
-        candidateIndex = ranges.findIndex(r => doesRangeFit(r));
+    // 3. Determine Active Index (in displayRanges)
+    let activeIndex = -1;
+
+    // Priority A: Manual Selection (UI State)
+    if (activeRangeIndices && activeRangeIndices[uut.id] !== undefined) {
+        const uiIndex = activeRangeIndices[uut.id];
+        if (displayRanges[uiIndex]) {
+            activeIndex = uiIndex;
+        }
+    } 
+    
+    // Priority B: Saved Tolerance (Robust Match)
+    if (activeIndex === -1 && savedTolerance) {
+         activeIndex = displayRanges.findIndex(r => {
+            // ID Match (Best)
+            if (r.id && savedTolerance.id && r.id === savedTolerance.id) return true;
+            
+            // Name Match
+            if (savedTolerance.range && r.range && savedTolerance.range === r.range) {
+                 return savedTolerance.functionName ? savedTolerance.functionName === r.functionName : true;
+            }
+
+            // Props Match (Fallback)
+            const minMatch = r.min == savedTolerance.min;
+            const maxMatch = r.max == savedTolerance.max;
+            const unitMatch = (r.unit || "") === (savedTolerance.unit || "");
+            const funcMatch = r.functionName === savedTolerance.functionName; // strict function name
+            
+            // Looser function match if one is missing? No, stay strict.
+            return minMatch && maxMatch && unitMatch && (!r.functionName || funcMatch);
+        });
     }
 
-    // E. Fallback
-    if (candidateIndex === -1) candidateIndex = 0;
+    // Priority C: Default (First Item)
+    if (activeIndex === -1) {
+        activeIndex = 0;
+    }
 
-    return { ranges, activeIndex: candidateIndex, activeRange: ranges[candidateIndex] || {} };
+    return { ranges: displayRanges, activeIndex: activeIndex, activeRange: displayRanges[activeIndex] || {} };
 };
 
 // --- SHARED HELPER: Calculate Tolerance & Limits (Core Logic) ---
@@ -162,6 +181,20 @@ const calculateToleranceMetrics = (activeTolerance, nominalObj) => {
         }
     }
 
+    // Range (% of Full Scale) - FIX
+    const rangeComp = activeTolerance.range || activeTolerance.tolerances?.range;
+    if (rangeComp) {
+        const rangePcn = getComponentValue(rangeComp);
+        // Use the range's Max as Full Scale (FS)
+        const fs = parseFloat(activeTolerance.max);
+        
+        if (rangePcn !== 0 && !isNaN(fs)) {
+            // Basic % of Range calculation
+            total += Math.abs(fs * (rangePcn / 100));
+            found = true;
+        }
+    }
+
     let numericTolerance = null;
 
     if (found) {
@@ -170,7 +203,7 @@ const calculateToleranceMetrics = (activeTolerance, nominalObj) => {
         // 2. Fallback: Parse Standard Utility String
         const utilResult = getToleranceErrorSummary(activeTolerance, nominalObj);
         if (utilResult && utilResult !== "Not Calculated" && utilResult !== "± -" && !utilResult.includes("NaN")) {
-            const match = utilResult.match(/±\s*([\d\.]+)/);
+            const match = utilResult.match(/±\s*([\d.]+)/);
             if (match && match[1]) {
                 numericTolerance = parseFloat(match[1]);
             }
@@ -240,6 +273,7 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
     // Local state for the inputs
     const [val, setVal] = useState("");
     const [unit, setUnit] = useState("");
+    const [section, setSection] = useState("");
     const isDisabled = selectedUuts.length === 0;
     
     // Auto-detect unit from selected UUT when selection changes
@@ -248,10 +282,10 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
             const primaryUut = selectedUuts[0];
             const { activeRange } = resolveRangeHelper(primaryUut, localRangeIndices, null, null);
             if (activeRange?.unit && !unit) {
-                setUnit(activeRange.unit);
+                setTimeout(() => setUnit(activeRange.unit), 0);
             }
         }
-    }, [selectedUuts, localRangeIndices, resolveRangeHelper]); 
+    }, [selectedUuts, localRangeIndices, resolveRangeHelper, unit]); 
 
     // Real-time Preview Calculation
     const previewMetrics = useMemo(() => {
@@ -296,7 +330,7 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
 
         // Construct payload compatible with onSaveTestPoint
         const newPoint = {
-            section: "General", // CHANGED: Default to "General" to avoid creating a "New" sidebar tag
+            section: section,
             measurementType: "direct",
             testPointInfo: {
                 parameter: { name: "Measurement", value: val, unit: unit }
@@ -321,6 +355,18 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
             opacity: isDisabled ? 0.7 : 1,
             transition: 'opacity 0.2s ease'
         }}>
+            {/* Section Input */}
+            <td style={{ padding: '8px' }}>
+                <input 
+                    type="text" 
+                    placeholder="Section"
+                    value={section}
+                    onChange={e => setSection(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={isDisabled}
+                    className="quick-add-input"
+                />
+            </td>
             <td style={{ padding: '8px' }}>
                 <input 
                     type="text" 
@@ -329,18 +375,7 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                     onChange={e => setVal(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={isDisabled}
-                    style={{ 
-                        width: '100%', 
-                        border: '1px solid var(--border-color)', 
-                        borderRadius: '4px', 
-                        padding: '6px 10px',
-                        fontWeight: 'bold',
-                        color: 'var(--primary-color)',
-                        backgroundColor: isDisabled ? 'transparent' : 'var(--input-background)',
-                        outline: 'none',
-                        cursor: isDisabled ? 'not-allowed' : 'text',
-                        boxShadow: isDisabled ? 'none' : 'inset 0 1px 2px rgba(0,0,0,0.1)'
-                    }}
+                    className="quick-add-input"
                     title={isDisabled ? "Select a UUT from the list on the left to enable quick add" : "Enter value and press Enter"}
                 />
             </td>
@@ -352,17 +387,8 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                     onChange={e => setUnit(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={isDisabled}
-                    style={{ 
-                        width: '100%', 
-                        border: '1px solid var(--border-color)', 
-                        borderRadius: '4px', 
-                        padding: '6px 10px',
-                        fontSize: '0.85rem',
-                        backgroundColor: isDisabled ? 'transparent' : 'var(--input-background)',
-                        color: 'var(--text-color)',
-                        outline: 'none',
-                        cursor: isDisabled ? 'not-allowed' : 'text'
-                    }} 
+                    style={{ cursor: isDisabled ? 'not-allowed' : 'text' }} 
+                    className="quick-add-input"
                 />
             </td>
             {/* Live Preview Columns */}
@@ -370,10 +396,13 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                 {previewMetrics.display}
             </td>
             <td style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)', paddingLeft:'8px' }}>
-                {previewMetrics.limits.low}
-            </td>
-            <td style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)', paddingLeft:'8px' }}>
-                {previewMetrics.limits.high}
+                {previewMetrics.limits.low !== '-' ? (
+                    <>
+                        <span style={{ opacity: 0.7 }}>{previewMetrics.limits.low}</span>
+                        <span style={{ margin: '0 4px', fontSize: '0.75rem' }}>→</span>
+                        <span style={{ opacity: 0.7 }}>{previewMetrics.limits.high}</span>
+                    </>
+                ) : '-'}
             </td>
             {showAreaColumn && <td></td>}
             
@@ -392,7 +421,7 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                         }}
                         title="Save Point (Enter)"
                     >
-                        <FontAwesomeIcon icon={faLevelDownAlt} rotation={90} />
+                        <FontAwesomeIcon icon={faArrowRight} />
                     </button>
                 </td>
             )}
@@ -409,7 +438,11 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
     const [localRangeIndices, setLocalRangeIndices] = useState({});
     
     // Batch Deletion Selection State
+    // Batch Deletion Selection State
     const [selectedPointIds, setSelectedPointIds] = useState([]);
+    
+    // Sorting State
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
 
     // Filter Data based on Hierarchy
     const { filteredUuts, filteredPoints, title, subtitle, showAreaColumn } = useMemo(() => {
@@ -473,6 +506,39 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
             displaySubtitle = `Last Modified: ${new Date().toLocaleDateString()}`; 
         }
 
+        // SORTING LOGIC
+        if (sortConfig.key) {
+             points.sort((a, b) => {
+                let aVal = '', bVal = '';
+
+                if (sortConfig.key === 'section') {
+                    aVal = (a.section || '').toLowerCase();
+                    bVal = (b.section || '').toLowerCase();
+                } else if (sortConfig.key === 'point') {
+                    // Try numeric sort
+                    const aNum = parseFloat(a.testPointInfo?.parameter?.value);
+                    const bNum = parseFloat(b.testPointInfo?.parameter?.value);
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        aVal = aNum;
+                        bVal = bNum;
+                    } else {
+                        aVal = (a.testPointInfo?.parameter?.value || '').toString().toLowerCase();
+                        bVal = (b.testPointInfo?.parameter?.value || '').toString().toLowerCase();
+                    }
+                } else if (sortConfig.key === 'area') {
+                     // Resolve Area Name
+                     const areaA = sessionData.measurementAreas?.find(ar => ar.id === a.measurementAreaId);
+                     const areaB = sessionData.measurementAreas?.find(ar => ar.id === b.measurementAreaId);
+                     aVal = (areaA?.name || '').toLowerCase();
+                     bVal = (areaB?.name || '').toLowerCase();
+                }
+
+                if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
+                return 0;
+             });
+        }
+
         return { 
             filteredUuts: uuts, 
             filteredPoints: points, 
@@ -480,17 +546,24 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
             subtitle: displaySubtitle,
             showAreaColumn: isSessionView // Boolean flag
         };
-    }, [viewMode, contextId, sessionData, rangeData, uutId]);
+    }, [viewMode, contextId, sessionData, rangeData, uutId, sortConfig]);
+
+    const handleSort = (key) => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending'
+        }));
+    };
 
     // Pre-select UUT if in single UUT or Range view
     useEffect(() => {
         if (viewMode === 'uut' || viewMode === 'range') {
             const targetId = viewMode === 'range' ? uutId : contextId;
             if (targetId && !selectedUutIds.includes(targetId)) {
-                setSelectedUutIds([targetId]);
+                setTimeout(() => setSelectedUutIds([targetId]), 0);
             }
         }
-    }, [viewMode, contextId, uutId]);
+    }, [viewMode, contextId, uutId, selectedUutIds]);
 
     const handleUutSelect = (id) => {
         setSelectedUutIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -508,13 +581,13 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
     };
     
     // --- BATCH DELETE HANDLERS ---
-    const handleBatchDelete = () => {
+    const handleBatchDelete = useCallback(() => {
         if (selectedPointIds.length === 0) return;
         if (onDeleteTestPoint) {
             onDeleteTestPoint(selectedPointIds, false); 
             setSelectedPointIds([]);
         }
-    };
+    }, [selectedPointIds, onDeleteTestPoint]);
 
     // NEW: Handle Row Selection via Click and Modifiers (Ctrl/Meta)
     const handleRowClick = (e, id) => {
@@ -541,7 +614,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedPointIds, onDeleteTestPoint]);
+    }, [selectedPointIds, onDeleteTestPoint, handleBatchDelete]);
 
     // Wrapper for the helper to pass to QuickAddRow
     const resolveRangeWrapper = (uut, indices, savedTol, nominal) => {
@@ -576,15 +649,8 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                              <span style={{fontSize: '0.8rem', color: 'var(--primary-color)', fontWeight: 600}}>{selectedUutIds.length} Selected</span>
                         )}
                     </div>
-                    <div style={{ overflowX: 'auto', maxHeight: '400px' }}>
-                        <table className="instrument-summary-table" style={{ width: '100%', margin: 0, border: 'none', boxShadow: 'none' }}>
-                            <colgroup>
-                                <col style={{ width: showAreaColumn ? '8%' : '10%' }} />
-                                <col style={{ width: showAreaColumn ? '32%' : '40%' }} />
-                                <col style={{ width: '25%' }} />
-                                <col style={{ width: showAreaColumn ? '20%' : '25%' }} />
-                                {showAreaColumn && <col style={{ width: '15%' }} />}
-                            </colgroup>
+                    <div className="panel-table-container">
+                        <table className="instrument-summary-table compact-table" style={{ margin: 0, border: 'none', boxShadow: 'none' }}>
                             <thead>
                                 <tr>
                                     <th style={{textAlign:'center'}}>Select</th>
@@ -599,7 +665,65 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                     <tr><td colSpan={showAreaColumn ? 5 : 4} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No UUTs found in this context.</td></tr>
                                 ) : (
                                     filteredUuts.map(uut => {
-                                        const { ranges, activeIndex, activeRange } = resolveUutRangeHelper(uut, localRangeIndices, null, null);
+                                        let resolution = resolveUutRangeHelper(uut, localRangeIndices, null, null);
+                                        
+                                        // override if in Range View mode
+                                        if (viewMode === 'range' && rangeData) {
+                                            const matchIndex = resolution.ranges.findIndex(r => {
+                                                if (rangeData._id !== undefined && r._index !== undefined) {
+                                                    // This might be fragile if indices drift, but usually consistent
+                                                    return r._index === rangeData._id; 
+                                                }
+                                                // Fallback to properties match
+                                                const minMatch = r.min == rangeData.min;
+                                                const maxMatch = r.max == rangeData.max;
+                                                const unitMatch = (r.unit || "") === (rangeData.unit || "");
+                                                const funcMatch = rangeData.functionName ? r.functionName === rangeData.functionName : true;
+                                                return minMatch && maxMatch && unitMatch && funcMatch;
+                                            });
+
+                                            if (matchIndex !== -1) {
+                                                const matched = resolution.ranges[matchIndex];
+                                                resolution = { ranges: [matched], activeIndex: 0, activeRange: matched };
+                                            }
+                                        }
+
+                                        // override if a Single Measurement Point is Selected
+                                        if (selectedPointIds.length === 1) {
+                                            const activePoint = filteredPoints.find(p => p.id === selectedPointIds[0]);
+                                            
+                                            // Ensure point is linked to this UUT and has a valid saved tolerance
+                                            if (activePoint && 
+                                                activePoint.associatedUutIds && 
+                                                activePoint.associatedUutIds.includes(uut.id) &&
+                                                activePoint.uutTolerance && 
+                                                Object.keys(activePoint.uutTolerance).length > 0) 
+                                            {
+                                                const targetTol = activePoint.uutTolerance;
+                                                
+                                                // Find matching range in the UUT's definition
+                                                const matchIndex = resolution.ranges.findIndex(r => {
+                                                    // 1. Precise Match (ID/Index)
+                                                    if (targetTol._index !== undefined && r._index !== undefined && targetTol._index === r._index) return true;
+                                                    if (targetTol.id && r.id && targetTol.id === r.id) return true;
+
+                                                    // 2. Prop Match
+                                                    const minMatch = r.min == targetTol.min;
+                                                    const maxMatch = r.max == targetTol.max;
+                                                    const unitMatch = (r.unit || "") === (targetTol.unit || "");
+                                                    const funcMatch = targetTol.functionName ? r.functionName === targetTol.functionName : true;
+                                                    return minMatch && maxMatch && unitMatch && funcMatch;
+                                                });
+
+                                                if (matchIndex !== -1) {
+                                                    // Set active index to this range, so dropdown updates to show it
+                                                    resolution.activeIndex = matchIndex;
+                                                    resolution.activeRange = resolution.ranges[matchIndex];
+                                                }
+                                            }
+                                        }
+
+                                        const { ranges, activeIndex, activeRange } = resolution;
                                         const specSummary = getToleranceSummary(activeRange);
                                         const hasMultipleRanges = ranges.length > 1;
                                         const isChecked = selectedUutIds.includes(uut.id);
@@ -612,7 +736,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
 
                                         return (
                                             <tr key={uut.id} className={isChecked ? "selected-row" : ""} style={{ backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent' }}>
-                                                <td style={{ textAlign: 'center' }}>
+                                                <td className="cell-compact">
                                                     <input 
                                                         type="checkbox" 
                                                         checked={isChecked} 
@@ -620,8 +744,8 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                         style={{ cursor: 'pointer', width: '16px', height: '16px' }} 
                                                     />
                                                 </td>
-                                                <td style={{ fontWeight: 600, color: isChecked ? 'var(--primary-color)' : 'var(--text-color)' }}>{uut.description}</td>
-                                                <td>
+                                                <td className="cell-description" style={{ fontWeight: 600, color: isChecked ? 'var(--primary-color)' : 'var(--text-color)' }} title={uut.description}>{uut.description}</td>
+                                                <td className="cell-value">
                                                     {hasMultipleRanges ? (
                                                         <select
                                                             className="mini-select"
@@ -630,17 +754,28 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                             onChange={(e) => setLocalRangeIndices(prev => ({...prev, [uut.id]: parseInt(e.target.value)}))}
                                                         >
                                                             {ranges.map((range, idx) => {
-                                                                let rangeText = range.range || (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
-                                                                return <option key={idx} value={idx}>{`${rangeText} ${range.unit || ''}`}</option>
+                                                                const rangeLabel = (typeof range.range === 'string' ? range.range : null) || 
+                                                                                   (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
+                                                                const unitLabel = typeof range.unit === 'string' ? range.unit : '';
+                                                                return <option key={idx} value={idx}>{`${rangeLabel} ${unitLabel}`}</option>
                                                             })}
                                                         </select>
                                                     ) : (
-                                                       <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>{ranges[0]?.range || "Default"}</span>
+                                                       <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>
+                                                            {(() => {
+                                                                const r = ranges[0];
+                                                                if (!r) return "Default";
+                                                                const rangeLabel = (r.min !== undefined && r.max !== undefined ? `${r.min} to ${r.max}` : null) 
+                                                                                || (typeof r.range === 'string' ? r.range : "Full Range");
+                                                                const unitLabel = typeof r.unit === 'string' ? r.unit : '';
+                                                                return `${rangeLabel} ${unitLabel}`;
+                                                            })()}
+                                                       </span>
                                                     )}
                                                 </td>
-                                                <td><span style={{ fontSize: '0.85rem' }}>{specSummary}</span></td>
+                                                <td className="cell-tolerance" title={specSummary}>{specSummary}</td>
                                                 {showAreaColumn && (
-                                                    <td><span style={{ fontSize: '0.85rem', color: areaColor, fontWeight: 700 }}>{areaName}</span></td>
+                                                    <td className="cell-area" title={areaName}><span style={{ color: areaColor }}>{areaName}</span></td>
                                                 )}
                                             </tr>
                                         )
@@ -688,24 +823,24 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                             </button>
                         </div>
                     </div>
-                    <div style={{ overflowX: 'auto', maxHeight: '400px' }} tabIndex="0">
-                        <table className="instrument-summary-table" style={{ width: '100%', margin: 0, border: 'none', boxShadow: 'none' }}>
-                            <colgroup>
-                                <col style={{ width: showAreaColumn ? '20%' : '25%' }} />
-                                <col style={{ width: showAreaColumn ? '10%' : '10%' }} />
-                                <col style={{ width: showAreaColumn ? '20%' : '25%' }} />
-                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} />
-                                <col style={{ width: showAreaColumn ? '15%' : '20%' }} />
-                                {showAreaColumn && <col style={{ width: '20%' }} />}
-                            </colgroup>
+                    <div className="panel-table-container" tabIndex="0">
+                        <table className="instrument-summary-table compact-table" style={{ margin: 0, border: 'none', boxShadow: 'none' }}>
                             <thead>
                                 <tr>
-                                    <th>Point</th>
+                                    <th onClick={() => handleSort('section')} style={{ cursor: 'pointer' }}>
+                                        Section {sortConfig.key === 'section' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                                    </th>
+                                    <th onClick={() => handleSort('point')} style={{ cursor: 'pointer' }}>
+                                        Point {sortConfig.key === 'point' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                                    </th>
                                     <th>Unit</th>
                                     <th>Tolerance</th>
-                                    <th>Low Limit</th>
-                                    <th>High Limit</th>
-                                    {showAreaColumn && <th>Area</th>}
+                                    <th>Limits</th>
+                                    {showAreaColumn && (
+                                        <th onClick={() => handleSort('area')} style={{ cursor: 'pointer' }}>
+                                            Area {sortConfig.key === 'area' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                                        </th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody>
@@ -757,13 +892,17 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                     transition: 'all 0.1s ease'
                                                 }}
                                             >
-                                                <td style={{ fontWeight: 700, color: 'var(--primary-color)' }}>{param.value}</td>
-                                                <td style={{ fontSize: '0.85rem' }}>{param.unit}</td>
-                                                <td style={{ fontSize: '0.85rem' }}>{display}</td>
-                                                <td style={{ fontSize: '0.85rem' }}>{limits.low}</td>
-                                                <td style={{ fontSize: '0.85rem' }}>{limits.high}</td>
+                                                <td className="cell-section" title={tp.section || '-'}>{tp.section || '-'}</td>
+                                                <td className="cell-value" title={String(param.value)}>{param.value}</td>
+                                                <td className="cell-unit" title={param.unit}>{param.unit}</td>
+                                                <td className="cell-tolerance" title={display}>{display}</td>
+                                                <td className="cell-limit" title={`${limits.low} to ${limits.high}`}>
+                                                    <span style={{ opacity: 0.7 }}>{limits.low}</span>
+                                                    <span style={{ margin: '0 4px', color: 'var(--text-color-muted)', fontSize: '0.75rem' }}>→</span>
+                                                    <span style={{ opacity: 0.7 }}>{limits.high}</span>
+                                                </td>
                                                 {showAreaColumn && (
-                                                    <td style={{ fontSize: '0.85rem', color: areaColor, fontWeight: 700 }}>{areaName}</td>
+                                                    <td className="cell-area" style={{ color: areaColor }} title={areaName}>{areaName}</td>
                                                 )}
                                             </tr>
                                         )
@@ -789,7 +928,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
 };
 
 
-const UncertaintyPanel = ({
+function DetailedView({
     testPointData,
     sessionData,
     calcResults,
@@ -800,12 +939,6 @@ const UncertaintyPanel = ({
     onAddManualComponent,
     onEditManualComponent,
     onRemoveComponent,
-    onAddTmde,
-    onEditTmde,
-    onDeleteTmdeDefinition,
-    onDecrementTmdeQuantity,
-    onOpenUutModal,
-    onDeleteUut,
     onInlineUutUpdate,
     onInlineTmdeUpdate,
     onBudgetRowContextMenu,
@@ -818,49 +951,26 @@ const UncertaintyPanel = ({
     onUpdateTestPoint,
     riskResults,
     setNotification,
-    selectedTmdeIds = [],
-    onToggleTmdeSelection,
-    onToggleAllTmdes,
     onToggleUut,
     onDeleteTestPoint,
-    onSaveTestPoint, // <--- NEW PROP
     currentUutSelection = [],
     activeRangeIndices = {},
     onRangeSelectionChange,
-}) => {
+}) {
 
-    // --- VIEW MODE CHECK ---
-    const viewMode = testPointData.viewMode || 'point';
-    const isPointView = viewMode === 'point';
+    // --- DETAILED VIEW LOGIC ---
 
-    // 1. IF SUMMARY MODE -> RENDER DASHBOARD
-    if (!isPointView) {
-        return (
-            <SummaryDashboard 
-                viewMode={viewMode} 
-                contextId={testPointData.id} 
-                rangeData={testPointData.rangeData}
-                uutId={testPointData.uutId}
-                sessionData={sessionData}
-                onDefineTestPoint={onDefineTestPoint}
-                onDeleteTestPoint={onDeleteTestPoint}
-                onSaveTestPoint={onSaveTestPoint} // <--- Pass down to Dashboard
-            />
-        );
-    }
-
-    // 2. IF POINT VIEW -> RENDER DETAILED VIEW (Original Logic Below)
     
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const [isSymbolMenuOpen, setIsSymbolMenuOpen] = useState(false);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const equationInputRef = useRef(null);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const symbolMenuRef = useRef(null);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const symbolButtonRef = useRef(null);
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     useEffect(() => {
         function handleClickOutside(event) {
             if (symbolMenuRef.current && !symbolMenuRef.current.contains(event.target) &&
@@ -872,7 +982,7 @@ const UncertaintyPanel = ({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const uutToleranceData = useMemo(() => {
         const isUnassigned = !testPointData.associatedUutIds || testPointData.associatedUutIds.length === 0;
         if (isUnassigned) return {};
@@ -881,11 +991,11 @@ const UncertaintyPanel = ({
 
 
     // Use Shared Helper, but inject parent state (activeRangeIndices)
-    const resolveUutRange = (uut) => {
+    const resolveUutRange = useCallback((uut) => {
         return resolveUutRangeHelper(uut, activeRangeIndices, uutToleranceData, uutNominal);
-    };
+    }, [activeRangeIndices, uutToleranceData, uutNominal]);
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const groupedUnitOptions = useMemo(() => {
         const allSupportedUnits = Object.keys(unitSystem.units);
         const options = [];
@@ -920,7 +1030,7 @@ const UncertaintyPanel = ({
     const activeArea = sessionData.measurementAreas?.find(a => a.id === activeMeasurementAreaId);
 
     // --- REFINED RELEVANT UUTS LOGIC (UPDATED: FILTER TO SINGLE UUT IF POINT EXISTS) ---
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const relevantUuts = useMemo(() => {
         if (!sessionData.uuts) return [];
 
@@ -941,7 +1051,7 @@ const UncertaintyPanel = ({
     const isDerived = testPointData.measurementType === "derived";
     const isUnassigned = associatedUutIds.length === 0;
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const availableVariables = useMemo(() => {
         if (!isDerived) return [];
         if (testPointData.variableMappings && Object.values(testPointData.variableMappings).length > 0) {
@@ -1019,14 +1129,14 @@ const UncertaintyPanel = ({
 
                 const node = math.parse(expressionToParse);
                 const varsSet = new Set();
-                node.traverse(function (node, path, parent) {
+                node.traverse(function (node) {
                     if (node.isSymbolNode && !math[node.name] && !['e', 'pi', 'i'].includes(node.name.toLowerCase())) {
                         varsSet.add(node.name);
                     }
                 });
                 variables = Array.from(varsSet).sort();
             }
-        } catch (e) { }
+        } catch { /* ignore */ }
 
         const currentMappings = testPointData.variableMappings || {};
         const newMappings = {};
@@ -1132,7 +1242,7 @@ const UncertaintyPanel = ({
         }
     };
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const equationDisplayData = useMemo(() => {
         if (!isDerived) return null;
 
@@ -1160,8 +1270,8 @@ const UncertaintyPanel = ({
         };
     }, [isDerived, testPointData, tmdeTolerancesData]);
 
-    const mainGridStyle = { display: 'flex', flexWrap: 'wrap', gap: '20px', width: '100%', alignItems: 'flex-start', marginBottom: '30px' };
-    const verticalColumnStyle = { flex: '1 1 600px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '20px' };
+    const mainGridStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', width: '100%', alignItems: 'start', marginBottom: '30px' };
+    const verticalColumnStyle = { minWidth: 0, display: 'flex', flexDirection: 'column', gap: '20px' };
     const cardStyle = { backgroundColor: 'var(--content-background)', border: '1px solid var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', width: '100%' };
     const sectionTitleStyle = { margin: '0 0 10px 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)', textTransform: 'uppercase', letterSpacing: '0.5px' };
 
@@ -1196,7 +1306,7 @@ const UncertaintyPanel = ({
     const primaryUutId = testPointData.associatedUutIds?.[0];
     const primaryUut = relevantUuts.find(u => u.id === primaryUutId);
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const activeResolvedTolerance = useMemo(() => {
         if (!primaryUut) return uutToleranceData;
 
@@ -1204,10 +1314,10 @@ const UncertaintyPanel = ({
         const { activeRange } = resolveUutRange(primaryUut);
 
         return (activeRange && Object.keys(activeRange).length > 0) ? activeRange : uutToleranceData;
-    }, [primaryUut, activeRangeIndices, uutToleranceData, uutNominal]); // Re-run when uutNominal changes
+    }, [primaryUut, resolveUutRange, uutToleranceData]); // Re-run when resolveUutRange changes
 
     // --- FIX 2: Auto-Save Active Range ---
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     useEffect(() => {
         if (activeResolvedTolerance && uutToleranceData) {
             // Check if the auto-resolved tolerance differs from what is saved
@@ -1225,22 +1335,17 @@ const UncertaintyPanel = ({
     }, [activeResolvedTolerance, uutToleranceData, onUpdateTestPoint]);
 
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const numericTotalTolerance = useMemo(() => {
-        if (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) return null;
-        const result = calculateToleranceMetrics(activeResolvedTolerance, uutNominal);
-        return result.numericTolerance;
-    }, [activeResolvedTolerance, uutNominal]);
+    // (unused numericTotalTolerance removed)
 
     // --- DISPLAY 1: Tolerance String ---
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const calculatedToleranceDisplay = useMemo(() => {
         const result = calculateToleranceMetrics(activeResolvedTolerance, uutNominal);
         return result.display;
     }, [activeResolvedTolerance, uutNominal]);
 
     // --- DISPLAY 2: Limits ---
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+
     const calculatedLimits = useMemo(() => {
         const result = calculateToleranceMetrics(activeResolvedTolerance, uutNominal);
         return result.limits;
@@ -1265,14 +1370,12 @@ const UncertaintyPanel = ({
                             <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '300px' }}>
                                 <table className="instrument-summary-table" style={{ width: '100%' }}>
                                     <colgroup>
-                                        <col style={{ width: '10%' }} />
                                         <col style={{ width: '40%' }} />
-                                        <col style={{ width: '25%' }} />
-                                        <col style={{ width: '25%' }} />
+                                        <col style={{ width: '30%' }} />
+                                        <col style={{ width: '30%' }} />
                                     </colgroup>
                                     <thead>
                                         <tr>
-                                            <th style={{ textAlign: 'center' }}>Select</th>
                                             <th>Description</th>
                                             <th>Range</th>
                                             <th>Specification</th>
@@ -1281,7 +1384,7 @@ const UncertaintyPanel = ({
                                     <tbody>
                                         {relevantUuts.length === 0 ? (
                                             <tr>
-                                                <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
+                                                <td colSpan="3" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
                                                     {/* Better Empty State Message */}
                                                     No associated UUTs found.
                                                 </td>
@@ -1292,23 +1395,16 @@ const UncertaintyPanel = ({
                                                 const specSummary = getToleranceSummary(activeRange);
                                                 const hasMultipleRanges = ranges.length > 1;
 
-                                                const isChecked = currentUutSelection.includes(uut.id);
+                                                const isLinked = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id);
 
                                                 return (
-                                                    <tr key={uut.id} className={isChecked ? "selected-row" : ""} style={{
-                                                        backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent',
-                                                        transition: 'all 0.2s ease'
+                                                    <tr key={uut.id} style={{
+                                                        backgroundColor: 'transparent',
+                                                        borderLeft: isLinked ? '4px solid var(--primary-color)' : '4px solid transparent'
                                                     }}>
-                                                        <td style={{ textAlign: 'center' }}>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={isChecked}
-                                                                onChange={() => handleUutCheckboxChange(uut.id)}
-                                                                style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                                                            />
-                                                        </td>
-                                                        <td>
-                                                            <div style={{ fontWeight: 600, color: isChecked ? 'var(--primary-color)' : 'var(--text-color)' }}>
+                                                        {/* Removed Checkbox Column */}
+                                                        <td className="no-hover-cell">
+                                                            <div style={{ fontWeight: 600, color: isLinked ? 'var(--primary-color)' : 'var(--text-color)' }}>
                                                                 {uut.description}
                                                             </div>
                                                         </td>
@@ -1321,7 +1417,7 @@ const UncertaintyPanel = ({
                                                                     onChange={(e) => handleRangeChange(uut.id, parseInt(e.target.value, 10), ranges)}
                                                                 >
                                                                     {ranges.map((range, idx) => {
-                                                                        let rangeText = range.range;
+                                                                        let rangeText = (typeof range.range === 'string' ? range.range : null);
                                                                         if (!rangeText) {
                                                                             if (range.min !== undefined && range.max !== undefined) {
                                                                                 rangeText = `${range.min} to ${range.max}`;
@@ -1338,7 +1434,7 @@ const UncertaintyPanel = ({
                                                                     {(() => {
                                                                         const r = ranges[0];
                                                                         if (!r) return "-";
-                                                                        let rangeText = r.range;
+                                                                        let rangeText = (typeof r.range === 'string' ? r.range : null);
                                                                         if (!rangeText) {
                                                                             if (r.min !== undefined && r.max !== undefined) {
                                                                                 rangeText = `${r.min} to ${r.max}`;
@@ -1351,7 +1447,7 @@ const UncertaintyPanel = ({
                                                                 </span>
                                                             )}
                                                         </td>
-                                                        <td>
+                                                        <td className="no-hover-cell">
                                                             <span style={{ fontSize: '0.85rem' }}>
                                                                 {specSummary}
                                                             </span>
@@ -1366,123 +1462,7 @@ const UncertaintyPanel = ({
                         </div>
                     </div>
 
-                    {/* 2. TMDE LIST */}
-                    <div>
-                        <h3 style={sectionTitleStyle}>Measurement Standards (TMDE)</h3>
-                        <div style={cardStyle}>
-                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '400px' }}>
-                                <table className="instrument-summary-table" style={{ width: '100%' }}>
-                                    <colgroup>
-                                        <col style={{ width: '5%' }} />
-                                        <col style={{ width: '25%' }} />
-                                        {isDerived && <col style={{ width: '10%' }} />}
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '10%' }} />
-                                    </colgroup>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ textAlign: 'center' }}>Use</th>
-                                            <th style={{ paddingLeft: '10px' }}>Description</th>
-                                            {isDerived && <th>Input Var</th>}
-                                            <th>Meas. Point</th>
-                                            <th>Tolerance</th>
-                                            <th>Std. Unc (k=1)</th>
-                                            <th>Limits</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(!sessionData.tmdes || sessionData.tmdes.length === 0) ? (
-                                            <tr>
-                                                <td colSpan={isDerived ? "7" : "6"} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
-                                                    No TMDEs defined in Session.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            sessionData.tmdes.map((masterTmde) => {
-                                                const activeInstances = tmdeTolerancesData.filter(t => t.id === masterTmde.id || (t.sourceId && t.sourceId === masterTmde.id));
-                                                const rowsToRender = activeInstances.length > 0 ? activeInstances : [masterTmde];
-
-                                                return rowsToRender.map((tmdeInstance, idx) => {
-                                                    const isChecked = activeInstances.includes(tmdeInstance);
-                                                    const referencePoint = tmdeInstance.measurementPoint || { value: '', unit: '' };
-                                                    const isError = !referencePoint.value || !referencePoint.unit;
-
-                                                    const displayValue = isChecked ? referencePoint.value : '';
-                                                    const displayUnit = isChecked ? referencePoint.unit : (masterTmde.measurementPoint?.unit || '');
-
-                                                    let stdUncDisplay = "-";
-                                                    if (isChecked && !isError) {
-                                                        const { standardUncertainty: uPpm } = calculateUncertaintyFromToleranceObject(tmdeInstance, referencePoint);
-                                                        const uAbs = convertPpmToUnit(uPpm, referencePoint.unit, referencePoint);
-                                                        stdUncDisplay = typeof uAbs === "number" ? `${uAbs.toPrecision(3)}` : uAbs;
-                                                    }
-
-                                                    return (
-                                                        <tr key={`${masterTmde.id}-${idx}`} className="tmde-row" style={{ opacity: isChecked ? 1 : 0.7 }}>
-                                                            <td style={{ textAlign: 'center' }}>
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isChecked}
-                                                                    onChange={(e) => handleToggleTmdeUsage(masterTmde.id, e.target.checked)}
-                                                                    style={{ cursor: 'pointer' }}
-                                                                />
-                                                            </td>
-                                                            <td style={{ paddingLeft: '10px' }}>
-                                                                <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
-                                                                    {masterTmde.name || masterTmde.description}
-                                                                </div>
-                                                            </td>
-                                                            {isDerived && (
-                                                                <td>
-                                                                    {isChecked ? (
-                                                                        <select
-                                                                            value={availableVariables.includes(tmdeInstance.variableType) ? tmdeInstance.variableType : ""}
-                                                                            onChange={(e) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'variableType', e.target.value)}
-                                                                            className="mini-select"
-                                                                        >
-                                                                            <option value="" disabled>--</option>
-                                                                            {availableVariables.map(v => (
-                                                                                <option key={v} value={v}>{v}</option>
-                                                                            ))}
-                                                                        </select>
-                                                                    ) : "-"}
-                                                                </td>
-                                                            )}
-                                                            <td>
-                                                                {isChecked ? (
-                                                                    <EditableCell
-                                                                        value={displayValue}
-                                                                        suffix={displayUnit}
-                                                                        onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'nominal', val)}
-                                                                        type="number"
-                                                                    />
-                                                                ) : "-"}
-                                                            </td>
-                                                            <td>{getToleranceSummary(masterTmde)}</td>
-                                                            <td>
-                                                                {stdUncDisplay} <span style={{ fontSize: '0.8rem', color: 'var(--text-color-muted)' }}>{(!isError && isChecked) ? referencePoint.unit : ''}</span>
-                                                            </td>
-                                                            <td>
-                                                                {(isChecked && !isError) ? (
-                                                                    <div className="limits-cell">
-                                                                        <span className="limit-val">{getAbsoluteLimits(tmdeInstance, referencePoint).low}</span>
-                                                                        <span className="limit-sep">to</span>
-                                                                        <span className="limit-val">{getAbsoluteLimits(tmdeInstance, referencePoint).high}</span>
-                                                                    </div>
-                                                                ) : "-"}
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                });
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+                    
 
                 </div>
 
@@ -1495,16 +1475,18 @@ const UncertaintyPanel = ({
                             <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1, overflowX: 'auto' }}>
                                 <table className="instrument-summary-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                                     <colgroup>
-                                        <col style={{ width: '20%' }} />
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '15%' }} />
                                         <col style={{ width: '10%' }} />
                                         <col style={{ width: '20%' }} />
-                                        <col style={{ width: '20%' }} />
-                                        <col style={{ width: '20%' }} />
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '15%' }} />
                                         <col style={{ width: '10%' }} />
                                     </colgroup>
                                     <thead>
                                         <tr>
-                                            <th style={{ paddingLeft: '20px' }}>Point</th>
+                                            <th style={{ paddingLeft: '20px' }}>Section</th>
+                                            <th>Point</th>
                                             <th>Unit</th>
                                             <th>Tolerance</th>
                                             <th>Low Limit</th>
@@ -1530,8 +1512,19 @@ const UncertaintyPanel = ({
                                     <tbody>
                                         {hasMeasurementPoint ? (
                                             <tr>
-                                                {/* 1. Point */}
-                                                <td style={{ paddingLeft: '20px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {/* 1. Section */}
+                                                <td style={{ paddingLeft: '20px' }}>
+                                                    <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
+                                                        <EditableCell
+                                                            value={testPointData.section}
+                                                            onSave={(val) => onUpdateTestPoint && onUpdateTestPoint({ section: val })}
+                                                            placeholder="General"
+                                                        />
+                                                    </div>
+                                                </td>
+
+                                                {/* 2. Point */}
+                                                <td style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary-color)' }}>
                                                         <EditableCell
                                                             value={uutNominal?.value}
@@ -1609,7 +1602,12 @@ const UncertaintyPanel = ({
                         </div>
                     </div>
 
-                    {/* Equation Editor */}
+                    </div>
+            </div>
+
+            {/* --- MIDDLE ROW: EQUATION (Full Width) --- */}
+            <div style={{ marginBottom: '30px' }}>
+{/* Equation Editor */}
                     {isDerived && equationDisplayData && (
                         <div>
                             <h3 style={sectionTitleStyle}>Measurement Equation</h3>
@@ -1783,7 +1781,128 @@ const UncertaintyPanel = ({
                             </div>
                         </div>
                     )}
-                </div>
+                
+            </div>
+
+            {/* --- BOTTOM ROW: TMDEs (Full Width) --- */}
+            <div style={{ marginBottom: '30px' }}>
+{/* 2. TMDE LIST */}
+                    <div>
+                        <h3 style={sectionTitleStyle}>Measurement Standards (TMDE)</h3>
+                        <div style={cardStyle}>
+                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '400px' }}>
+                                <table className="instrument-summary-table" style={{ width: '100%' }}>
+                                    <colgroup>
+                                        <col style={{ width: '5%' }} />
+                                        <col style={{ width: '25%' }} />
+                                        {isDerived && <col style={{ width: '10%' }} />}
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '10%' }} />
+                                    </colgroup>
+                                    <thead>
+                                        <tr>
+                                            <th style={{ textAlign: 'center' }}>Use</th>
+                                            <th style={{ paddingLeft: '10px' }}>Description</th>
+                                            {isDerived && <th>Input Var</th>}
+                                            <th>Meas. Point</th>
+                                            <th>Tolerance</th>
+                                            <th>Std. Unc (k=1)</th>
+                                            <th>Limits</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(!sessionData.tmdes || sessionData.tmdes.length === 0) ? (
+                                            <tr>
+                                                <td colSpan={isDerived ? "7" : "6"} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
+                                                    No TMDEs defined in Session.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            sessionData.tmdes.map((masterTmde) => {
+                                                const activeInstances = tmdeTolerancesData.filter(t => t.id === masterTmde.id || (t.sourceId && t.sourceId === masterTmde.id));
+                                                const rowsToRender = activeInstances.length > 0 ? activeInstances : [masterTmde];
+
+                                                return rowsToRender.map((tmdeInstance, idx) => {
+                                                    const isChecked = activeInstances.includes(tmdeInstance);
+                                                    const referencePoint = tmdeInstance.measurementPoint || { value: '', unit: '' };
+                                                    const isError = !referencePoint.value || !referencePoint.unit;
+
+                                                    const displayValue = isChecked ? referencePoint.value : '';
+                                                    const displayUnit = isChecked ? referencePoint.unit : (masterTmde.measurementPoint?.unit || '');
+
+                                                    let stdUncDisplay = "-";
+                                                    if (isChecked && !isError) {
+                                                        const { standardUncertainty: uPpm } = calculateUncertaintyFromToleranceObject(tmdeInstance, referencePoint);
+                                                        const uAbs = convertPpmToUnit(uPpm, referencePoint.unit, referencePoint);
+                                                        stdUncDisplay = typeof uAbs === "number" ? `${uAbs.toPrecision(3)}` : uAbs;
+                                                    }
+
+                                                    return (
+                                                        <tr key={`${masterTmde.id}-${idx}`} className="tmde-row" style={{ opacity: isChecked ? 1 : 0.7 }}>
+                                                            <td style={{ textAlign: 'center' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={(e) => handleToggleTmdeUsage(masterTmde.id, e.target.checked)}
+                                                                    style={{ cursor: 'pointer' }}
+                                                                />
+                                                            </td>
+                                                            <td style={{ paddingLeft: '10px' }}>
+                                                                <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
+                                                                    {masterTmde.name || masterTmde.description}
+                                                                </div>
+                                                            </td>
+                                                            {isDerived && (
+                                                                <td>
+                                                                    {isChecked ? (
+                                                                        <select
+                                                                            value={availableVariables.includes(tmdeInstance.variableType) ? tmdeInstance.variableType : ""}
+                                                                            onChange={(e) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'variableType', e.target.value)}
+                                                                            className="mini-select"
+                                                                        >
+                                                                            <option value="" disabled>--</option>
+                                                                            {availableVariables.map(v => (
+                                                                                <option key={v} value={v}>{v}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    ) : "-"}
+                                                                </td>
+                                                            )}
+                                                            <td>
+                                                                {isChecked ? (
+                                                                    <EditableCell
+                                                                        value={displayValue}
+                                                                        suffix={displayUnit}
+                                                                        onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'nominal', val)}
+                                                                        type="number"
+                                                                    />
+                                                                ) : "-"}
+                                                            </td>
+                                                            <td>{getToleranceSummary(masterTmde)}</td>
+                                                            <td>
+                                                                {stdUncDisplay} <span style={{ fontSize: '0.8rem', color: 'var(--text-color-muted)' }}>{(!isError && isChecked) ? referencePoint.unit : ''}</span>
+                                                            </td>
+                                                            <td>
+                                                                {(isChecked && !isError) ? (
+                                                                    <div className="limits-cell">
+                                                                        <span className="limit-val">{getAbsoluteLimits(tmdeInstance, referencePoint).low}</span>
+                                                                        <span className="limit-sep">to</span>
+                                                                        <span className="limit-val">{getAbsoluteLimits(tmdeInstance, referencePoint).high}</span>
+                                                                    </div>
+                                                                ) : "-"}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                });
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
             </div>
 
             {/* --- UNCERTAINTY BUDGET & GRAPH --- */}
@@ -1845,6 +1964,30 @@ const UncertaintyPanel = ({
             )}
         </div>
     );
+};
+
+
+
+const UncertaintyPanel = (props) => {
+    const { testPointData, sessionData, onDefineTestPoint, onDeleteTestPoint, onSaveTestPoint } = props;
+    const viewMode = testPointData.viewMode || 'point';
+
+    if (viewMode !== 'point') {
+        return (
+            <SummaryDashboard 
+                viewMode={viewMode} 
+                contextId={testPointData.id} 
+                rangeData={testPointData.rangeData}
+                uutId={testPointData.uutId}
+                sessionData={sessionData}
+                onDefineTestPoint={onDefineTestPoint}
+                onDeleteTestPoint={onDeleteTestPoint}
+                onSaveTestPoint={onSaveTestPoint}
+            />
+        );
+    }
+
+    return <DetailedView {...props} />;
 };
 
 export default UncertaintyPanel;
