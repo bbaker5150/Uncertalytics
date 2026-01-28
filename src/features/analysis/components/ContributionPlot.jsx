@@ -1,7 +1,7 @@
-import React, { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useCallback } from "react";
 import { useTheme } from "../../../context/ThemeContext";
 
-const PercentageBarGraph = ({ type, data, unit = "" }) => {
+const PercentageBarGraph = ({ data, unit = "" }) => {
   const isDarkMode = useTheme();
   const plotContainer = useRef(null);
 
@@ -11,7 +11,7 @@ const PercentageBarGraph = ({ type, data, unit = "" }) => {
     
     // Filter logic: Remove zero entries to keep the chart clean.
     if (inputs && typeof inputs === "object") {
-      inputs = Object.fromEntries(Object.entries(inputs).filter(([key, value]) => value !== 0));
+      inputs = Object.fromEntries(Object.entries(inputs).filter(([, value]) => value !== 0));
     }
 
     if (!inputs || typeof inputs !== "object") return { labels: [], percentages: [], values: [] };
@@ -22,14 +22,14 @@ const PercentageBarGraph = ({ type, data, unit = "" }) => {
     entries.sort((a, b) => Number(a[1]) - Number(b[1]));
 
     const labels = entries.map(([key]) => key);
-    const values = entries.map(([_, val]) => Number(val));
+    const values = entries.map(([, val]) => Number(val));
     const total = values.reduce((acc, val) => acc + val, 0);
 
     // Calculate percentages
     const percentages = total === 0 ? values.map(() => 0) : values.map((val) => (val / total) * 100);
 
     return { labels, percentages, values };
-  }, [data, type]);
+  }, [data]);
 
   // 2. Define Theme Colors
   const themeColors = useMemo(() => {
@@ -152,10 +152,10 @@ const PercentageBarGraph = ({ type, data, unit = "" }) => {
             easing: "cubic-in-out"
         }
     };
-  }, [isDarkMode, themeColors]);
+  }, [themeColors]);
 
   // 5. Custom Download Handler (CSP-Safe)
-  const handleDownload = async (gd) => {
+  const handleDownload = useCallback(async (gd) => {
     try {
         // Step 1: Get the SVG as a 'data:' URI (Allowed by most CSPs, unlike 'blob:')
         // We use 'svg' format here because Plotly uses blobs for PNG generation, which fails.
@@ -201,7 +201,7 @@ const PercentageBarGraph = ({ type, data, unit = "" }) => {
     } catch (err) {
         console.error("Snapshot failed:", err);
     }
-  };
+  }, [themeColors]);
 
   const plotConfig = useMemo(() => {
     const cameraIcon = window.Plotly?.Icons?.camera || {
@@ -222,7 +222,7 @@ const PercentageBarGraph = ({ type, data, unit = "" }) => {
         }
       ]
     };
-  }, [themeColors]); // Re-create config if theme changes (captured in closure)
+  }, [handleDownload]); // Re-create config if handler changes
 
   useEffect(() => {
     if (window.Plotly && plotContainer.current && plotData.length > 0) {

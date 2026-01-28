@@ -498,7 +498,6 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
 const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint, rangeData, uutId, onSaveTestPoint, onEditSession, selectedPointIds, setSelectedPointIds }) => {
     
     // Local Selection State for UUTs in the table
-    // (Removed)
     const [selectedUutIds, setSelectedUutIds] = useState([]);
     const [localRangeIndices, setLocalRangeIndices] = useState({});
     
