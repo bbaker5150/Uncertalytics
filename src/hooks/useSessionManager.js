@@ -9,9 +9,9 @@ const useSessionManager = () => {
       section: "",
       tmdeDescription: "",
       tmdeTolerances: [],
-      // NEW: Allow specific UUT tolerance per point
+      //  Allow specific UUT tolerance per point
       uutTolerance: null, 
-      // NEW: Hierarchical Linkage
+      //  Hierarchical Linkage
       measurementAreaId: "", 
       associatedUutIds: [], // Array of UUT IDs this point links to
       specifications: {
@@ -41,7 +41,7 @@ const useSessionManager = () => {
       documentDate: "",
       notes: "",
       noteImages: [], 
-      // NEW: Master lists for the "Instruments Tab" workflow
+      //  Master lists for the "Instruments Tab" workflow
       measurementAreas: [], // { id, name, color }
       uuts: [],             // { id, name, measurementAreaId, ...specs }
       tmdes: [],            // { id, name, measurementAreaId, ...specs }

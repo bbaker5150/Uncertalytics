@@ -54,7 +54,7 @@ class PdfPageManager {
 
     const maxWidth = this.width - this.margins.left - this.margins.right - indent;
     
-    // --- FIX START: Handle Newlines Manually ---
+    // ---  Handle Newlines Manually ---
     // 1. Split text by explicit newlines first to respect paragraphs
     const paragraphs = String(text).split(/\r\n|\r|\n/g);
     

@@ -189,7 +189,7 @@ const ManualComponentModal = ({
       (d) => d.value === component.errorDistributionDivisor
     )?.label;
 
-    // --- FIX START: Handle Relative Unit Display ---
+    // ---  Handle Relative Unit Display ---
     // If unit is relative (%, ppm, ppb), calculate the absolute value in the nominal unit
     // so the table displays consistent units (e.g. Volts instead of %).
     let finalValueNative = valueNative;

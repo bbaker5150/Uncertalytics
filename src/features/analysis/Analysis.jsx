@@ -12,7 +12,6 @@ import { useUncertaintyCalculation } from "./hooks/useUncertaintyCalculation";
 import { useRiskCalculation } from "./hooks/useRiskCalculation";
 
 // --- Sub-Components ---
-import AnalysisHeader from "./components/AnalysisHeader";
 import ManualComponentModal from "./components/ManualComponentModal";
 import UncertaintyPanel from "./components/UncertaintyPanel";
 import RiskAnalysisDashboard from "./components/RiskAnalysisDashboard";
@@ -96,7 +95,7 @@ function Analysis({
   const [isDerivedBreakdownOpen, setIsDerivedBreakdownOpen] = useState(false);
   const [derivedBreakdownData, setDerivedBreakdownData] = useState(null);
 
-  // --- NEW: TMDE Selection State ---
+  // ---  TMDE Selection State ---
   const [selectedTmdeIds, setSelectedTmdeIds] = useState([]);
 
   // --- 2. VIEW MODE & MEMOIZED DATA ---
@@ -424,7 +423,7 @@ function Analysis({
     handleSaveTmde(newTmde, false);
   };
 
-  // --- FIX START: Robust Lookup for Measurement Area ID ---
+  // ---  Robust Lookup for Measurement Area ID ---
   const handleDefineTestPoint = (selectedUutIds, resolvedTolerance) => {
      const overrides = {};
      
@@ -547,7 +546,7 @@ function Analysis({
             handleOpenSessionEditor={handleOpenSessionEditor}
             onDeleteTestPoint={onDeleteTestPoint}
             
-            // --- NEW: Pass the save handler for Inline Creation ---
+            // ---  Pass the save handler for Inline Creation ---
             onSaveTestPoint={handleSaveTestPointInfo} // Using the local wrapper to ensure consistency
             
             // --- Table Selection for Sidebar Highlighting ---

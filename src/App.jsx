@@ -38,12 +38,11 @@ import {
   faBug,
   faQuestionCircle,
   faLayerGroup,
-  faCube,
   faMicroscope,
   faRulerCombined,
   faEye,
   faEyeSlash,
-  faFolderOpen,
+  faClipboardList,
   faCopy,
   faPaste,
   faCheckCircle
@@ -53,15 +52,15 @@ import ThemeContext from './context/ThemeContext'; // Import from separate file
 
 
 // --- HELPER COMPONENT: Sidebar Point Item (Supports Inline Editing) ---
-const SidebarPointItem = ({ 
-  point, 
-  isSelected, 
+const SidebarPointItem = ({
+  point,
+  isSelected,
   isTableSelected,
-  onSelect, 
-  onModalOpen, 
-  onSave, 
+  onSelect,
+  onModalOpen,
+  onSave,
   onContextMenu,
-  onDragStart 
+  onDragStart
 }) => {
   const [editingField, setEditingField] = useState(null); // 'section' | 'value' | null
   const [tempValue, setTempValue] = useState("");
@@ -75,7 +74,7 @@ const SidebarPointItem = ({
 
   const handleSingleClickEdit = (e, field, currentVal) => {
     if (isSelected) {
-        startEdit(e, field, currentVal);
+      startEdit(e, field, currentVal);
     }
   };
 
@@ -86,23 +85,23 @@ const SidebarPointItem = ({
 
   const commitEdit = () => {
     if (editingField === 'section') {
-       onSave({ ...point, section: tempValue });
+      onSave({ ...point, section: tempValue });
     } else if (editingField === 'value') {
-       const prevInfo = point.testPointInfo || {};
-       const prevParam = prevInfo.parameter || {};
-       
-       const newInfo = { 
-         ...prevInfo, 
-         parameter: { ...prevParam, value: tempValue } 
-       };
-       onSave({ ...point, testPointInfo: newInfo });
+      const prevInfo = point.testPointInfo || {};
+      const prevParam = prevInfo.parameter || {};
+
+      const newInfo = {
+        ...prevInfo,
+        parameter: { ...prevParam, value: tempValue }
+      };
+      onSave({ ...point, testPointInfo: newInfo });
     }
     setEditingField(null);
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
-        e.target.blur(); // Triggers onBlur which commits
+      e.target.blur(); // Triggers onBlur which commits
     }
     if (e.key === 'Escape') cancelEdit();
   };
@@ -115,68 +114,68 @@ const SidebarPointItem = ({
     <div
       draggable={!editingField}
       className={`point-grid-item ${isSelected ? 'active' : ''} ${isTableSelected ? 'table-highlight' : ''}`}
-      onClick={(e) => { 
-        if(!editingField) {
-          e.stopPropagation(); 
-          onSelect(point); 
+      onClick={(e) => {
+        if (!editingField) {
+          e.stopPropagation();
+          onSelect(point);
         }
       }}
       onDragStart={(e) => onDragStart(e, point.id)}
-      onDoubleClick={(e) => { 
-        if(!editingField) {
-            e.preventDefault(); 
-            onModalOpen(point); 
+      onDoubleClick={(e) => {
+        if (!editingField) {
+          e.preventDefault();
+          onModalOpen(point);
         }
       }}
       onContextMenu={(e) => onContextMenu(e, point)}
     >
-       {/* Section Column */}
-       {editingField === 'section' ? (
-          <input 
-            autoFocus 
-            className="sidebar-inline-input section"
-            value={tempValue} 
+      {/* Section Column */}
+      {editingField === 'section' ? (
+        <input
+          autoFocus
+          className="sidebar-inline-input section"
+          value={tempValue}
+          onChange={e => setTempValue(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={handleKeyDown}
+          onClick={e => e.stopPropagation()}
+          placeholder="-"
+        />
+      ) : (
+        <span
+          className="point-section"
+          onClick={(e) => handleSingleClickEdit(e, 'section', point.section)}
+          title="Click to edit Section"
+        >
+          {point.section || '-'}
+        </span>
+      )}
+
+      {/* Value Column */}
+      {editingField === 'value' ? (
+        <div className="sidebar-inline-input-wrapper">
+          <input
+            autoFocus
+            className="sidebar-inline-input value"
+            value={tempValue}
             onChange={e => setTempValue(e.target.value)}
             onBlur={commitEdit}
             onKeyDown={handleKeyDown}
             onClick={e => e.stopPropagation()}
-            placeholder="-"
           />
-       ) : (
-          <span 
-            className="point-section" 
-            onClick={(e) => handleSingleClickEdit(e, 'section', point.section)}
-            title="Click to edit Section"
-          >
-            {point.section || '-'}
-          </span>
-       )}
-
-       {/* Value Column */}
-       {editingField === 'value' ? (
-          <div className="sidebar-inline-input-wrapper">
-             <input 
-                autoFocus 
-                className="sidebar-inline-input value"
-                value={tempValue} 
-                onChange={e => setTempValue(e.target.value)}
-                onBlur={commitEdit}
-                onKeyDown={handleKeyDown}
-                onClick={e => e.stopPropagation()}
-             />
-             <small>{displayUnit}</small>
-          </div>
-       ) : (
-          <span 
-            className="point-value"
-            onClick={(e) => handleSingleClickEdit(e, 'value', displayValue)}
-            title="Click to edit Value"
-          >
-            {/* If value is empty, show a placeholder so it's clickable */}
-            {displayValue || <span style={{opacity:0.3}}>-</span>} 
-            {displayValue && <small style={{marginLeft:'4px', color:'var(--text-color-muted)'}}>{displayUnit}</small>}
-          </span>
-       )}
+          <small>{displayUnit}</small>
+        </div>
+      ) : (
+        <span
+          className="point-value"
+          onClick={(e) => handleSingleClickEdit(e, 'value', displayValue)}
+          title="Click to edit Value"
+        >
+          {/* If value is empty, show a placeholder so it's clickable */}
+          {displayValue || <span style={{ opacity: 0.3 }}>-</span>}
+          {displayValue && <small style={{ marginLeft: '4px', color: 'var(--text-color-muted)' }}>{displayUnit}</small>}
+        </span>
+      )}
     </div>
   );
 };
@@ -214,7 +213,7 @@ const getAllUutRanges = (uut) => {
 
   // Add a display label for the sidebar
   const finalRanges = ranges.map((r, index) => {
-    let label = ""; 
+    let label = "";
     // Prioritize explicit Min/Max range display
     if (r.min !== undefined && r.max !== undefined) {
       label = `${r.min} to ${r.max}`;
@@ -333,7 +332,7 @@ function App() {
   // Tracks which UUT "folder" was clicked in the sidebar to enforce context
   const [selectedTestPointContextUutId, setSelectedTestPointContextUutId] = useState(null);
 
-  // --- NEW: Table Selection State ---
+  // ---  Table Selection State ---
   const [selectedTablePointIds, setSelectedTablePointIds] = useState([]);
 
   // --- Global UUT Selection State ---
@@ -409,12 +408,12 @@ function App() {
     // FIX: Robust Area ID Lookup
     let resolvedAreaId = targetAreaId;
     if (!resolvedAreaId && targetUut) {
-         resolvedAreaId = targetUut.measurementAreaId;
-         // Fallback: Try finding area by name if ID is missing (common with imported legacy sessions)
-         if (!resolvedAreaId && targetUut.measurementArea) {
-             const area = currentSessionData.measurementAreas?.find(a => a.name === targetUut.measurementArea);
-             if (area) resolvedAreaId = area.id;
-         }
+      resolvedAreaId = targetUut.measurementAreaId;
+      // Fallback: Try finding area by name if ID is missing (common with imported legacy sessions)
+      if (!resolvedAreaId && targetUut.measurementArea) {
+        const area = currentSessionData.measurementAreas?.find(a => a.name === targetUut.measurementArea);
+        if (area) resolvedAreaId = area.id;
+      }
     }
 
     // Create new point object (Clean ID)
@@ -584,11 +583,11 @@ function App() {
     // FIX: Robust Area ID Lookup
     let resolvedAreaId = targetAreaId;
     if (!resolvedAreaId && targetUut) {
-         resolvedAreaId = targetUut.measurementAreaId;
-         if (!resolvedAreaId && targetUut.measurementArea) {
-             const area = currentSessionData.measurementAreas?.find(a => a.name === targetUut.measurementArea);
-             if (area) resolvedAreaId = area.id;
-         }
+      resolvedAreaId = targetUut.measurementAreaId;
+      if (!resolvedAreaId && targetUut.measurementArea) {
+        const area = currentSessionData.measurementAreas?.find(a => a.name === targetUut.measurementArea);
+        if (area) resolvedAreaId = area.id;
+      }
     }
 
     const updatedPointData = {
@@ -649,7 +648,7 @@ function App() {
     setSelectedTablePointIds([]);
   };
 
-  // --- NEW: Handle Range Selection ---
+  // ---  Handle Range Selection ---
   const handleSelectRange = (uutId, range, areaId) => {
     setSelectedRangeContext({ uutId, range });
     setSelectedUutId(null);
@@ -847,9 +846,9 @@ function App() {
     setCurrentUutSelection([]);
   };
 
-  // --- NEW: Inline update handler for sidebar edits ---
+  // ---  Inline update handler for sidebar edits ---
   const handleInlinePointUpdate = (updatedPoint) => {
-      saveTestPoint(updatedPoint, null);
+    saveTestPoint(updatedPoint, null);
   };
 
   const handleAnalysisDataSave = (updates) => {
@@ -953,18 +952,18 @@ function App() {
 
             // 1. Explicit Assignment: Check if tolerance is set
             if (tp.uutTolerance && Object.keys(tp.uutTolerance).length > 0) {
-                 const t = tp.uutTolerance;
-                 const minMatch = t.min == range.min;
-                 const maxMatch = t.max == range.max;
-                 const unitMatch = (t.unit || "") === (range.unit || "");
-                 const funcMatch = range.functionName ? t.functionName === range.functionName : true;
-                 
-                 if (minMatch && maxMatch && unitMatch && funcMatch) {
-                     categorizedPoints.add(tp.id);
-                     return true;
-                 }
-                 // If tolerance is set explicitly but doesn't match this range, do NOT fallback to value
-                 return false;
+              const t = tp.uutTolerance;
+              const minMatch = t.min == range.min;
+              const maxMatch = t.max == range.max;
+              const unitMatch = (t.unit || "") === (range.unit || "");
+              const funcMatch = range.functionName ? t.functionName === range.functionName : true;
+
+              if (minMatch && maxMatch && unitMatch && funcMatch) {
+                categorizedPoints.add(tp.id);
+                return true;
+              }
+              // If tolerance is set explicitly but doesn't match this range, do NOT fallback to value
+              return false;
             }
 
             // 2. Implicit Assignment: Value Check
@@ -1080,7 +1079,7 @@ function App() {
       };
     }
 
-    // --- NEW: Range View Mode ---
+    // ---  Range View Mode ---
     if (selectedRangeContext) {
       return {
         viewMode: 'range',
@@ -1182,207 +1181,240 @@ function App() {
               {/* === SIDEBAR LIST === */}
               <div className="measurement-point-list">
 
-                {/* 1. DASHBOARD HOME BUTTON */}
+                {/* 1. DASHBOARD HOME BUTTON - UPDATED */}
                 <div
                   className={`sidebar-session-card ${selectedSessionId && !selectedAreaId && !selectedTestPointId ? 'active' : ''}`}
                   onClick={() => handleSelectSession(selectedSessionId)}
                 >
                   <div className="session-card-icon">
-                    <FontAwesomeIcon icon={faFolderOpen} />
+                    <FontAwesomeIcon icon={faClipboardList} />
                   </div>
                   <div className="session-card-text">
-                    <span className="session-card-title">Session Overview</span>
+                    {/* UPDATED: Uses Session Name instead of static "Session Overview" */}
+                    <span className="session-card-title">
+                      {currentSessionData?.name || "Session Overview"}
+                    </span>
+
+                    {/* Metadata Section */}
+                    {currentSessionData && (
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--text-color-muted)',
+                        margin: '6px 0',
+                        padding: '6px 0',
+                        borderTop: '1px solid var(--border-color)',
+                        borderBottom: '1px solid var(--border-color)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '3px',
+                        lineHeight: '1.3'
+                      }}>
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={currentSessionData.analyst}>
+                          <strong>Analyst:</strong> {currentSessionData.analyst || "N/A"}
+                        </div>
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={currentSessionData.document}>
+                          <strong>Doc:</strong> {currentSessionData.document || "N/A"}
+                        </div>
+                        <div>
+                          <strong>Date:</strong> {currentSessionData.documentDate ? (() => {
+                            const [y, m, d] = currentSessionData.documentDate.split('-');
+                            return `${m}/${d}/${y}`;
+                          })() : "N/A"}
+                        </div>
+                      </div>
+                    )}
+
                     <span className="session-card-subtitle">{currentTestPoints.length} Points Total</span>
                   </div>
                 </div>
 
                 {sidebarData.map((areaData) => {
-                // NEW: Determine if this Area is the strictly selected item
-                const isAreaActive =
-                  selectedAreaId === areaData.id &&
-                  !selectedUutId &&
-                  !selectedTestPointId &&
-                  !selectedRangeContext;
+                  //  Determine if this Area is the strictly selected item
+                  const isAreaActive =
+                    selectedAreaId === areaData.id &&
+                    !selectedUutId &&
+                    !selectedTestPointId &&
+                    !selectedRangeContext;
 
-                return (
-                  <div key={areaData.id} className="measurement-group-container">
-                    
-                    {/* 2. STICKY AREA HEADER (Now uses 'active' class) */}
-                    <div 
-                      className={`area-header-sticky ${isAreaActive ? 'active' : ''}`}
-                      onClick={() => handleSelectArea(areaData.id)}
-                    >
-                      <FontAwesomeIcon 
-                        icon={faLayerGroup} 
-                        style={{ 
-                          color: isAreaActive ? 'var(--primary-color)' : (areaData.color || 'var(--primary-color)'), 
-                          opacity: isAreaActive ? 1 : 0.7 
-                        }} 
-                        size="sm" 
-                      />
-                      <span className="area-label">{areaData.name}</span>
-                    </div>
+                  return (
+                    <div key={areaData.id} className="measurement-group-container">
 
-                    <div className="tree-branch">
-                      
-                      {/* 3. UUTs LOOP */}
-                      {areaData.uutGroups.map(group => {
-                        const isUutSelected = selectedUutId === group.id && !selectedTestPointId && !selectedRangeContext;
-                        const isShowingAll = uutsShowingAllRanges.has(group.id);
-                        const isDragOver = dragOverTargetId === group.id;
+                      {/* 2. STICKY AREA HEADER (Now uses 'active' class) */}
+                      <div
+                        className={`area-header-sticky ${isAreaActive ? 'active' : ''}`}
+                        onClick={() => handleSelectArea(areaData.id)}
+                      >
+                        <FontAwesomeIcon
+                          icon={faLayerGroup}
+                          style={{
+                            color: isAreaActive ? 'var(--primary-color)' : (areaData.color || 'var(--primary-color)'),
+                            opacity: isAreaActive ? 1 : 0.7
+                          }}
+                          size="sm"
+                        />
+                        <span className="area-label">{areaData.name}</span>
+                      </div>
 
-                        return (
-                          <div key={group.id} style={{ marginBottom: '10px' }}>
-                            
-                            {/* UUT ITEM CARD */}
-                            <div 
-                              className={`uut-row ${isUutSelected ? 'active' : ''} ${isDragOver ? 'drag-over' : ''}`}
-                              onClick={() => handleSelectUut(group.id, areaData.id, group)}
-                              onDragOver={(e) => handleDragOver(e, group.id)}
-                              onDragLeave={handleDragLeave}
-                              onDrop={(e) => handleDrop(e, group.id, areaData.id)}
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                setContextMenu({
-                                  x: e.pageX, y: e.pageY,
-                                  items: [
-                                    { 
-                                      label: "Paste Point Here", 
-                                      action: () => handlePastePoint(group.id, areaData.id), 
-                                      icon: faPaste,
-                                      className: !clipboardPoint ? 'disabled' : '' 
-                                    },
-                                  ],
-                                });
-                              }}
-                            >
-                              <div className="uut-info">
-                                <FontAwesomeIcon icon={faMicroscope} style={{ opacity: 0.6 }} />
-                                <span>{group.description}</span>
+                      <div className="tree-branch">
+
+                        {/* 3. UUTs LOOP */}
+                        {areaData.uutGroups.map(group => {
+                          const isUutSelected = selectedUutId === group.id && !selectedTestPointId && !selectedRangeContext;
+                          const isShowingAll = uutsShowingAllRanges.has(group.id);
+                          const isDragOver = dragOverTargetId === group.id;
+
+                          return (
+                            <div key={group.id} style={{ marginBottom: '10px' }}>
+
+                              {/* UUT ITEM CARD */}
+                              <div
+                                className={`uut-row ${isUutSelected ? 'active' : ''} ${isDragOver ? 'drag-over' : ''}`}
+                                onClick={() => handleSelectUut(group.id, areaData.id, group)}
+                                onDragOver={(e) => handleDragOver(e, group.id)}
+                                onDragLeave={handleDragLeave}
+                                onDrop={(e) => handleDrop(e, group.id, areaData.id)}
+                                onContextMenu={(e) => {
+                                  e.preventDefault();
+                                  setContextMenu({
+                                    x: e.pageX, y: e.pageY,
+                                    items: [
+                                      {
+                                        label: "Paste Point Here",
+                                        action: () => handlePastePoint(group.id, areaData.id),
+                                        icon: faPaste,
+                                        className: !clipboardPoint ? 'disabled' : ''
+                                      },
+                                    ],
+                                  });
+                                }}
+                              >
+                                <div className="uut-info">
+                                  <FontAwesomeIcon icon={faMicroscope} style={{ opacity: 0.6 }} />
+                                  <span>{group.description}</span>
+                                </div>
+                                <div className="uut-actions-group">
+                                  <button
+                                    className={`btn-icon-only small ${isShowingAll ? 'active' : ''}`}
+                                    onClick={(e) => { e.stopPropagation(); toggleUutEmptyRanges(group.id); }}
+                                    title={isShowingAll ? "Hide Empty Ranges" : "Show All Ranges"}
+                                  >
+                                    <FontAwesomeIcon icon={isShowingAll ? faEyeSlash : faEye} size="xs" />
+                                  </button>
+                                  <button
+                                    className="btn-icon-only small"
+                                    onClick={(e) => { e.stopPropagation(); handleAddNewTestPoint(areaData.id, group.id); }}
+                                    title="Add Point"
+                                  >
+                                    <FontAwesomeIcon icon={faPlus} size="xs" />
+                                  </button>
+                                </div>
                               </div>
-                              <div className="uut-actions-group">
-                                <button
-                                  className={`btn-icon-only small ${isShowingAll ? 'active' : ''}`}
-                                  onClick={(e) => { e.stopPropagation(); toggleUutEmptyRanges(group.id); }}
-                                  title={isShowingAll ? "Hide Empty Ranges" : "Show All Ranges"}
-                                >
-                                  <FontAwesomeIcon icon={isShowingAll ? faEyeSlash : faEye} size="xs" />
-                                </button>
-                                <button
-                                  className="btn-icon-only small"
-                                  onClick={(e) => { e.stopPropagation(); handleAddNewTestPoint(areaData.id, group.id); }}
-                                  title="Add Point"
-                                >
-                                  <FontAwesomeIcon icon={faPlus} size="xs" />
-                                </button>
-                              </div>
-                            </div>
 
-                            {/* 4. RANGES LOOP */}
-                            <div style={{ paddingLeft: '15px' }}>
-                              {group.rangeGroups.map(range => {
-                                if (!isShowingAll && range.points.length === 0) return null;
-                                const rangeKey = `${group.id}-${range._id}`;
-                                const isRangeDragOver = dragOverTargetId === rangeKey;
-                                
-                                const isRangeSelected = selectedRangeContext && 
-                                                        selectedRangeContext.uutId === group.id && 
-                                                        selectedRangeContext.range._id === range._id;
+                              {/* 4. RANGES LOOP */}
+                              <div style={{ paddingLeft: '15px' }}>
+                                {group.rangeGroups.map(range => {
+                                  if (!isShowingAll && range.points.length === 0) return null;
+                                  const rangeKey = `${group.id}-${range._id}`;
+                                  const isRangeDragOver = dragOverTargetId === rangeKey;
 
-                                return (
-                                  <div key={`range-${range._id}`} style={{ marginBottom: '8px' }}>
-                                    
-                                    {/* RANGE HEADER */}
-                                    <div 
-                                      className={`range-label-row ${isRangeDragOver ? 'drag-over' : ''} ${isRangeSelected ? 'active' : ''}`}
-                                      onClick={(e) => { 
-                                          e.stopPropagation(); 
-                                          handleSelectRange(group.id, range, areaData.id); 
-                                      }}
-                                      onDragOver={(e) => handleDragOver(e, rangeKey)}
-                                      onDrop={(e) => handleDrop(e, group.id, areaData.id, range)}
-                                      onContextMenu={(e) => {
-                                        e.preventDefault();
-                                        setContextMenu({
-                                          x: e.pageX, y: e.pageY,
-                                          items: [
-                                            { 
-                                              label: "Paste Point in Range", 
-                                              action: () => handlePastePoint(group.id, areaData.id, range), 
-                                              icon: faPaste,
-                                              className: !clipboardPoint ? 'disabled' : '' 
-                                            },
-                                          ],
-                                        });
-                                      }}
-                                    >
-                                      <FontAwesomeIcon icon={faRulerCombined} size="xs" style={{ opacity: isRangeSelected ? 1 : 0.5 }} />
-                                      <span>{range.label}</span>
-                                    </div>
+                                  const isRangeSelected = selectedRangeContext &&
+                                    selectedRangeContext.uutId === group.id &&
+                                    selectedRangeContext.range._id === range._id;
 
-                                    {/* 5. POINTS */}
-                                    {range.points.length === 0 ? (
-                                      <div className="empty-branch-msg"></div>
-                                    ) : (
-                                      <>
-                                      {/* Column Headers for Points */}
-                                      <div style={{ 
-                                          display: 'grid',  /* Changed to Grid to match item */
-                                          gridTemplateColumns: '45px 1fr', /* Match item columns */
-                                          fontSize: '0.7rem', 
-                                          color: 'var(--text-color-muted)', 
-                                          padding: '0 12px 4px 12px', 
-                                          marginBottom: '2px',
-                                          borderBottom: '1px solid var(--border-color)',
-                                          borderLeft: '4px solid transparent',
-                                          opacity: 0.7,
-                                          gap: '10px' 
-                                      }}>
-                                          <span style={{textAlign: 'right', paddingRight: '2px'}}>Sect.</span>
-                                          <span>Point</span>
+                                  return (
+                                    <div key={`range-${range._id}`} style={{ marginBottom: '8px' }}>
+
+                                      {/* RANGE HEADER */}
+                                      <div
+                                        className={`range-label-row ${isRangeDragOver ? 'drag-over' : ''} ${isRangeSelected ? 'active' : ''}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleSelectRange(group.id, range, areaData.id);
+                                        }}
+                                        onDragOver={(e) => handleDragOver(e, rangeKey)}
+                                        onDrop={(e) => handleDrop(e, group.id, areaData.id, range)}
+                                        onContextMenu={(e) => {
+                                          e.preventDefault();
+                                          setContextMenu({
+                                            x: e.pageX, y: e.pageY,
+                                            items: [
+                                              {
+                                                label: "Paste Point in Range",
+                                                action: () => handlePastePoint(group.id, areaData.id, range),
+                                                icon: faPaste,
+                                                className: !clipboardPoint ? 'disabled' : ''
+                                              },
+                                            ],
+                                          });
+                                        }}
+                                      >
+                                        <FontAwesomeIcon icon={faRulerCombined} size="xs" style={{ opacity: isRangeSelected ? 1 : 0.5 }} />
+                                        <span>{range.label}</span>
                                       </div>
-                                      {range.points.map(tp => {
 
-                                        const isSelected = selectedTestPointId === tp.id && selectedTestPointContextUutId === group.id;
-                                        return (
-                                          <SidebarPointItem 
-                                            key={tp.id}
-                                            point={tp}
-                                            isSelected={isSelected}
-                                            isTableSelected={selectedTablePointIds.includes(tp.id)}
-                                            onSelect={() => handleSelectTestPoint(tp.id, group.id)}
-                                            onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
-                                            onSave={handleInlinePointUpdate}
-                                            onDragStart={handleDragStart}
-                                            onContextMenu={(e, p) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setContextMenu({
+                                      {/* 5. POINTS */}
+                                      {range.points.length === 0 ? (
+                                        <div className="empty-branch-msg"></div>
+                                      ) : (
+                                        <>
+                                          {/* Column Headers for Points */}
+                                          <div style={{
+                                            display: 'grid',  /* Changed to Grid to match item */
+                                            gridTemplateColumns: '45px 1fr', /* Match item columns */
+                                            fontSize: '0.7rem',
+                                            color: 'var(--text-color-muted)',
+                                            padding: '0 12px 4px 12px',
+                                            marginBottom: '2px',
+                                            borderBottom: '1px solid var(--border-color)',
+                                            borderLeft: '4px solid transparent',
+                                            opacity: 0.7,
+                                            gap: '10px'
+                                          }}>
+                                            <span style={{ textAlign: 'right', paddingRight: '2px' }}>Sect.</span>
+                                            <span>Point</span>
+                                          </div>
+                                          {range.points.map(tp => {
+
+                                            const isSelected = selectedTestPointId === tp.id && selectedTestPointContextUutId === group.id;
+                                            return (
+                                              <SidebarPointItem
+                                                key={tp.id}
+                                                point={tp}
+                                                isSelected={isSelected}
+                                                isTableSelected={selectedTablePointIds.includes(tp.id)}
+                                                onSelect={() => handleSelectTestPoint(tp.id, group.id)}
+                                                onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
+                                                onSave={handleInlinePointUpdate}
+                                                onDragStart={handleDragStart}
+                                                onContextMenu={(e, p) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  setContextMenu({
                                                     x: e.pageX, y: e.pageY,
                                                     items: [
-                                                    { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
-                                                    { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                                      { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                                      { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
                                                     ],
-                                                });
-                                            }}
-                                          />
-                                        );
-                                      })}
-                                      </>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                                                  });
+                                                }}
+                                              />
+                                            );
+                                          })}
+                                        </>
+                                      )}
+                                    </div>
+                                  );
+                                })}
 
-                              {/* Uncategorized Points */}
-                              {group.uncategorizedPoints && group.uncategorizedPoints.length > 0 && (
-                                <div style={{ marginTop: '8px' }}>
-                                   <div className="range-label-row" style={{ color: 'var(--status-warning)' }}>
+                                {/* Uncategorized Points */}
+                                {group.uncategorizedPoints && group.uncategorizedPoints.length > 0 && (
+                                  <div style={{ marginTop: '8px' }}>
+                                    <div className="range-label-row" style={{ color: 'var(--status-warning)' }}>
                                       <FontAwesomeIcon icon={faLayerGroup} size="xs" />
                                       <span>Other Points</span>
                                     </div>
                                     {group.uncategorizedPoints.map(tp => (
-                                      <SidebarPointItem 
+                                      <SidebarPointItem
                                         key={tp.id}
                                         point={tp}
                                         isSelected={selectedTestPointId === tp.id}
@@ -1392,34 +1424,34 @@ function App() {
                                         onSave={handleInlinePointUpdate}
                                         onDragStart={handleDragStart}
                                         onContextMenu={(e, p) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            setContextMenu({
-                                                x: e.pageX, y: e.pageY,
-                                                items: [
-                                                { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
-                                                { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
-                                                ],
-                                            });
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setContextMenu({
+                                            x: e.pageX, y: e.pageY,
+                                            items: [
+                                              { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                              { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                            ],
+                                          });
                                         }}
                                       />
                                     ))}
-                                </div>
-                              )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
 
-                      {/* Unassigned Points */}
-                      {areaData.unassignedPoints.length > 0 && (
+                        {/* Unassigned Points */}
+                        {areaData.unassignedPoints.length > 0 && (
                           <div style={{ marginTop: '15px', paddingLeft: '10px' }}>
-                           <div className="range-label-row" style={{ color: 'var(--text-color-muted)' }}>
-                              <FontAwesomeIcon icon={faLayerGroup} size="xs" style={{opacity: 0.5}}/>
+                            <div className="range-label-row" style={{ color: 'var(--text-color-muted)' }}>
+                              <FontAwesomeIcon icon={faLayerGroup} size="xs" style={{ opacity: 0.5 }} />
                               <span>Unassigned Points</span>
-                           </div>
-                           {areaData.unassignedPoints.map(tp => (
-                             <SidebarPointItem 
+                            </div>
+                            {areaData.unassignedPoints.map(tp => (
+                              <SidebarPointItem
                                 key={tp.id}
                                 point={tp}
                                 isSelected={selectedTestPointId === tp.id}
@@ -1429,24 +1461,24 @@ function App() {
                                 onSave={handleInlinePointUpdate}
                                 onDragStart={handleDragStart}
                                 onContextMenu={(e, p) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setContextMenu({
-                                        x: e.pageX, y: e.pageY,
-                                        items: [
-                                        { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
-                                        { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
-                                        ],
-                                    });
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setContextMenu({
+                                    x: e.pageX, y: e.pageY,
+                                    items: [
+                                      { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                      { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                    ],
+                                  });
                                 }}
-                             />
-                           ))}
-                         </div>
-                      )}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
               </div>
             </aside>
 

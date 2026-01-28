@@ -19,7 +19,6 @@ import {
 // Sub-components
 import UncertaintyBudgetTable from "./UncertaintyBudgetTable";
 import PercentageBarGraph from "./ContributionPlot";
-import AnalysisHeader from "./AnalysisHeader";
 
 // Utils
 import {
@@ -269,7 +268,7 @@ const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, p
     return ( <div onClick={() => setIsEditing(true)} style={{ cursor: 'text', minHeight: '20px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '2px', color: !value && placeholder ? 'var(--text-color-muted)' : 'inherit', ...style }} className={`editable-cell-display ${className}`} title="Click to edit" > {value || placeholder} {suffix} </div> )
 };
 
-// --- NEW: Inline Quick Add Row Component ---
+// ---  Inline Quick Add Row Component ---
 const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSave, showAreaColumn, sessionData }) => {
     // Local state for the inputs
     const [val, setVal] = useState("");
@@ -534,7 +533,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
             points = points.filter(tp => tp.associatedUutIds && tp.associatedUutIds.includes(contextId));
         }
         else if (viewMode === 'range') {
-            // --- NEW: Range View Logic ---
+            // ---  Range View Logic ---
             const uut = uuts.find(u => u.id === uutId);
             
             // 1. Filter UUTs: Only the parent UUT
@@ -624,7 +623,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
         }
     }, [selectedPointIds, onDeleteTestPoint, setSelectedPointIds]);
 
-    // NEW: Handle Row Selection via Click and Modifiers (Ctrl/Meta)
+    //  Handle Row Selection via Click and Modifiers (Ctrl/Meta)
     const handleRowClick = (e, id) => {
         if (e.ctrlKey || e.metaKey) {
             // Toggle selection if modifier key is held
@@ -635,7 +634,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
         }
     };
 
-    // NEW: Keyboard Listener for Delete
+    //  Keyboard Listener for Delete
     useEffect(() => {
         const handleKeyDown = (e) => {
             if ((e.key === 'Delete' || e.key === 'Backspace') && selectedPointIds.length > 0) {
@@ -662,14 +661,6 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
     return (
         <div className="configuration-panel" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             
-            {/* Session Header (Only in Session View) */}
-            {viewMode === 'session' && (
-                <AnalysisHeader 
-                    sessionData={sessionData} 
-                    onEditSession={onEditSession} 
-                />
-            )}
-
             {/* Header */}
             <div style={{ paddingBottom: '10px', borderBottom: '1px solid var(--border-color)' }}>
                 <h2 style={{ margin: 0, fontSize: '1.4rem' }}>
@@ -909,7 +900,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
 
                             {/* No Global Thead */}
                             <tbody>
-                                {/* --- NEW: QUICK ADD ROW --- */}
+                                {/* ---  QUICK ADD ROW --- */}
                                 {/* Quick Add Header */}
                                 <tr style={{ backgroundColor: 'rgba(var(--primary-rgb), 0.05)', borderBottom: '1px solid var(--border-color)' }}>
                                     <td colSpan={5} style={{ padding: '6px 12px', fontWeight: 600, color: 'var(--primary-color)', fontSize: '0.8rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
