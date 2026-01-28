@@ -3,6 +3,7 @@ import { useTheme } from "../../../context/ThemeContext";
 import Plotly from 'plotly.js-dist';
 import createPlotlyComponent from 'react-plotly.js/factory';
 
+// eslint-disable-next-line no-unused-vars
 const Plot = createPlotlyComponent(Plotly);
 
 let spareRandom = null;
@@ -30,6 +31,114 @@ function calculateBivariateRelativeLikelihood(x, y, sigmaX, sigmaY, rho) {
             (Math.pow(y, 2) / Math.pow(sigmaY, 2));
   return Math.exp(-z / (2 * (1 - Math.pow(rho, 2))));
 }
+
+// --- SUB-COMPONENTS (Moved outside main component) ---
+// eslint-disable-next-line no-unused-vars
+const ColorSwatch = ({ color }) => (
+    <span style={{
+      display: 'inline-block', width: '10px', height: '10px', 
+      borderRadius: '50%', backgroundColor: color, marginRight: '5px' 
+    }}></span>
+);
+
+// eslint-disable-next-line no-unused-vars
+const GradientSwatch = ({ colors }) => (
+    <span style={{
+      display: 'inline-block', width: '40px', height: '12px', 
+      background: colors.heatmapGradient, marginRight: '5px',
+      borderRadius: '2px', border: '1px solid #888'
+    }}></span>
+);
+
+// eslint-disable-next-line no-unused-vars
+const HelpOverlay = ({ onClose, colors, isDarkMode, vizMode, numPoints }) => {
+    return (
+    <div style={{
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: colors.overlayBg, zIndex: 10,
+      padding: '2rem', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', overflowY: 'auto'
+    }}>
+      <div style={{ maxWidth: '650px', color: colors.text }}>
+        <h3 style={{ borderBottom: `2px solid ${colors.primary}`, paddingBottom: '0.5rem', marginBottom: '1.5rem' }}>
+          Understanding This Chart
+        </h3>
+        
+        {/* Universal Axis Info */}
+        <div style={{ display:'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+          <div>
+            <strong style={{ color: colors.primary, display: 'block', marginBottom: '0.5rem' }}>X-Axis: True Error</strong>
+            <p style={{ fontSize: '0.85rem', opacity: 0.8, lineHeight: '1.5' }}>
+              The actual, physical error of the device. In the real world, this is unknown.
+              <br/><br/>
+              <strong style={{color: colors.primary}}>-- Dashed Lines --</strong> mark the Specifications (Tolerance). Outside these lines = Bad Unit.
+            </p>
+          </div>
+          <div>
+            <strong style={{ color: colors.warning, display: 'block', marginBottom: '0.5rem' }}>Y-Axis: Measured Error</strong>
+            <p style={{ fontSize: '0.85rem', opacity: 0.8, lineHeight: '1.5' }}>
+              What the instrument reads during calibration (True Error + Measurement Uncertainty).
+              <br/><br/>
+              <strong style={{color: colors.warning}}>·· Dotted Lines ··</strong> mark the Acceptance Limits. Outside these lines = Fail Result.
+            </p>
+          </div>
+        </div>
+
+        {/* Dynamic Mode Explanations */}
+        {vizMode === 'analytical' ? (
+           <div style={{ margin: '1rem 0', padding: '15px', background: isDarkMode?'#333':'#f8f9fa', borderRadius: '8px', border: `1px solid ${isDarkMode?'#444':'#dee2e6'}` }}>
+             <strong style={{ display: 'flex', alignItems: 'center', fontSize: '1rem', marginBottom: '0.5rem' }}>
+               <GradientSwatch colors={colors} /> Analytical Heatmap
+             </strong>
+             <div style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.6' }}>
+               <p style={{ marginBottom: '1rem' }}>
+                 This view uses the <strong>Bivariate Normal Probability Density Function (PDF)</strong>.
+                 It calculates the exact mathematical likelihood of a measurement falling at any specific coordinate (x,y).
+               </p>
+               <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                 <li style={{ marginBottom: '5px' }}><strong>How it works:</strong> We use the calculated standard deviations (u_true, u_cal) and the correlation coefficient (ρ) to generate a "terrain" of risk.</li>
+                 <li><strong>Interpretation:</strong> 
+                    <span style={{ color: isDarkMode?'#fde725':'#08519c', fontWeight: 'bold' }}> Brightest</span> areas are the "Peak" of the bell curve (Most Likely). 
+                    <span style={{ color: isDarkMode?'#440154':'#f7fbff', fontWeight: 'bold' }}> Dark</span> areas are the tails (Least Likely).
+                 </li>
+               </ul>
+             </div>
+           </div>
+        ) : (
+           <div style={{ margin: '1rem 0', padding: '15px', background: isDarkMode?'#333':'#f8f9fa', borderRadius: '8px', border: `1px solid ${isDarkMode?'#444':'#dee2e6'}` }}>
+             <strong style={{ display: 'block', fontSize: '1rem', marginBottom: '0.5rem' }}>Monte Carlo Simulation</strong>
+             <div style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.6' }}>
+               <p style={{ marginBottom: '1rem' }}>
+                 This view performs a <strong>Random Simulation</strong> of {numPoints} individual calibration events.
+               </p>
+               <ul style={{ paddingLeft: '20px', marginBottom: '1rem' }}>
+                 <li style={{ marginBottom: '5px' }}><strong>How it works:</strong> For every dot, we generate two random numbers (z-scores) based on the Bell Curve. One represents the Unit's error, the other represents the Calibrator's error. We add them together to simulate a measurement.</li>
+               </ul>
+               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                 <div><ColorSwatch color={colors.good}/> <strong>Correct Accept:</strong> Good Unit, Passed.</div>
+                 <div><ColorSwatch color={colors.bad}/> <strong>False Accept:</strong> Bad Unit, but Passed.</div>
+                 <div><ColorSwatch color={colors.warning}/> <strong>False Reject:</strong> Good Unit, Failed.</div>
+                 <div><ColorSwatch color={colors.primary}/> <strong>Correct Reject:</strong> Bad Unit, Failed.</div>
+               </div>
+             </div>
+           </div>
+        )}
+        
+        <button 
+          onClick={onClose}
+          style={{
+            marginTop: '1.5rem', padding: '0.6rem 2.5rem',
+            background: colors.primary, color: '#fff', border: 'none',
+            borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem'
+          }}
+        >
+          Close Help
+        </button>
+      </div>
+    </div>
+  );
+};
+
 
 const RiskScatterplot = ({ results, inputs }) => {
   const isDarkMode = useTheme();
@@ -261,117 +370,24 @@ const RiskScatterplot = ({ results, inputs }) => {
       margin: { t: 40, b: 60, l: 60, r: 40 },
       hovermode: "closest",
     };
-  }, [results, inputs, isDarkMode, colors, vizMode]);
+  }, [results, inputs, isDarkMode, colors]); // Removed vizMode
 
   const plotConfig = useMemo(() => ({
       responsive: true, displaylogo: false, modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toggleSpikelines']
     }), []);
 
-  const ColorSwatch = ({ color }) => (
-    <span style={{
-      display: 'inline-block', width: '10px', height: '10px', 
-      borderRadius: '50%', backgroundColor: color, marginRight: '5px' 
-    }}></span>
-  );
-
-  const GradientSwatch = () => (
-    <span style={{
-      display: 'inline-block', width: '40px', height: '12px', 
-      background: colors.heatmapGradient, marginRight: '5px',
-      borderRadius: '2px', border: '1px solid #888'
-    }}></span>
-  );
-
-  const HelpOverlay = () => (
-    <div style={{
-      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: colors.overlayBg, zIndex: 10,
-      padding: '2rem', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', overflowY: 'auto'
-    }}>
-      <div style={{ maxWidth: '650px', color: colors.text }}>
-        <h3 style={{ borderBottom: `2px solid ${colors.primary}`, paddingBottom: '0.5rem', marginBottom: '1.5rem' }}>
-          Understanding This Chart
-        </h3>
-        
-        {/* Universal Axis Info */}
-        <div style={{ display:'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-          <div>
-            <strong style={{ color: colors.primary, display: 'block', marginBottom: '0.5rem' }}>X-Axis: True Error</strong>
-            <p style={{ fontSize: '0.85rem', opacity: 0.8, lineHeight: '1.5' }}>
-              The actual, physical error of the device. In the real world, this is unknown.
-              <br/><br/>
-              <strong style={{color: colors.primary}}>-- Dashed Lines --</strong> mark the Specifications (Tolerance). Outside these lines = Bad Unit.
-            </p>
-          </div>
-          <div>
-            <strong style={{ color: colors.warning, display: 'block', marginBottom: '0.5rem' }}>Y-Axis: Measured Error</strong>
-            <p style={{ fontSize: '0.85rem', opacity: 0.8, lineHeight: '1.5' }}>
-              What the instrument reads during calibration (True Error + Measurement Uncertainty).
-              <br/><br/>
-              <strong style={{color: colors.warning}}>·· Dotted Lines ··</strong> mark the Acceptance Limits. Outside these lines = Fail Result.
-            </p>
-          </div>
-        </div>
-
-        {/* Dynamic Mode Explanations */}
-        {vizMode === 'analytical' ? (
-           <div style={{ margin: '1rem 0', padding: '15px', background: isDarkMode?'#333':'#f8f9fa', borderRadius: '8px', border: `1px solid ${isDarkMode?'#444':'#dee2e6'}` }}>
-             <strong style={{ display: 'flex', alignItems: 'center', fontSize: '1rem', marginBottom: '0.5rem' }}>
-               <GradientSwatch /> Analytical Heatmap
-             </strong>
-             <div style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.6' }}>
-               <p style={{ marginBottom: '1rem' }}>
-                 This view uses the <strong>Bivariate Normal Probability Density Function (PDF)</strong>.
-                 It calculates the exact mathematical likelihood of a measurement falling at any specific coordinate (x,y).
-               </p>
-               <ul style={{ paddingLeft: '20px', margin: 0 }}>
-                 <li style={{ marginBottom: '5px' }}><strong>How it works:</strong> We use the calculated standard deviations (u_true, u_cal) and the correlation coefficient (ρ) to generate a "terrain" of risk.</li>
-                 <li><strong>Interpretation:</strong> 
-                    <span style={{ color: isDarkMode?'#fde725':'#08519c', fontWeight: 'bold' }}> Brightest</span> areas are the "Peak" of the bell curve (Most Likely). 
-                    <span style={{ color: isDarkMode?'#440154':'#f7fbff', fontWeight: 'bold' }}> Dark</span> areas are the tails (Least Likely).
-                 </li>
-               </ul>
-             </div>
-           </div>
-        ) : (
-           <div style={{ margin: '1rem 0', padding: '15px', background: isDarkMode?'#333':'#f8f9fa', borderRadius: '8px', border: `1px solid ${isDarkMode?'#444':'#dee2e6'}` }}>
-             <strong style={{ display: 'block', fontSize: '1rem', marginBottom: '0.5rem' }}>Monte Carlo Simulation</strong>
-             <div style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.6' }}>
-               <p style={{ marginBottom: '1rem' }}>
-                 This view performs a <strong>Random Simulation</strong> of {numPoints} individual calibration events.
-               </p>
-               <ul style={{ paddingLeft: '20px', marginBottom: '1rem' }}>
-                 <li style={{ marginBottom: '5px' }}><strong>How it works:</strong> For every dot, we generate two random numbers (z-scores) based on the Bell Curve. One represents the Unit's error, the other represents the Calibrator's error. We add them together to simulate a measurement.</li>
-               </ul>
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                 <div><ColorSwatch color={colors.good}/> <strong>Correct Accept:</strong> Good Unit, Passed.</div>
-                 <div><ColorSwatch color={colors.bad}/> <strong>False Accept:</strong> Bad Unit, but Passed.</div>
-                 <div><ColorSwatch color={colors.warning}/> <strong>False Reject:</strong> Good Unit, Failed.</div>
-                 <div><ColorSwatch color={colors.primary}/> <strong>Correct Reject:</strong> Bad Unit, Failed.</div>
-               </div>
-             </div>
-           </div>
-        )}
-        
-        <button 
-          onClick={() => setShowHelp(false)}
-          style={{
-            marginTop: '1.5rem', padding: '0.6rem 2.5rem',
-            background: colors.primary, color: '#fff', border: 'none',
-            borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem'
-          }}
-        >
-          Close Help
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="scatterplot-container" style={{ height: "450px", width: "100%", position: "relative", marginTop: "1rem" }}>
        
-       {showHelp && <HelpOverlay />}
+       {showHelp && (
+         <HelpOverlay 
+            onClose={() => setShowHelp(false)} 
+            colors={colors}
+            isDarkMode={isDarkMode}
+            vizMode={vizMode}
+            numPoints={numPoints}
+         />
+       )}
 
        <div className="plot-floating-control" style={{ 
           display: 'flex', gap: '10px', alignItems: 'center', 
