@@ -490,6 +490,7 @@ function App() {
             }
             newZoom = Math.max(0.5, Math.min(newZoom, 3.0));
             webFrame.setZoomFactor(newZoom);
+            showToast(`Zoom Level: ${Math.round(newZoom * 100)}%`);
           } catch (error) {
             console.warn("Zoom adjustment failed", error);
           }

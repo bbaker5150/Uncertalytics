@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import * as math from 'mathjs';
 import Select from "react-select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -506,7 +506,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
     const [selectedPointIds, setSelectedPointIds] = useState([]);
     
     // Sorting State
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+    const [sortConfigs, setSortConfigs] = useState({});
 
     // Filter Data based on Hierarchy
     const { filteredUuts, filteredPoints, title, subtitle, showAreaColumn } = useMemo(() => {
@@ -570,39 +570,8 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
             displaySubtitle = `Last Modified: ${new Date().toLocaleDateString()}`; 
         }
 
-        // SORTING LOGIC
-        if (sortConfig.key) {
-             points.sort((a, b) => {
-                let aVal = '', bVal = '';
-
-                if (sortConfig.key === 'section') {
-                    aVal = (a.section || '').toLowerCase();
-                    bVal = (b.section || '').toLowerCase();
-                } else if (sortConfig.key === 'point') {
-                    // Try numeric sort
-                    const aNum = parseFloat(a.testPointInfo?.parameter?.value);
-                    const bNum = parseFloat(b.testPointInfo?.parameter?.value);
-                    if (!isNaN(aNum) && !isNaN(bNum)) {
-                        aVal = aNum;
-                        bVal = bNum;
-                    } else {
-                        aVal = (a.testPointInfo?.parameter?.value || '').toString().toLowerCase();
-                        bVal = (b.testPointInfo?.parameter?.value || '').toString().toLowerCase();
-                    }
-                } else if (sortConfig.key === 'area') {
-                     // Resolve Area Name
-                     const areaA = sessionData.measurementAreas?.find(ar => ar.id === a.measurementAreaId);
-                     const areaB = sessionData.measurementAreas?.find(ar => ar.id === b.measurementAreaId);
-                     aVal = (areaA?.name || '').toLowerCase();
-                     bVal = (areaB?.name || '').toLowerCase();
-                }
-
-                if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
-                if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
-                return 0;
-             });
-        }
-
+        // SORTING LOGIC REMOVED (Moved to Local Group Rendering)
+        
         return { 
             filteredUuts: uuts, 
             filteredPoints: points, 
@@ -610,13 +579,17 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
             subtitle: displaySubtitle,
             showAreaColumn: isSessionView // Boolean flag
         };
-    }, [viewMode, contextId, sessionData, rangeData, uutId, sortConfig]);
+    }, [viewMode, contextId, sessionData, rangeData, uutId]);
 
-    const handleSort = (key) => {
-        setSortConfig(prev => ({
-            key,
-            direction: prev.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending'
-        }));
+    const handleSort = (groupId, key) => {
+        setSortConfigs(prev => {
+            const currentConfig = prev[groupId] || { key: null, direction: 'ascending' };
+            const newDirection = currentConfig.key === key && currentConfig.direction === 'ascending' ? 'descending' : 'ascending';
+            return {
+                ...prev,
+                [groupId]: { key, direction: newDirection }
+            };
+        });
     };
 
     // Pre-select UUT if in single UUT or Range view
@@ -935,91 +908,186 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                     </div>
                     <div className="panel-table-container" tabIndex="0">
                         <table className="instrument-summary-table compact-table" style={{ margin: 0, border: 'none', boxShadow: 'none' }}>
-                            <thead>
-                                <tr>
-                                    <th onClick={() => handleSort('section')} style={{ cursor: 'pointer' }}>
-                                        Section {sortConfig.key === 'section' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                                    </th>
-                                    <th onClick={() => handleSort('point')} style={{ cursor: 'pointer' }}>
-                                        Point {sortConfig.key === 'point' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                                    </th>
-                                    <th>Unit</th>
-                                    <th>Tolerance</th>
-                                    <th>Limits</th>
-                                    {showAreaColumn && (
-                                        <th onClick={() => handleSort('area')} style={{ cursor: 'pointer' }}>
-                                            Area {sortConfig.key === 'area' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                                        </th>
-                                    )}
-                                </tr>
-                            </thead>
+
+                            {/* No Global Thead */}
                             <tbody>
                                 {/* --- NEW: QUICK ADD ROW --- */}
+                                {/* Quick Add Header */}
+                                <tr style={{ backgroundColor: 'rgba(var(--primary-rgb), 0.05)', borderBottom: '1px solid var(--border-color)' }}>
+                                    <td colSpan={5} style={{ padding: '6px 12px', fontWeight: 600, color: 'var(--primary-color)', fontSize: '0.8rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                                        <FontAwesomeIcon icon={faPlus} style={{ marginRight: '8px' }} />
+                                        Add New Measurement Point
+                                    </td>
+                                </tr>
                                 <QuickAddRow 
                                     selectedUuts={sessionData.uuts.filter(u => selectedUutIds.includes(u.id))}
                                     localRangeIndices={localRangeIndices}
                                     resolveRangeHelper={resolveRangeWrapper}
                                     onSave={onSaveTestPoint}
-                                    showAreaColumn={showAreaColumn}
-                                    sessionData={sessionData} // <--- PASSING SESSION DATA FOR AREA LOOKUP
+                                    showAreaColumn={false}
+                                    sessionData={sessionData} 
                                 />
 
                                 {filteredPoints.length === 0 ? (
-                                    /* No message here anymore, just empty rows below QuickAddRow */
                                     null
                                 ) : (
-                                    filteredPoints.map(tp => {
-                                        const param = tp.testPointInfo?.parameter || { value: '', unit: '' };
-                                        const isSelected = selectedPointIds.includes(tp.id);
-                                        
-                                        // 1. Determine Tolerance
-                                        let activeTolerance = tp.uutTolerance;
-                                        if ((!activeTolerance || Object.keys(activeTolerance).length === 0) && tp.associatedUutIds?.length > 0) {
-                                            const uut = sessionData.uuts?.find(u => u.id === tp.associatedUutIds[0]);
-                                            if (uut) {
-                                                const { activeRange } = resolveUutRangeHelper(uut, null, null, param);
-                                                activeTolerance = activeRange;
+                                    (() => {
+                                        // 1. Group Points by UUT
+                                        const groupedPoints = {};
+                                        const unassignedPoints = [];
+
+                                        filteredPoints.forEach(tp => {
+                                            const uutId = tp.associatedUutIds && tp.associatedUutIds.length > 0 ? tp.associatedUutIds[0] : null;
+                                            if (uutId) {
+                                                if (!groupedPoints[uutId]) groupedPoints[uutId] = [];
+                                                groupedPoints[uutId].push(tp);
+                                            } else {
+                                                unassignedPoints.push(tp);
                                             }
-                                        }
+                                        });
 
-                                        // 2. Metrics
-                                        const { limits, display } = calculateToleranceMetrics(activeTolerance, param);
+                                        const uutOrder = filteredUuts.map(u => u.id).filter(id => groupedPoints[id]);
+                                        Object.keys(groupedPoints).forEach(id => {
+                                            if (!uutOrder.includes(id)) uutOrder.push(id);
+                                        });
 
-                                        // 3. Area & Color
-                                        const area = sessionData.measurementAreas?.find(a => a.id === tp.measurementAreaId);
-                                        const areaName = area ? area.name : '-';
-                                        const areaColor = area?.color || 'var(--text-color-muted)';
+                                        // Helper to render a group
+                                        const renderGroup = (groupId, points, groupLabel, groupMeta = null) => {
+                                             // Resolve Sort Config
+                                             const config = sortConfigs[groupId] || { key: null, direction: 'ascending' };
+
+                                             const sortedPoints = [...points].sort((a, b) => {
+                                                if (!config.key) return 0;
+                                                let aVal = '', bVal = '';
+
+                                                if (config.key === 'section') {
+                                                    aVal = (a.section || '').toLowerCase();
+                                                    bVal = (b.section || '').toLowerCase();
+                                                } else if (config.key === 'point') {
+                                                    const aNum = parseFloat(a.testPointInfo?.parameter?.value);
+                                                    const bNum = parseFloat(b.testPointInfo?.parameter?.value);
+                                                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                                                        aVal = aNum;
+                                                        bVal = bNum;
+                                                    } else {
+                                                        aVal = (a.testPointInfo?.parameter?.value || '').toString().toLowerCase();
+                                                        bVal = (b.testPointInfo?.parameter?.value || '').toString().toLowerCase();
+                                                    }
+                                                }
+                                                
+                                                if (aVal < bVal) return config.direction === 'ascending' ? -1 : 1;
+                                                if (aVal > bVal) return config.direction === 'ascending' ? 1 : -1;
+                                                return 0;
+                                             });
+
+                                             return (
+                                                <React.Fragment key={groupId}>
+                                                    {/* GROUP HEADER (Title) */}
+                                                    <tr style={{ backgroundColor: 'var(--component-header-bg)', borderTop: '2px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
+                                                        <td colSpan={5} style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-color)', fontSize: '0.9rem' }}>
+                                                            {groupLabel} {groupMeta}
+                                                        </td>
+                                                    </tr>
+                                                    
+                                                    {/* COLUMN HEADERS (Repeated per UUT) */}
+                                                    <tr className="group-column-headers" style={{ backgroundColor: 'var(--background-secondary)', borderBottom: '1px solid var(--border-color)' }}>
+                                                        <th 
+                                                            className="cell-compact" 
+                                                            style={{ fontWeight: 600, fontSize: '0.8rem', padding: '6px 8px', textAlign: 'left', cursor: 'pointer', color: 'var(--text-color-muted)' }}
+                                                            onClick={() => handleSort(groupId, 'section')}
+                                                        >
+                                                            Section {config.key === 'section' && (config.direction === 'ascending' ? '▲' : '▼')}
+                                                        </th>
+                                                        <th 
+                                                            style={{ fontWeight: 600, fontSize: '0.8rem', padding: '6px 8px', textAlign: 'left', cursor: 'pointer', color: 'var(--text-color-muted)' }}
+                                                            onClick={() => handleSort(groupId, 'point')}
+                                                        >
+                                                            Point {config.key === 'point' && (config.direction === 'ascending' ? '▲' : '▼')}
+                                                        </th>
+                                                        <th style={{ fontWeight: 600, fontSize: '0.8rem', padding: '6px 8px', textAlign: 'left', cursor: 'default', color: 'var(--text-color-muted)' }}>Unit</th>
+                                                        <th style={{ fontWeight: 600, fontSize: '0.8rem', padding: '6px 8px', textAlign: 'left', cursor: 'default', color: 'var(--text-color-muted)' }}>Tolerance</th>
+                                                        <th style={{ fontWeight: 600, fontSize: '0.8rem', padding: '6px 8px', textAlign: 'left', cursor: 'default', color: 'var(--text-color-muted)' }}>Limits</th>
+                                                    </tr>
+
+                                                    {/* DATA ROWS */}
+                                                    {sortedPoints.map(tp => {
+                                                        const param = tp.testPointInfo?.parameter || { value: '', unit: '' };
+                                                        const isSelected = selectedPointIds.includes(tp.id);
+                                                        
+                                                        let activeTolerance = tp.uutTolerance;
+                                                        if ((!activeTolerance || Object.keys(activeTolerance).length === 0) && tp.associatedUutIds?.length > 0) {
+                                                            const uut = sessionData.uuts?.find(u => u.id === tp.associatedUutIds[0]);
+                                                            if (uut) {
+                                                                const { activeRange } = resolveUutRangeHelper(uut, null, null, param);
+                                                                activeTolerance = activeRange;
+                                                            }
+                                                        }
+
+                                                        const { limits, display } = calculateToleranceMetrics(activeTolerance, param);
+
+                                                        return (
+                                                            <tr 
+                                                                key={tp.id} 
+                                                                className={isSelected ? "selected-row" : ""}
+                                                                onClick={(e) => handleRowClick(e, tp.id)}
+                                                                style={{ 
+                                                                    backgroundColor: isSelected ? 'rgba(var(--primary-rgb), 0.15)' : 'transparent',
+                                                                    borderLeft: isSelected ? '4px solid var(--primary-color)' : '4px solid transparent',
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.1s ease'
+                                                                }}
+                                                            >
+                                                                <td className="cell-section" title={tp.section || '-'} style={{ color: 'var(--text-color)' }}>{tp.section || '-'}</td>
+                                                                <td className="cell-value" title={String(param.value)}>{param.value}</td>
+                                                                <td className="cell-unit" title={param.unit} style={{ color: 'var(--text-color)' }}>{param.unit}</td>
+                                                                <td className="cell-tolerance" title={display}>{display}</td>
+                                                                <td className="cell-limit" title={`${limits.low} to ${limits.high}`} style={{ color: 'var(--text-color)' }}>
+                                                                    <span>{limits.low}</span>
+                                                                    <span style={{ margin: '0 4px', fontSize: '0.75rem' }}>→</span>
+                                                                    <span>{limits.high}</span>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </React.Fragment>
+                                             );
+                                        };
 
                                         return (
-                                            <tr 
-                                                key={tp.id} 
-                                                className={isSelected ? "selected-row" : ""}
-                                                onClick={(e) => handleRowClick(e, tp.id)}
-                                                style={{ 
-                                                    backgroundColor: isSelected ? 'rgba(var(--primary-rgb), 0.15)' : 'transparent',
-                                                    borderLeft: isSelected ? '4px solid var(--primary-color)' : '4px solid transparent',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.1s ease'
-                                                }}
-                                            >
-                                                <td className="cell-section" title={tp.section || '-'}>{tp.section || '-'}</td>
-                                                <td className="cell-value" title={String(param.value)}>{param.value}</td>
-                                                <td className="cell-unit" title={param.unit}>{param.unit}</td>
-                                                <td className="cell-tolerance" title={display}>{display}</td>
-                                                <td className="cell-limit" title={`${limits.low} to ${limits.high}`}>
-                                                    <span style={{ opacity: 0.7 }}>{limits.low}</span>
-                                                    <span style={{ margin: '0 4px', color: 'var(--text-color-muted)', fontSize: '0.75rem' }}>→</span>
-                                                    <span style={{ opacity: 0.7 }}>{limits.high}</span>
-                                                </td>
-                                                {showAreaColumn && (
-                                                    <td className="cell-area" style={{ color: areaColor }} title={areaName}>{areaName}</td>
+                                            <>
+                                                {uutOrder.map(uutId => {
+                                                    const uut = sessionData.uuts?.find(u => u.id === uutId);
+                                                    const groupPoints = groupedPoints[uutId];
+                                                    
+                                                    const area = sessionData.measurementAreas?.find(a => a.id === uut?.measurementAreaId || a.name === uut?.measurementArea);
+                                                    const areaName = area ? area.name : (uut?.measurementArea || '-');
+                                                    const areaColor = area?.color || 'var(--text-color-muted)';
+
+                                                    const label = (
+                                                        <span>
+                                                            <FontAwesomeIcon icon={faMicroscope} style={{ marginRight: '6px', color: 'var(--primary-color)', opacity: 0.7 }} />
+                                                            {uut?.description || "Unknown UUT"}
+                                                        </span>
+                                                    );
+                                                    
+                                                    const meta = (
+                                                        <span style={{ float: 'right', fontSize: '0.75rem', color: areaColor, border: `1px solid ${areaColor}`, borderRadius: '4px', padding: '1px 6px' }}>
+                                                            {areaName}
+                                                        </span>
+                                                    );
+
+                                                    return renderGroup(uutId, groupPoints, label, meta);
+                                                })}
+
+                                                {unassignedPoints.length > 0 && renderGroup('unassigned', unassignedPoints, 
+                                                    <span style={{ fontStyle: 'italic', color: 'var(--text-color-muted)' }}>Unassigned Points</span>
                                                 )}
-                                            </tr>
-                                        )
-                                    })
+                                            </>
+                                        );
+                                    })()
                                 )}
                                 {filteredPoints.length === 0 && (
-                                     <tr><td colSpan={showAreaColumn ? 6 : 5} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No Measurement Points found. Use the input row above to add one.</td></tr>
+                                     <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No Measurement Points found. Use the input row above to add one.</td></tr>
                                 )}
                             </tbody>
                         </table>

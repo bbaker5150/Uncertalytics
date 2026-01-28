@@ -1099,7 +1099,7 @@ body.theme-cyberpunk .button {
 .content-area {
   /* This is now your main "Application Window" */
   width: 95%;
-  max-width: 1600px; /* Constrained width so background is visible */
+  max-width: 1800px; /* Constrained width so background is visible */
   min-height: 85vh; /* Ensures it has substantial presence */
 
   /* Layout Internals */
