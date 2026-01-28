@@ -1479,6 +1479,8 @@ function App() {
                     onRangeSelectionChange={setActiveRangeIndices}
                     selectedTablePointIds={selectedTablePointIds}
                     setSelectedTablePointIds={setSelectedTablePointIds}
+                    onSelectUut={handleSelectUut}
+                    onSelectTestPoint={handleSelectTestPoint}
                   />
                 </TestPointDetailView>
               ) : (

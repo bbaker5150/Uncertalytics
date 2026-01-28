@@ -65,7 +65,11 @@ function Analysis({
 
   // --- Table Selection ---
   selectedTablePointIds = [],
-  setSelectedTablePointIds = () => {}
+  setSelectedTablePointIds = () => {},
+
+  // --- Navigation Props ---
+  onSelectUut,
+  onSelectTestPoint
 }) {
   // --- 1. Local UI State ---
   const [analysisMode, setAnalysisMode] = useState("uncertaintyTool");
@@ -558,6 +562,10 @@ function Analysis({
             tmdeTolerancesData={[]}
             riskResults={null}
             manualComponents={[]}
+            
+            // --- Navigation Handlers ---
+            onSelectUut={onSelectUut}
+            onSelectTestPoint={onSelectTestPoint}
          />
       ) : (
         <>

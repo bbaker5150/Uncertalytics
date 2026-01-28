@@ -495,7 +495,7 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
 
 
 // --- UPDATED: SUMMARY DASHBOARD ---
-const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint, rangeData, uutId, onSaveTestPoint, onEditSession, selectedPointIds, setSelectedPointIds }) => {
+const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint, rangeData, uutId, onSaveTestPoint, onEditSession, selectedPointIds, setSelectedPointIds, onSelectUut, onSelectTestPoint }) => {
     
     // Local Selection State for UUTs in the table
     const [selectedUutIds, setSelectedUutIds] = useState([]);
@@ -789,7 +789,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                         const areaColor = area?.color || 'var(--text-color-muted)';
 
                                         return (
-                                            <tr key={uut.id} className={isChecked ? "selected-row" : ""} style={{ backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent' }}>
+                                            <tr key={uut.id} className={isChecked ? "selected-row" : ""} style={{ backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent' }} onDoubleClick={() => onSelectUut && onSelectUut(uut.id, uut.measurementAreaId, uut)}>
                                                 <td className="cell-compact" style={{ textAlign: 'center' }}>
                                                     <input 
                                                         type="checkbox" 
@@ -981,7 +981,21 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                              return (
                                                 <React.Fragment key={groupId}>
                                                     {/* GROUP HEADER (Title) */}
-                                                    <tr style={{ backgroundColor: 'var(--component-header-bg)', borderTop: '2px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
+                                                    <tr 
+                                                        style={{ 
+                                                            backgroundColor: 'var(--component-header-bg)', 
+                                                            borderTop: '2px solid var(--border-color)', 
+                                                            borderBottom: '1px solid var(--border-color)',
+                                                            cursor: groupId !== 'unassigned' ? 'pointer' : 'default'
+                                                        }}
+                                                        onDoubleClick={() => {
+                                                            if (groupId !== 'unassigned' && onSelectUut) {
+                                                                const uut = sessionData.uuts?.find(u => u.id === groupId);
+                                                                if (uut) onSelectUut(uut.id, uut.measurementAreaId, uut);
+                                                            }
+                                                        }}
+                                                        title={groupId !== 'unassigned' ? "Double-click to view UUT details" : ""}
+                                                    >
                                                         <td colSpan={5} style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-color)', fontSize: '0.9rem' }}>
                                                             {groupLabel} {groupMeta}
                                                         </td>
@@ -1028,6 +1042,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                                 key={tp.id} 
                                                                 className={isSelected ? "selected-row" : ""}
                                                                 onClick={(e) => handleRowClick(e, tp.id)}
+                                                                onDoubleClick={() => onSelectTestPoint && onSelectTestPoint(tp.id, tp.associatedUutIds?.[0])}
                                                                 style={{ 
                                                                     backgroundColor: isSelected ? 'rgba(var(--primary-rgb), 0.15)' : 'transparent',
                                                                     borderLeft: isSelected ? '4px solid var(--primary-color)' : '4px solid transparent',
@@ -2157,6 +2172,10 @@ const UncertaintyPanel = (props) => {
                 onEditSession={props.handleOpenSessionEditor}
                 selectedPointIds={props.selectedTablePointIds || []}
                 setSelectedPointIds={props.setSelectedTablePointIds || (() => {})}
+                
+                // Navigation Handlers
+                onSelectUut={props.onSelectUut}
+                onSelectTestPoint={props.onSelectTestPoint}
             />
         );
     }

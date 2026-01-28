@@ -99,7 +99,7 @@ export const getBudgetComponentsFromTolerance = (
 
         // DEBUG: Check if baseValueForRelative (e.g. Range Value) is missing
         if (isNaN(baseValueForRelative)) {
-             console.error(`  -> ERROR: baseValueForRelative is NaN! (Likely missing Range Value)`);
+          return;
         }
 
         valueInNominalUnits = halfSpan * multiplier * baseValueForRelative;
