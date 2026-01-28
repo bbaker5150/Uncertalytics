@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 
 // --- Components ---
 import Analysis from "./features/analysis/Analysis";
@@ -49,8 +49,8 @@ import {
   faCheckCircle
 } from "@fortawesome/free-solid-svg-icons";
 
-const ThemeContext = React.createContext(false);
-export const useTheme = () => React.useContext(ThemeContext);
+import ThemeContext from './context/ThemeContext'; // Import from separate file
+
 
 // --- HELPER COMPONENT: Sidebar Point Item (Supports Inline Editing) ---
 const SidebarPointItem = ({ 
@@ -281,7 +281,6 @@ function App() {
     updateSession,
     importSession,
     saveTestPoint,
-    deleteTestPoint,
     updateTestPointData,
     deleteTmdeDefinition,
     decrementTmdeQuantity,
@@ -318,7 +317,6 @@ function App() {
   const [isToolboxCollapsed, setIsToolboxCollapsed] = useState(false);
 
   const [initialSessionTab, setInitialSessionTab] = useState("details");
-  const [initialTmdeToEdit, setInitialTmdeToEdit] = useState(null);
   const [sessionImageCache, setSessionImageCache] = useState(new Map());
   const [riskResults, setRiskResults] = useState(null);
 
@@ -358,7 +356,7 @@ function App() {
   };
 
   // --- DELETE HELPER (Defined before useEffect so it can be used inside) ---
-  const handleDeleteTestPoint = (idOrIds, immediate = false) => {
+  const handleDeleteTestPoint = useCallback((idOrIds, immediate = false) => {
     const idsToDelete = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
 
     const performDelete = () => {
@@ -394,16 +392,16 @@ function App() {
       isIconConfirm: true,
       onConfirm: performDelete,
     });
-  };
+  }, [currentSessionData, updateSession, selectedTestPointId]);
 
   // --- COPY / PASTE HANDLERS (Moved up for scope access in useEffect) ---
-  const handleCopyPoint = (point) => {
+  const handleCopyPoint = useCallback((point) => {
     setClipboardPoint(point);
     showToast("Measurement point copied to clipboard");
     setContextMenu(null);
-  };
+  }, []);
 
-  const handlePastePoint = (targetUutId, targetAreaId, targetRange = null) => {
+  const handlePastePoint = useCallback((targetUutId, targetAreaId, targetRange = null) => {
     if (!clipboardPoint) return;
 
     const targetUut = currentSessionData.uuts.find(u => u.id === targetUutId);
@@ -441,7 +439,7 @@ function App() {
     showToast("Measurement point pasted successfully");
     setContextMenu(null);
     setSelectedTestPointContextUutId(targetUutId);
-  };
+  }, [clipboardPoint, currentSessionData, saveTestPoint, setSelectedTestPointContextUutId]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -568,7 +566,7 @@ function App() {
     }
   };
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = () => {
     // Optional cleanup
   };
 
@@ -640,7 +638,7 @@ function App() {
     setSelectedTablePointIds([]);
   };
 
-  const handleSelectUut = (uutId, areaId, uutObject) => {
+  const handleSelectUut = (uutId, areaId) => {
     setSelectedUutId(uutId);
     setSelectedAreaId(areaId);
     setSelectedRangeContext(null); // Clear range
@@ -796,9 +794,8 @@ function App() {
     setAppNotification({ title: "Success", message: `Instrument "${instrument.model}" saved.` });
   };
 
-  const handleOpenSessionEditor = async (initialTab = "details", tmdeToEdit = null) => {
+  const handleOpenSessionEditor = async (initialTab = "details") => {
     setInitialSessionTab(initialTab);
-    setInitialTmdeToEdit(tmdeToEdit);
 
     if (currentSessionData) {
       setEditingSession(currentSessionData);
@@ -895,8 +892,7 @@ function App() {
     });
   };
 
-  const handleUpdateSpecificTestPoint = (testPointId, updatedData) => {
-  };
+  // const handleUpdateSpecificTestPoint = (testPointId, updatedData) => {}; (Removed unused function)
 
   const handleSaveToFile = async () => {
     if (!currentSessionData) return;
@@ -1146,8 +1142,9 @@ function App() {
         <InstrumentBuilderModal isOpen={isInstrumentBuilderOpen} onClose={() => setIsInstrumentBuilderOpen(false)} onSave={handleSaveInstrument} onDelete={deleteInstrument} instruments={instruments} />
         {confirmationModal && (<div className="modal-overlay" style={{ zIndex: 2001 }}> <div className="modal-content"> <button onClick={() => setConfirmationModal(null)} className="modal-close-button" > &times; </button> <h3>{confirmationModal.title}</h3> <p>{confirmationModal.message}</p> <div className="modal-actions" style={{ justifyContent: "center", gap: "15px" }} > <button className="button" style={{ backgroundColor: "var(--status-bad)" }} onClick={confirmationModal.onConfirm} > Delete </button> </div> </div> </div>)}
         <AddTestPointModal isOpen={isAddModalOpen || !!editingTestPoint} onClose={() => { setIsAddModalOpen(false); setEditingTestPoint(null); }} onSave={handleSaveTestPoint} initialData={editingTestPoint || (selectedAreaId ? { measurementAreaId: selectedAreaId } : null)} hasExistingPoints={currentTestPoints.length > 0} previousTestPointData={currentTestPoints.length > 0 ? currentTestPoints[currentTestPoints.length - 1] : null} />
-        <EditSessionModal isOpen={!!editingSession} onClose={() => { setEditingSession(null); setInitialTmdeToEdit(null); setInitialSessionTab("details"); }} sessionData={editingSession} onSave={handleSessionChange} onSaveToFile={handleSaveToFile} handleLoadFromFile={handleLoadFromFile} initialSection={initialSessionTab} sessionImageCache={sessionImageCache} onImageCacheChange={setSessionImageCache} onRemoveImageFile={deleteSessionImage} instruments={instruments} />
-        <OverviewModal isOpen={isOverviewOpen} onClose={() => setIsOverviewOpen(false)} sessionData={currentSessionData} onUpdateTestPoint={handleUpdateSpecificTestPoint} onDeleteTmdeDefinition={handleDeleteTmdeDefinition} onDecrementTmdeQuantity={decrementTmdeQuantity} instruments={instruments} />
+        <EditSessionModal isOpen={!!editingSession} onClose={() => { setEditingSession(null); setInitialSessionTab("details"); }} sessionData={editingSession} onSave={handleSessionChange} onSaveToFile={handleSaveToFile} handleLoadFromFile={handleLoadFromFile} initialSection={initialSessionTab} sessionImageCache={sessionImageCache} onImageCacheChange={setSessionImageCache} onRemoveImageFile={deleteSessionImage} instruments={instruments} />
+
+        <OverviewModal isOpen={isOverviewOpen} onClose={() => setIsOverviewOpen(false)} sessionData={currentSessionData} onDeleteTmdeDefinition={handleDeleteTmdeDefinition} onDecrementTmdeQuantity={decrementTmdeQuantity} instruments={instruments} />
         {displayData && displayData.id && displayData.viewMode === 'point' && (<ToleranceToolModal isOpen={isToleranceModalOpen} onClose={() => setIsToleranceModalOpen(false)} onSave={(data) => { updateTestPointData(data); }} testPointData={displayData} />)}
         <FullBreakdownModal isOpen={!!breakdownPoint} breakdownData={breakdownPoint} onClose={() => setBreakdownPoint(null)} />
         <TestPointInfoModal isOpen={!!infoModalPoint} testPoint={infoModalPoint} onClose={() => setInfoModalPoint(null)} />
