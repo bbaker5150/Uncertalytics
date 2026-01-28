@@ -56,6 +56,7 @@ export const useTheme = () => React.useContext(ThemeContext);
 const SidebarPointItem = ({ 
   point, 
   isSelected, 
+  isTableSelected,
   onSelect, 
   onModalOpen, 
   onSave, 
@@ -113,7 +114,7 @@ const SidebarPointItem = ({
   return (
     <div
       draggable={!editingField}
-      className={`point-grid-item ${isSelected ? 'active' : ''}`}
+      className={`point-grid-item ${isSelected ? 'active' : ''} ${isTableSelected ? 'table-highlight' : ''}`}
       onClick={(e) => { 
         if(!editingField) {
           e.stopPropagation(); 
@@ -334,6 +335,9 @@ function App() {
   // Tracks which UUT "folder" was clicked in the sidebar to enforce context
   const [selectedTestPointContextUutId, setSelectedTestPointContextUutId] = useState(null);
 
+  // --- NEW: Table Selection State ---
+  const [selectedTablePointIds, setSelectedTablePointIds] = useState([]);
+
   // --- Global UUT Selection State ---
   const [currentUutSelection, setCurrentUutSelection] = useState([]);
 
@@ -390,6 +394,53 @@ function App() {
       isIconConfirm: true,
       onConfirm: performDelete,
     });
+  };
+
+  // --- COPY / PASTE HANDLERS (Moved up for scope access in useEffect) ---
+  const handleCopyPoint = (point) => {
+    setClipboardPoint(point);
+    showToast("Measurement point copied to clipboard");
+    setContextMenu(null);
+  };
+
+  const handlePastePoint = (targetUutId, targetAreaId, targetRange = null) => {
+    if (!clipboardPoint) return;
+
+    const targetUut = currentSessionData.uuts.find(u => u.id === targetUutId);
+
+    // FIX: Robust Area ID Lookup
+    let resolvedAreaId = targetAreaId;
+    if (!resolvedAreaId && targetUut) {
+         resolvedAreaId = targetUut.measurementAreaId;
+         // Fallback: Try finding area by name if ID is missing (common with imported legacy sessions)
+         if (!resolvedAreaId && targetUut.measurementArea) {
+             const area = currentSessionData.measurementAreas?.find(a => a.name === targetUut.measurementArea);
+             if (area) resolvedAreaId = area.id;
+         }
+    }
+
+    // Create new point object (Clean ID)
+    const newPointData = { ...clipboardPoint };
+    delete newPointData.id;
+
+    // Update Location with RESOLVED Area ID
+    newPointData.measurementAreaId = resolvedAreaId;
+    newPointData.associatedUutIds = [targetUutId];
+
+    // Resolve Tolerance
+    if (targetRange) {
+      newPointData.uutTolerance = targetRange;
+    } else if (targetUut) {
+      const val = newPointData.testPointInfo?.parameter?.value;
+      const unit = newPointData.testPointInfo?.parameter?.unit;
+      const matched = findMatchingRange(targetUut, val, unit);
+      newPointData.uutTolerance = matched || null;
+    }
+
+    saveTestPoint(newPointData, null);
+    showToast("Measurement point pasted successfully");
+    setContextMenu(null);
+    setSelectedTestPointContextUutId(targetUutId);
   };
 
   useEffect(() => {
@@ -502,53 +553,6 @@ function App() {
     return () => window.removeEventListener("wheel", handleZoom);
   }, []);
 
-  // --- COPY / PASTE HANDLERS ---
-  const handleCopyPoint = (point) => {
-    setClipboardPoint(point);
-    showToast("Measurement point copied to clipboard");
-    setContextMenu(null);
-  };
-
-  const handlePastePoint = (targetUutId, targetAreaId, targetRange = null) => {
-    if (!clipboardPoint) return;
-
-    const targetUut = currentSessionData.uuts.find(u => u.id === targetUutId);
-
-    // FIX: Robust Area ID Lookup
-    let resolvedAreaId = targetAreaId;
-    if (!resolvedAreaId && targetUut) {
-         resolvedAreaId = targetUut.measurementAreaId;
-         // Fallback: Try finding area by name if ID is missing (common with imported legacy sessions)
-         if (!resolvedAreaId && targetUut.measurementArea) {
-             const area = currentSessionData.measurementAreas?.find(a => a.name === targetUut.measurementArea);
-             if (area) resolvedAreaId = area.id;
-         }
-    }
-
-    // Create new point object (Clean ID)
-    const newPointData = { ...clipboardPoint };
-    delete newPointData.id;
-
-    // Update Location with RESOLVED Area ID
-    newPointData.measurementAreaId = resolvedAreaId;
-    newPointData.associatedUutIds = [targetUutId];
-
-    // Resolve Tolerance
-    if (targetRange) {
-      newPointData.uutTolerance = targetRange;
-    } else if (targetUut) {
-      const val = newPointData.testPointInfo?.parameter?.value;
-      const unit = newPointData.testPointInfo?.parameter?.unit;
-      const matched = findMatchingRange(targetUut, val, unit);
-      newPointData.uutTolerance = matched || null;
-    }
-
-    saveTestPoint(newPointData, null);
-    showToast("Measurement point pasted successfully");
-    setContextMenu(null);
-    setSelectedTestPointContextUutId(targetUutId);
-  };
-
   // --- DRAG AND DROP HANDLERS (AUTO-MOVE) ---
 
   const handleDragStart = (e, pointId) => {
@@ -622,6 +626,7 @@ function App() {
     setVirtualPoint(null);
     setSelectedTestPointContextUutId(null);
     setCurrentUutSelection([]);
+    setSelectedTablePointIds([]);
   };
 
   const handleSelectArea = (areaId) => {
@@ -632,6 +637,7 @@ function App() {
     setSelectedTestPointContextUutId(null);
     setCurrentUutSelection([]);
     setVirtualPoint(null);
+    setSelectedTablePointIds([]);
   };
 
   const handleSelectUut = (uutId, areaId, uutObject) => {
@@ -642,6 +648,7 @@ function App() {
     setSelectedTestPointContextUutId(null);
     setCurrentUutSelection([uutId]);
     setVirtualPoint(null);
+    setSelectedTablePointIds([]);
   };
 
   // --- NEW: Handle Range Selection ---
@@ -651,6 +658,7 @@ function App() {
     setSelectedTestPointId(null);
     setVirtualPoint(null);
     setSelectedAreaId(areaId);
+    setSelectedTablePointIds([]);
 
     // Auto-select the UUT so the "Add Point" button knows what to link to
     setCurrentUutSelection([uutId]);
@@ -666,6 +674,7 @@ function App() {
     setVirtualPoint(null);
     setSelectedTestPointContextUutId(contextUutId);
     setCurrentUutSelection([]);
+    setSelectedTablePointIds([]);
   };
 
   const handleAddNewSession = () => {
@@ -1343,6 +1352,7 @@ function App() {
                                             key={tp.id}
                                             point={tp}
                                             isSelected={isSelected}
+                                            isTableSelected={selectedTablePointIds.includes(tp.id)}
                                             onSelect={() => handleSelectTestPoint(tp.id, group.id)}
                                             onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
                                             onSave={handleInlinePointUpdate}
@@ -1379,6 +1389,7 @@ function App() {
                                         key={tp.id}
                                         point={tp}
                                         isSelected={selectedTestPointId === tp.id}
+                                        isTableSelected={selectedTablePointIds.includes(tp.id)}
                                         onSelect={() => handleSelectTestPoint(tp.id, group.id)}
                                         onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
                                         onSave={handleInlinePointUpdate}
@@ -1415,6 +1426,7 @@ function App() {
                                 key={tp.id}
                                 point={tp}
                                 isSelected={selectedTestPointId === tp.id}
+                                isTableSelected={selectedTablePointIds.includes(tp.id)}
                                 onSelect={() => handleSelectTestPoint(tp.id, null)}
                                 onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
                                 onSave={handleInlinePointUpdate}
@@ -1468,6 +1480,8 @@ function App() {
                     setCurrentUutSelection={setCurrentUutSelection}
                     activeRangeIndices={activeRangeIndices}
                     onRangeSelectionChange={setActiveRangeIndices}
+                    selectedTablePointIds={selectedTablePointIds}
+                    setSelectedTablePointIds={setSelectedTablePointIds}
                   />
                 </TestPointDetailView>
               ) : (

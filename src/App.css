@@ -7614,3 +7614,20 @@ body.theme-cyberpunk .area-header-sticky {
   white-space: nowrap;
   font-size: 0.8rem;
 }
+
+/* =================================================================== */
+/* 99. FEATURE OVERRIDES                                              */
+/* =================================================================== */
+
+/* Table Selection Highlight for Sidebar Items */
+.point-grid-item.table-highlight:not(.active) {
+    background-color: var(--primary-color-light);
+    border-left: 2px dashed var(--primary-color);
+}
+
+/* Ensure the value text is slightly bolder to indicate relation */
+.point-grid-item.table-highlight:not(.active) .point-value,
+.point-grid-item.table-highlight:not(.active) .point-section {
+    font-weight: 600;
+    color: var(--primary-color);
+}

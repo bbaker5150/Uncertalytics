@@ -495,15 +495,14 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
 
 
 // --- UPDATED: SUMMARY DASHBOARD ---
-const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint, rangeData, uutId, onSaveTestPoint, onEditSession }) => {
+const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint, rangeData, uutId, onSaveTestPoint, onEditSession, selectedPointIds, setSelectedPointIds }) => {
     
     // Local Selection State for UUTs in the table
+    // (Removed)
     const [selectedUutIds, setSelectedUutIds] = useState([]);
     const [localRangeIndices, setLocalRangeIndices] = useState({});
     
-    // Batch Deletion Selection State
-    // Batch Deletion Selection State
-    const [selectedPointIds, setSelectedPointIds] = useState([]);
+    // (Local Selection State Removed - Lifted to Parent)
     
     // Sorting State
     const [sortConfigs, setSortConfigs] = useState({});
@@ -624,7 +623,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
             onDeleteTestPoint(selectedPointIds, false); 
             setSelectedPointIds([]);
         }
-    }, [selectedPointIds, onDeleteTestPoint]);
+    }, [selectedPointIds, onDeleteTestPoint, setSelectedPointIds]);
 
     // NEW: Handle Row Selection via Click and Modifiers (Ctrl/Meta)
     const handleRowClick = (e, id) => {
@@ -2157,6 +2156,8 @@ const UncertaintyPanel = (props) => {
                 onDeleteTestPoint={onDeleteTestPoint}
                 onSaveTestPoint={onSaveTestPoint}
                 onEditSession={props.handleOpenSessionEditor}
+                selectedPointIds={props.selectedTablePointIds || []}
+                setSelectedPointIds={props.setSelectedTablePointIds || (() => {})}
             />
         );
     }

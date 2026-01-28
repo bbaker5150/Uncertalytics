@@ -58,8 +58,14 @@ function Analysis({
   // --- Global UUT Selection Props ---
   currentUutSelection = [],
   setCurrentUutSelection,
+
+  // --- Range Selection ---
   activeRangeIndices,
   onRangeSelectionChange,
+
+  // --- Table Selection ---
+  selectedTablePointIds = [],
+  setSelectedTablePointIds = () => {}
 }) {
   // --- 1. Local UI State ---
   const [analysisMode, setAnalysisMode] = useState("uncertaintyTool");
@@ -540,6 +546,10 @@ function Analysis({
             // --- NEW: Pass the save handler for Inline Creation ---
             onSaveTestPoint={handleSaveTestPointInfo} // Using the local wrapper to ensure consistency
             
+            // --- Table Selection for Sidebar Highlighting ---
+            selectedTablePointIds={selectedTablePointIds}
+            setSelectedTablePointIds={setSelectedTablePointIds}
+
             // Passing empty/null props for detailed view specifics to avoid proptype warnings
             calcResults={null}
             calculationError={null}
