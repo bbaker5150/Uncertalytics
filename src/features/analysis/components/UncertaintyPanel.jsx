@@ -19,6 +19,7 @@ import {
 // Sub-components
 import UncertaintyBudgetTable from "./UncertaintyBudgetTable";
 import PercentageBarGraph from "./ContributionPlot";
+import AnalysisHeader from "./AnalysisHeader";
 
 // Utils
 import {
@@ -350,13 +351,12 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
 
     return (
         <tr style={{ 
-            borderBottom: '2px solid var(--primary-color)', 
-            backgroundColor: 'rgba(var(--primary-rgb), 0.05)',
-            opacity: isDisabled ? 0.7 : 1,
-            transition: 'opacity 0.2s ease'
+            borderBottom: '1px solid var(--border-color)', 
+            backgroundColor: 'var(--background-secondary)',
+            transition: 'background-color 0.2s ease'
         }}>
             {/* Section Input */}
-            <td style={{ padding: '8px' }}>
+            <td className="cell-section" style={{ padding: '4px 8px' }}>
                 <input 
                     type="text" 
                     placeholder="Section"
@@ -364,22 +364,49 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                     onChange={e => setSection(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={isDisabled}
-                    className="quick-add-input"
+                    className="quick-add-input organic-input"
+                    style={{ 
+                        width: '100%', 
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '6px 0',
+                        fontSize: '0.9rem',
+                        color: 'var(--text-color)',
+                        outline: 'none',
+                        borderBottom: '1px solid transparent',
+                        transition: 'border-color 0.2s'
+                    }}
+                    onFocus={(e) => e.target.style.borderBottom = '1px solid var(--primary-color)'}
+                    onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
                 />
             </td>
-            <td style={{ padding: '8px' }}>
+            <td className="cell-value" style={{ padding: '4px 8px' }}>
                 <input 
                     type="text" 
-                    placeholder={isDisabled ? "Select a UUT first..." : "Enter Value..."}
+                    placeholder={isDisabled ? "Select UUT..." : "Value..."}
                     value={val}
                     onChange={e => setVal(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={isDisabled}
-                    className="quick-add-input"
+                    className="quick-add-input organic-input"
                     title={isDisabled ? "Select a UUT from the list on the left to enable quick add" : "Enter value and press Enter"}
+                    style={{ 
+                        width: '100%', 
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '6px 0',
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        color: 'var(--primary-color)',
+                        outline: 'none',
+                        borderBottom: '1px solid transparent',
+                        transition: 'border-color 0.2s'
+                    }}
+                    onFocus={(e) => e.target.style.borderBottom = '1px solid var(--primary-color)'}
+                    onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
                 />
             </td>
-            <td style={{ padding: '8px' }}>
+            <td className="cell-unit" style={{ padding: '4px 8px' }}>
                 <input 
                     type="text" 
                     placeholder="Unit" 
@@ -387,42 +414,79 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                     onChange={e => setUnit(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={isDisabled}
-                    style={{ cursor: isDisabled ? 'not-allowed' : 'text' }} 
-                    className="quick-add-input"
+                    className="quick-add-input organic-input"
+                    style={{ 
+                        width: '100%', 
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '6px 0',
+                        fontSize: '0.9rem',
+                        color: 'var(--text-color-muted)',
+                        outline: 'none',
+                        borderBottom: '1px solid transparent',
+                        transition: 'border-color 0.2s'
+                    }}
+                    onFocus={(e) => e.target.style.borderBottom = '1px solid var(--primary-color)'}
+                    onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
                 />
             </td>
             {/* Live Preview Columns */}
-            <td style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)', fontStyle: 'italic', paddingLeft:'8px' }}>
+            <td className="cell-tolerance" style={{ padding: '4px 8px', verticalAlign: 'middle', fontSize: '0.85rem', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>
                 {previewMetrics.display}
             </td>
-            <td style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)', paddingLeft:'8px' }}>
-                {previewMetrics.limits.low !== '-' ? (
-                    <>
-                        <span style={{ opacity: 0.7 }}>{previewMetrics.limits.low}</span>
-                        <span style={{ margin: '0 4px', fontSize: '0.75rem' }}>→</span>
-                        <span style={{ opacity: 0.7 }}>{previewMetrics.limits.high}</span>
-                    </>
-                ) : '-'}
+            <td className="cell-limit" style={{ padding: '4px 8px', verticalAlign: 'middle', fontSize: '0.85rem', color: 'var(--text-color-muted)', position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>
+                        {previewMetrics.limits.low !== '-' ? (
+                            <>
+                                <span style={{ opacity: 0.7 }}>{previewMetrics.limits.low}</span>
+                                <span style={{ margin: '0 4px', fontSize: '0.75rem' }}>→</span>
+                                <span style={{ opacity: 0.7 }}>{previewMetrics.limits.high}</span>
+                            </>
+                        ) : '-'}
+                    </span>
+                    
+                    {/* Action Button (If Area Hidden) */}
+                    {!showAreaColumn && !isDisabled && val && (
+                        <button 
+                            onClick={handleSave}
+                            className="btn-icon-only"
+                            style={{
+                                color: 'var(--primary-color)', 
+                                background: 'transparent', 
+                                border: 'none', 
+                                cursor: 'pointer',
+                                marginLeft: '8px'
+                            }}
+                            title="Save Point (Enter)"
+                        >
+                            <FontAwesomeIcon icon={faArrowRight} />
+                        </button>
+                    )}
+                </div>
             </td>
-            {showAreaColumn && <td></td>}
             
-            {/* Action Button: Floating at end of row if needed, or we rely on Enter. 
-                We can add a small button in the last cell for better UX. */}
-             {!isDisabled && val && (
-                <td style={{ width: '40px', textAlign: 'center' }}>
-                    <button 
-                        onClick={handleSave}
-                        className="btn-icon-only"
-                        style={{
-                            color: 'var(--primary-color)', 
-                            background: 'transparent', 
-                            border: 'none', 
-                            cursor: 'pointer'
-                        }}
-                        title="Save Point (Enter)"
-                    >
-                        <FontAwesomeIcon icon={faArrowRight} />
-                    </button>
+            {showAreaColumn && (
+                <td className="cell-area">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                         <span>{/* Area implies automatic or selected */}</span>
+                         {/* Action Button (If Area Shown) */}
+                        {!isDisabled && val && (
+                            <button 
+                                onClick={handleSave}
+                                className="btn-icon-only"
+                                style={{
+                                    color: 'var(--primary-color)', 
+                                    background: 'transparent', 
+                                    border: 'none', 
+                                    cursor: 'pointer'
+                                }}
+                                title="Save Point (Enter)"
+                            >
+                                <FontAwesomeIcon icon={faArrowRight} />
+                            </button>
+                        )}
+                    </div>
                 </td>
             )}
         </tr>
@@ -431,7 +495,7 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
 
 
 // --- UPDATED: SUMMARY DASHBOARD ---
-const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint, rangeData, uutId, onSaveTestPoint }) => {
+const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint, rangeData, uutId, onSaveTestPoint, onEditSession }) => {
     
     // Local Selection State for UUTs in the table
     const [selectedUutIds, setSelectedUutIds] = useState([]);
@@ -627,6 +691,14 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
     return (
         <div className="configuration-panel" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             
+            {/* Session Header (Only in Session View) */}
+            {viewMode === 'session' && (
+                <AnalysisHeader 
+                    sessionData={sessionData} 
+                    onEditSession={onEditSession} 
+                />
+            )}
+
             {/* Header */}
             <div style={{ paddingBottom: '10px', borderBottom: '1px solid var(--border-color)' }}>
                 <h2 style={{ margin: 0, fontSize: '1.4rem' }}>
@@ -649,11 +721,22 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                              <span style={{fontSize: '0.8rem', color: 'var(--primary-color)', fontWeight: 600}}>{selectedUutIds.length} Selected</span>
                         )}
                     </div>
-                    <div className="panel-table-container">
-                        <table className="instrument-summary-table compact-table" style={{ margin: 0, border: 'none', boxShadow: 'none' }}>
-                            <thead>
+                    <div className="panel-table-container" style={{ overflowX: 'auto', borderRadius: '8px', border: 'none' }}>
+                        <table className="instrument-summary-table compact-table" style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
+                            <colgroup>
+                                <col style={{ width: '4%' }} />
+                                <col style={{ width: showAreaColumn ? '30%' : '38%' }} />
+                                <col style={{ width: showAreaColumn ? '26%' : '30%' }} />
+                                <col style={{ width: showAreaColumn ? '25%' : '28%' }} />
+                                {showAreaColumn && <col style={{ width: '15%' }} />}
+                            </colgroup>
+                            <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                                 <tr>
-                                    <th style={{textAlign:'center'}}>Select</th>
+                                    <th className="cell-compact" style={{ textAlign: 'center' }}>
+                                        <div style={{width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                           {/* Header Checkbox could go here */}
+                                        </div>
+                                    </th>
                                     <th>Description</th>
                                     <th>Range</th>
                                     <th>Specification</th>
@@ -736,7 +819,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
 
                                         return (
                                             <tr key={uut.id} className={isChecked ? "selected-row" : ""} style={{ backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent' }}>
-                                                <td className="cell-compact">
+                                                <td className="cell-compact" style={{ textAlign: 'center' }}>
                                                     <input 
                                                         type="checkbox" 
                                                         checked={isChecked} 
@@ -744,12 +827,25 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                         style={{ cursor: 'pointer', width: '16px', height: '16px' }} 
                                                     />
                                                 </td>
-                                                <td className="cell-description" style={{ fontWeight: 600, color: isChecked ? 'var(--primary-color)' : 'var(--text-color)' }} title={uut.description}>{uut.description}</td>
+                                                <td className="cell-description" style={{ 
+                                                    fontWeight: 600, 
+                                                    color: isChecked ? 'var(--primary-color)' : 'var(--text-color)',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                    maxWidth: 0
+                                                }} title={uut.description}>
+                                                    {uut.description}
+                                                </td>
                                                 <td className="cell-value">
                                                     {hasMultipleRanges ? (
                                                         <select
-                                                            className="mini-select"
-                                                            style={{ width: '100%' }}
+                                                            className="session-selector"
+                                                            style={{ 
+                                                                width: '100%', 
+                                                                padding: '4px 8px',
+                                                                fontSize: '0.85rem'
+                                                            }}
                                                             value={activeIndex}
                                                             onChange={(e) => setLocalRangeIndices(prev => ({...prev, [uut.id]: parseInt(e.target.value)}))}
                                                         >
@@ -773,9 +869,23 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                        </span>
                                                     )}
                                                 </td>
-                                                <td className="cell-tolerance" title={specSummary}>{specSummary}</td>
+                                                <td className="cell-tolerance" style={{
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                    maxWidth: 0
+                                                }} title={specSummary}>
+                                                    {specSummary}
+                                                </td>
                                                 {showAreaColumn && (
-                                                    <td className="cell-area" title={areaName}><span style={{ color: areaColor }}>{areaName}</span></td>
+                                                    <td className="cell-area" style={{
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                        maxWidth: 0
+                                                    }} title={areaName}>
+                                                        <span style={{ color: areaColor }}>{areaName}</span>
+                                                    </td>
                                                 )}
                                             </tr>
                                         )
@@ -1368,13 +1478,13 @@ function DetailedView({
 
                         <div style={cardStyle}>
                             <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '300px' }}>
-                                <table className="instrument-summary-table" style={{ width: '100%' }}>
+                                <table className="instrument-summary-table" style={{ width: '100%', minWidth: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                                     <colgroup>
                                         <col style={{ width: '40%' }} />
                                         <col style={{ width: '30%' }} />
                                         <col style={{ width: '30%' }} />
                                     </colgroup>
-                                    <thead>
+                                    <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                                         <tr>
                                             <th>Description</th>
                                             <th>Range</th>
@@ -1403,16 +1513,20 @@ function DetailedView({
                                                         borderLeft: isLinked ? '4px solid var(--primary-color)' : '4px solid transparent'
                                                     }}>
                                                         {/* Removed Checkbox Column */}
-                                                        <td className="no-hover-cell">
-                                                            <div style={{ fontWeight: 600, color: isLinked ? 'var(--primary-color)' : 'var(--text-color)' }}>
+                                                        <td className="no-hover-cell" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }} title={uut.description}>
+                                                            <div style={{ fontWeight: 600, color: isLinked ? 'var(--primary-color)' : 'var(--text-color)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                 {uut.description}
                                                             </div>
                                                         </td>
                                                         <td>
                                                             {hasMultipleRanges ? (
                                                                 <select
-                                                                    className="mini-select"
-                                                                    style={{ width: '100%' }}
+                                                                    className="session-selector" 
+                                                                    style={{ 
+                                                                        width: '100%',
+                                                                        padding: '4px 8px',
+                                                                        fontSize: '0.85rem'
+                                                                    }}
                                                                     value={activeIndex}
                                                                     onChange={(e) => handleRangeChange(uut.id, parseInt(e.target.value, 10), ranges)}
                                                                 >
@@ -1447,7 +1561,7 @@ function DetailedView({
                                                                 </span>
                                                             )}
                                                         </td>
-                                                        <td className="no-hover-cell">
+                                                        <td className="no-hover-cell" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }} title={specSummary}>
                                                             <span style={{ fontSize: '0.85rem' }}>
                                                                 {specSummary}
                                                             </span>
@@ -1790,17 +1904,8 @@ function DetailedView({
                     <div>
                         <h3 style={sectionTitleStyle}>Measurement Standards (TMDE)</h3>
                         <div style={cardStyle}>
-                            <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '400px' }}>
-                                <table className="instrument-summary-table" style={{ width: '100%' }}>
-                                    <colgroup>
-                                        <col style={{ width: '5%' }} />
-                                        <col style={{ width: '25%' }} />
-                                        {isDerived && <col style={{ width: '10%' }} />}
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '10%' }} />
-                                    </colgroup>
+                            <div className="panel-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1 }}>
+                                <table className="instrument-summary-table compact-table" style={{ width: '100%' }}>
                                     <thead>
                                         <tr>
                                             <th style={{ textAlign: 'center' }}>Use</th>
@@ -1849,7 +1954,7 @@ function DetailedView({
                                                                     style={{ cursor: 'pointer' }}
                                                                 />
                                                             </td>
-                                                            <td style={{ paddingLeft: '10px' }}>
+                                                            <td className="cell-description" style={{ paddingLeft: '10px' }}>
                                                                 <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
                                                                     {masterTmde.name || masterTmde.description}
                                                                 </div>
@@ -1983,6 +2088,7 @@ const UncertaintyPanel = (props) => {
                 onDefineTestPoint={onDefineTestPoint}
                 onDeleteTestPoint={onDeleteTestPoint}
                 onSaveTestPoint={onSaveTestPoint}
+                onEditSession={props.handleOpenSessionEditor}
             />
         );
     }
