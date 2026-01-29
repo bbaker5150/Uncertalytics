@@ -1,11 +1,6 @@
 /**
  * * This utility file contains helper functions for breaking down tolerance objects
- * into individual uncertainty budget components (e.g., Reading, Range, Floor, Resolution).
- * * It isolates the "Business Logic" of how a tolerance specification (Type B)
- * translates into a row in the Uncertainty Budget Table.
- * * Exports:
- * - oldErrorDistributions: Array of standard distribution divisors (Rectangular, Normal, etc.).
- * - getBudgetComponentsFromTolerance: The core function that parses a tolerance object.
+ * * into individual uncertainty budget components.
  */
 
 import { 
@@ -29,27 +24,56 @@ export const oldErrorDistributions = [
 ];
 
 export const getBudgetComponentsFromTolerance = (
-  toleranceObject,
+  rawToleranceObject,
   referenceMeasurementPoint
 ) => {
+
+  // --- 1. STRUCTURE NORMALIZATION & DATA PRESERVATION ---
+  let toleranceObject = rawToleranceObject;
+  
+  // Handle Array wrapper
+  if (Array.isArray(toleranceObject)) {
+    toleranceObject = toleranceObject[0];
+  }
+
+  // **CRITICAL FIX**: Capture Resolution from the PARENT object before we normalize 
+  // down to the inner 'tolerances' object.
+  let outerResolution = null;
+  let outerResolutionUnit = null;
+  
+  if (toleranceObject) {
+      // Check standard keys for resolution on the outer object
+      outerResolution = toleranceObject.resolution || toleranceObject.measuringResolution;
+      outerResolutionUnit = toleranceObject.resolutionUnit || toleranceObject.measuringResolutionUnit;
+  }
+
+  // Normalize: If specs are nested in 'tolerance' or 'tolerances', dive in.
+  if (toleranceObject && typeof toleranceObject === 'object') {
+     if (toleranceObject.tolerance) {
+        toleranceObject = toleranceObject.tolerance;
+     } else if (toleranceObject.tolerances) {
+        toleranceObject = toleranceObject.tolerances;
+     }
+  }
+
+  const hasValidValue = referenceMeasurementPoint && 
+                        referenceMeasurementPoint.value !== null && 
+                        referenceMeasurementPoint.value !== undefined && 
+                        referenceMeasurementPoint.value !== "";
 
   if (
     !toleranceObject ||
     !referenceMeasurementPoint ||
-    !referenceMeasurementPoint.value ||
+    !hasValidValue ||
     !referenceMeasurementPoint.unit
   ) {
-    if (toleranceObject?.name) console.groupEnd();
     return [];
   }
 
   const budgetComponents = [];
   const nominalValue = parseFloat(referenceMeasurementPoint.value);
-  
   const nominalUnit = referenceMeasurementPoint.unit;
-  const prefix =
-    toleranceObject.name ||
-    (toleranceObject.measuringResolution ? "UUT" : "TMDE");
+  const prefix = toleranceObject.name || (outerResolution ? "UUT" : "TMDE");
 
   const processComponent = (
     tolComp,
@@ -63,31 +87,44 @@ export const getBudgetComponentsFromTolerance = (
     // Check if tolComp is malformed
     if (tolComp && typeof tolComp !== 'object' && !isResolution) return;
 
-    // Checking values
-    if (!isResolution && tolComp && !tolComp.distribution) {
-         // Fallback if needed, logic handled in divisor
-    }
-
     const distributionDivisor = isResolution
       ? 1.732
       : parseFloat(tolComp.distribution) || 1.732;
+    
     const distributionLabel = isResolution
       ? "Rectangular"
-      : errorDistributions.find((d) => d.value === String(tolComp.distribution))
-          ?.label || "Rectangular";
+      : errorDistributions.find((d) => d.value === String(tolComp.distribution))?.label || "Rectangular";
 
-    let halfSpanPPM, u_i_native, unit_native;
+    let halfSpanPPM = NaN; 
+    let u_i_native = NaN;
+    let unit_native = nominalUnit;
 
     if (isResolution) {
       const value = parseFloat(tolComp);
       if (isNaN(value) || value === 0) return;
-      const unit = toleranceObject.measuringResolutionUnit || nominalUnit;
-      halfSpanPPM = convertToPPM(value / 2, unit, nominalValue, nominalUnit);
+      
+      // Use override if available (from parent), else fall back to current object, else nominal
+      const unit = outerResolutionUnit || toleranceObject.measuringResolutionUnit || nominalUnit;
+      
+      // PPM Calc
+      if (nominalValue !== 0) {
+        halfSpanPPM = convertToPPM(value / 2, unit, nominalValue, nominalUnit);
+      }
+      
       u_i_native = value / 2 / distributionDivisor;
       unit_native = unit;
+
     } else {
       const high = parseFloat(tolComp?.high || 0);
-      const low = parseFloat(tolComp?.low || -high);
+      let low = parseFloat(tolComp?.low || -high);
+
+      // --- FIX: HANDLE POSITIVE LOW VALUES ---
+      // If symmetric, or if High/Low are identical positive numbers, flip Low to negative.
+      if (tolComp.symmetric && low > 0) {
+          low = -Math.abs(low);
+      } else if (low > 0 && high > 0 && Math.abs(high - low) < 1e-9) {
+          low = -Math.abs(low);
+      }
       
       const halfSpan = (high - low) / 2;
 
@@ -118,17 +155,28 @@ export const getBudgetComponentsFromTolerance = (
         nominalUnit
       );
       
-      if (isNaN(halfSpanPPM)) return;
-
       u_i_native = valueInNominalUnits / distributionDivisor;
       unit_native = nominalUnit;
     }
 
-    if (!isNaN(halfSpanPPM)) {
-      const u_i = Math.abs(halfSpanPPM / distributionDivisor);
+    // --- LOGIC FIX: ALLOW COMPONENT IF PPM *OR* ABSOLUTE IS VALID ---
+    const canUsePPM = !isNaN(halfSpanPPM);
+    const canUseAbsolute = !isNaN(u_i_native);
+
+    if (canUsePPM || canUseAbsolute) {
       
-      // GENERATE UNIQUE, DETERMINISTIC ID
-      // Uses ID + name + index logic to ensure stability
+      let finalValue;
+      let isBaseUnitValue = false;
+
+      if (canUsePPM) {
+        finalValue = Math.abs(halfSpanPPM / distributionDivisor);
+      } else {
+        // Fallback: Use Absolute Base Value if PPM failed (e.g. 0V nominal)
+        const u_i_base = unitSystem.toBaseUnit(u_i_native, unit_native);
+        finalValue = u_i_base;
+        isBaseUnitValue = true;
+      }
+      
       const uniqueSuffix = toleranceObject.id ? `_${toleranceObject.id}` : '';
       const cleanName = name.toLowerCase().replace(/\s/g, "");
       const componentId = `${prefix}_${cleanName}${uniqueSuffix}`;
@@ -137,8 +185,9 @@ export const getBudgetComponentsFromTolerance = (
         id: componentId,
         name: `${prefix} - ${name}`,
         type: "B",
-        value: u_i,
-        value_native: u_i_native,
+        value: finalValue,              
+        isBaseUnitValue: isBaseUnitValue, 
+        value_native: u_i_native,       
         unit_native: unit_native,
         dof: Infinity,
         isCore: true,
@@ -147,63 +196,65 @@ export const getBudgetComponentsFromTolerance = (
     }
   };
   
+  // Use normalized 'toleranceObject' for reading/floor
   processComponent(toleranceObject.reading, "Reading", nominalValue);
   processComponent(toleranceObject.readings_iv, "Readings (IV)", nominalValue);
 
   processComponent(
     toleranceObject.range,
     "Range",
-    // Use the max range value (Full Scale) as the base for % calculations
     parseFloat(toleranceObject.max) || parseFloat(toleranceObject.range?.value)
   );
   processComponent(toleranceObject.floor, "Floor", nominalValue);
 
   if (toleranceObject.db && !isNaN(parseFloat(toleranceObject.db.high))) {
-    // ... (dB calculation logic same as before, simplifying ID gen)
-    const highDb = parseFloat(toleranceObject.db.high || 0);
-    const lowDb = parseFloat(toleranceObject.db.low || -highDb);
-    const dbTol = (highDb - lowDb) / 2;
-    if (dbTol > 0) {
-       // ... existing math logic ...
-      const dbMult = parseFloat(toleranceObject.db.multiplier) || 20;
-      const dbRef = parseFloat(toleranceObject.db.ref) || 1;
-      const distributionDivisor = parseFloat(toleranceObject.db.distribution) || 1.732;
-      const distributionLabel = errorDistributions.find(d => d.value === String(toleranceObject.db.distribution))?.label || "Rectangular";
-      
-      const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
-      const centerDb = (highDb + lowDb) / 2;
-      const nominalAtCenterTol = dbRef * Math.pow(10, (dbNominal + centerDb) / dbMult);
-      const upperValue = dbRef * Math.pow(10, (dbNominal + highDb) / dbMult);
-      const absoluteDeviation = Math.abs(upperValue - nominalAtCenterTol);
+     const highDb = parseFloat(toleranceObject.db.high || 0);
+     const lowDb = parseFloat(toleranceObject.db.low || -highDb);
+     const dbTol = (highDb - lowDb) / 2;
 
-      const ppm = convertToPPM(absoluteDeviation, nominalUnit, nominalValue, nominalUnit);
-      
-      if (!isNaN(ppm)) {
-        const u_i = Math.abs(ppm / distributionDivisor);
-        budgetComponents.push({
-          id: `${prefix}_db_${toleranceObject.id || "manual"}`, // DETERMINISTIC ID
-          name: `${prefix} - dB`,
-          type: "B",
-          value: u_i,
-          value_native: absoluteDeviation / distributionDivisor,
-          unit_native: nominalUnit,
-          dof: Infinity,
-          isCore: true,
-          distribution: distributionLabel,
-        });
-      }
-    }
+     if (dbTol > 0 && nominalValue > 0) {
+        const dbMult = parseFloat(toleranceObject.db.multiplier) || 20;
+        const dbRef = parseFloat(toleranceObject.db.ref) || 1;
+        const distributionDivisor = parseFloat(toleranceObject.db.distribution) || 1.732;
+        const distributionLabel = errorDistributions.find(d => d.value === String(toleranceObject.db.distribution))?.label || "Rectangular";
+        
+        const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
+        const centerDb = (highDb + lowDb) / 2;
+        const nominalAtCenterTol = dbRef * Math.pow(10, (dbNominal + centerDb) / dbMult);
+        const upperValue = dbRef * Math.pow(10, (dbNominal + highDb) / dbMult);
+        const absoluteDeviation = Math.abs(upperValue - nominalAtCenterTol);
+  
+        const ppm = convertToPPM(absoluteDeviation, nominalUnit, nominalValue, nominalUnit);
+        
+        if (!isNaN(ppm)) {
+          const u_i = Math.abs(ppm / distributionDivisor);
+          budgetComponents.push({
+            id: `${prefix}_db_${toleranceObject.id || "manual"}`,
+            name: `${prefix} - dB`,
+            type: "B",
+            value: u_i,
+            value_native: absoluteDeviation / distributionDivisor,
+            unit_native: nominalUnit,
+            dof: Infinity,
+            isCore: true,
+            distribution: distributionLabel,
+          });
+        }
+     }
   }
 
-  if (toleranceObject.measuringResolution) {
+  // --- RESOLUTION PROCESSING ---
+  // We use 'outerResolution' (captured from parent) OR check the inner object as fallback
+  const finalResolution = outerResolution || toleranceObject.measuringResolution;
+  
+  if (finalResolution) {
     processComponent(
-      toleranceObject.measuringResolution,
+      finalResolution,
       "Resolution",
       nominalValue,
       true
     );
   }
 
-  if (toleranceObject.name) console.groupEnd();
   return budgetComponents;
 };

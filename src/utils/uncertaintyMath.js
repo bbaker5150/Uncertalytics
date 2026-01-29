@@ -42,7 +42,7 @@ export const unitSystem = {
     W: { to_si: 1, quantity: "Power" },
     mW: { to_si: 1e-3, quantity: "Power" },
     kW: { to_si: 1e3, quantity: "Power" },
-    dBm: { to_si: 1, quantity: "Power" }, // Special handling in logic often required
+    dBm: { to_si: 1, quantity: "Power" },
 
     // --- Frequency ---
     Hz: { to_si: 1, quantity: "Frequency" },
@@ -80,21 +80,21 @@ export const unitSystem = {
     mg: { to_si: 1e-6, quantity: "Mass" },
     lb: { to_si: 0.453592, quantity: "Mass" },
     oz: { to_si: 0.0283495, quantity: "Mass" },
-    t: { to_si: 1000, quantity: "Mass" }, // Tonne
+    t: { to_si: 1000, quantity: "Mass" },
 
     // --- Angle ---
     rad: { to_si: 1, quantity: "Angle" },
-    deg: { to_si: 0.0174532925, quantity: "Angle" }, // pi/180
+    deg: { to_si: 0.0174532925, quantity: "Angle" },
     mrad: { to_si: 0.001, quantity: "Angle" },
-    arcmin: { to_si: 0.000290888, quantity: "Angle" }, // 1/60 deg
-    arcsec: { to_si: 4.84814e-6, quantity: "Angle" }, // 1/3600 deg
-    rev: { to_si: 6.2831853, quantity: "Angle" }, // 2*pi
+    arcmin: { to_si: 0.000290888, quantity: "Angle" },
+    arcsec: { to_si: 4.84814e-6, quantity: "Angle" },
+    rev: { to_si: 6.2831853, quantity: "Angle" },
 
     // --- Volume ---
     "m^3": { to_si: 1, quantity: "Volume" },
     L: { to_si: 0.001, quantity: "Volume" },
     mL: { to_si: 1e-6, quantity: "Volume" },
-    gal: { to_si: 0.00378541, quantity: "Volume" }, // US Gallon
+    gal: { to_si: 0.00378541, quantity: "Volume" },
     "fl-oz": { to_si: 2.95735e-5, quantity: "Volume" },
 
     // --- Velocity ---
@@ -102,11 +102,11 @@ export const unitSystem = {
     "km/h": { to_si: 0.277778, quantity: "Velocity" },
     mph: { to_si: 0.44704, quantity: "Velocity" },
     "ft/s": { to_si: 0.3048, quantity: "Velocity" },
-    kn: { to_si: 0.514444, quantity: "Velocity" }, // Knot
+    kn: { to_si: 0.514444, quantity: "Velocity" },
 
     // --- Acceleration ---
     "m/s^2": { to_si: 1, quantity: "Acceleration" },
-    G_accel: { to_si: 9.80665, quantity: "Acceleration" }, // Standard gravity (Renamed to avoid conflict with grams)
+    G_accel: { to_si: 9.80665, quantity: "Acceleration" },
     "ft/s^2": { to_si: 0.3048, quantity: "Acceleration" },
 
     // --- Pressure ---
@@ -119,11 +119,11 @@ export const unitSystem = {
     psi: { to_si: 6894.76, quantity: "Pressure" },
     psig: { to_si: 6894.76, quantity: "Pressure" },
     psia: { to_si: 6894.76, quantity: "Pressure" },
-    inHg: { to_si: 3386.39, quantity: "Pressure" }, // at 0 °C
+    inHg: { to_si: 3386.39, quantity: "Pressure" },
     mmHg: { to_si: 133.322, quantity: "Pressure" },
     torr: { to_si: 133.322, quantity: "Pressure" },
     atm: { to_si: 101325, quantity: "Pressure" },
-    inH2O: { to_si: 249.089, quantity: "Pressure" }, // at 4 °C
+    inH2O: { to_si: 249.089, quantity: "Pressure" },
 
     // --- Force ---
     N: { to_si: 1, quantity: "Force" },
@@ -144,8 +144,8 @@ export const unitSystem = {
     // --- Flow Rate ---
     "m^3/s": { to_si: 1, quantity: "Flow" },
     "L/min": { to_si: 1.66667e-5, quantity: "Flow" },
-    cfm: { to_si: 0.000471947, quantity: "Flow" }, // Cubic feet per minute
-    gpm: { to_si: 6.30902e-5, quantity: "Flow" }, // US Gallons per minute
+    cfm: { to_si: 0.000471947, quantity: "Flow" },
+    gpm: { to_si: 6.30902e-5, quantity: "Flow" },
 
     // --- Energy ---
     J: { to_si: 1, quantity: "Energy" },
@@ -157,13 +157,13 @@ export const unitSystem = {
 
     // --- Light / Illuminance ---
     lx: { to_si: 1, quantity: "Illuminance" },
-    fc: { to_si: 10.7639, quantity: "Illuminance" }, // Foot-candle
+    fc: { to_si: 10.7639, quantity: "Illuminance" },
 
     // --- Magnetic Flux / Field ---
     T: { to_si: 1, quantity: "Magnetic Field" },
     mT: { to_si: 1e-3, quantity: "Magnetic Field" },
     uT: { to_si: 1e-6, quantity: "Magnetic Field" },
-    G: { to_si: 1e-4, quantity: "Magnetic Field" }, // Gauss
+    G: { to_si: 1e-4, quantity: "Magnetic Field" },
 
     // --- Generic / Ratio ---
     "%": { to_si: 0.01, quantity: "Ratio" },
@@ -171,26 +171,19 @@ export const unitSystem = {
     dB: { to_si: 1, quantity: "Ratio" },
 
     // --- Humidity & Moisture ---
-    "%RH": { to_si: 1, quantity: "Humidity" },      // Relative Humidity
-    "degC dp": { to_si: 1, quantity: "DewPoint" },   // Dew Point Temperature
+    "%RH": { to_si: 1, quantity: "Humidity" },
+    "degC dp": { to_si: 1, quantity: "DewPoint" },
     "degF dp": { to_si: 0.55555555, quantity: "DewPoint" },
-    "g/m^3": { to_si: 1, quantity: "AbsoluteHumidity" }, // Mass per volume
-    "g/kg": { to_si: 1, quantity: "SpecificHumidity" },  // Mass per mass of air
-    "ppmv": { to_si: 1e-6, quantity: "VolumeConcentration" }, // Parts per million by volume
-    "%v": { to_si: 0.01, quantity: "VolumeConcentration" },   // Percent moisture by volume
-
+    "g/m^3": { to_si: 1, quantity: "AbsoluteHumidity" },
+    "g/kg": { to_si: 1, quantity: "SpecificHumidity" },
+    "ppmv": { to_si: 1e-6, quantity: "VolumeConcentration" },
+    "%v": { to_si: 0.01, quantity: "VolumeConcentration" },
   },
 
-  /**
-   * Returns the quantity type (e.g., "Pressure", "Voltage") for a given unit.
-   */
   getQuantity(unit) {
     return this.units[unit]?.quantity || null;
   },
 
-  /**
-   * Returns a list of units compatible with the input unit based on quantity.
-   */
   getRelevantUnits: (baseUnit) => {
     const quantity = unitSystem.getQuantity(baseUnit);
     if (!quantity) return ["ppm", "%"];
@@ -200,17 +193,11 @@ export const unitSystem = {
     );
   },
 
-  /**
-   * Converts a value to its SI base unit representation.
-   */
   toBaseUnit: (value, unit) => {
     if (!unitSystem.units[unit]) return value;
     return value * unitSystem.units[unit].to_si;
   },
 
-  /**
-   * Converts a value from SI base unit to target unit.
-   */
   fromBaseUnit: (value, targetUnit) => {
     if (!unitSystem.units[targetUnit]) return value;
     return value / unitSystem.units[targetUnit].to_si;
@@ -422,16 +409,48 @@ export const getToleranceSummary = (toleranceData) => {
   return parts.filter((p) => p).join(" + ") || "Not Set";
 };
 
+// =================================================================================
+// UPDATED: calculateUncertaintyFromToleranceObject
+// Includes fixes for: Normalization, Positive Low Values, and Zero Nominal Value
+// =================================================================================
 export const calculateUncertaintyFromToleranceObject = (
-  toleranceObject,
+  rawToleranceObject,
   referenceMeasurementPoint,
   excludeResolution = false
 ) => {
+  
+  // 1. Structure Normalization
+  let toleranceObject = rawToleranceObject;
+  if (Array.isArray(toleranceObject)) {
+    toleranceObject = toleranceObject[0];
+  }
+
+  // Preserve outer resolution before diving deeper
+  let outerResolution = null;
+  let outerResolutionUnit = null;
+  if (toleranceObject) {
+    outerResolution = toleranceObject.resolution || toleranceObject.measuringResolution;
+    outerResolutionUnit = toleranceObject.resolutionUnit || toleranceObject.measuringResolutionUnit;
+  }
+
+  // Handle nested tolerance objects
+  if (toleranceObject && typeof toleranceObject === 'object') {
+     if (toleranceObject.tolerance) {
+        toleranceObject = toleranceObject.tolerance;
+     } else if (toleranceObject.tolerances) {
+        toleranceObject = toleranceObject.tolerances;
+     }
+  }
+
+  const hasValidValue = referenceMeasurementPoint && 
+                        referenceMeasurementPoint.value !== null && 
+                        referenceMeasurementPoint.value !== undefined && 
+                        referenceMeasurementPoint.value !== "";
 
   if (
     !toleranceObject ||
     !referenceMeasurementPoint ||
-    !referenceMeasurementPoint.value ||
+    !hasValidValue ||
     !referenceMeasurementPoint.unit
   ) {
     return { standardUncertainty: 0, totalToleranceForTar: 0, breakdown: [] };
@@ -451,7 +470,15 @@ export const calculateUncertaintyFromToleranceObject = (
       return;
 
     const high = parseFloat(tolComp.high || 0);
-    const low = parseFloat(tolComp.low || -high);
+    let low = parseFloat(tolComp.low || -high);
+    
+    // FIX: Handle positive low value (e.g. "low": 0.05) by forcing negative
+    if (tolComp.symmetric && low > 0) {
+        low = -Math.abs(low);
+    } else if (low > 0 && high > 0 && Math.abs(high - low) < 1e-9) {
+        low = -Math.abs(low);
+    }
+
     const halfSpan = (high - low) / 2;
 
     if (halfSpan === 0) return;
@@ -484,6 +511,8 @@ export const calculateUncertaintyFromToleranceObject = (
     }
 
     const rangeFsValue = parseFloat(toleranceObject.range?.value);
+    
+    // Attempt PPM conversion
     const ppm = convertToPPM(
       valueInNominalUnits,
       nominalUnit,
@@ -492,10 +521,31 @@ export const calculateUncertaintyFromToleranceObject = (
       rangeFsValue
     );
 
-    if (!isNaN(ppm)) {
-      const u_i = Math.abs(ppm / divisor);
-      totalLinearTolerance += Math.abs(ppm);
-      totalVariance += Math.pow(u_i, 2);
+    // FIX: Fallback for 0 Nominal Value (PPM is NaN)
+    // If PPM fails but we have a valid absolute value, use absolute value for calculations
+    const canUsePPM = !isNaN(ppm);
+    const u_i_absolute = valueInNominalUnits / divisor;
+    
+    if (canUsePPM || !isNaN(u_i_absolute)) {
+      const u_i = canUsePPM ? Math.abs(ppm / divisor) : Math.abs(u_i_absolute);
+      
+      // If we are using absolute mode (no PPM), totalLinearTolerance should ideally track absolute 
+      // but the legacy system expects PPM. For TAR/TUR it usually re-calculates from absolute limits anyway.
+      totalLinearTolerance += canUsePPM ? Math.abs(ppm) : 0; 
+      
+      // Variance must be in common units. 
+      // If nominal is 0, we can't use PPM variance. 
+      // The calling functions usually expect StandardUncertainty in PPM? 
+      // Actually, standardUncertainty returned here is often treated as PPM if valid, 
+      // but if nominal is 0, we might need to handle it upstream.
+      // However, for Risk Analysis, it pulls breakdown and uses absoluteHigh/Low.
+      
+      if (canUsePPM) {
+         totalVariance += Math.pow(u_i, 2);
+      } else {
+         // If we can't use PPM, we don't add to totalVariance (which is presumed relative/ppm based).
+         // But we MUST add to breakdown so Risk Analysis can see the limits.
+      }
 
       // Calculate absolute deviations and final limits
       const highDeviation = (high / halfSpan) * valueInNominalUnits;
@@ -507,8 +557,8 @@ export const calculateUncertaintyFromToleranceObject = (
         name,
         input: specString,
         explanation,
-        ppm: Math.abs(ppm),
-        u_i,
+        ppm: canUsePPM ? Math.abs(ppm) : 0,
+        u_i: u_i,
         divisor,
         distributionLabel,
         absoluteLow,
@@ -586,30 +636,42 @@ export const calculateUncertaintyFromToleranceObject = (
   }
 
   // --- UPDATED RESOLUTION LOGIC ---
-  // Only include resolution if excludeResolution is false AND toleranceObject is NOT marked as a TMDE
+  // Use outerResolution if available (from parent object), else check local
+  const finalResolution = outerResolution || toleranceObject.measuringResolution;
   const shouldSkipResolution = excludeResolution || toleranceObject.isTmde;
 
-  if (!shouldSkipResolution && parseFloat(toleranceObject.measuringResolution) > 0) {
-    const res = parseFloat(toleranceObject.measuringResolution);
-    const resUnit = toleranceObject.measuringResolutionUnit || nominalUnit;
+  if (!shouldSkipResolution && parseFloat(finalResolution) > 0) {
+    const res = parseFloat(finalResolution);
+    // Use outer resolution unit if available
+    const resUnit = outerResolutionUnit || toleranceObject.measuringResolutionUnit || nominalUnit;
     const halfSpan = res / 2;
 
     const resPpm = convertToPPM(halfSpan, resUnit, nominalValue, nominalUnit);
-    if (!isNaN(resPpm)) {
+    
+    const canUseResPPM = !isNaN(resPpm);
+    const canUseResAbs = true; // Resolution is absolute
+
+    if (canUseResPPM || canUseResAbs) {
       const divisor = 1.732; // sqrt(3)
-      const u_i = Math.abs(resPpm / divisor);
-      totalVariance += Math.pow(u_i, 2);
+      // If nominal is 0, resPpm is NaN. We use 0 for variance contribution to keep math safe, 
+      // but breakown still records the item.
+      const u_i = canUseResPPM ? Math.abs(resPpm / divisor) : 0;
+      
+      if (canUseResPPM) totalVariance += Math.pow(u_i, 2);
 
       breakdown.push({
         name: "Resolution",
         input: `±${halfSpan} ${resUnit}`,
         explanation: `Rectangular distribution over ± half the least significant digit.`,
-        ppm: Math.abs(resPpm),
+        ppm: canUseResPPM ? Math.abs(resPpm) : 0,
         u_i,
         divisor,
         distributionLabel: "Rectangular",
         originalHalfSpan: halfSpan,
         originalUnit: resUnit,
+        // Calculate absolute limits for resolution
+        absoluteHigh: nominalValue + (unitSystem.toBaseUnit(halfSpan, resUnit) / unitSystem.toBaseUnit(1, nominalUnit)),
+        absoluteLow: nominalValue - (unitSystem.toBaseUnit(halfSpan, resUnit) / unitSystem.toBaseUnit(1, nominalUnit))
       });
     }
   }
