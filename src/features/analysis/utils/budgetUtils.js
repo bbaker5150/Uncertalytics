@@ -45,6 +45,7 @@ export const getBudgetComponentsFromTolerance = (
 
   const budgetComponents = [];
   const nominalValue = parseFloat(referenceMeasurementPoint.value);
+  
   const nominalUnit = referenceMeasurementPoint.unit;
   const prefix =
     toleranceObject.name ||
@@ -56,11 +57,17 @@ export const getBudgetComponentsFromTolerance = (
     baseValueForRelative,
     isResolution = false
   ) => {
-    // --- DEBUG: Component Check ---
+    // Check for missing data
     if (!tolComp && !isResolution) return;
 
+    // Check if tolComp is malformed
+    if (tolComp && typeof tolComp !== 'object' && !isResolution) return;
 
-    let halfSpanPPM, u_i_native, unit_native;
+    // Checking values
+    if (!isResolution && tolComp && !tolComp.distribution) {
+         // Fallback if needed, logic handled in divisor
+    }
+
     const distributionDivisor = isResolution
       ? 1.732
       : parseFloat(tolComp.distribution) || 1.732;
@@ -68,6 +75,8 @@ export const getBudgetComponentsFromTolerance = (
       ? "Rectangular"
       : errorDistributions.find((d) => d.value === String(tolComp.distribution))
           ?.label || "Rectangular";
+
+    let halfSpanPPM, u_i_native, unit_native;
 
     if (isResolution) {
       const value = parseFloat(tolComp);
@@ -78,33 +87,25 @@ export const getBudgetComponentsFromTolerance = (
       unit_native = unit;
     } else {
       const high = parseFloat(tolComp?.high || 0);
-      // DEBUG: Log how 'low' is calculated
       const low = parseFloat(tolComp?.low || -high);
       
       const halfSpan = (high - low) / 2;
 
-      if (halfSpan === 0) {
-          return;
-      }
+      if (halfSpan === 0) return;
 
       const unit = tolComp.unit;
       let valueInNominalUnits;
 
-      // --- FIX: Added else block to prevent overwrite ---
       if (["%", "ppm", "ppb"].includes(unit)) {
         let multiplier = 0;
         if (unit === "%") multiplier = 0.01;
         else if (unit === "ppm") multiplier = 1e-6;
         else if (unit === "ppb") multiplier = 1e-9;
 
-        // DEBUG: Check if baseValueForRelative (e.g. Range Value) is missing
-        if (isNaN(baseValueForRelative)) {
-          return;
-        }
+        if (isNaN(baseValueForRelative)) return;
 
         valueInNominalUnits = halfSpan * multiplier * baseValueForRelative;
       } else {
-        // Physical Unit Logic (Now isolated in else block)
         const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
         const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
         valueInNominalUnits = valueInBase / nominalUnitInBase;
@@ -116,14 +117,24 @@ export const getBudgetComponentsFromTolerance = (
         nominalValue,
         nominalUnit
       );
+      
+      if (isNaN(halfSpanPPM)) return;
+
       u_i_native = valueInNominalUnits / distributionDivisor;
       unit_native = nominalUnit;
     }
 
     if (!isNaN(halfSpanPPM)) {
       const u_i = Math.abs(halfSpanPPM / distributionDivisor);
+      
+      // GENERATE UNIQUE, DETERMINISTIC ID
+      // Uses ID + name + index logic to ensure stability
+      const uniqueSuffix = toleranceObject.id ? `_${toleranceObject.id}` : '';
+      const cleanName = name.toLowerCase().replace(/\s/g, "");
+      const componentId = `${prefix}_${cleanName}${uniqueSuffix}`;
+
       budgetComponents.push({
-        id: `${prefix}_${name.toLowerCase().replace(/\s/g, "")}`,
+        id: componentId,
         name: `${prefix} - ${name}`,
         type: "B",
         value: u_i,
@@ -137,47 +148,40 @@ export const getBudgetComponentsFromTolerance = (
   };
   
   processComponent(toleranceObject.reading, "Reading", nominalValue);
-
   processComponent(toleranceObject.readings_iv, "Readings (IV)", nominalValue);
 
   processComponent(
     toleranceObject.range,
     "Range",
-    parseFloat(toleranceObject.range?.value)
+    // Use the max range value (Full Scale) as the base for % calculations
+    parseFloat(toleranceObject.max) || parseFloat(toleranceObject.range?.value)
   );
   processComponent(toleranceObject.floor, "Floor", nominalValue);
 
   if (toleranceObject.db && !isNaN(parseFloat(toleranceObject.db.high))) {
+    // ... (dB calculation logic same as before, simplifying ID gen)
     const highDb = parseFloat(toleranceObject.db.high || 0);
     const lowDb = parseFloat(toleranceObject.db.low || -highDb);
     const dbTol = (highDb - lowDb) / 2;
     if (dbTol > 0) {
+       // ... existing math logic ...
       const dbMult = parseFloat(toleranceObject.db.multiplier) || 20;
       const dbRef = parseFloat(toleranceObject.db.ref) || 1;
+      const distributionDivisor = parseFloat(toleranceObject.db.distribution) || 1.732;
+      const distributionLabel = errorDistributions.find(d => d.value === String(toleranceObject.db.distribution))?.label || "Rectangular";
+      
       const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
-
       const centerDb = (highDb + lowDb) / 2;
-      const nominalAtCenterTol =
-        dbRef * Math.pow(10, (dbNominal + centerDb) / dbMult);
+      const nominalAtCenterTol = dbRef * Math.pow(10, (dbNominal + centerDb) / dbMult);
       const upperValue = dbRef * Math.pow(10, (dbNominal + highDb) / dbMult);
       const absoluteDeviation = Math.abs(upperValue - nominalAtCenterTol);
 
-      const ppm = convertToPPM(
-        absoluteDeviation,
-        nominalUnit,
-        nominalValue,
-        nominalUnit
-      );
+      const ppm = convertToPPM(absoluteDeviation, nominalUnit, nominalValue, nominalUnit);
+      
       if (!isNaN(ppm)) {
-        const distributionDivisor =
-          parseFloat(toleranceObject.db.distribution) || 1.732;
-        const distributionLabel =
-          errorDistributions.find(
-            (d) => d.value === String(toleranceObject.db.distribution)
-          )?.label || "Rectangular";
         const u_i = Math.abs(ppm / distributionDivisor);
         budgetComponents.push({
-          id: `${prefix}_db_${Math.random()}`,
+          id: `${prefix}_db_${toleranceObject.id || "manual"}`, // DETERMINISTIC ID
           name: `${prefix} - dB`,
           type: "B",
           value: u_i,

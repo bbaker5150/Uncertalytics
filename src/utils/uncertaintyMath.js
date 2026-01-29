@@ -106,7 +106,7 @@ export const unitSystem = {
 
     // --- Acceleration ---
     "m/s^2": { to_si: 1, quantity: "Acceleration" },
-    g: { to_si: 9.80665, quantity: "Acceleration" }, // Standard gravity
+    G_accel: { to_si: 9.80665, quantity: "Acceleration" }, // Standard gravity (Renamed to avoid conflict with grams)
     "ft/s^2": { to_si: 0.3048, quantity: "Acceleration" },
 
     // --- Pressure ---
@@ -525,7 +525,8 @@ export const calculateUncertaintyFromToleranceObject = (
   addComponent(
     toleranceObject.range,
     "Range",
-    parseFloat(toleranceObject.range?.value)
+    // Fix: Use max value (Full Scale) of the tolerance object
+    parseFloat(toleranceObject.max) || parseFloat(toleranceObject.range?.value)
   );
   addComponent(toleranceObject.floor, "Floor", nominalValue);
 

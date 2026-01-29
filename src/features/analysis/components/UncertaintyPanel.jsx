@@ -1241,6 +1241,7 @@ function DetailedView({
     
 
     const [isSymbolMenuOpen, setIsSymbolMenuOpen] = useState(false);
+    const [tmdeRangeIndices, setTmdeRangeIndices] = useState({});
 
     const equationInputRef = useRef(null);
 
@@ -1510,13 +1511,55 @@ function DetailedView({
         if (isChecked) {
             const sourceTmde = sessionData.tmdes.find(t => t.id === tmdeId);
             if (sourceTmde) {
-                const newInstance = { ...sourceTmde, quantity: 1 };
+                // Resolve Active Range based on current dropdown selection or default
+                // We pass 'null' for savedTolerance because we are freshly creating this instance
+                const resolution = resolveUutRangeHelper(sourceTmde, tmdeRangeIndices, null, null);
+                const activeRange = resolution.activeRange || {};
+
+                // CRITICAL FIX: Destructure 'id' out of activeRange so it doesn't overwrite the TMDE's unique ID
+                // basic tolerance parameters are what we want
+                const { id: rangeId, ...rangeSpecs } = activeRange;
+
+                const newInstance = { 
+                    ...sourceTmde, 
+                    ...rangeSpecs, 
+                    id: sourceTmde.id, // Explicitly preserve the Master ID
+                    sourceId: sourceTmde.id, // Track origin
+                    quantity: 1 
+                };
+                
                 const newTolerances = [...tmdeTolerancesData, newInstance];
                 onUpdateTestPoint({ tmdeTolerances: newTolerances });
             }
         } else {
             const newTolerances = tmdeTolerancesData.filter(t => t.id !== tmdeId);
             onUpdateTestPoint({ tmdeTolerances: newTolerances });
+        }
+    };
+
+    const handleTmdeRangeChange = (tmde, newIndex, ranges) => {
+        // 1. Update UI Selection State
+        setTmdeRangeIndices(prev => ({ ...prev, [tmde.id]: newIndex }));
+
+        // 2. If this TMDE is currently active (checked) in the budget, update its data locally
+        const activeInstance = tmdeTolerancesData.find(t => t.id === tmde.id);
+        
+        if (activeInstance && onUpdateTestPoint) {
+             const selectedRange = ranges[newIndex] || {};
+             const { id: rangeId, ...rangeSpecs } = selectedRange;
+
+             // Merge new range properties into the existing active instance
+             // preserving other props like 'variableType' or 'quantity' AND 'id'
+             const updatedInstance = { 
+                 ...activeInstance, 
+                 ...rangeSpecs,
+                 id: activeInstance.id 
+             };
+             
+             const updatedTolerances = tmdeTolerancesData.map(t => 
+                t.id === tmde.id ? updatedInstance : t
+             );
+             onUpdateTestPoint({ tmdeTolerances: updatedTolerances });
         }
     };
 
@@ -2110,6 +2153,8 @@ function DetailedView({
                                         ) : (
                                             sessionData.tmdes.map((masterTmde) => {
                                                 const activeInstances = tmdeTolerancesData.filter(t => t.id === masterTmde.id || (t.sourceId && t.sourceId === masterTmde.id));
+                                                // If we have active instances, render them. Otherwise render the master (unchecked)
+                                                // We treat the row as the 'instance' control
                                                 const rowsToRender = activeInstances.length > 0 ? activeInstances : [masterTmde];
 
                                                 return rowsToRender.map((tmdeInstance, idx) => {
@@ -2119,6 +2164,18 @@ function DetailedView({
 
                                                     const displayValue = isChecked ? referencePoint.value : '';
                                                     const displayUnit = isChecked ? referencePoint.unit : (masterTmde.measurementPoint?.unit || '');
+
+                                                    // Resolve Range Logic for this specific instance/row
+                                                    // For active instances, we pass 'tmdeInstance' as savedTolerance so it detects the correct active range index
+                                                    // For inactive masters, it uses 'tmdeRangeIndices' state or default
+                                                    const savedTolerance = isChecked ? tmdeInstance : null;
+                                                    const resolution = resolveUutRangeHelper(masterTmde, tmdeRangeIndices, savedTolerance, null);
+                                                    const { ranges, activeIndex, activeRange } = resolution;
+                                                    const hasMultipleRanges = ranges.length > 1;
+                                                    
+                                                    // If checked, we use the instance's tolerance for summary. If not, the resolved default.
+                                                    const effectiveTolerance = isChecked ? tmdeInstance : activeRange;
+                                                    const specSummary = getToleranceSummary(effectiveTolerance);
 
                                                     let stdUncDisplay = "-";
                                                     if (isChecked && !isError) {
@@ -2145,6 +2202,34 @@ function DetailedView({
                                                                     <span>ID: {masterTmde.assetId || 'N/A'}</span>
                                                                     {masterTmde.instrument && (
                                                                         <span> • {masterTmde.instrument.manufacturer} {masterTmde.instrument.model}</span>
+                                                                    )}
+                                                                </div>
+                                                                
+                                                                {/* Range Selector */}
+                                                                <div style={{ marginTop: '4px' }}>
+                                                                    {hasMultipleRanges ? (
+                                                                        <select
+                                                                            className="session-selector"
+                                                                            style={{ 
+                                                                                width: '100%', 
+                                                                                padding: '2px 4px',
+                                                                                fontSize: '0.75rem',
+                                                                                maxWidth: '200px'
+                                                                            }}
+                                                                            value={activeIndex}
+                                                                            onChange={(e) => handleTmdeRangeChange(masterTmde, parseInt(e.target.value), ranges)}
+                                                                        >
+                                                                            {ranges.map((range, rIdx) => {
+                                                                                const rangeLabel = (typeof range.range === 'string' ? range.range : null) || 
+                                                                                                (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
+                                                                                const unitLabel = typeof range.unit === 'string' ? range.unit : '';
+                                                                                return <option key={rIdx} value={rIdx}>{`${rangeLabel} ${unitLabel}`}</option>
+                                                                            })}
+                                                                        </select>
+                                                                    ) : (
+                                                                         <span style={{ fontSize: '0.75rem', color: 'var(--text-color-muted)' }}>
+                                                                            {ranges[0] ? (ranges[0].range || "Default Range") : "Default Range"}
+                                                                         </span>
                                                                     )}
                                                                 </div>
                                                             </td>
@@ -2174,7 +2259,9 @@ function DetailedView({
                                                                     />
                                                                 ) : "-"}
                                                             </td>
-                                                            <td>{getToleranceSummary(masterTmde)}</td>
+                                                            <td title={getToleranceSummary(effectiveTolerance)} style={{ fontSize: '0.85rem' }}>
+                                                                {specSummary}
+                                                            </td>
                                                             <td>
                                                                 {stdUncDisplay} <span style={{ fontSize: '0.8rem', color: 'var(--text-color-muted)' }}>{(!isError && isChecked) ? referencePoint.unit : ''}</span>
                                                             </td>

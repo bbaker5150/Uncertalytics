@@ -158,7 +158,12 @@ export const useRiskCalculation = (
     if (tmdeTolerancesData.length > 0) {
       const tmdeTotals = tmdeTolerancesData.reduce(
         (acc, tmde) => {
-          if (!tmde.measurementPoint || !tmde.measurementPoint.value) {
+          // Determine the effective reference point: TMDE's own point OR UUT Nominal
+          const refPoint = (tmde.measurementPoint && tmde.measurementPoint.value) 
+              ? tmde.measurementPoint 
+              : uutNominal;
+
+          if (!refPoint || !refPoint.value) {
             missingTmdeRef = true;
             return acc;
           }
@@ -166,9 +171,9 @@ export const useRiskCalculation = (
           const { breakdown: tmdeBreakdown } =
             calculateUncertaintyFromToleranceObject(
               tmde,
-              tmde.measurementPoint
+              refPoint
             );
-          const tmdeNominal = parseFloat(tmde.measurementPoint.value);
+          const tmdeNominal = parseFloat(refPoint.value);
 
           const tmdeSpecComponents = tmdeBreakdown.filter(
             (comp) =>
@@ -179,7 +184,7 @@ export const useRiskCalculation = (
           let totalTmdeHighDevInUutNative = 0;
           let totalTmdeLowDevInUutNative = 0;
 
-          const tmdeUnitInfo = unitSystem.units[tmde.measurementPoint.unit];
+          const tmdeUnitInfo = unitSystem.units[refPoint.unit];
           if (!tmdeUnitInfo || isNaN(tmdeUnitInfo.to_si)) {
             missingTmdeRef = true;
             return acc;
@@ -386,7 +391,6 @@ export const useRiskCalculation = (
       uutUpper: LUp,
       tmdeLower: parseFloat(uutNominal.value) + tmdeToleranceLow_Native,
       tmdeUpper: parseFloat(uutNominal.value) + tmdeToleranceHigh_Native,
-      combUnc: calcResults.combined_uncertainty_absolute_base,
       combUnc: uCal_Native,
       turVal: turResult,
       measRelTarget: reliability,

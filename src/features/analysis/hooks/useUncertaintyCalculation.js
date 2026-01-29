@@ -311,14 +311,18 @@ export const useUncertaintyCalculation = (
           componentsForBudgetTable.push(comp);
         });
 
-        tmdeTolerancesData.forEach((tmde) => {
-          if (tmde.measurementPoint && tmde.measurementPoint.value) {
+        tmdeTolerancesData.forEach((tmde, tmdeIndex) => {
+          // Use uutNominal as the reference point for budget calculations
+          if (uutNominal && uutNominal.value) {
             const quantity = tmde.quantity || 1;
+
             const components = getBudgetComponentsFromTolerance(
               tmde,
-              tmde.measurementPoint
-            ).map((c) => ({
+              uutNominal 
+            ).map((c, compIndex) => ({
               ...c,
+              // Strictly unique ID formulation: OrginalID + TMDE Index + Component Index
+              id: `${c.id}_${tmdeIndex}_${compIndex}`,
               sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`,
               quantity: quantity,
             }));
