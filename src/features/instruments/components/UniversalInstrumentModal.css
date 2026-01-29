@@ -24,143 +24,129 @@
     position: relative;
 }
 
-.instrument-builder-wrapper .modal-close-button {
-    position: static !important;
-    margin-left: auto;
-    font-size: 1.5rem;
-    line-height: 1;
-    cursor: pointer;
-    background: transparent;
-    border: none;
-    color: var(--text-color-muted);
-    transition: color 0.2s;
-}
-.instrument-builder-wrapper .modal-close-button:hover {
-    color: var(--text-color);
-}
-
-/* 3. IDENTITY CARD (Top Section - Floating Labels) */
+/* 3. IDENTITY CARD (Top Section) */
 .identity-container {
-    padding: 25px 30px;
-    background-color: var(--background-color); 
+    padding: 20px 25px;
+    background-color: var(--background-color-secondary);
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
-    box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.1);
     z-index: 10;
+    box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
 
 .identity-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 25px;
-    font-size: 0.8rem;
+    margin-bottom: 15px;
+    font-size: 0.85rem;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--primary-color);
-    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-color-muted);
+    font-weight: 600;
 }
 
 .library-lookup-btn {
     background: transparent;
     border: 1px solid var(--primary-color);
     color: var(--primary-color);
-    padding: 6px 14px;
+    padding: 6px 12px;
     border-radius: 4px;
     font-size: 0.8rem;
-    font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 8px;
     transition: all 0.2s ease;
 }
+
 .library-lookup-btn:hover {
     background: var(--primary-color);
-    color: #fff;
+    color: white;
 }
 
 .identity-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 25px; 
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
     align-items: flex-start;
 }
 
-/* --- Floating Input Logic (SCOPED STRICTLY TO IDENTITY CARD) --- */
-.identity-container .floating-input-group {
+/* Floating Input Groups */
+.floating-input-group {
     position: relative;
     display: flex;
     flex-direction: column;
 }
-.identity-container .floating-input-group.full-width { grid-column: 1 / -1; }
-.identity-container .floating-input-group.small-width { max-width: 120px; }
 
-.identity-container .input-icon {
+.floating-input-group.full-width { grid-column: 1 / -1; }
+.floating-input-group.small-width { max-width: 100px; }
+
+.input-icon {
     position: absolute;
-    left: 14px;
+    left: 12px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-color-muted);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     z-index: 2;
     pointer-events: none;
 }
 
-.identity-container .floating-input-group input {
+.floating-input-group input {
     width: 100%;
-    padding: 14px 14px 14px 42px !important; 
+    padding: 12px 12px 12px 35px !important;
     background-color: var(--input-background) !important;
     border: 1px solid var(--border-color) !important;
     border-radius: 6px;
     font-size: 0.95rem;
     color: var(--text-color);
-    height: 52px; 
+    height: 48px;
     outline: none;
     transition: border 0.2s, box-shadow 0.2s;
 }
-.identity-container .floating-input-group input:focus {
+
+.floating-input-group input:focus {
     border-color: var(--primary-color) !important;
     box-shadow: 0 0 0 2px var(--primary-color-light);
 }
-.identity-container .floating-input-group input:focus ~ .input-icon {
+.floating-input-group input:focus ~ .input-icon {
     color: var(--primary-color);
 }
 
-/* Floating Label Animation */
-.identity-container .floating-input-group label {
+.floating-input-group label {
     position: absolute;
-    left: 42px;
+    left: 35px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: var(--text-color-muted);
     pointer-events: none;
     transition: all 0.2s ease;
-    z-index: 5;
+    background-color: transparent;
     padding: 0 4px;
 }
-.identity-container .floating-input-group input:not(:placeholder-shown) + label,
-.identity-container .floating-input-group input:focus + label {
-    top: 0px; 
+
+.floating-input-group input:not(:placeholder-shown) + label,
+.floating-input-group input:focus + label {
+    top: 0px;
     left: 10px;
     font-size: 0.75rem;
     font-weight: 600;
-    background-color: var(--background-color); /* Mask border */
+    background-color: var(--background-color-secondary); /* Mask border */
+    color: var(--primary-color);
     transform: translateY(-50%);
-}
-.identity-container .floating-input-group input:focus + label {
-     color: var(--primary-color);
+    z-index: 3;
 }
 
-/* 4. BUILDER WORKSPACE (Bottom Section) */
+/* 4. BUILDER WORKSPACE (The Missing Piece) */
 .instrument-editor-body {
     flex: 1;
     display: flex;
     overflow: hidden;
     position: relative;
     background-color: var(--background-color-secondary);
-    min-height: 0; 
+    min-height: 0; /* Critical for nested scroll */
 }
 
 /* Sidebar Rail */
@@ -172,6 +158,7 @@
     flex-direction: column;
     flex-shrink: 0;
 }
+
 .rail-header {
     padding: 15px;
     display: flex;
@@ -180,11 +167,13 @@
     border-bottom: 1px solid var(--border-color);
     background-color: var(--component-header-bg);
 }
+
 .rail-list {
     flex: 1;
     overflow-y: auto;
     padding: 10px;
 }
+
 .rail-item {
     display: flex;
     justify-content: space-between;
@@ -198,7 +187,15 @@
     border: 1px solid transparent;
 }
 .rail-item:hover { background-color: var(--highlight-color, rgba(0,0,0,0.05)); }
-.rail-item.active { background-color: var(--primary-color-light); color: white; }
+.rail-item.active { background-color: var(--primary-color-light); color: var(--primary-color-dark); font-weight: 600; }
+
+.empty-rail {
+    padding: 30px 10px;
+    text-align: center;
+    color: var(--text-color-muted);
+    font-style: italic;
+    font-size: 0.9rem;
+}
 
 /* Workspace Main */
 .function-workspace {
@@ -211,7 +208,6 @@
     min-width: 0;
 }
 
-/* Workspace Header - Standard Inputs (NOT Floating) */
 .workspace-header {
     display: flex;
     gap: 20px;
@@ -242,14 +238,14 @@
     background-color: var(--input-background);
     color: var(--text-color);
     font-size: 0.95rem;
-    height: 42px; /* Fixed height to match Select */
+    height: 42px; 
 }
 .workspace-input-group input:focus {
     border-color: var(--primary-color);
     outline: none;
 }
 
-/* Ranges Table */
+/* Ranges Table Panel */
 .ranges-panel {
     flex: 1;
     display: flex;
@@ -260,6 +256,7 @@
     overflow: hidden;
     min-height: 0;
 }
+
 .panel-toolbar {
     padding: 12px 20px;
     background-color: var(--component-header-bg);
@@ -269,6 +266,7 @@
     align-items: center;
     flex-shrink: 0;
 }
+
 .ranges-table-container { flex: 1; overflow-y: auto; }
 
 .ranges-table { width: 100%; border-collapse: collapse; }
@@ -288,7 +286,7 @@
     vertical-align: middle;
 }
 
-/* Table Inputs - Compact */
+/* Compact Table Inputs */
 .ranges-table input {
     width: 100%;
     padding: 6px 8px;
@@ -322,7 +320,7 @@
     position: absolute;
     top: 0;
     right: 0;
-    width: 450px; /* Wider for forms */
+    width: 450px;
     height: 100%;
     background-color: var(--background-color);
     border-left: 1px solid var(--border-color);
@@ -350,26 +348,6 @@
     background-color: var(--background-color);
 }
 
-/* Fixes for ToleranceForm inside Slide Over */
-.slide-over-body input,
-.slide-over-body select {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--input-background);
-    color: var(--text-color);
-    margin-bottom: 10px;
-    font-size: 0.9rem;
-}
-.slide-over-body label {
-    display: block;
-    margin-bottom: 6px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-color);
-}
-
 .slide-over-footer {
     padding: 20px;
     border-top: 1px solid var(--border-color);
@@ -377,7 +355,63 @@
     text-align: right;
 }
 
-/* Footer Actions (Main Modal) */
+/* 6. LIST VIEW (Library) */
+.list-view-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px;
+}
+.search-toolbar {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.search-input-wrapper {
+    position: relative;
+    flex: 1;
+}
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-color-muted);
+}
+.search-input-wrapper input {
+    width: 100%;
+    padding: 10px 10px 10px 38px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-background);
+    color: var(--text-color);
+    font-size: 0.95rem;
+}
+.list-content {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--content-background);
+}
+.library-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.library-table th {
+    text-align: left;
+    padding: 12px 15px;
+    border-bottom: 2px solid var(--border-color);
+    background-color: var(--component-header-bg);
+    color: var(--text-color);
+    font-weight: 600;
+    position: sticky; top: 0;
+}
+.library-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+.hover-row:hover { background-color: var(--primary-color-light); cursor: pointer; }
+
+/* 7. FOOTER ACTIONS */
 .editor-actions {
     padding: 15px 30px;
     border-top: 1px solid var(--border-color);

@@ -14,8 +14,10 @@ import {
   faLayerGroup
 } from "@fortawesome/free-solid-svg-icons";
 import NotificationModal from '../../../components/modals/NotificationModal';
-import EditUutModal from "../../instruments/components/EditUutModal";
-import AddTmdeModal from "../../instruments/components/AddTmdeModal";
+import UniversalInstrumentModal from "../../instruments/components/UniversalInstrumentModal";
+
+// Import the new polished CSS
+import "./EditSessionModal.css";
 
 // Auto-assign colors for new areas
 const PRESET_COLORS = [
@@ -48,12 +50,10 @@ const EditSessionModal = ({
   const [imageSrcCache, setImageSrcCache] = useState(new Map());
   const [viewingImageSrc, setViewingImageSrc] = useState(null);
 
-  // --- Instrument Tab State ---
-  const [isUutModalOpen, setIsUutModalOpen] = useState(false);
-  const [isTmdeModalOpen, setIsTmdeModalOpen] = useState(false);
-  const [editingUut, setEditingUut] = useState(null); // { item, index }
-  const [editingTmde, setEditingTmde] = useState(null); // { item, index }
-  
+  // --- Instrument Modal State ---
+  const [activeInstrumentModal, setActiveInstrumentModal] = useState(null); 
+  // Structure: { mode: 'uut' | 'tmde', data: object | null, index: number | null }
+
   // Temporary state for manually adding a new measurement area
   const [newAreaName, setNewAreaName] = useState("");
   const [newAreaColor, setNewAreaColor] = useState(PRESET_COLORS[0]);
@@ -61,10 +61,10 @@ const EditSessionModal = ({
   // Floating Window Logic
   const { position, handleMouseDown } = useFloatingWindow({
     isOpen,
-    defaultWidth: 1100, 
-    defaultHeight: 900, 
+    defaultWidth: 1000, 
+    defaultHeight: 850, 
     initialPosition: typeof window !== 'undefined' ? {
-      x: Math.max(0, (window.innerWidth - 1100) / 2),
+      x: Math.max(0, (window.innerWidth - 1000) / 2),
       y: Math.max(0, (window.innerHeight - (window.innerHeight * 0.85)) / 2)
     } : null
   });
@@ -120,9 +120,6 @@ const EditSessionModal = ({
       noteImages: prev.noteImages.filter((img) => img.id !== imageIdToRemove),
     }));
     setNewlyAddedFiles((prev) => prev.filter((img) => img.id !== imageIdToRemove));
-    if (sessionImageCache && sessionData && sessionImageCache.has(sessionData.id)) {
-        // Handle cache update logic...
-    }
     if (onRemoveImageFile && sessionData && sessionData.id) {
       onRemoveImageFile(sessionData.id, imageIdToRemove);
     }
@@ -161,17 +158,13 @@ const EditSessionModal = ({
 
   // --- Instruments Tab Logic ---
 
-  // Helper: Get color for an area
   const getAreaColor = (areaName) => {
       const area = formData.measurementAreas?.find(a => a.name === areaName);
-      return area ? area.color : '#999';
+      return area ? area.color : 'var(--text-color-muted)';
   };
 
-  // 1. Measurement Areas (Path B: Manual Add)
   const handleAddArea = () => {
     if (!newAreaName.trim()) return;
-    
-    // Check duplication
     if (formData.measurementAreas.some(a => a.name.toLowerCase() === newAreaName.trim().toLowerCase())) {
         setNotification({ title: "Duplicate Area", message: "This measurement area already exists." });
         return;
@@ -187,7 +180,6 @@ const EditSessionModal = ({
         measurementAreas: [...prev.measurementAreas, newArea]
     }));
     setNewAreaName("");
-    // Rotate color for next input
     const nextColorIdx = (PRESET_COLORS.indexOf(newAreaColor) + 1) % PRESET_COLORS.length;
     setNewAreaColor(PRESET_COLORS[nextColorIdx]);
   };
@@ -196,124 +188,65 @@ const EditSessionModal = ({
     setFormData(prev => ({
         ...prev,
         measurementAreas: prev.measurementAreas.filter(a => a.id !== id),
-        // If we delete an area, do we clear it from UUTs? 
-        // For now, let's keep the UUT string but it won't have a color map.
     }));
   };
 
-  // 2. UUTs
-  const openAddUut = () => {
-    setEditingUut(null);
-    setIsUutModalOpen(true);
+  // --- Unified Instrument Handler ---
+
+  const openInstrumentModal = (mode, data = null, index = null) => {
+      setActiveInstrumentModal({ mode, data, index });
   };
 
-  const openEditUut = (uut, index) => {
-    setEditingUut({ item: uut, index });
-    setIsUutModalOpen(true);
+  const handleSaveInstrument = (resultData) => {
+      if (!activeInstrumentModal) return;
+      const { mode, index } = activeInstrumentModal;
+
+      if (mode === 'uut') {
+          // UUT Logic (Auto-create area if missing)
+          const assignedAreaName = resultData.measurementArea?.trim();
+          setFormData(prev => {
+              const newUuts = [...prev.uuts];
+              let currentAreas = [...prev.measurementAreas];
+              
+              if (assignedAreaName) {
+                  const areaExists = currentAreas.some(a => a.name.toLowerCase() === assignedAreaName.toLowerCase());
+                  if (!areaExists) {
+                      const newColor = PRESET_COLORS[currentAreas.length % PRESET_COLORS.length];
+                      currentAreas.push({ id: uuidv4(), name: assignedAreaName, color: newColor });
+                  }
+              }
+
+              if (index !== null) {
+                  newUuts[index] = { ...newUuts[index], ...resultData };
+              } else {
+                  newUuts.push({ id: uuidv4(), ...resultData });
+              }
+              return { ...prev, uuts: newUuts, measurementAreas: currentAreas };
+          });
+      } else if (mode === 'tmde') {
+          // TMDE Logic
+          setFormData(prev => {
+              const newTmdes = [...prev.tmdes];
+              if (index !== null) {
+                  newTmdes[index] = { ...newTmdes[index], ...resultData };
+              } else {
+                  newTmdes.push({ id: uuidv4(), ...resultData });
+              }
+              return { ...prev, tmdes: newTmdes };
+          });
+      }
+      setActiveInstrumentModal(null);
   };
 
-  const handleSaveUut = (uutData) => {
-    setFormData(prev => {
-        const newUuts = [...prev.uuts];
-        let currentAreas = [...prev.measurementAreas];
-        
-        // --- Path A Logic: Auto-create Area ---
-        const assignedAreaName = uutData.measurementArea?.trim();
-        if (assignedAreaName) {
-            const areaExists = currentAreas.some(a => a.name.toLowerCase() === assignedAreaName.toLowerCase());
-            
-            if (!areaExists) {
-                // Auto-generate a new area
-                const newColor = PRESET_COLORS[currentAreas.length % PRESET_COLORS.length];
-                currentAreas.push({
-                    id: uuidv4(),
-                    name: assignedAreaName,
-                    color: newColor
-                });
-            }
-        }
-
-        if (editingUut) {
-            newUuts[editingUut.index] = {
-                ...prev.uuts[editingUut.index],
-                ...uutData, 
-            };
-        } else {
-            newUuts.push({
-                id: uuidv4(),
-                ...uutData
-            });
-        }
-        
-        return { 
-            ...prev, 
-            uuts: newUuts,
-            measurementAreas: currentAreas
-        };
-    });
-    setIsUutModalOpen(false);
+  const handleDeleteItem = (listName, index) => {
+      setFormData(prev => ({
+          ...prev,
+          [listName]: prev[listName].filter((_, i) => i !== index)
+      }));
   };
-
-  const handleDeleteUut = (index) => {
-    setFormData(prev => ({
-        ...prev,
-        uuts: prev.uuts.filter((_, i) => i !== index)
-    }));
-  };
-
-  // 3. TMDEs
-  const openAddTmde = () => {
-    setEditingTmde(null);
-    setIsTmdeModalOpen(true);
-  };
-
-  const openEditTmde = (tmde, index) => {
-    setEditingTmde({ item: tmde, index });
-    setIsTmdeModalOpen(true);
-  };
-
-  const handleSaveTmde = (tmdeData, andClose) => {
-    setFormData(prev => {
-        const newTmdes = [...prev.tmdes];
-        if (editingTmde) {
-            newTmdes[editingTmde.index] = {
-                ...prev.tmdes[editingTmde.index],
-                ...tmdeData
-            };
-        } else {
-            newTmdes.push({
-                id: uuidv4(),
-                ...tmdeData
-            });
-        }
-        return { ...prev, tmdes: newTmdes };
-    });
-    
-    if (andClose) {
-        setIsTmdeModalOpen(false);
-    } else {
-        setEditingTmde(null); 
-    }
-  };
-
-  const handleDeleteTmde = (index) => {
-    setFormData(prev => ({
-        ...prev,
-        tmdes: prev.tmdes.filter((_, i) => i !== index)
-    }));
-  };
-
 
   // --- Main Save ---
   const handleSave = () => {
-    // Basic validation
-    if (formData.uncReq) {
-      for (const key in formData.uncReq) {
-        if (formData.uncReq[key] === "") {
-            // Simple validation skip for brevity, assume valid
-        }
-      }
-    }
     onSave(formData, newlyAddedFiles);
   };
 
@@ -330,27 +263,15 @@ const EditSessionModal = ({
         />
       )}
 
-      {/* --- Sub-Modals --- */}
-      {isUutModalOpen && (
-          <EditUutModal 
-            isOpen={isUutModalOpen}
-            onClose={() => setIsUutModalOpen(false)}
-            onSave={handleSaveUut}
-            initialUut={editingUut?.item || null}
+      {/* --- Universal Instrument Modal --- */}
+      {activeInstrumentModal && (
+          <UniversalInstrumentModal 
+            isOpen={true}
+            onClose={() => setActiveInstrumentModal(null)}
+            onSave={handleSaveInstrument}
+            mode={activeInstrumentModal.mode}
+            initialData={activeInstrumentModal.data}
             instruments={instruments}
-            hasParentOverlay={true}
-          />
-      )}
-
-      {isTmdeModalOpen && (
-          <AddTmdeModal
-            isOpen={isTmdeModalOpen}
-            onClose={() => setIsTmdeModalOpen(false)}
-            onSave={handleSaveTmde}
-            instruments={instruments}
-            initialTmdeData={editingTmde?.item || null}
-            hasParentOverlay={true}
-            testPointData={{ measurementType: "direct", testPointInfo: { parameter: { value: "", unit: "" } } }}
           />
       )}
 
@@ -368,15 +289,14 @@ const EditSessionModal = ({
           position: 'fixed',
           top: position.y,
           left: position.x,
-          margin: 0,
-          width: '1100px',
+          width: '1000px',
           maxWidth: '95vw',
           height: '85vh',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 2000,
-          overflow: 'hidden',
-          padding: 0
+          padding: 0,
+          backgroundColor: 'var(--background-color-secondary)' // Ensure base background
         }}
       >
         {/* --- Header --- */}
@@ -385,44 +305,37 @@ const EditSessionModal = ({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '20px 30px 10px 30px',
+            padding: '15px 25px',
             borderBottom: '1px solid var(--border-color)',
             cursor: 'move',
-            userSelect: 'none',
-            flexShrink: 0
+            backgroundColor: 'var(--component-header-bg)',
+            color: 'var(--text-color)'
           }}
           onMouseDown={handleMouseDown}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>
-              <FontAwesomeIcon icon={faEdit} style={{ marginRight: '10px', color: 'var(--primary-color)' }} />
-              Edit Session Configuration
-            </h3>
+             <FontAwesomeIcon icon={faEdit} style={{ color: 'var(--primary-color)' }} />
+             <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Edit Session Configuration</h3>
           </div>
           <button onClick={onClose} className="modal-close-button" style={{ position: 'static' }}>&times;</button>
         </div>
 
         {/* --- Tabs --- */}
-        <div className="modal-tabs" style={{ 
-          margin: 0, 
-          padding: '10px 30px 0 30px', 
-          borderBottom: '1px solid var(--border-color)',
-          flexShrink: 0
-        }}>
+        <div className="edit-session-tabs">
           <button
-            className={`modal-tab ${activeSection === "details" ? "active" : ""}`}
+            className={`edit-session-tab ${activeSection === "details" ? "active" : ""}`}
             onClick={() => setActiveSection("details")}
           >
             Session Details
           </button>
           <button
-            className={`modal-tab ${activeSection === "requirements" ? "active" : ""}`}
+            className={`edit-session-tab ${activeSection === "requirements" ? "active" : ""}`}
             onClick={() => setActiveSection("requirements")}
           >
             Uncertainty Requirements
           </button>
           <button
-            className={`modal-tab ${activeSection === "instruments" ? "active" : ""}`}
+            className={`edit-session-tab ${activeSection === "instruments" ? "active" : ""}`}
             onClick={() => setActiveSection("instruments")}
           >
             Instruments & Assets
@@ -430,15 +343,7 @@ const EditSessionModal = ({
         </div>
 
         {/* --- Body --- */}
-        <div className="modal-main-content" style={{ 
-            flex: 1, 
-            overflowY: 'auto', 
-            overflowX: 'hidden', 
-            padding: '30px', 
-            display: 'flex', 
-            flexDirection: 'column',
-            backgroundColor: 'var(--background-color-secondary)'
-        }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '25px', backgroundColor: 'var(--background-color-secondary)' }}>
           
           {/* --- TAB: DETAILS --- */}
           {activeSection === "details" && (
@@ -605,165 +510,136 @@ const EditSessionModal = ({
             </div>
           )}
 
-          {/* --- TAB: INSTRUMENTS (NEW) --- */}
+          {/* --- TAB: INSTRUMENTS (POLISHED) --- */}
           {activeSection === "instruments" && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
                 
                 {/* 1. Measurement Areas Manager */}
-                <div className="panel" style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                        <h4 style={{ margin: 0, color: 'var(--text-color-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="session-panel-container">
+                    <div className="session-panel-header">
+                        <h4 className="session-panel-title">
                             <FontAwesomeIcon icon={faLayerGroup} style={{ color: 'var(--primary-color)' }}/> 
                             Measurement Areas
                         </h4>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
-                        <input 
-                            type="text" 
-                            placeholder="New Area Name (e.g., DC Voltage)" 
-                            value={newAreaName}
-                            onChange={(e) => setNewAreaName(e.target.value)}
-                            style={{ flex: 1, padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
-                        />
-                        <input 
-                            type="color" 
-                            value={newAreaColor}
-                            onChange={(e) => setNewAreaColor(e.target.value)}
-                            style={{ width: '50px', height: '35px', padding: '0', border: 'none', background: 'none', cursor: 'pointer' }}
-                            title="Area Color"
-                        />
-                        <button className="button button-primary" onClick={handleAddArea} disabled={!newAreaName.trim()}>
-                            <FontAwesomeIcon icon={faPlus} style={{ marginRight: '5px' }}/> Add Area
-                        </button>
-                    </div>
+                    <div className="session-panel-body">
+                        <div className="area-input-group">
+                            <input 
+                                type="text" 
+                                placeholder="Create new area..." 
+                                value={newAreaName}
+                                onChange={(e) => setNewAreaName(e.target.value)}
+                                style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: 'var(--input-background)', color: 'var(--text-color)' }}
+                            />
+                            <input 
+                                type="color" 
+                                value={newAreaColor}
+                                onChange={(e) => setNewAreaColor(e.target.value)}
+                                style={{ width: '40px', height: '38px', padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}
+                            />
+                            <button className="button primary small" onClick={handleAddArea} disabled={!newAreaName.trim()}>
+                                <FontAwesomeIcon icon={faPlus} /> Add
+                            </button>
+                        </div>
 
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                        {formData.measurementAreas.length === 0 && <span style={{ color: '#888', fontStyle: 'italic' }}>No measurement areas defined.</span>}
-                        {formData.measurementAreas.map(area => (
-                            <div key={area.id} style={{ 
-                                display: 'flex', alignItems: 'center', gap: '8px', 
-                                backgroundColor: area.color + '20', // Light bg based on color
-                                border: `1px solid ${area.color}`,
-                                borderRadius: '20px', padding: '5px 12px'
-                            }}>
-                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: area.color }}></div>
-                                <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{area.name}</span>
-                                <button onClick={() => handleDeleteArea(area.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', marginLeft: '5px' }}>
-                                    <FontAwesomeIcon icon={faTimes} />
-                                </button>
-                            </div>
-                        ))}
+                        <div className="area-tags-container">
+                            {formData.measurementAreas.length === 0 && <span className="empty-text">No areas defined.</span>}
+                            {formData.measurementAreas.map(area => (
+                                <div key={area.id} className="area-tag" style={{ borderColor: area.color }}>
+                                    <div className="area-color-dot" style={{ backgroundColor: area.color }}></div>
+                                    <span>{area.name}</span>
+                                    <button className="area-tag-close" onClick={() => handleDeleteArea(area.id)}>
+                                        <FontAwesomeIcon icon={faTimes} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
                 {/* 2. UUT Manager */}
-                <div className="panel" style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                        <h4 style={{ margin: 0, color: 'var(--text-color-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="session-panel-container">
+                     <div className="session-panel-header">
+                        <h4 className="session-panel-title">
                             <FontAwesomeIcon icon={faMicroscope} style={{ color: 'var(--primary-color)' }}/> 
                             Units Under Test (UUTs)
                         </h4>
-                        <button className="button button-secondary" onClick={openAddUut}>
+                        <button className="button secondary small" onClick={() => openInstrumentModal('uut')}>
                             <FontAwesomeIcon icon={faPlus} style={{ marginRight: '5px' }}/> Add UUT
                         </button>
                     </div>
 
-                    {formData.uuts.length === 0 ? (
-                        <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#f9f9f9', borderRadius: '4px', color: '#888' }}>
-                            No UUTs added. Click "Add UUT" to define the devices being tested.
-                        </div>
-                    ) : (
-                        <table className="data-table" style={{ width: '100%' }}>
-                            <thead>
-                                <tr>
-                                    <th style={{width: '40%'}}>Description</th>
-                                    <th style={{width: '40%'}}>Measurement Area</th>
-                                    <th style={{width: '20%'}}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                    <div className="session-panel-body">
+                        {formData.uuts.length === 0 ? (
+                            <div className="empty-list-placeholder">No UUTs added. Click "Add UUT" to begin.</div>
+                        ) : (
+                            <div className="resource-list">
                                 {formData.uuts.map((uut, idx) => {
-                                    // Match area by name string, as stored in UUT
-                                    const areaName = uut.measurementArea; 
-                                    const areaColor = getAreaColor(areaName);
-                                    
+                                    const areaColor = getAreaColor(uut.measurementArea);
                                     return (
-                                        <tr key={uut.id || idx}>
-                                            <td>{uut.description}</td>
-                                            <td>
-                                                <span className="badge" style={{ 
-                                                    backgroundColor: areaColor + '20',
-                                                    color: 'var(--text-color-primary)',
-                                                    border: `1px solid ${areaColor}`,
-                                                    borderRadius: '12px',
-                                                    padding: '2px 10px',
-                                                    fontSize: '0.85rem'
-                                                }}>
-                                                    {areaName || "Unassigned"}
+                                        <div key={uut.id || idx} className="resource-item" style={{ borderLeft: `4px solid ${areaColor}` }}>
+                                            <div className="resource-info">
+                                                <span className="resource-main-text">{uut.description}</span>
+                                                <span className="resource-sub-text">
+                                                    <span style={{ color: areaColor, fontWeight: 500 }}>{uut.measurementArea || "Unassigned"}</span> 
+                                                    {uut.instrument && ` • ${uut.instrument.manufacturer} ${uut.instrument.model}`}
                                                 </span>
-                                            </td>
-                                            <td>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn-icon-only" onClick={() => openEditUut(uut, idx)} title="Edit Specs">
-                                                        <FontAwesomeIcon icon={faEdit} />
-                                                    </button>
-                                                    <button className="btn-icon-only danger" onClick={() => handleDeleteUut(idx)} title="Delete">
-                                                        <FontAwesomeIcon icon={faTrash} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                            </div>
+                                            <div className="resource-actions">
+                                                <button className="action-icon-btn" onClick={() => openInstrumentModal('uut', uut, idx)} title="Edit">
+                                                    <FontAwesomeIcon icon={faEdit} />
+                                                </button>
+                                                <button className="action-icon-btn danger" onClick={() => handleDeleteItem('uuts', idx)} title="Delete">
+                                                    <FontAwesomeIcon icon={faTrash} />
+                                                </button>
+                                            </div>
+                                        </div>
                                     );
                                 })}
-                            </tbody>
-                        </table>
-                    )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* 3. TMDE Manager */}
-                <div className="panel" style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                        <h4 style={{ margin: 0, color: 'var(--text-color-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="session-panel-container">
+                     <div className="session-panel-header">
+                        <h4 className="session-panel-title">
                             <FontAwesomeIcon icon={faTools} style={{ color: 'var(--primary-color)' }}/> 
                             Test Equipment (TMDE)
                         </h4>
-                        <button className="button button-secondary" onClick={openAddTmde}>
+                        <button className="button secondary small" onClick={() => openInstrumentModal('tmde')}>
                             <FontAwesomeIcon icon={faPlus} style={{ marginRight: '5px' }}/> Add TMDE
                         </button>
                     </div>
 
-                    {formData.tmdes.length === 0 ? (
-                        <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#f9f9f9', borderRadius: '4px', color: '#888' }}>
-                            No TMDEs added. Click "Add TMDE" to define the standards used.
-                        </div>
-                    ) : (
-                         <table className="data-table" style={{ width: '100%' }}>
-                            <thead>
-                                <tr>
-                                    <th style={{width: '70%'}}>Name / Model</th>
-                                    <th style={{width: '30%'}}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                    <div className="session-panel-body">
+                        {formData.tmdes.length === 0 ? (
+                             <div className="empty-list-placeholder">No TMDEs added.</div>
+                        ) : (
+                             <div className="resource-list">
                                 {formData.tmdes.map((tmde, idx) => (
-                                    <tr key={tmde.id || idx}>
-                                        <td>{tmde.name}</td>
-                                        <td>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <button className="btn-icon-only" onClick={() => openEditTmde(tmde, idx)} title="Edit Specs">
-                                                    <FontAwesomeIcon icon={faEdit} />
-                                                </button>
-                                                <button className="btn-icon-only danger" onClick={() => handleDeleteTmde(idx)} title="Delete">
-                                                    <FontAwesomeIcon icon={faTrash} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    <div key={tmde.id || idx} className="resource-item">
+                                        <div className="resource-info">
+                                            <span className="resource-main-text">{tmde.name}</span>
+                                            <span className="resource-sub-text">
+                                                ID: {tmde.assetId || "N/A"} • Qty: {tmde.quantity || 1}
+                                            </span>
+                                        </div>
+                                        <div className="resource-actions">
+                                            <button className="action-icon-btn" onClick={() => openInstrumentModal('tmde', tmde, idx)} title="Edit">
+                                                <FontAwesomeIcon icon={faEdit} />
+                                            </button>
+                                            <button className="action-icon-btn danger" onClick={() => handleDeleteItem('tmdes', idx)} title="Delete">
+                                                <FontAwesomeIcon icon={faTrash} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 ))}
-                            </tbody>
-                        </table>
-                    )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
             </div>
@@ -774,16 +650,14 @@ const EditSessionModal = ({
         <div style={{ 
             padding: '20px 30px', 
             borderTop: '1px solid var(--border-color)', 
-            flexShrink: 0,
-            display: 'flex',
+            backgroundColor: 'var(--background-color-secondary)',
+            display: 'flex', 
             justifyContent: 'flex-end',
-            backgroundColor: 'var(--content-background)'
+            gap: '10px'
         }}>
-            <div className="modal-actions" style={{ marginTop: 0, gap: "10px", display: 'flex' }}>
-                <button className="modal-icon-button primary" onClick={handleSave} title="Save Changes">
-                  <FontAwesomeIcon icon={faCheck} />
-                </button>
-            </div>
+            <button className="button primary large" onClick={handleSave}>
+              <FontAwesomeIcon icon={faCheck} style={{ marginRight: '8px' }} /> Save Configuration
+            </button>
         </div>
 
       </div>

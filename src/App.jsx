@@ -1,5 +1,5 @@
-
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 // --- Components ---
 import Analysis from "./features/analysis/Analysis";
@@ -12,7 +12,8 @@ import OverviewModal from "./features/session/components/OverviewModal";
 import ContextMenu from "./components/common/ContextMenu";
 import FullBreakdownModal from "./features/analysis/components/BreakdownModals/FullBreakdownModal";
 import TestPointInfoModal from "./features/testPoints/components/TestPointInfoModal";
-import InstrumentBuilderModal from "./features/instruments/components/InstrumentBuilderModal";
+// CHANGE 1: Import the Universal Modal instead of the old Builder
+import UniversalInstrumentModal from "./features/instruments/components/UniversalInstrumentModal";
 import UnresolvedToleranceModal from "./features/testPoints/components/UnresolvedToleranceModal";
 import HelpModal from "./components/common/HelpModal";
 import BugReportModal from "./components/modals/BugReportModal";
@@ -306,6 +307,7 @@ function App() {
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
+  // NOTE: Keeping the state variable name same to avoid refactoring noise, but it opens the Universal Modal now
   const [isInstrumentBuilderOpen, setIsInstrumentBuilderOpen] = useState(false);
 
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -793,6 +795,69 @@ function App() {
     setAppNotification({ title: "Success", message: `Instrument "${instrument.model}" saved.` });
   };
 
+  // --- NEW: Universal Save Handler ---
+  // Handles saving Instruments to Library OR instances to Session
+  const handleUniversalModalSave = (data) => {
+    if (data.type === 'uut' && currentSessionData) {
+        
+        // 1. Resolve Measurement Area (Fix for Sidebar Issue)
+        let resolvedAreaId = data.measurementAreaId || selectedAreaId || null;
+        let updatedMeasurementAreas = [...(currentSessionData.measurementAreas || [])];
+        
+        // If user typed a new area name that isn't in our list, create it.
+        if (!resolvedAreaId && data.measurementArea) {
+             const existingArea = updatedMeasurementAreas.find(a => a.name === data.measurementArea);
+             if (existingArea) {
+                 resolvedAreaId = existingArea.id;
+             } else {
+                 const newArea = { id: uuidv4(), name: data.measurementArea, color: '#3498db' };
+                 updatedMeasurementAreas.push(newArea);
+                 resolvedAreaId = newArea.id;
+             }
+        }
+
+        const newUut = {
+            id: data.id || uuidv4(),
+            description: data.description || data.name,
+            measurementArea: data.measurementArea,
+            measurementAreaId: resolvedAreaId,
+            instrument: data.instrument // The full instrument def
+        };
+        
+        const updatedUuts = [...(currentSessionData.uuts || []), newUut];
+        
+        updateSession({ 
+            ...currentSessionData, 
+            uuts: updatedUuts, 
+            measurementAreas: updatedMeasurementAreas // Ensure new areas are saved
+        });
+        showToast(`UUT "${newUut.description}" added to session.`);
+    } 
+    else if (data.type === 'tmde' && currentSessionData) {
+         // Add to Session TMDEs
+         const newTmde = {
+            id: data.id || uuidv4(),
+            name: data.name,
+            quantity: data.quantity,
+            assetId: data.assetId,
+            instrument: data.instrument,
+            isInstrumentBased: true
+         };
+         // Fix: Ensure array exists before spreading
+         const updatedTmdes = [...(currentSessionData.tmdeDefinitions || []), newTmde];
+         updateSession({ ...currentSessionData, tmdeDefinitions: updatedTmdes });
+         showToast(`TMDE "${newTmde.name}" added to session.`);
+    } 
+    else {
+        // Standard Library Save
+        saveInstrument(data);
+        showToast(`Instrument "${data.model}" saved to library.`);
+    }
+    
+    setIsInstrumentBuilderOpen(false);
+  };
+
+
   const handleOpenSessionEditor = async (initialTab = "details") => {
     setInitialSessionTab(initialTab);
 
@@ -1138,7 +1203,17 @@ function App() {
         <BugReportModal isOpen={isBugReportOpen} onClose={() => setIsBugReportOpen(false)} reports={bugReports} onSave={saveBugReport} onDelete={handleDeleteBugReport} />
         {currentSessionData && (<> <FloatingNotepad isOpen={isNotepadOpen} onClose={() => setIsNotepadOpen(false)} notes={currentSessionData.notes || ""} onSave={handleUpdateNotes} /> <UnitConverter isOpen={isConverterOpen} onClose={() => setIsConverterOpen(false)} /> <ReverseTraceabilityTool isOpen={isTraceabilityOpen} onClose={() => setIsTraceabilityOpen(false)} /> </>)}
         <UnresolvedToleranceModal isOpen={!!unresolvedToleranceModal} matches={unresolvedToleranceModal?.matches} instrumentName={unresolvedToleranceModal?.instrumentName} onSelect={(selected) => { unresolvedToleranceModal.onSelect(selected); }} onClose={() => setUnresolvedToleranceModal(null)} />
-        <InstrumentBuilderModal isOpen={isInstrumentBuilderOpen} onClose={() => setIsInstrumentBuilderOpen(false)} onSave={handleSaveInstrument} onDelete={deleteInstrument} instruments={instruments} />
+        
+        {/* CHANGE 2: Render UniversalInstrumentModal with mode='library' and new SAVE handler */}
+        <UniversalInstrumentModal 
+            isOpen={isInstrumentBuilderOpen} 
+            onClose={() => setIsInstrumentBuilderOpen(false)} 
+            onSave={handleUniversalModalSave} 
+            onDelete={deleteInstrument} 
+            instruments={instruments} 
+            mode="library"
+        />
+
         {confirmationModal && (<div className="modal-overlay" style={{ zIndex: 2001 }}> <div className="modal-content"> <button onClick={() => setConfirmationModal(null)} className="modal-close-button" > &times; </button> <h3>{confirmationModal.title}</h3> <p>{confirmationModal.message}</p> <div className="modal-actions" style={{ justifyContent: "center", gap: "15px" }} > <button className="button" style={{ backgroundColor: "var(--status-bad)" }} onClick={confirmationModal.onConfirm} > Delete </button> </div> </div> </div>)}
         <AddTestPointModal isOpen={isAddModalOpen || !!editingTestPoint} onClose={() => { setIsAddModalOpen(false); setEditingTestPoint(null); }} onSave={handleSaveTestPoint} initialData={editingTestPoint || (selectedAreaId ? { measurementAreaId: selectedAreaId } : null)} hasExistingPoints={currentTestPoints.length > 0} previousTestPointData={currentTestPoints.length > 0 ? currentTestPoints[currentTestPoints.length - 1] : null} />
         <EditSessionModal isOpen={!!editingSession} onClose={() => { setEditingSession(null); setInitialSessionTab("details"); }} sessionData={editingSession} onSave={handleSessionChange} onSaveToFile={handleSaveToFile} handleLoadFromFile={handleLoadFromFile} initialSection={initialSessionTab} sessionImageCache={sessionImageCache} onImageCacheChange={setSessionImageCache} onRemoveImageFile={deleteSessionImage} instruments={instruments} />

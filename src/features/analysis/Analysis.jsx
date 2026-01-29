@@ -20,8 +20,7 @@ import RiskScatterplot from "./components/RiskScatterplot";
 
 // --- Modals ---
 import NotificationModal from "../../components/modals/NotificationModal";
-import AddTmdeModal from "../instruments/components/AddTmdeModal";
-import EditUutModal from "../instruments/components/EditUutModal";
+import UniversalInstrumentModal from "../instruments/components/UniversalInstrumentModal";
 import DerivedBreakdownModal from "./components/BreakdownModals/DerivedBreakdownModal";
 import RiskBreakdownModal from "./components/BreakdownModals/RiskBreakdownModals";
 import RepeatabilityModal from "./components/RepeatabilityModal";
@@ -76,9 +75,7 @@ function Analysis({
   const [notification, setNotification] = useState(null);
 
   // Modal States
-  const [isAddTmdeModalOpen, setAddTmdeModalOpen] = useState(false);
-  const [isUutModalOpen, setIsUutModalOpen] = useState(false);
-  const [tmdeToEdit, setTmdeToEdit] = useState(null);
+  const [activeInstrumentModal, setActiveInstrumentModal] = useState(null);
   const [modalOverrides, setModalOverrides] = useState(null);
 
   // New State for Test Point Definition
@@ -203,6 +200,8 @@ function Analysis({
   };
 
   const handleSaveUut = ({ description, tolerance, instrument }) => {
+    // If the modal returned a full instrument definition, we prioritize that.
+    // We clear 'tolerance' if we are switching to an instrument-based definition to allow the hook to recalculate.
     onDataSave({ uutTolerance: tolerance });
 
     if (onSessionSave) {
@@ -223,7 +222,7 @@ function Analysis({
     }
   };
 
-  const handleSaveTmde = (tmdeToSave, andClose = true) => {
+  const handleSaveTmde = (tmdeToSave) => {
     const existingIndex = tmdeTolerancesData.findIndex((t) => t.id === tmdeToSave.id);
     let updatedTolerances;
     if (existingIndex > -1) {
@@ -234,11 +233,27 @@ function Analysis({
       updatedTolerances = [...tmdeTolerancesData, tmdeToSave];
     }
     onDataSave({ tmdeTolerances: updatedTolerances });
+  };
 
-    if (andClose) {
-      setAddTmdeModalOpen(false);
-      setTmdeToEdit(null);
+  // --- New Unified Instrument Handler ---
+  const handleSaveInstrument = (data) => {
+    if (!activeInstrumentModal) return;
+    const { mode } = activeInstrumentModal;
+
+    if (mode === 'uut') {
+        // UniversalModal returns { id, description, measurementArea, instrument }
+        // We pass this to handleSaveUut
+        handleSaveUut({
+            description: data.description,
+            instrument: data.instrument,
+            // If we are defining an instrument, we might assume the tolerance comes from the instrument specs.
+            // For now, passing null for tolerance to imply "recalculate from instrument" or keep existing if handled elsewhere.
+            tolerance: null 
+        });
+    } else if (mode === 'tmde') {
+        handleSaveTmde(data);
     }
+    setActiveInstrumentModal(null);
   };
 
   const handleSaveTestPointInfo = (updatedData) => {
@@ -420,7 +435,7 @@ function Analysis({
         unit: value
       };
     }
-    handleSaveTmde(newTmde, false);
+    handleSaveTmde(newTmde);
   };
 
   // ---  Robust Lookup for Measurement Area ID ---
@@ -433,11 +448,9 @@ function Analysis({
          if (sessionData && sessionData.uuts) {
              const firstUut = sessionData.uuts.find(u => u.id === selectedUutIds[0]);
              if (firstUut) {
-                 // Priority 1: Use direct ID if available
                  if (firstUut.measurementAreaId) {
                      overrides.measurementAreaId = firstUut.measurementAreaId;
                  } 
-                 // Priority 2: Lookup Area ID by Name
                  else if (firstUut.measurementArea) {
                      const matchingArea = sessionData.measurementAreas?.find(a => a.name === firstUut.measurementArea);
                      if (matchingArea) {
@@ -455,7 +468,6 @@ function Analysis({
      setModalOverrides(overrides);
      setTestPointModalOpen(true);
   };
-  // --- FIX END ---
 
   return (
     <div>
@@ -465,24 +477,17 @@ function Analysis({
         {...notification}
       />
 
-      <EditUutModal
-        isOpen={isUutModalOpen}
-        onClose={() => setIsUutModalOpen(false)}
-        onSave={handleSaveUut}
-        initialDescription={sessionData.uutDescription}
-        initialTolerance={uutToleranceData}
-        instruments={instruments}
-        uutNominal={uutNominal}
-      />
-
-      <AddTmdeModal
-        isOpen={isAddTmdeModalOpen}
-        onClose={() => { setAddTmdeModalOpen(false); setTmdeToEdit(null); }}
-        onSave={handleSaveTmde}
-        testPointData={testPointData}
-        initialTmdeData={tmdeToEdit}
-        instruments={instruments}
-      />
+      {/* --- Unified Instrument Modal --- */}
+      {activeInstrumentModal && (
+          <UniversalInstrumentModal
+            isOpen={true}
+            onClose={() => setActiveInstrumentModal(null)}
+            onSave={handleSaveInstrument}
+            mode={activeInstrumentModal.mode}
+            initialData={activeInstrumentModal.data}
+            instruments={instruments}
+          />
+      )}
 
       <AddTestPointModal
         isOpen={isTestPointModalOpen}
@@ -644,12 +649,23 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
               onAddManualComponent={() => { setEditingComponent(null); setManualModalOpen(true); }}
               onEditManualComponent={handleEditComponent}
               onRemoveComponent={handleRemoveComponent}
-              onAddTmde={() => { setTmdeToEdit(null); setAddTmdeModalOpen(true); }}
-              onEditTmde={(tmde) => { setTmdeToEdit(tmde); setAddTmdeModalOpen(true); }}
+              
+              // --- TMDE HANDLERS (UPDATED) ---
+              onAddTmde={() => setActiveInstrumentModal({ mode: 'tmde', data: null })}
+              onEditTmde={(tmde) => setActiveInstrumentModal({ mode: 'tmde', data: tmde })}
+              
               onDeleteTmdeDefinition={onDeleteTmdeDefinition}
               onDecrementTmdeQuantity={onDecrementTmdeQuantity}
 
-              onOpenUutModal={() => setIsUutModalOpen(true)}
+              // --- UUT HANDLERS (UPDATED) ---
+              onOpenUutModal={() => setActiveInstrumentModal({
+                  mode: 'uut',
+                  data: {
+                      description: sessionData.uutDescription,
+                      instrument: sessionData.uutInstrument,
+                      // We can pass measurementArea if available in sessionData UUTs list if needed
+                  }
+              })}
               
               onDeleteUut={onDeleteUut}
               onInlineUutUpdate={handleInlineUutUpdate}
