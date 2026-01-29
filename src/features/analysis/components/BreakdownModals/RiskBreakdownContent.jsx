@@ -11,6 +11,25 @@ const SafeUnit = ({ unit }) => {
   return <>{safe}</>;
 };
 
+// Helper to safely format numbers for display
+const safePrecision = (val, precision = 4) => {
+  const num = parseFloat(val);
+  if (isNaN(num) || !isFinite(num)) return "N/A";
+  return num.toPrecision(precision);
+};
+
+const safeFixed = (val, digits = 4) => {
+  const num = parseFloat(val);
+  if (isNaN(num) || !isFinite(num)) return "N/A";
+  return num.toFixed(digits);
+};
+
+const safeExponential = (val, digits = 4) => {
+  const num = parseFloat(val);
+  if (isNaN(num) || !isFinite(num)) return "N/A";
+  return num.toExponential(digits);
+};
+
 // ==========================================
 // 1. KEY INPUTS BREAKDOWN
 // ==========================================
@@ -357,16 +376,17 @@ export const PfaBreakdown = ({ results, inputs }) => {
   const ALow_norm = results.ALow - mid;
   const AUp_norm = results.AUp - mid;
 
-  // Z-Scores (Normalized Limits)
-  const z_x_low = LLow_norm / results.uUUT;
-  const z_x_high = LUp_norm / results.uUUT; 
-  const z_y_low = ALow_norm / results.uDev;
-  const z_y_high = AUp_norm / results.uDev;
+  // Z-Scores (Normalized Limits) - use safe defaults to avoid division by zero
+  const uUUT_safe = results.uUUT || 1;
+  const uDev_safe = results.uDev || 1;
+  const z_x_low = LLow_norm / uUUT_safe;
+  const z_x_high = LUp_norm / uUUT_safe; 
+  const z_y_low = ALow_norm / uDev_safe;
+  const z_y_high = AUp_norm / uDev_safe;
 
   // --- Calc variables for Observed Error breakdown ---
   const effectiveHalfSpan = Math.abs(inputs.LUp - inputs.LLow) / 2;
   const reliability = parseFloat(inputs.reliability);
-  const p_cumulative = (1 + reliability) / 2;
   const zScoreObs = results.uDev > 0 ? effectiveHalfSpan / results.uDev : 0;
 
   const safeNativeUnit =
@@ -391,26 +411,28 @@ export const PfaBreakdown = ({ results, inputs }) => {
           <li>
             True UUT Error (σ<sub>uut</sub>):{" "}
             <strong>
-              {results.uUUT.toPrecision(4)} {safeNativeUnit}
+              {safePrecision(results.uUUT, 4)} {safeNativeUnit}
             </strong>
             <Latex>{`$$\\sigma_{uut} = \\sqrt{\\sigma_{observed}^2 - u_{combined}^2}$$`}</Latex>
           </li>
           <li>
             <div style={{marginBottom: '5px'}}>Observed Error (σ<sub>obs</sub>):{" "}
             <strong>
-              {results.uDev.toPrecision(4)} {safeNativeUnit}
+              {safePrecision(results.uDev, 4)} {safeNativeUnit}
             </strong></div>
-            <Latex>{`$$ L_{eff} = \\frac{L_{Up} - L_{Low}}{2} = ${effectiveHalfSpan.toPrecision(4)} $$`}</Latex>
-            <Latex>{`$$ Z_{score} = \\Phi^{-1}(\\frac{1+${reliability}}{2}) = ${zScoreObs.toPrecision(4)} $$`}</Latex>
-            <Latex>{`$$\\sigma_{observed} = \\frac{L_{eff}}{Z_{score}} = \\frac{${effectiveHalfSpan.toPrecision(4)}}{${zScoreObs.toPrecision(4)}} = \\mathbf{${results.uDev.toPrecision(4)}}$$`}</Latex>
+            <Latex>{`$$ L_{eff} = \\frac{L_{Up} - L_{Low}}{2} = ${safePrecision(effectiveHalfSpan, 4)} $$`}</Latex>
+            <Latex>{`$$ Z_{score} = \\Phi^{-1}(\\frac{1+${reliability}}{2}) = ${safePrecision(zScoreObs, 4)} $$`}</Latex>
+            <Latex>{`$$\\sigma_{observed} = \\frac{L_{eff}}{Z_{score}} = \\frac{${safePrecision(effectiveHalfSpan, 4)}}{${safePrecision(zScoreObs, 4)}} = \\mathbf{${safePrecision(results.uDev, 4)}}$$`}</Latex>
           </li>
           <li>
             Correlation (ρ):{" "}
-            <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${results.uUUT.toPrecision(
+            <Latex>{`$$ \\rho = \\frac{\\sigma_{uut}}{\\sigma_{obs}} = \\frac{${safePrecision(
+              results.uUUT,
               4
-            )}}{${results.uDev.toPrecision(
+            )}}{${safePrecision(
+              results.uDev,
               4
-            )}} = \\mathbf{${results.correlation.toFixed(4)}} $$`}</Latex>
+            )}} = \\mathbf{${safeFixed(results.correlation, 4)}} $$`}</Latex>
           </li>
         </ul>
       </div>
@@ -423,35 +445,43 @@ export const PfaBreakdown = ({ results, inputs }) => {
         <ul>
           <li>
             z<sub>x_low</sub> (True Error):{" "}
-            <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${LLow_norm.toPrecision(
+            <Latex>{`$$ \\frac{L_{Low}}{\\sigma_{uut}} = \\frac{${safePrecision(
+              LLow_norm,
               4
-            )}}{${results.uUUT.toPrecision(
+            )}}{${safePrecision(
+              results.uUUT,
               4
-            )}} = \\mathbf{${z_x_low.toFixed(4)}} $$`}</Latex>
+            )}} = \\mathbf{${safeFixed(z_x_low, 4)}} $$`}</Latex>
           </li>
           <li>
             z<sub>x_high</sub> (True Error):{" "}
-            <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${LUp_norm.toPrecision(
+            <Latex>{`$$ \\frac{L_{Up}}{\\sigma_{uut}} = \\frac{${safePrecision(
+              LUp_norm,
               4
-            )}}{${results.uUUT.toPrecision(
+            )}}{${safePrecision(
+              results.uUUT,
               4
-            )}} = \\mathbf{${z_x_high.toFixed(4)}} $$`}</Latex>
+            )}} = \\mathbf{${safeFixed(z_x_high, 4)}} $$`}</Latex>
           </li>
           <li>
             z<sub>y_low</sub> (Measured Error):{" "}
-            <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${ALow_norm.toPrecision(
+            <Latex>{`$$ \\frac{A_{Low}}{\\sigma_{obs}} = \\frac{${safePrecision(
+              ALow_norm,
               4
-            )}}{${results.uDev.toPrecision(
+            )}}{${safePrecision(
+              results.uDev,
               4
-            )}} = \\mathbf{${z_y_low.toFixed(4)}} $$`}</Latex>
+            )}} = \\mathbf{${safeFixed(z_y_low, 4)}} $$`}</Latex>
           </li>
           <li>
             z<sub>y_high</sub> (Measured Error):{" "}
-            <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${AUp_norm.toPrecision(
+            <Latex>{`$$ \\frac{A_{Up}}{\\sigma_{obs}} = \\frac{${safePrecision(
+              AUp_norm,
               4
-            )}}{${results.uDev.toPrecision(
+            )}}{${safePrecision(
+              results.uDev,
               4
-            )}} = \\mathbf{${z_y_high.toFixed(4)}} $$`}</Latex>
+            )}} = \\mathbf{${safeFixed(z_y_high, 4)}} $$`}</Latex>
           </li>
         </ul>
       </div>
@@ -467,14 +497,18 @@ export const PfaBreakdown = ({ results, inputs }) => {
           }
         </Latex>
         <Latex>{`$$= \\Phi_2(z_{x\\_low}, z_{y\\_high}, \\rho) - \\Phi_2(z_{x\\_low}, z_{y\\_low}, \\rho)$$`}</Latex>
-        <Latex>{`$$ = \\Phi_2(${z_x_low.toFixed(2)}, ${z_y_high.toFixed(
+        <Latex>{`$$ = \\Phi_2(${safeFixed(z_x_low, 2)}, ${safeFixed(
+          z_y_high,
           2
-        )}, ${results.correlation.toFixed(2)}) - \\Phi_2(${z_x_low.toFixed(
+        )}, ${safeFixed(results.correlation, 2)}) - \\Phi_2(${safeFixed(
+          z_x_low,
           2
-        )}, ${z_y_low.toFixed(2)}, ${results.correlation.toFixed(
+        )}, ${safeFixed(z_y_low, 2)}, ${safeFixed(
+          results.correlation,
           2
         )}) $$`}</Latex>
-        <Latex>{`$$ = \\mathbf{${(results.pfa_term1 / 100).toExponential(
+        <Latex>{`$$ = \\mathbf{${safeExponential(
+          results.pfa_term1 / 100,
           4
         )}} $$`}</Latex>
         <p>
@@ -490,26 +524,33 @@ export const PfaBreakdown = ({ results, inputs }) => {
           <Latex>{`$$= P(z_x < -z_{x\\_high} \\text{ and } -z_{y\\_high} < z_y < -z_{y\\_low})$$ `}</Latex>
         </p>
         <Latex>{`$$= \\Phi_2(-z_{x\\_high}, -z_{y\\_low}, \\rho) - \\Phi_2(-z_{x\\_high}, -z_{y\\_high}, \\rho)$$`}</Latex>
-        <Latex>{`$$ = \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_low.toFixed(
+        <Latex>{`$$ = \\Phi_2(${safeFixed(-z_x_high, 2)}, ${safeFixed(
+          -z_y_low,
           2
-        )}, ${results.correlation.toFixed(
+        )}, ${safeFixed(
+          results.correlation,
           2
-        )}) - \\Phi_2(${-z_x_high.toFixed(2)}, ${-z_y_high.toFixed(
+        )}) - \\Phi_2(${safeFixed(-z_x_high, 2)}, ${safeFixed(
+          -z_y_high,
           2
-        )}, ${results.correlation.toFixed(2)}) $$`}</Latex>
-        <Latex>{`$$ = \\mathbf{${(results.pfa_term2 / 100).toExponential(
+        )}, ${safeFixed(results.correlation, 2)}) $$`}</Latex>
+        <Latex>{`$$ = \\mathbf{${safeExponential(
+          results.pfa_term2 / 100,
           4
         )}} $$`}</Latex>
       </div>
       <div className="breakdown-step">
         <h5>Step 5: Final PFA</h5>
         <Latex>{`$$PFA = PFA_{Lower} + PFA_{Upper}$$`}</Latex>
-        <Latex>{`$$ = ${(results.pfa_term1 / 100).toExponential(4)} + ${(
-          results.pfa_term2 / 100
-        ).toExponential(4)} = \\mathbf{${(results.pfa / 100).toExponential(
+        <Latex>{`$$ = ${safeExponential(results.pfa_term1 / 100, 4)} + ${safeExponential(
+          results.pfa_term2 / 100,
+          4
+        )} = \\mathbf{${safeExponential(
+          results.pfa / 100,
           4
         )}} $$`}</Latex>
-        <Latex>{`$$ \\text{Total PFA} = \\mathbf{${results.pfa.toFixed(
+        <Latex>{`$$ \\text{Total PFA} = \\mathbf{${safeFixed(
+          results.pfa,
           4
         )}\\%} $$`}</Latex>
       </div>

@@ -812,8 +812,9 @@ export const calculateDerivedUncertainty = (
       if (isNaN(nominalValue)) return;
 
       // Calculate Standard Uncertainty
+      const toleranceSource = tmde.tolerance || tmde;
       const { standardUncertainty: ui_ppm } =
-        calculateUncertaintyFromToleranceObject(tmde, tmde.measurementPoint, true);
+        calculateUncertaintyFromToleranceObject(toleranceSource, tmde.measurementPoint, true);
 
       const nominalInBase = unitSystem.toBaseUnit(
         nominalValue,
@@ -1758,15 +1759,17 @@ export function PFAMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngM
   let dUUTUnc;
   if (sRiskType === "NotThreshold") {
     dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-    if (dUUTUnc <= 0 || dUUTUnc <= dMeasUnc / 10) return ["", "", "", "", "", ""];
+    // Only reject truly invalid values (zero or negative)
+    // Removed the `dUUTUnc <= dMeasUnc / 10` check to allow low-TUR scenarios to calculate
+    if (dUUTUnc <= 0) return ["", "", "", "", "", ""];
     return PFA_Core(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dTolLow, dTolUp);
   } else if (sRiskType === "UpThreshold") {
     dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
-    if (dUUTUnc <= 0 || dUUTUnc <= dMeasUnc / 10) return ["", "", "", "", "", ""];
+    if (dUUTUnc <= 0) return ["", "", "", "", "", ""];
     return PFAUL_Core(dUUTUnc, dMeasUnc, dAvg, dTolUp, dTolUp);
   } else if (sRiskType === "LowThreshold") {
     dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
-    if (dUUTUnc <= 0 || dUUTUnc <= dMeasUnc / 10) return ["", "", "", "", "", ""];
+    if (dUUTUnc <= 0) return ["", "", "", "", "", ""];
     return PFALL_Core(dUUTUnc, dMeasUnc, dAvg, dTolLow, dTolLow);
   }
   return ["", "", "", "", "", ""];
@@ -1782,17 +1785,18 @@ export function PFRMgr(rngNominal, rngAvg, rngTolLow, rngTolUp, rngMeasUnc, rngM
   let dUUTUnc;
   if (sRiskType === "NotThreshold") {
     dUUTUnc = uutUnc(dMeasRel, dMeasUnc, dTolLow, dTolUp);
-    if (dUUTUnc <= 0 || dUUTUnc <= dMeasUnc / 10) return ["", "", ""];
+    // Only reject truly invalid values (zero or negative)
+    if (dUUTUnc <= 0) return ["", "", ""];
     // FIX: Using tolerance limits (dTolLow, dTolUp) as acceptance limits
     return PFR_Core(dUUTUnc, dMeasUnc, dTolLow, dTolUp, dTolLow, dTolUp);
   } else if (sRiskType === "UpThreshold") {
     dUUTUnc = uutUncUL(dMeasRel, dMeasUnc, dAvg, dTolUp);
-    if (dUUTUnc <= 0 || dUUTUnc <= dMeasUnc / 10) return ["", "", ""];
+    if (dUUTUnc <= 0) return ["", "", ""];
     // FIX: Using tolerance limit dTolUp as acceptance limit
     return PFRUL_Core(dUUTUnc, dMeasUnc, dAvg, dTolUp, dTolUp);
   } else if (sRiskType === "LowThreshold") {
     dUUTUnc = uutUncLL(dMeasRel, dMeasUnc, dAvg, dTolLow);
-    if (dUUTUnc <= 0 || dUUTUnc <= dMeasUnc / 10) return ["", "", ""];
+    if (dUUTUnc <= 0) return ["", "", ""];
     // FIX: Using tolerance limit dTolLow as acceptance limit
     return PFRLL_Core(dUUTUnc, dMeasUnc, dAvg, dTolLow, dTolLow);
   }

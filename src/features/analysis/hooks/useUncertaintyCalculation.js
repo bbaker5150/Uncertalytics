@@ -316,8 +316,11 @@ export const useUncertaintyCalculation = (
           if (uutNominal && uutNominal.value) {
             const quantity = tmde.quantity || 1;
 
+            // Handle potential nested tolerance object
+            const toleranceSource = tmde.tolerance || tmde;
+
             const components = getBudgetComponentsFromTolerance(
-              tmde,
+              toleranceSource,
               uutNominal 
             ).map((c, compIndex) => ({
               ...c,

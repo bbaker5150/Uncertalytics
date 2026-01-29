@@ -159,20 +159,29 @@ export const useRiskCalculation = (
       const tmdeTotals = tmdeTolerancesData.reduce(
         (acc, tmde) => {
           // Determine the effective reference point: TMDE's own point OR UUT Nominal
-          const refPoint = (tmde.measurementPoint && tmde.measurementPoint.value) 
+          // Must have BOTH value AND unit to be valid
+          const hasTmdeMeasurementPoint = tmde.measurementPoint && 
+              tmde.measurementPoint.value && 
+              tmde.measurementPoint.unit;
+          
+          const refPoint = hasTmdeMeasurementPoint 
               ? tmde.measurementPoint 
               : uutNominal;
 
-          if (!refPoint || !refPoint.value) {
+          if (!refPoint || !refPoint.value || !refPoint.unit) {
             missingTmdeRef = true;
             return acc;
           }
 
+          // Handle potential nested tolerance object (same fix as useUncertaintyCalculation)
+          const toleranceSource = tmde.tolerance || tmde;
+
           const { breakdown: tmdeBreakdown } =
             calculateUncertaintyFromToleranceObject(
-              tmde,
+              toleranceSource,
               refPoint
             );
+
           const tmdeNominal = parseFloat(refPoint.value);
 
           const tmdeSpecComponents = tmdeBreakdown.filter(
@@ -184,6 +193,8 @@ export const useRiskCalculation = (
           let totalTmdeHighDevInUutNative = 0;
           let totalTmdeLowDevInUutNative = 0;
 
+          // FIX: Use the unit of the effective reference point, not necessarily the TMDE's own unit
+          // This ensures that if we fell back to UUT Nominal, we use UUT Nominal's unit.
           const tmdeUnitInfo = unitSystem.units[refPoint.unit];
           if (!tmdeUnitInfo || isNaN(tmdeUnitInfo.to_si)) {
             missingTmdeRef = true;
@@ -268,6 +279,23 @@ export const useRiskCalculation = (
       turResult,
       turNeeded
     );
+
+    // Sanitize outputs to prevent UI crashes (empty strings returned on math failure)
+    const validateRiskNum = (val) => {
+      const num = parseFloat(val);
+      return isNaN(num) ? 0 : num;
+    };
+
+    pfaResult = validateRiskNum(pfaResult);
+    pfa_term1 = validateRiskNum(pfa_term1);
+    pfa_term2 = validateRiskNum(pfa_term2);
+    uUUT = validateRiskNum(uUUT);
+    uDev = validateRiskNum(uDev);
+    cor = validateRiskNum(cor);
+
+    pfrResult = validateRiskNum(pfrResult);
+    pfr_term1 = validateRiskNum(pfr_term1);
+    pfr_term2 = validateRiskNum(pfr_term2);
 
     const resRaw = parseFloat(uutToleranceData?.measuringResolution);
     const safeRes = isNaN(resRaw) ? 0 : resRaw;
