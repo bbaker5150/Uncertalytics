@@ -13,7 +13,8 @@ import {
     faMicroscope,
     faCube,
     faArrowRight,
-    faRulerCombined
+    faRulerCombined,
+    faTools
 } from "@fortawesome/free-solid-svg-icons";
 
 // Sub-components
@@ -499,6 +500,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
     // Local Selection State for UUTs in the table
     const [selectedUutIds, setSelectedUutIds] = useState([]);
     const [localRangeIndices, setLocalRangeIndices] = useState({});
+    const [tmdeRangeIndices, setTmdeRangeIndices] = useState({});
     
     // (Local Selection State Removed - Lifted to Parent)
     
@@ -506,7 +508,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
     const [sortConfigs, setSortConfigs] = useState({});
 
     // Filter Data based on Hierarchy
-    const { filteredUuts, filteredPoints, title, subtitle, showAreaColumn } = useMemo(() => {
+    const { filteredUuts, filteredPoints, filteredTmdes, title, subtitle, showAreaColumn } = useMemo(() => {
         let uuts = sessionData.uuts || [];
         let points = sessionData.testPoints || [];
         let displayTitle = "Session Overview";
@@ -572,6 +574,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
         return { 
             filteredUuts: uuts, 
             filteredPoints: points, 
+            filteredTmdes: sessionData.tmdes || [], // Always show all TMDEs as requested
             title: displayTitle, 
             subtitle: displaySubtitle,
             showAreaColumn: isSessionView // Boolean flag
@@ -670,7 +673,8 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                 <div style={{ color: 'var(--text-color-muted)', fontSize: '0.9rem', marginTop: '4px' }}>{subtitle}</div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignItems: 'start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
                 
                 {/* UUT TABLE */}
                 <div style={cardStyle}>
@@ -857,6 +861,9 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                         </table>
                     </div>
                 </div>
+
+                </div>
+
 
                 {/* MEASUREMENT POINTS TABLE (UPDATED: NO CHECKBOXES, CTRL CLICK SELECT) */}
                 <div style={cardStyle}>
@@ -1099,6 +1106,94 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                 </div>
             </div>
             
+            {/* FULL WIDTH TMDE TABLE */}
+            <div style={cardStyle}>
+                <div style={headerStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FontAwesomeIcon icon={faTools} />
+                        <span>Test Equipment (TMDE) ({filteredTmdes.length})</span>
+                    </div>
+                </div>
+                <div className="panel-table-container" style={{ overflowX: 'auto', borderRadius: '8px', border: 'none' }}>
+                        <table className="instrument-summary-table compact-table" style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
+                            <colgroup>
+                                <col style={{ width: '42%' }} />
+                                <col style={{ width: '30%' }} />
+                                <col style={{ width: '28%' }} />
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Range</th>
+                                    <th>Specification</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredTmdes.length === 0 ? (
+                                    <tr><td colSpan={3} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No TMDEs found in session.</td></tr>
+                                ) : (
+                                    filteredTmdes.map((tmde, idx) => {
+                                        // Reuse UUT helper for robust range resolution
+                                        // We treat the TMDE as a UUT for the purpose of range extraction
+                                        const resolution = resolveUutRangeHelper(tmde, tmdeRangeIndices, null, null);
+                                        const { ranges, activeIndex, activeRange } = resolution;
+                                        
+                                        // Calculate summary based on the SPECIFIC active range, not the whole object
+                                        const specSummary = getToleranceSummary(activeRange);
+                                        const hasMultipleRanges = ranges.length > 1;
+
+                                        return (
+                                            <tr key={tmde.id || idx}>
+                                                <td className="cell-description" style={{fontWeight: 600, padding: '8px 12px'}} title={tmde.name}>
+                                                    <div style={{ color: 'var(--text-color)' }}>{tmde.name}</div>
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-color-muted)', marginTop: '2px' }}>
+                                                        {tmde.instrument && (
+                                                            <span>{tmde.instrument.manufacturer} {tmde.instrument.model}</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="cell-value">
+                                                    {hasMultipleRanges ? (
+                                                        <select
+                                                            className="session-selector"
+                                                            style={{ 
+                                                                width: '100%', 
+                                                                padding: '4px 8px',
+                                                                fontSize: '0.85rem'
+                                                            }}
+                                                            value={activeIndex}
+                                                            onChange={(e) => setTmdeRangeIndices(prev => ({...prev, [tmde.id]: parseInt(e.target.value)}))}
+                                                        >
+                                                            {ranges.map((range, rIdx) => {
+                                                                const rangeLabel = (typeof range.range === 'string' ? range.range : null) || 
+                                                                                   (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
+                                                                const unitLabel = typeof range.unit === 'string' ? range.unit : '';
+                                                                return <option key={rIdx} value={rIdx}>{`${rangeLabel} ${unitLabel}`}</option>
+                                                            })}
+                                                        </select>
+                                                    ) : (
+                                                       <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>
+                                                            {(() => {
+                                                                const r = ranges[0];
+                                                                if (!r) return "Default";
+                                                                const rangeLabel = (r.min !== undefined && r.max !== undefined ? `${r.min} to ${r.max}` : null) 
+                                                                                || (typeof r.range === 'string' ? r.range : "Full Range");
+                                                                const unitLabel = typeof r.unit === 'string' ? r.unit : '';
+                                                                return `${rangeLabel} ${unitLabel}`;
+                                                            })()}
+                                                       </span>
+                                                    )}
+                                                </td>
+                                                <td className="cell-tolerance" title={specSummary}>{specSummary}</td>
+                                            </tr>
+                                        )
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                </div>
+            </div>
+            
             {/* Guidance Footer */}
             <div style={{ padding: '20px', backgroundColor: 'rgba(var(--primary-rgb), 0.05)', borderRadius: '8px', border: '1px dashed var(--primary-color)', textAlign: 'center' }}>
                 <p style={{ margin: 0, color: 'var(--text-color)' }}>
@@ -1138,6 +1233,7 @@ function DetailedView({
     currentUutSelection = [],
     activeRangeIndices = {},
     onRangeSelectionChange,
+    onAddTmde
 }) {
 
     // --- DETAILED VIEW LOGIC ---
@@ -1974,7 +2070,22 @@ function DetailedView({
             <div style={{ marginBottom: '30px' }}>
 {/* 2. TMDE LIST */}
                     <div>
-                        <h3 style={sectionTitleStyle}>Measurement Standards (TMDE)</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <h3 style={{ ...sectionTitleStyle, margin: 0 }}>Measurement Standards (TMDE)</h3>
+                            <span 
+                                onClick={onAddTmde}
+                                className="action-icon"
+                                title="Add TMDE"
+                                style={{ 
+                                    cursor: "pointer", 
+                                    color: "var(--primary-color)",
+                                    fontSize: '0.9rem',
+                                    fontWeight: 600
+                                }}
+                            >
+                                <FontAwesomeIcon icon={faPlus} /> Add
+                            </span>
+                        </div>
                         <div style={cardStyle}>
                             <div className="panel-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1 }}>
                                 <table className="instrument-summary-table compact-table" style={{ width: '100%' }}>
@@ -2029,6 +2140,12 @@ function DetailedView({
                                                             <td className="cell-description" style={{ paddingLeft: '10px' }}>
                                                                 <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
                                                                     {masterTmde.name || masterTmde.description}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-color-muted)', marginTop: '2px' }}>
+                                                                    <span>ID: {masterTmde.assetId || 'N/A'}</span>
+                                                                    {masterTmde.instrument && (
+                                                                        <span> • {masterTmde.instrument.manufacturer} {masterTmde.instrument.model}</span>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                             {isDerived && (

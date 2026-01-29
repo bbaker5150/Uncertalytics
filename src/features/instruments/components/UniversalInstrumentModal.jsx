@@ -224,8 +224,21 @@ const UniversalInstrumentModal = ({
     // --- Handlers ---
     
     // Selecting for EDITING (Library mode only)
+    // Selecting for EDITING (Library mode only) or IMPORTING (if in UUT/TMDE mode)
     const handleEditLibraryItem = (inst) => {
         const newDef = JSON.parse(JSON.stringify(inst));
+        
+        // If we are importing into a UUT/TMDE definition (not managing the library itself)
+        if (effectiveMode !== 'library') {
+            newDef.id = uuidv4(); // Create a fresh instance ID
+            
+            // Auto-fill Name from Instrument details
+            const autoName = `${inst.manufacturer || ''} ${inst.model || ''}`.trim();
+            if (autoName) {
+                setMetaData(prev => ({ ...prev, name: autoName }));
+            }
+        }
+        
         setInstrumentDef(newDef);
         if (newDef.functions?.length > 0) setActiveFunctionId(newDef.functions[0].id);
         setViewMode("edit");
@@ -493,7 +506,7 @@ const UniversalInstrumentModal = ({
                                                                 className="button small primary" 
                                                                 onClick={(e) => { e.stopPropagation(); handleEditLibraryItem(inst); }}
                                                             >
-                                                                Edit
+                                                                Select
                                                             </button>
                                                         )}
                                                     </td>

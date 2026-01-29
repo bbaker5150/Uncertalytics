@@ -223,11 +223,32 @@ function Analysis({
   };
 
   const handleSaveTmde = (tmdeToSave) => {
+    // 1. Update Session Data (Global Inventory)
+    if (onSessionSave) {
+        const currentTmdes = sessionData.tmdes || [];
+        const existingSessionIndex = currentTmdes.findIndex(t => t.id === tmdeToSave.id);
+        
+        let updatedSessionTmdes;
+        if (existingSessionIndex > -1) {
+             updatedSessionTmdes = currentTmdes.map((t, i) => i === existingSessionIndex ? { ...t, ...tmdeToSave } : t);
+        } else {
+             updatedSessionTmdes = [...currentTmdes, tmdeToSave];
+        }
+        
+        onSessionSave({
+            ...sessionData,
+            tmdes: updatedSessionTmdes
+        });
+    } else {
+        console.warn("onSessionSave prop is missing in Analysis.jsx");
+    }
+
+    // 2. Update Local Test Point Data (Budget)
     const existingIndex = tmdeTolerancesData.findIndex((t) => t.id === tmdeToSave.id);
     let updatedTolerances;
     if (existingIndex > -1) {
       updatedTolerances = tmdeTolerancesData.map((t, index) =>
-        index === existingIndex ? tmdeToSave : t
+        index === existingIndex ? { ...t, ...tmdeToSave } : t
       );
     } else {
       updatedTolerances = [...tmdeTolerancesData, tmdeToSave];
@@ -237,7 +258,10 @@ function Analysis({
 
   // --- New Unified Instrument Handler ---
   const handleSaveInstrument = (data) => {
-    if (!activeInstrumentModal) return;
+    if (!activeInstrumentModal) {
+        console.warn("activeInstrumentModal is null, cannot determine save mode.");
+        return;
+    }
     const { mode } = activeInstrumentModal;
 
     if (mode === 'uut') {
@@ -252,6 +276,8 @@ function Analysis({
         });
     } else if (mode === 'tmde') {
         handleSaveTmde(data);
+    } else {
+        console.warn("Unknown instrument modal mode:", mode);
     }
     setActiveInstrumentModal(null);
   };

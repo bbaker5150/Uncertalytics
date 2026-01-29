@@ -798,6 +798,7 @@ function App() {
   // --- NEW: Universal Save Handler ---
   // Handles saving Instruments to Library OR instances to Session
   const handleUniversalModalSave = (data) => {
+    // CASE 1: Saving a UUT (New or Edit)
     if (data.type === 'uut' && currentSessionData) {
         
         // 1. Resolve Measurement Area (Fix for Sidebar Issue)
@@ -833,23 +834,80 @@ function App() {
         });
         showToast(`UUT "${newUut.description}" added to session.`);
     } 
-    else if (data.type === 'tmde' && currentSessionData) {
-         // Add to Session TMDEs
-         const newTmde = {
-            id: data.id || uuidv4(),
-            name: data.name,
-            quantity: data.quantity,
-            assetId: data.assetId,
-            instrument: data.instrument,
-            isInstrumentBased: true
-         };
-         // Fix: Ensure array exists before spreading
-         const updatedTmdes = [...(currentSessionData.tmdeDefinitions || []), newTmde];
-         updateSession({ ...currentSessionData, tmdeDefinitions: updatedTmdes });
+    // CASE 2: Saving a TMDE (Direct Edit or "Use as TMDE" from Library)
+    else if ((data.type === 'tmde' || (data.type === 'library' && data.useAs === 'tmde')) && currentSessionData) {
+         
+         // Construct TMDE Object
+         // If coming from library "Use as...", we need to build the wrapper
+         // If coming from TMDE editor, data is already the wrapper
+         
+         let newTmde = {};
+         
+         if (data.type === 'library' && data.useAs === 'tmde') {
+             // Converting Library Item -> Session TMDE
+             newTmde = {
+                id: uuidv4(),
+                name: `${data.manufacturer} ${data.model}`,
+                quantity: 1,
+                assetId: "",
+                instrument: { ...data }, // The library item IS the instrument
+                isInstrumentBased: true
+             };
+             // Clean up the instrument object to not be self-recursive if it was just data
+             delete newTmde.instrument.useAs; 
+         } else {
+             // Saving from TMDE form
+             newTmde = {
+                id: data.id || uuidv4(),
+                name: data.name,
+                quantity: data.quantity,
+                assetId: data.assetId,
+                instrument: data.instrument,
+                isInstrumentBased: true
+             };
+         }
+
+         const updatedTmdes = [...(currentSessionData.tmdes || []), newTmde];
+         updateSession({ ...currentSessionData, tmdes: updatedTmdes });
          showToast(`TMDE "${newTmde.name}" added to session.`);
     } 
+    // CASE 3: Saving a UUT from "Use as UUT" Library Action
+    else if (data.type === 'library' && data.useAs === 'uut' && currentSessionData) {
+         // Resolve Area (Default to current selection or Create Default)
+         let resolvedAreaId = selectedAreaId;
+         let updatedMeasurementAreas = [...(currentSessionData.measurementAreas || [])];
+         
+         if (!resolvedAreaId) {
+             // Check for default
+             const defaultArea = updatedMeasurementAreas.find(a => a.name === "General");
+             if (defaultArea) {
+                 resolvedAreaId = defaultArea.id;
+             } else {
+                 const newArea = { id: uuidv4(), name: "General", color: '#3498db' };
+                 updatedMeasurementAreas.push(newArea);
+                 resolvedAreaId = newArea.id;
+             }
+         }
+
+         const newUut = {
+            id: uuidv4(),
+            description: `${data.manufacturer} ${data.model}`,
+            measurementArea: updatedMeasurementAreas.find(a => a.id === resolvedAreaId)?.name || "General",
+            measurementAreaId: resolvedAreaId,
+            instrument: { ...data }
+         };
+         delete newUut.instrument.useAs;
+
+         const updatedUuts = [...(currentSessionData.uuts || []), newUut];
+         updateSession({ 
+             ...currentSessionData, 
+             uuts: updatedUuts, 
+             measurementAreas: updatedMeasurementAreas 
+         });
+         showToast(`UUT "${newUut.description}" added to session.`);
+    }
     else {
-        // Standard Library Save
+        // Standard Library Save (Managing the Library itself)
         saveInstrument(data);
         showToast(`Instrument "${data.model}" saved to library.`);
     }

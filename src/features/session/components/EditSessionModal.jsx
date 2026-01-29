@@ -625,6 +625,7 @@ const EditSessionModal = ({
                                             <span className="resource-main-text">{tmde.name}</span>
                                             <span className="resource-sub-text">
                                                 ID: {tmde.assetId || "N/A"} • Qty: {tmde.quantity || 1}
+                                                {tmde.instrument && ` • ${tmde.instrument.manufacturer} ${tmde.instrument.model}`}
                                             </span>
                                         </div>
                                         <div className="resource-actions">
