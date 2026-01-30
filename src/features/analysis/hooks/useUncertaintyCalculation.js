@@ -32,8 +32,6 @@ export const useUncertaintyCalculation = (
       setCalculationError(null);
 
       // --- 1. EARLY EXIT: EMPTY STATE ---
-      // If we are in a "Virtual Test Point" state (Area selected, but no point defined),
-      // or if the user simply hasn't typed a value yet, we exit gracefully.
       if (!uutNominal || 
           uutNominal.value === "" || 
           uutNominal.value === null || 
@@ -42,7 +40,6 @@ export const useUncertaintyCalculation = (
             
         setCalcResults(null);
         
-        // If data was previously calculated, clear it from the persisted state
         if (testPointData.is_detailed_uncertainty_calculated) {
           onDataSave({
             combined_uncertainty: null,
@@ -62,7 +59,6 @@ export const useUncertaintyCalculation = (
         Object.keys(testPointData.variableMappings).length > 0;
       const noTmdes = !tmdeTolerancesData || tmdeTolerancesData.length === 0;
 
-      // UPDATED CONDITION: Only return if there are no TMDEs AND no Manual Components
       const noManuals = !manualComponents || manualComponents.length === 0;
 
       if (
@@ -109,11 +105,9 @@ export const useUncertaintyCalculation = (
           manualComponents
         );
 
-        // Check for "soft" error state (missing inputs during configuration)
-        // This prevents the "Missing TMDE assignments" error from crashing the UI
         if (derivedCalculationResult.missingInputs) {
           setCalcResults(null);
-          setCalculationError(null); // Explicitly clear errors
+          setCalculationError(null); 
           
           if (testPointData.is_detailed_uncertainty_calculated) {
             onDataSave({
@@ -126,7 +120,7 @@ export const useUncertaintyCalculation = (
               calculatedNominalValue: null,
             });
           }
-          return; // Exit effect gracefully
+          return;
         }
 
         const {
@@ -135,8 +129,7 @@ export const useUncertaintyCalculation = (
           nominalResult,
           error: calcError,
         } = derivedCalculationResult;
-        // --- UPDATED LOGIC END ---
-
+        
         if (calcError) {
           throw new Error(calcError);
         }
@@ -152,12 +145,10 @@ export const useUncertaintyCalculation = (
         let totalVariance_Native = derivedUcInputs_Native ** 2;
 
         derivedBreakdown.forEach((item, index) => {
-            // Logic to find if this component came from a TMDE or Manual
             const contributingTmde = tmdeTolerancesData.find(
                 (tmde) => tmde.variableType === item.type
             );
             
-            // Check manual if not found in TMDE
             const contributingManual = !contributingTmde 
                 ? manualComponents.find(m => (m.variableType || m.name) === item.type) 
                 : null;
@@ -197,7 +188,6 @@ export const useUncertaintyCalculation = (
             });
         });
 
-        // Add Manual Components that are NOT variables (e.g. Repeatability of the result)
         if (manualComponents && manualComponents.length > 0) {
             manualComponents.forEach((comp, idx) => {
                 const varType = comp.variableType || comp.name;
@@ -227,47 +217,7 @@ export const useUncertaintyCalculation = (
             });
         }
 
-        // Add direct components like resolution
-        let uutResolutionUncertaintyBase = 0;
-        let uutResolutionUncertaintyNative = 0;
-        const resComp = getBudgetComponentsFromTolerance(
-          uutToleranceData,
-          uutNominal
-        ).find((comp) => comp.name.endsWith(" - Resolution"));
-
-        if (resComp && !isNaN(resComp.value) && derivedNominalValue !== 0) {
-          const derivedNominalInBase = unitSystem.toBaseUnit(
-            derivedNominalValue,
-            derivedNominalUnit
-          );
-          if (!isNaN(derivedNominalInBase) && derivedNominalInBase !== 0) {
-            const deviationInBase =
-              (resComp.value / 1e6) * Math.abs(derivedNominalInBase);
-
-            uutResolutionUncertaintyBase = deviationInBase;
-            uutResolutionUncertaintyNative =
-              deviationInBase / targetUnitInfo.to_si;
-
-            totalVariance_Native += uutResolutionUncertaintyNative ** 2;
-
-            componentsForBudgetTable.push({
-              id: `derived_resolution`,
-              name: `${derivedQuantityName} - Resolution`,
-              type: "B",
-              value: uutResolutionUncertaintyBase,
-              unit: derivedNominalUnit,
-              isBaseUnitValue: true,
-              sensitivityCoefficient: 1,
-              derivativeString: null,
-              contribution: uutResolutionUncertaintyNative,
-              dof: Infinity,
-              isCore: true,
-              distribution: "Rectangular",
-              sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`,
-              quantity: 1,
-            });
-          }
-        }
+        // NOTE: Resolution logic removed here
 
         const combinedUncertainty_Native = Math.sqrt(totalVariance_Native);
         combinedUncertaintyAbsoluteBase =
@@ -292,31 +242,14 @@ export const useUncertaintyCalculation = (
 
         effectiveDof = Infinity;
       } else {
-        // --- DIRECT MEASUREMENT LOGIC (Unchanged) ---
+        // --- DIRECT MEASUREMENT LOGIC ---
         let totalVariancePPM = 0;
-        const uutResolutionComponents = getBudgetComponentsFromTolerance(
-          uutToleranceData,
-          uutNominal
-        )
-          .filter((comp) => comp.name.endsWith(" - Resolution"))
-          .map((c) => ({
-            ...c,
-            name: `${derivedQuantityName} - Resolution`,
-            sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`,
-          }));
-
-        totalVariancePPM = 0;
-        uutResolutionComponents.forEach((comp) => {
-          totalVariancePPM += comp.value ** 2;
-          componentsForBudgetTable.push(comp);
-        });
+        
+        // NOTE: Resolution logic removed here
 
         tmdeTolerancesData.forEach((tmde, tmdeIndex) => {
-          // Use uutNominal as the reference point for budget calculations
           if (uutNominal && uutNominal.value) {
             const quantity = tmde.quantity || 1;
-
-            // Handle potential nested tolerance object
             const toleranceSource = tmde.tolerance || tmde;
 
             const components = getBudgetComponentsFromTolerance(
@@ -324,7 +257,6 @@ export const useUncertaintyCalculation = (
               uutNominal 
             ).map((c, compIndex) => ({
               ...c,
-              // Strictly unique ID formulation: OrginalID + TMDE Index + Component Index
               id: `${c.id}_${tmdeIndex}_${compIndex}`,
               sourcePointLabel: `${uutNominal.value} ${uutNominal.unit}`,
               quantity: quantity,

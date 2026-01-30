@@ -28,26 +28,21 @@ export const getBudgetComponentsFromTolerance = (
   referenceMeasurementPoint
 ) => {
 
-  // --- 1. STRUCTURE NORMALIZATION & DATA PRESERVATION ---
+  // --- 1. STRUCTURE NORMALIZATION ---
   let toleranceObject = rawToleranceObject;
   
-  // Handle Array wrapper
   if (Array.isArray(toleranceObject)) {
     toleranceObject = toleranceObject[0];
   }
 
-  // **CRITICAL FIX**: Capture Resolution from the PARENT object before we normalize 
-  // down to the inner 'tolerances' object.
   let outerResolution = null;
   let outerResolutionUnit = null;
   
   if (toleranceObject) {
-      // Check standard keys for resolution on the outer object
       outerResolution = toleranceObject.resolution || toleranceObject.measuringResolution;
       outerResolutionUnit = toleranceObject.resolutionUnit || toleranceObject.measuringResolutionUnit;
   }
 
-  // Normalize: If specs are nested in 'tolerance' or 'tolerances', dive in.
   if (toleranceObject && typeof toleranceObject === 'object') {
      if (toleranceObject.tolerance) {
         toleranceObject = toleranceObject.tolerance;
@@ -75,186 +70,160 @@ export const getBudgetComponentsFromTolerance = (
   const nominalUnit = referenceMeasurementPoint.unit;
   const prefix = toleranceObject.name || (outerResolution ? "UUT" : "TMDE");
 
-  const processComponent = (
-    tolComp,
-    name,
-    baseValueForRelative,
-    isResolution = false
-  ) => {
-    // Check for missing data
-    if (!tolComp && !isResolution) return;
+  // --- HELPER: Get Error Magnitude ---
+  const getComponentErrorMagnitude = (tolComp, baseValueForRelative) => {
+    if (!tolComp || typeof tolComp !== 'object') return 0;
 
-    // Check if tolComp is malformed
-    if (tolComp && typeof tolComp !== 'object' && !isResolution) return;
+    const high = parseFloat(tolComp.high || 0);
+    let low = parseFloat(tolComp.low || -high);
 
-    const distributionDivisor = isResolution
-      ? 1.732
-      : parseFloat(tolComp.distribution) || 1.732;
-    
-    const distributionLabel = isResolution
-      ? "Rectangular"
-      : errorDistributions.find((d) => d.value === String(tolComp.distribution))?.label || "Rectangular";
-
-    let halfSpanPPM = NaN; 
-    let u_i_native = NaN;
-    let unit_native = nominalUnit;
-
-    if (isResolution) {
-      const value = parseFloat(tolComp);
-      if (isNaN(value) || value === 0) return;
-      
-      // Use override if available (from parent), else fall back to current object, else nominal
-      const unit = outerResolutionUnit || toleranceObject.measuringResolutionUnit || nominalUnit;
-      
-      // PPM Calc
-      if (nominalValue !== 0) {
-        halfSpanPPM = convertToPPM(value / 2, unit, nominalValue, nominalUnit);
-      }
-      
-      u_i_native = value / 2 / distributionDivisor;
-      unit_native = unit;
-
-    } else {
-      const high = parseFloat(tolComp?.high || 0);
-      let low = parseFloat(tolComp?.low || -high);
-
-      // --- FIX: HANDLE POSITIVE LOW VALUES ---
-      // If symmetric, or if High/Low are identical positive numbers, flip Low to negative.
-      if (tolComp.symmetric && low > 0) {
-          low = -Math.abs(low);
-      } else if (low > 0 && high > 0 && Math.abs(high - low) < 1e-9) {
-          low = -Math.abs(low);
-      }
-      
-      const halfSpan = (high - low) / 2;
-
-      if (halfSpan === 0) return;
-
-      const unit = tolComp.unit;
-      let valueInNominalUnits;
-
-      if (["%", "ppm", "ppb"].includes(unit)) {
-        let multiplier = 0;
-        if (unit === "%") multiplier = 0.01;
-        else if (unit === "ppm") multiplier = 1e-6;
-        else if (unit === "ppb") multiplier = 1e-9;
-
-        if (isNaN(baseValueForRelative)) return;
-
-        valueInNominalUnits = halfSpan * multiplier * baseValueForRelative;
-      } else {
-        const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
-        const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
-        valueInNominalUnits = valueInBase / nominalUnitInBase;
-      }
-
-      halfSpanPPM = convertToPPM(
-        valueInNominalUnits,
-        nominalUnit,
-        nominalValue,
-        nominalUnit
-      );
-      
-      u_i_native = valueInNominalUnits / distributionDivisor;
-      unit_native = nominalUnit;
+    if (tolComp.symmetric && low > 0) {
+        low = -Math.abs(low);
+    } else if (low > 0 && high > 0 && Math.abs(high - low) < 1e-9) {
+        low = -Math.abs(low);
     }
+    
+    const halfSpan = (high - low) / 2;
+    if (halfSpan === 0) return 0;
 
-    // --- LOGIC FIX: ALLOW COMPONENT IF PPM *OR* ABSOLUTE IS VALID ---
-    const canUsePPM = !isNaN(halfSpanPPM);
-    const canUseAbsolute = !isNaN(u_i_native);
+    const unit = tolComp.unit;
+    
+    if (["%", "ppm", "ppb"].includes(unit)) {
+      let multiplier = 0;
+      if (unit === "%") multiplier = 0.01;
+      else if (unit === "ppm") multiplier = 1e-6;
+      else if (unit === "ppb") multiplier = 1e-9;
 
-    if (canUsePPM || canUseAbsolute) {
-      
-      let finalValue;
-      let isBaseUnitValue = false;
-
-      if (canUsePPM) {
-        finalValue = Math.abs(halfSpanPPM / distributionDivisor);
-      } else {
-        // Fallback: Use Absolute Base Value if PPM failed (e.g. 0V nominal)
-        const u_i_base = unitSystem.toBaseUnit(u_i_native, unit_native);
-        finalValue = u_i_base;
-        isBaseUnitValue = true;
-      }
-      
-      const uniqueSuffix = toleranceObject.id ? `_${toleranceObject.id}` : '';
-      const cleanName = name.toLowerCase().replace(/\s/g, "");
-      const componentId = `${prefix}_${cleanName}${uniqueSuffix}`;
-
-      budgetComponents.push({
-        id: componentId,
-        name: `${prefix} - ${name}`,
-        type: "B",
-        value: finalValue,              
-        isBaseUnitValue: isBaseUnitValue, 
-        value_native: u_i_native,       
-        unit_native: unit_native,
-        dof: Infinity,
-        isCore: true,
-        distribution: distributionLabel,
-      });
+      if (isNaN(baseValueForRelative)) return 0;
+      return Math.abs(halfSpan * multiplier * baseValueForRelative);
+    } else {
+      const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
+      const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
+      return Math.abs(valueInBase / nominalUnitInBase);
     }
   };
-  
-  // Use normalized 'toleranceObject' for reading/floor
-  processComponent(toleranceObject.reading, "Reading", nominalValue);
-  processComponent(toleranceObject.readings_iv, "Readings (IV)", nominalValue);
 
-  processComponent(
-    toleranceObject.range,
-    "Range",
-    parseFloat(toleranceObject.max) || parseFloat(toleranceObject.range?.value)
-  );
-  processComponent(toleranceObject.floor, "Floor", nominalValue);
+  // --- 2. ACCUMULATE LINEAR SUM ---
+  let totalLinearErrorNative = 0;
+  let hasAccuracyComponents = false;
+
+  if (toleranceObject.reading) {
+      totalLinearErrorNative += getComponentErrorMagnitude(toleranceObject.reading, nominalValue);
+      hasAccuracyComponents = true;
+  }
+  if (toleranceObject.readings_iv) {
+      totalLinearErrorNative += getComponentErrorMagnitude(toleranceObject.readings_iv, nominalValue);
+      hasAccuracyComponents = true;
+  }
+
+  const rangeBase = parseFloat(toleranceObject.max) || parseFloat(toleranceObject.range?.value);
+  if (toleranceObject.range) {
+      totalLinearErrorNative += getComponentErrorMagnitude(toleranceObject.range, rangeBase);
+      hasAccuracyComponents = true;
+  }
+
+  if (toleranceObject.floor) {
+      totalLinearErrorNative += getComponentErrorMagnitude(toleranceObject.floor, nominalValue);
+      hasAccuracyComponents = true;
+  }
 
   if (toleranceObject.db && !isNaN(parseFloat(toleranceObject.db.high))) {
-     const highDb = parseFloat(toleranceObject.db.high || 0);
-     const lowDb = parseFloat(toleranceObject.db.low || -highDb);
-     const dbTol = (highDb - lowDb) / 2;
+      const highDb = parseFloat(toleranceObject.db.high || 0);
+      const lowDb = parseFloat(toleranceObject.db.low || -highDb);
+      const dbTol = (highDb - lowDb) / 2;
 
-     if (dbTol > 0 && nominalValue > 0) {
+      if (dbTol > 0 && nominalValue > 0) {
         const dbMult = parseFloat(toleranceObject.db.multiplier) || 20;
         const dbRef = parseFloat(toleranceObject.db.ref) || 1;
-        const distributionDivisor = parseFloat(toleranceObject.db.distribution) || 1.732;
-        const distributionLabel = errorDistributions.find(d => d.value === String(toleranceObject.db.distribution))?.label || "Rectangular";
         
         const dbNominal = dbMult * Math.log10(nominalValue / dbRef);
         const centerDb = (highDb + lowDb) / 2;
         const nominalAtCenterTol = dbRef * Math.pow(10, (dbNominal + centerDb) / dbMult);
         const upperValue = dbRef * Math.pow(10, (dbNominal + highDb) / dbMult);
         const absoluteDeviation = Math.abs(upperValue - nominalAtCenterTol);
-  
-        const ppm = convertToPPM(absoluteDeviation, nominalUnit, nominalValue, nominalUnit);
-        
-        if (!isNaN(ppm)) {
-          const u_i = Math.abs(ppm / distributionDivisor);
-          budgetComponents.push({
-            id: `${prefix}_db_${toleranceObject.id || "manual"}`,
-            name: `${prefix} - dB`,
-            type: "B",
-            value: u_i,
-            value_native: absoluteDeviation / distributionDivisor,
-            unit_native: nominalUnit,
-            dof: Infinity,
-            isCore: true,
-            distribution: distributionLabel,
-          });
-        }
-     }
+
+        totalLinearErrorNative += absoluteDeviation;
+        hasAccuracyComponents = true;
+      }
   }
 
-  // --- RESOLUTION PROCESSING ---
-  // We use 'outerResolution' (captured from parent) OR check the inner object as fallback
-  const finalResolution = outerResolution || toleranceObject.measuringResolution;
-  
-  if (finalResolution) {
-    processComponent(
-      finalResolution,
-      "Resolution",
-      nominalValue,
-      true
-    );
+  // --- 3. CREATE COMBINED ACCURACY COMPONENT ---
+  if (hasAccuracyComponents) {
+      const distVal = toleranceObject.distribution || "1.732";
+      const distDiv = parseFloat(distVal) || 1.732;
+      const distLabel = errorDistributions.find(d => d.value === String(distVal))?.label || "Rectangular";
+
+      // Native Standard Uncertainty
+      const u_i_native = totalLinearErrorNative / distDiv;
+
+      // PPM for Direct Mode Calculator
+      let u_i_ppm = NaN;
+      if (nominalValue !== 0) {
+        u_i_ppm = Math.abs((u_i_native / nominalValue) * 1e6);
+      }
+
+      const uniqueSuffix = toleranceObject.id ? `_${toleranceObject.id}` : '';
+      
+      budgetComponents.push({
+        id: `${prefix}_accuracy${uniqueSuffix}`,
+        name: `${prefix} - Accuracy`,
+        type: "B",
+        
+        value: u_i_ppm, 
+        isBaseUnitValue: false, 
+        
+        value_native: u_i_native,     
+        unit_native: nominalUnit,     
+        
+        dof: Infinity,
+        isCore: true,
+        distribution: distLabel,
+        distributionValue: distVal,
+        
+        // --- NEW FLAGS FOR IN-TABLE EDITING ---
+        allowDistributionEdit: true, 
+        toleranceId: toleranceObject.id // Used to find the parent tolerance to update
+      });
   }
+
+  // --- 4. RESOLUTION COMPONENT ---
+  const processResolution = () => {
+      const resVal = parseFloat(outerResolution || toleranceObject.measuringResolution);
+      const resUnit = outerResolutionUnit || toleranceObject.measuringResolutionUnit || nominalUnit;
+
+      if (!isNaN(resVal) && resVal > 0) {
+          const halfRes = resVal / 2;
+          const distDiv = 1.732; 
+
+          let u_i_native = halfRes / distDiv; 
+          
+          if (resUnit !== nominalUnit) {
+              const resBase = unitSystem.toBaseUnit(halfRes, resUnit);
+              const nomBase = unitSystem.toBaseUnit(1, nominalUnit);
+              u_i_native = (resBase / nomBase) / distDiv;
+          }
+
+          let u_i_ppm = NaN;
+          if (nominalValue !== 0) {
+             u_i_ppm = Math.abs((u_i_native / nominalValue) * 1e6);
+          }
+
+          budgetComponents.push({
+              id: `${prefix}_resolution${toleranceObject.id ? `_${toleranceObject.id}` : ''}`,
+              name: `${prefix} - Resolution`,
+              type: "B",
+              value: u_i_ppm,       
+              isBaseUnitValue: false,
+              value_native: u_i_native,
+              unit_native: nominalUnit, 
+              dof: Infinity,
+              isCore: true,
+              distribution: "Rectangular (Resolution)"
+          });
+      }
+  };
+
+  processResolution();
 
   return budgetComponents;
 };

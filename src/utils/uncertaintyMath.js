@@ -635,46 +635,7 @@ export const calculateUncertaintyFromToleranceObject = (
     }
   }
 
-  // --- UPDATED RESOLUTION LOGIC ---
-  // Use outerResolution if available (from parent object), else check local
-  const finalResolution = outerResolution || toleranceObject.measuringResolution;
-  const shouldSkipResolution = excludeResolution || toleranceObject.isTmde;
-
-  if (!shouldSkipResolution && parseFloat(finalResolution) > 0) {
-    const res = parseFloat(finalResolution);
-    // Use outer resolution unit if available
-    const resUnit = outerResolutionUnit || toleranceObject.measuringResolutionUnit || nominalUnit;
-    const halfSpan = res / 2;
-
-    const resPpm = convertToPPM(halfSpan, resUnit, nominalValue, nominalUnit);
-    
-    const canUseResPPM = !isNaN(resPpm);
-    const canUseResAbs = true; // Resolution is absolute
-
-    if (canUseResPPM || canUseResAbs) {
-      const divisor = 1.732; // sqrt(3)
-      // If nominal is 0, resPpm is NaN. We use 0 for variance contribution to keep math safe, 
-      // but breakown still records the item.
-      const u_i = canUseResPPM ? Math.abs(resPpm / divisor) : 0;
-      
-      if (canUseResPPM) totalVariance += Math.pow(u_i, 2);
-
-      breakdown.push({
-        name: "Resolution",
-        input: `±${halfSpan} ${resUnit}`,
-        explanation: `Rectangular distribution over ± half the least significant digit.`,
-        ppm: canUseResPPM ? Math.abs(resPpm) : 0,
-        u_i,
-        divisor,
-        distributionLabel: "Rectangular",
-        originalHalfSpan: halfSpan,
-        originalUnit: resUnit,
-        // Calculate absolute limits for resolution
-        absoluteHigh: nominalValue + (unitSystem.toBaseUnit(halfSpan, resUnit) / unitSystem.toBaseUnit(1, nominalUnit)),
-        absoluteLow: nominalValue - (unitSystem.toBaseUnit(halfSpan, resUnit) / unitSystem.toBaseUnit(1, nominalUnit))
-      });
-    }
-  }
+  // NOTE: Automatic Resolution logic has been removed.
 
   const standardUncertainty = Math.sqrt(totalVariance);
   return {
