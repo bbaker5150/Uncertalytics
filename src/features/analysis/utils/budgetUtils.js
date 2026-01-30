@@ -186,44 +186,5 @@ export const getBudgetComponentsFromTolerance = (
       });
   }
 
-  // --- 4. RESOLUTION COMPONENT ---
-  const processResolution = () => {
-      const resVal = parseFloat(outerResolution || toleranceObject.measuringResolution);
-      const resUnit = outerResolutionUnit || toleranceObject.measuringResolutionUnit || nominalUnit;
-
-      if (!isNaN(resVal) && resVal > 0) {
-          const halfRes = resVal / 2;
-          const distDiv = 1.732; 
-
-          let u_i_native = halfRes / distDiv; 
-          
-          if (resUnit !== nominalUnit) {
-              const resBase = unitSystem.toBaseUnit(halfRes, resUnit);
-              const nomBase = unitSystem.toBaseUnit(1, nominalUnit);
-              u_i_native = (resBase / nomBase) / distDiv;
-          }
-
-          let u_i_ppm = NaN;
-          if (nominalValue !== 0) {
-             u_i_ppm = Math.abs((u_i_native / nominalValue) * 1e6);
-          }
-
-          budgetComponents.push({
-              id: `${prefix}_resolution${toleranceObject.id ? `_${toleranceObject.id}` : ''}`,
-              name: `${prefix} - Resolution`,
-              type: "B",
-              value: u_i_ppm,       
-              isBaseUnitValue: false,
-              value_native: u_i_native,
-              unit_native: nominalUnit, 
-              dof: Infinity,
-              isCore: true,
-              distribution: "Rectangular (Resolution)"
-          });
-      }
-  };
-
-  processResolution();
-
   return budgetComponents;
 };

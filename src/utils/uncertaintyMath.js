@@ -442,6 +442,16 @@ export const calculateUncertaintyFromToleranceObject = (
      }
   }
 
+  // --- DEBUG PRINT START ---
+  // This will print the fully normalized object to the console
+  console.groupCollapsed("🔍 Tolerance Object Debug");
+  console.log(
+    "Normalized Tolerance Object:", 
+    JSON.stringify(toleranceObject, null, 2)
+  );
+  console.log("Reference Point:", referenceMeasurementPoint);
+  // --- DEBUG PRINT END ---
+
   const hasValidValue = referenceMeasurementPoint && 
                         referenceMeasurementPoint.value !== null && 
                         referenceMeasurementPoint.value !== undefined && 
@@ -453,6 +463,8 @@ export const calculateUncertaintyFromToleranceObject = (
     !hasValidValue ||
     !referenceMeasurementPoint.unit
   ) {
+    console.warn("⚠️ Missing valid inputs for calculation");
+    console.groupEnd();
     return { standardUncertainty: 0, totalToleranceForTar: 0, breakdown: [] };
   }
 
@@ -522,29 +534,16 @@ export const calculateUncertaintyFromToleranceObject = (
     );
 
     // FIX: Fallback for 0 Nominal Value (PPM is NaN)
-    // If PPM fails but we have a valid absolute value, use absolute value for calculations
     const canUsePPM = !isNaN(ppm);
     const u_i_absolute = valueInNominalUnits / divisor;
     
     if (canUsePPM || !isNaN(u_i_absolute)) {
       const u_i = canUsePPM ? Math.abs(ppm / divisor) : Math.abs(u_i_absolute);
       
-      // If we are using absolute mode (no PPM), totalLinearTolerance should ideally track absolute 
-      // but the legacy system expects PPM. For TAR/TUR it usually re-calculates from absolute limits anyway.
       totalLinearTolerance += canUsePPM ? Math.abs(ppm) : 0; 
-      
-      // Variance must be in common units. 
-      // If nominal is 0, we can't use PPM variance. 
-      // The calling functions usually expect StandardUncertainty in PPM? 
-      // Actually, standardUncertainty returned here is often treated as PPM if valid, 
-      // but if nominal is 0, we might need to handle it upstream.
-      // However, for Risk Analysis, it pulls breakdown and uses absoluteHigh/Low.
       
       if (canUsePPM) {
          totalVariance += Math.pow(u_i, 2);
-      } else {
-         // If we can't use PPM, we don't add to totalVariance (which is presumed relative/ppm based).
-         // But we MUST add to breakdown so Risk Analysis can see the limits.
       }
 
       // Calculate absolute deviations and final limits
@@ -575,7 +574,6 @@ export const calculateUncertaintyFromToleranceObject = (
   addComponent(
     toleranceObject.range,
     "Range",
-    // Fix: Use max value (Full Scale) of the tolerance object
     parseFloat(toleranceObject.max) || parseFloat(toleranceObject.range?.value)
   );
   addComponent(toleranceObject.floor, "Floor", nominalValue);
@@ -635,9 +633,17 @@ export const calculateUncertaintyFromToleranceObject = (
     }
   }
 
-  // NOTE: Automatic Resolution logic has been removed.
+  // --- AUTOMATIC RESOLUTION LOGIC REMOVED ---
+  // Resolution is manually handled.
 
   const standardUncertainty = Math.sqrt(totalVariance);
+
+  // --- DEBUG PRINT RESULT ---
+  console.log("Calculated Breakdown:", JSON.stringify(breakdown, null, 2));
+  console.log("Standard Uncertainty:", standardUncertainty);
+  console.groupEnd();
+  // --- DEBUG END ---
+
   return {
     standardUncertainty,
     totalToleranceForTar: totalLinearTolerance,
