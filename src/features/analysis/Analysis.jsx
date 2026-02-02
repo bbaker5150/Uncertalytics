@@ -239,21 +239,47 @@ function Analysis({
             ...sessionData,
             tmdes: updatedSessionTmdes
         });
-    } else {
-        console.warn("onSessionSave prop is missing in Analysis.jsx");
     }
 
     // 2. Update Local Test Point Data (Budget)
-    const existingIndex = tmdeTolerancesData.findIndex((t) => t.id === tmdeToSave.id);
-    let updatedTolerances;
-    if (existingIndex > -1) {
-      updatedTolerances = tmdeTolerancesData.map((t, index) =>
-        index === existingIndex ? { ...t, ...tmdeToSave } : t
-      );
-    } else {
-      updatedTolerances = [...tmdeTolerancesData, tmdeToSave];
-    }
+    const updatedTolerances = tmdeTolerancesData.map((t) => {
+        if (t.id === tmdeToSave.id) {
+            // This instance matches the one we just edited.
+            // We must refresh its "flattened" tolerance properties (min, max, etc.)
+            // from the new definition, preserving the user's selected range index.
+            
+            const rangeIndex = t._index !== undefined ? t._index : 0;
+            
+            // Locate ranges in the new definition (handle various shapes)
+            const newInstDef = tmdeToSave.instrument || tmdeToSave;
+            let newRanges = [];
+            
+            if (newInstDef.functions && newInstDef.functions.length > 0) {
+                 // If it has functions, try to match the function name or default to first
+                 const funcName = t.functionName;
+                 const func = funcName ? newInstDef.functions.find(f => f.name === funcName) : newInstDef.functions[0];
+                 newRanges = func ? (func.ranges || []) : [];
+            } else {
+                 newRanges = newInstDef.ranges || [];
+            }
+            
+            const newActiveRange = newRanges[rangeIndex] || newRanges[0] || {};
+            
+            // Return merged object: Old Instance Meta + New Definition + New Range Specs
+            // Note: We spread newActiveRange LAST to ensure fresh specs overwrite old ones
+            return { ...t, ...tmdeToSave, ...newActiveRange, id: t.id };
+        }
+        return t;
+    });
+
     onDataSave({ tmdeTolerances: updatedTolerances });
+  };
+
+  const handleEditUut = (uutData) => {
+      setActiveInstrumentModal({
+          mode: 'uut',
+          data: uutData
+      });
   };
 
   // --- New Unified Instrument Handler ---
@@ -679,6 +705,7 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
               // --- TMDE HANDLERS (UPDATED) ---
               onAddTmde={() => setActiveInstrumentModal({ mode: 'tmde', data: null })}
               onEditTmde={(tmde) => setActiveInstrumentModal({ mode: 'tmde', data: tmde })}
+              onEditUut={handleEditUut}
               
               onDeleteTmdeDefinition={onDeleteTmdeDefinition}
               onDecrementTmdeQuantity={onDecrementTmdeQuantity}

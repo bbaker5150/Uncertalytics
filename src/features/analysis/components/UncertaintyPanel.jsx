@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import * as math from 'mathjs';
 import Select from "react-select";
@@ -31,6 +30,8 @@ import {
     unitSystem,
     unitCategories
 } from "../../../utils/uncertaintyMath";
+
+// ... [Keep imports and Shared Helpers: resolveUutRangeHelper, calculateToleranceMetrics, SymbolButton, etc. unchanged] ...
 
 // --- SHARED HELPER: Resolve UUT Range ---
 const resolveUutRangeHelper = (uut, activeRangeIndices, savedTolerance, uutNominal) => {
@@ -497,12 +498,7 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
 // --- UPDATED: SUMMARY DASHBOARD ---
 const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint, rangeData, uutId, onSaveTestPoint, onEditSession, selectedPointIds, setSelectedPointIds, onSelectUut, onSelectTestPoint }) => {
     
-    // Local Selection State for UUTs in the table
-    const [selectedUutIds, setSelectedUutIds] = useState([]);
-    const [localRangeIndices, setLocalRangeIndices] = useState({});
-    const [tmdeRangeIndices, setTmdeRangeIndices] = useState({});
-    
-    // (Local Selection State Removed - Lifted to Parent)
+    // ... [Keep SummaryDashboard Logic Unchanged] ...
     
     // Sorting State
     const [sortConfigs, setSortConfigs] = useState({});
@@ -2131,22 +2127,29 @@ function DetailedView({
                         </div>
                         <div style={cardStyle}>
                             <div className="panel-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1 }}>
-                                <table className="instrument-summary-table compact-table" style={{ width: '100%' }}>
+                                <table className="instrument-summary-table compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+                                    <colgroup>
+                                        <col style={{ width: '50px' }} />
+                                        <col style={{ width: 'auto' }} />
+                                        {isDerived && <col style={{ width: '100px' }} />}
+                                        <col style={{ width: '20%' }} />
+                                        <col style={{ width: '20%' }} />
+                                        <col style={{ width: '15%' }} />
+                                    </colgroup>
                                     <thead>
                                         <tr>
                                             <th style={{ textAlign: 'center' }}>Use</th>
-                                            <th style={{ paddingLeft: '10px' }}>Description</th>
+                                            <th>Description</th>
                                             {isDerived && <th>Input Var</th>}
+                                            <th>Range</th>
+                                            <th>Specification</th>
                                             <th>Meas. Point</th>
-                                            <th>Tolerance</th>
-                                            <th>Std. Unc (k=1)</th>
-                                            <th>Limits</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {(!sessionData.tmdes || sessionData.tmdes.length === 0) ? (
                                             <tr>
-                                                <td colSpan={isDerived ? "7" : "6"} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
+                                                <td colSpan={isDerived ? "6" : "5"} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
                                                     No TMDEs defined in Session.
                                                 </td>
                                             </tr>
@@ -2194,7 +2197,7 @@ function DetailedView({
                                                                     style={{ cursor: 'pointer' }}
                                                                 />
                                                             </td>
-                                                            <td className="cell-description" style={{ paddingLeft: '10px' }}>
+                                                            <td className="cell-description">
                                                                 <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
                                                                     {masterTmde.name || masterTmde.description}
                                                                 </div>
@@ -2202,34 +2205,6 @@ function DetailedView({
                                                                     <span>ID: {masterTmde.assetId || 'N/A'}</span>
                                                                     {masterTmde.instrument && (
                                                                         <span> • {masterTmde.instrument.manufacturer} {masterTmde.instrument.model}</span>
-                                                                    )}
-                                                                </div>
-                                                                
-                                                                {/* Range Selector */}
-                                                                <div style={{ marginTop: '4px' }}>
-                                                                    {hasMultipleRanges ? (
-                                                                        <select
-                                                                            className="session-selector"
-                                                                            style={{ 
-                                                                                width: '100%', 
-                                                                                padding: '2px 4px',
-                                                                                fontSize: '0.75rem',
-                                                                                maxWidth: '200px'
-                                                                            }}
-                                                                            value={activeIndex}
-                                                                            onChange={(e) => handleTmdeRangeChange(masterTmde, parseInt(e.target.value), ranges)}
-                                                                        >
-                                                                            {ranges.map((range, rIdx) => {
-                                                                                const rangeLabel = (typeof range.range === 'string' ? range.range : null) || 
-                                                                                                (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
-                                                                                const unitLabel = typeof range.unit === 'string' ? range.unit : '';
-                                                                                return <option key={rIdx} value={rIdx}>{`${rangeLabel} ${unitLabel}`}</option>
-                                                                            })}
-                                                                        </select>
-                                                                    ) : (
-                                                                         <span style={{ fontSize: '0.75rem', color: 'var(--text-color-muted)' }}>
-                                                                            {ranges[0] ? (ranges[0].range || "Default Range") : "Default Range"}
-                                                                         </span>
                                                                     )}
                                                                 </div>
                                                             </td>
@@ -2249,6 +2224,35 @@ function DetailedView({
                                                                     ) : "-"}
                                                                 </td>
                                                             )}
+                                                            <td className="cell-value">
+                                                                {hasMultipleRanges ? (
+                                                                    <select
+                                                                        className="session-selector"
+                                                                        style={{ 
+                                                                            width: '100%', 
+                                                                            padding: '2px 4px',
+                                                                            fontSize: '0.75rem',
+                                                                            maxWidth: '100%'
+                                                                        }}
+                                                                        value={activeIndex}
+                                                                        onChange={(e) => handleTmdeRangeChange(masterTmde, parseInt(e.target.value), ranges)}
+                                                                    >
+                                                                        {ranges.map((range, rIdx) => {
+                                                                            const rangeLabel = (typeof range.range === 'string' ? range.range : null) || 
+                                                                                            (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
+                                                                            const unitLabel = typeof range.unit === 'string' ? range.unit : '';
+                                                                            return <option key={rIdx} value={rIdx}>{`${rangeLabel} ${unitLabel}`}</option>
+                                                                        })}
+                                                                    </select>
+                                                                ) : (
+                                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-color-muted)' }}>
+                                                                        {ranges[0] ? (ranges[0].range || "Default Range") : "Default Range"}
+                                                                        </span>
+                                                                )}
+                                                            </td>
+                                                            <td title={getToleranceSummary(effectiveTolerance)} style={{ fontSize: '0.85rem' }}>
+                                                                {specSummary}
+                                                            </td>
                                                             <td>
                                                                 {isChecked ? (
                                                                     <EditableCell
@@ -2257,21 +2261,6 @@ function DetailedView({
                                                                         onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'nominal', val)}
                                                                         type="number"
                                                                     />
-                                                                ) : "-"}
-                                                            </td>
-                                                            <td title={getToleranceSummary(effectiveTolerance)} style={{ fontSize: '0.85rem' }}>
-                                                                {specSummary}
-                                                            </td>
-                                                            <td>
-                                                                {stdUncDisplay} <span style={{ fontSize: '0.8rem', color: 'var(--text-color-muted)' }}>{(!isError && isChecked) ? referencePoint.unit : ''}</span>
-                                                            </td>
-                                                            <td>
-                                                                {(isChecked && !isError) ? (
-                                                                    <div className="limits-cell">
-                                                                        <span className="limit-val">{getAbsoluteLimits(tmdeInstance, referencePoint).low}</span>
-                                                                        <span className="limit-sep">to</span>
-                                                                        <span className="limit-val">{getAbsoluteLimits(tmdeInstance, referencePoint).high}</span>
-                                                                    </div>
                                                                 ) : "-"}
                                                             </td>
                                                         </tr>

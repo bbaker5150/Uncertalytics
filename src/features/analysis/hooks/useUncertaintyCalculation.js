@@ -217,8 +217,6 @@ export const useUncertaintyCalculation = (
             });
         }
 
-        // NOTE: Resolution logic removed here
-
         const combinedUncertainty_Native = Math.sqrt(totalVariance_Native);
         combinedUncertaintyAbsoluteBase =
           combinedUncertainty_Native * targetUnitInfo.to_si;
@@ -243,9 +241,9 @@ export const useUncertaintyCalculation = (
         effectiveDof = Infinity;
       } else {
         // --- DIRECT MEASUREMENT LOGIC ---
-        let totalVariancePPM = 0;
+        // NOTE: Resolution calculation removed. It must be added manually.
         
-        // NOTE: Resolution logic removed here
+        let totalVariancePPM = 0;
 
         tmdeTolerancesData.forEach((tmde, tmdeIndex) => {
           if (uutNominal && uutNominal.value) {

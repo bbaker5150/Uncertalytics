@@ -35,13 +35,8 @@ export const getBudgetComponentsFromTolerance = (
     toleranceObject = toleranceObject[0];
   }
 
-  let outerResolution = null;
-  let outerResolutionUnit = null;
-  
-  if (toleranceObject) {
-      outerResolution = toleranceObject.resolution || toleranceObject.measuringResolution;
-      outerResolutionUnit = toleranceObject.resolutionUnit || toleranceObject.measuringResolutionUnit;
-  }
+  // NOTE: Automatic resolution handling removed. 
+  // Resolution must now be added as a manual component if desired in the budget.
 
   if (toleranceObject && typeof toleranceObject === 'object') {
      if (toleranceObject.tolerance) {
@@ -68,15 +63,38 @@ export const getBudgetComponentsFromTolerance = (
   const budgetComponents = [];
   const nominalValue = parseFloat(referenceMeasurementPoint.value);
   const nominalUnit = referenceMeasurementPoint.unit;
-  const prefix = toleranceObject.name || (outerResolution ? "UUT" : "TMDE");
+  const prefix = toleranceObject.name || "TMDE";
 
-  // --- HELPER: Get Error Magnitude ---
-  const getComponentErrorMagnitude = (tolComp, baseValueForRelative) => {
-    if (!tolComp || typeof tolComp !== 'object') return 0;
+  console.groupCollapsed(`[Budget Debug] Calculating for ${prefix}`);
+  console.log("Nominal:", nominalValue, nominalUnit);
 
-    const high = parseFloat(tolComp.high || 0);
-    let low = parseFloat(tolComp.low || -high);
+  // --- ACCUMULATORS FOR LINEAR SUM ---
+  let totalAccuracyHalfSpan_Base = 0;
+  let activeDistributionDivisor = 1.732; // Default to Rectangular
+  let activeDistributionLabel = "Rectangular";
+  let hasAccuracyComponents = false;
 
+  const calculateComponentSpan = (
+    tolComp,
+    name,
+    baseValueForRelative
+  ) => {
+    // Check for missing data
+    if (!tolComp) return 0;
+    if (typeof tolComp !== 'object') return 0;
+
+    // Capture distribution from the first valid component we find
+    if (!hasAccuracyComponents) {
+        activeDistributionDivisor = parseFloat(tolComp.distribution) || 1.732;
+        activeDistributionLabel = errorDistributions.find(
+          (d) => d.value === String(tolComp.distribution)
+        )?.label || "Rectangular";
+    }
+
+    const high = parseFloat(tolComp?.high || 0);
+    let low = parseFloat(tolComp?.low || -high);
+
+    // --- FIX: HANDLE POSITIVE LOW VALUES ---
     if (tolComp.symmetric && low > 0) {
         low = -Math.abs(low);
     } else if (low > 0 && high > 0 && Math.abs(high - low) < 1e-9) {
@@ -87,7 +105,8 @@ export const getBudgetComponentsFromTolerance = (
     if (halfSpan === 0) return 0;
 
     const unit = tolComp.unit;
-    
+    let valueInBaseUnits = 0;
+
     if (["%", "ppm", "ppb"].includes(unit)) {
       let multiplier = 0;
       if (unit === "%") multiplier = 0.01;
@@ -95,38 +114,85 @@ export const getBudgetComponentsFromTolerance = (
       else if (unit === "ppb") multiplier = 1e-9;
 
       if (isNaN(baseValueForRelative)) return 0;
-      return Math.abs(halfSpan * multiplier * baseValueForRelative);
+      
+      const absoluteValueInNominalUnit = halfSpan * multiplier * baseValueForRelative;
+      valueInBaseUnits = unitSystem.toBaseUnit(absoluteValueInNominalUnit, nominalUnit);
+      
     } else {
-      const valueInBase = unitSystem.toBaseUnit(halfSpan, unit);
-      const nominalUnitInBase = unitSystem.toBaseUnit(1, nominalUnit);
-      return Math.abs(valueInBase / nominalUnitInBase);
+      valueInBaseUnits = unitSystem.toBaseUnit(halfSpan, unit);
     }
+
+    hasAccuracyComponents = true;
+    return valueInBaseUnits;
   };
+  
+  // --- 1. ACCUMULATE ACCURACY COMPONENTS ---
+  // Reading
+  totalAccuracyHalfSpan_Base += calculateComponentSpan(
+      toleranceObject.reading, "Reading", nominalValue
+  );
 
-  // --- 2. ACCUMULATE LINEAR SUM ---
-  let totalLinearErrorNative = 0;
-  let hasAccuracyComponents = false;
+  // Range (Relative to Full Scale)
+  const rangeFS = parseFloat(toleranceObject.max) || parseFloat(toleranceObject.range?.value);
+  totalAccuracyHalfSpan_Base += calculateComponentSpan(
+    toleranceObject.range, "Range", rangeFS
+  );
 
-  if (toleranceObject.reading) {
-      totalLinearErrorNative += getComponentErrorMagnitude(toleranceObject.reading, nominalValue);
-      hasAccuracyComponents = true;
+  // Floor
+  totalAccuracyHalfSpan_Base += calculateComponentSpan(
+      toleranceObject.floor, "Floor", nominalValue
+  );
+  
+  // Readings IV
+  totalAccuracyHalfSpan_Base += calculateComponentSpan(
+      toleranceObject.readings_iv, "Readings (IV)", nominalValue
+  );
+
+  // --- 2. CREATE THE UNIFIED ACCURACY COMPONENT ---
+  if (hasAccuracyComponents && totalAccuracyHalfSpan_Base > 0) {
+      
+      // Calculate Standard Uncertainty (u_i) in Base Units
+      const u_i_base = totalAccuracyHalfSpan_Base / activeDistributionDivisor;
+      
+      // Convert u_i back to Nominal Units for display
+      const u_i_native = unitSystem.fromBaseUnit(u_i_base, nominalUnit);
+      
+      // --- CRITICAL FIX: CONVERT TO PPM FOR CALCULATOR ---
+      // The useUncertaintyCalculation hook expects 'value' to be in PPM for Direct Measurements.
+      // We calculate PPM here so the RSS summation works correctly.
+      
+      const nominalBase = unitSystem.toBaseUnit(nominalValue, nominalUnit);
+      let finalValuePPM = NaN;
+      let isBaseUnitValue = false;
+
+      if (nominalBase !== 0 && !isNaN(nominalBase)) {
+          finalValuePPM = (u_i_base / Math.abs(nominalBase)) * 1e6;
+          // value is PPM
+          isBaseUnitValue = false; 
+      } else {
+          // Fallback for 0 Nominal (Calculator might struggle, but this keeps data accurate)
+          finalValuePPM = u_i_base;
+          isBaseUnitValue = true;
+      }
+      
+      const uniqueSuffix = toleranceObject.id ? `_${toleranceObject.id}` : '';
+      const componentId = `${prefix}_accuracy${uniqueSuffix}`;
+
+      budgetComponents.push({
+        id: componentId,
+        name: `${prefix} - Accuracy`,
+        type: "B",
+        value: finalValuePPM,        // Passing PPM to calculation engine
+        isBaseUnitValue: isBaseUnitValue, 
+        value_native: u_i_native,    // Passing Absolute to Table Display
+        unit_native: nominalUnit,
+        dof: Infinity,
+        isCore: true,
+        distribution: activeDistributionLabel,
+      });
   }
-  if (toleranceObject.readings_iv) {
-      totalLinearErrorNative += getComponentErrorMagnitude(toleranceObject.readings_iv, nominalValue);
-      hasAccuracyComponents = true;
-  }
 
-  const rangeBase = parseFloat(toleranceObject.max) || parseFloat(toleranceObject.range?.value);
-  if (toleranceObject.range) {
-      totalLinearErrorNative += getComponentErrorMagnitude(toleranceObject.range, rangeBase);
-      hasAccuracyComponents = true;
-  }
-
-  if (toleranceObject.floor) {
-      totalLinearErrorNative += getComponentErrorMagnitude(toleranceObject.floor, nominalValue);
-      hasAccuracyComponents = true;
-  }
-
+  // --- 3. HANDLE dB ---
   if (toleranceObject.db && !isNaN(parseFloat(toleranceObject.db.high))) {
       const highDb = parseFloat(toleranceObject.db.high || 0);
       const lowDb = parseFloat(toleranceObject.db.low || -highDb);
@@ -141,50 +207,27 @@ export const getBudgetComponentsFromTolerance = (
         const nominalAtCenterTol = dbRef * Math.pow(10, (dbNominal + centerDb) / dbMult);
         const upperValue = dbRef * Math.pow(10, (dbNominal + highDb) / dbMult);
         const absoluteDeviation = Math.abs(upperValue - nominalAtCenterTol);
-
-        totalLinearErrorNative += absoluteDeviation;
-        hasAccuracyComponents = true;
-      }
+  
+        const ppm = convertToPPM(absoluteDeviation, nominalUnit, nominalValue, nominalUnit);
+        
+        if (!isNaN(ppm)) {
+          const u_i = Math.abs(ppm / distributionDivisor);
+          
+          budgetComponents.push({
+            id: `${prefix}_db_${toleranceObject.id || "manual"}`,
+            name: `${prefix} - dB`,
+            type: "B",
+            value: u_i,
+            value_native: absoluteDeviation / distributionDivisor,
+            unit_native: nominalUnit,
+            dof: Infinity,
+            isCore: true,
+            distribution: distributionLabel,
+          });
+        }
+     }
   }
 
-  // --- 3. CREATE COMBINED ACCURACY COMPONENT ---
-  if (hasAccuracyComponents) {
-      const distVal = toleranceObject.distribution || "1.732";
-      const distDiv = parseFloat(distVal) || 1.732;
-      const distLabel = errorDistributions.find(d => d.value === String(distVal))?.label || "Rectangular";
-
-      // Native Standard Uncertainty
-      const u_i_native = totalLinearErrorNative / distDiv;
-
-      // PPM for Direct Mode Calculator
-      let u_i_ppm = NaN;
-      if (nominalValue !== 0) {
-        u_i_ppm = Math.abs((u_i_native / nominalValue) * 1e6);
-      }
-
-      const uniqueSuffix = toleranceObject.id ? `_${toleranceObject.id}` : '';
-      
-      budgetComponents.push({
-        id: `${prefix}_accuracy${uniqueSuffix}`,
-        name: `${prefix} - Accuracy`,
-        type: "B",
-        
-        value: u_i_ppm, 
-        isBaseUnitValue: false, 
-        
-        value_native: u_i_native,     
-        unit_native: nominalUnit,     
-        
-        dof: Infinity,
-        isCore: true,
-        distribution: distLabel,
-        distributionValue: distVal,
-        
-        // --- NEW FLAGS FOR IN-TABLE EDITING ---
-        allowDistributionEdit: true, 
-        toleranceId: toleranceObject.id // Used to find the parent tolerance to update
-      });
-  }
-
+  console.groupEnd();
   return budgetComponents;
 };
