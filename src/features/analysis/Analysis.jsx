@@ -1,4 +1,5 @@
 /**
+ * src/features/analysis/Analysis.jsx
  * * Responsibilities:
  * - Manages Top-Level State (Tabs, Modals).
  * - Calls useUncertaintyCalculation & useRiskCalculation hooks.
@@ -75,7 +76,7 @@ function Analysis({
   const [notification, setNotification] = useState(null);
 
   // Modal States
-  const [activeInstrumentModal, setActiveInstrumentModal] = useState(null);
+  const [activeInstrumentModal, setActiveInstrumentModal] = useState(null); // { mode: 'uut'|'tmde', data: ... }
   const [modalOverrides, setModalOverrides] = useState(null);
 
   // New State for Test Point Definition
@@ -199,6 +200,22 @@ function Analysis({
     }
   };
 
+  // --- INSTRUMENT EDITING HANDLERS ---
+
+  const handleEditUut = (uutData) => {
+      setActiveInstrumentModal({
+          mode: 'uut',
+          data: uutData
+      });
+  };
+
+  const handleEditTmde = (tmdeData) => {
+      setActiveInstrumentModal({
+          mode: 'tmde',
+          data: tmdeData
+      });
+  };
+
   const handleSaveUut = ({ description, tolerance, instrument }) => {
     // If the modal returned a full instrument definition, we prioritize that.
     // We clear 'tolerance' if we are switching to an instrument-based definition to allow the hook to recalculate.
@@ -217,8 +234,6 @@ function Analysis({
         uutTolerance: tolerance,
         uutInstrument: instrument || sessionData.uutInstrument
       });
-    } else {
-      console.error("onSessionSave prop missing in Analysis.jsx");
     }
   };
 
@@ -243,31 +258,68 @@ function Analysis({
 
     // 2. Update Local Test Point Data (Budget)
     const updatedTolerances = tmdeTolerancesData.map((t) => {
-        if (t.id === tmdeToSave.id) {
-            // This instance matches the one we just edited.
-            // We must refresh its "flattened" tolerance properties (min, max, etc.)
-            // from the new definition, preserving the user's selected range index.
+        // Check if this active instance is the one being edited
+        if (t.id === tmdeToSave.id || t.sourceId === tmdeToSave.id) {
             
-            const rangeIndex = t._index !== undefined ? t._index : 0;
-            
-            // Locate ranges in the new definition (handle various shapes)
+            // A. Identify the New Instrument Definition
             const newInstDef = tmdeToSave.instrument || tmdeToSave;
+            
+            // B. Resolve the Correct Function and Range
             let newRanges = [];
+            let funcName = t.functionName; 
+            let func = null;
             
             if (newInstDef.functions && newInstDef.functions.length > 0) {
-                 // If it has functions, try to match the function name or default to first
-                 const funcName = t.functionName;
-                 const func = funcName ? newInstDef.functions.find(f => f.name === funcName) : newInstDef.functions[0];
+                 if (funcName) {
+                     func = newInstDef.functions.find(f => f.name === funcName);
+                 }
+                 if (!func) {
+                     func = newInstDef.functions[0];
+                 }
                  newRanges = func ? (func.ranges || []) : [];
+                 funcName = func ? func.name : ""; 
             } else {
                  newRanges = newInstDef.ranges || [];
+                 funcName = ""; 
             }
             
-            const newActiveRange = newRanges[rangeIndex] || newRanges[0] || {};
+            // C. Resolve the Active Index
+            let activeIndex = (t._index !== undefined) ? t._index : 0;
+            if (!newRanges[activeIndex]) {
+                activeIndex = 0;
+            }
             
-            // Return merged object: Old Instance Meta + New Definition + New Range Specs
-            // Note: We spread newActiveRange LAST to ensure fresh specs overwrite old ones
-            return { ...t, ...tmdeToSave, ...newActiveRange, id: t.id };
+            const newActiveRange = newRanges[activeIndex] || {};
+            
+            // D. PREPARE FLATTENED SPECS (The Fix)
+            // We must flatten 'tolerances' to the top level because the UI components 
+            // (UncertaintyPanel / getToleranceSummary) expect keys like 'reading', 'floor' 
+            // to be direct properties of the object, not nested.
+            const flattenedSpecs = {
+                ...newActiveRange,
+                ...(newActiveRange.tolerances || newActiveRange.tolerance || {})
+            };
+
+            // E. Clean old spec keys to prevent stale data
+            // We strip all potential tolerance keys from the OLD instance before merging the new ones
+            const { 
+                reading, floor, range, tolerance, tolerances, min, max, unit, resolution,
+                ...safeInstanceMeta 
+            } = t;
+
+            // F. Construct Updated Instance
+            return { 
+                ...safeInstanceMeta,       // Keeps ID, measurementPoint, quantity, variableType
+                ...tmdeToSave,             // Updates top-level meta (Name, Asset ID)
+                ...flattenedSpecs,         // Applies NEW Flattened Specs
+                
+                // Explicit Overrides
+                id: t.id,                  
+                sourceId: tmdeToSave.id,   
+                functionName: funcName,    
+                _index: activeIndex,       
+                measurementPoint: t.measurementPoint 
+            };
         }
         return t;
     });
@@ -275,35 +327,19 @@ function Analysis({
     onDataSave({ tmdeTolerances: updatedTolerances });
   };
 
-  const handleEditUut = (uutData) => {
-      setActiveInstrumentModal({
-          mode: 'uut',
-          data: uutData
-      });
-  };
-
-  // --- New Unified Instrument Handler ---
+  // --- Unified Instrument Handler ---
   const handleSaveInstrument = (data) => {
-    if (!activeInstrumentModal) {
-        console.warn("activeInstrumentModal is null, cannot determine save mode.");
-        return;
-    }
+    if (!activeInstrumentModal) return;
     const { mode } = activeInstrumentModal;
 
     if (mode === 'uut') {
-        // UniversalModal returns { id, description, measurementArea, instrument }
-        // We pass this to handleSaveUut
         handleSaveUut({
             description: data.description,
             instrument: data.instrument,
-            // If we are defining an instrument, we might assume the tolerance comes from the instrument specs.
-            // For now, passing null for tolerance to imply "recalculate from instrument" or keep existing if handled elsewhere.
-            tolerance: null 
+            tolerance: null // Implies recalculate from instrument
         });
     } else if (mode === 'tmde') {
         handleSaveTmde(data);
-    } else {
-        console.warn("Unknown instrument modal mode:", mode);
     }
     setActiveInstrumentModal(null);
   };
@@ -522,14 +558,14 @@ function Analysis({
   };
 
   return (
-    <div>
+    <div className="analysis-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <NotificationModal
         isOpen={!!notification}
         onClose={() => setNotification(null)}
         {...notification}
       />
 
-      {/* --- Unified Instrument Modal --- */}
+      {/* --- Unified Instrument Modal (For both UUT and TMDE edits) --- */}
       {activeInstrumentModal && (
           <UniversalInstrumentModal
             isOpen={true}
@@ -604,7 +640,7 @@ function Analysis({
             onDeleteTestPoint={onDeleteTestPoint}
             
             // ---  Pass the save handler for Inline Creation ---
-            onSaveTestPoint={handleSaveTestPointInfo} // Using the local wrapper to ensure consistency
+            onSaveTestPoint={handleSaveTestPointInfo} 
             
             // --- Table Selection for Sidebar Highlighting ---
             selectedTablePointIds={selectedTablePointIds}
@@ -684,138 +720,132 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
             </button>
           </div>
 
-          {analysisMode === "uncertaintyTool" && (
-            <UncertaintyPanel
-              testPointData={testPointData}
-              sessionData={sessionData}
-              calcResults={calcResults}
-              calculationError={calculationError}
-              uutNominal={uutNominal}
-              uutToleranceData={uutToleranceData}
-              tmdeTolerancesData={tmdeTolerancesData}
-              riskResults={riskResults}
+          <div className="analysis-content" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+            {analysisMode === "uncertaintyTool" && (
+                <UncertaintyPanel
+                testPointData={testPointData}
+                sessionData={sessionData}
+                calcResults={calcResults}
+                calculationError={calculationError}
+                uutNominal={uutNominal}
+                uutToleranceData={uutToleranceData}
+                tmdeTolerancesData={tmdeTolerancesData}
+                riskResults={riskResults}
 
-              showContribution={showContribution}
-              setShowContribution={setShowContribution}
+                showContribution={showContribution}
+                setShowContribution={setShowContribution}
 
-              onAddManualComponent={() => { setEditingComponent(null); setManualModalOpen(true); }}
-              onEditManualComponent={handleEditComponent}
-              onRemoveComponent={handleRemoveComponent}
-              
-              // --- TMDE HANDLERS (UPDATED) ---
-              onAddTmde={() => setActiveInstrumentModal({ mode: 'tmde', data: null })}
-              onEditTmde={(tmde) => setActiveInstrumentModal({ mode: 'tmde', data: tmde })}
-              onEditUut={handleEditUut}
-              
-              onDeleteTmdeDefinition={onDeleteTmdeDefinition}
-              onDecrementTmdeQuantity={onDecrementTmdeQuantity}
+                onAddManualComponent={() => { setEditingComponent(null); setManualModalOpen(true); }}
+                onEditManualComponent={handleEditComponent}
+                onRemoveComponent={handleRemoveComponent}
+                
+                // --- TMDE HANDLERS (UPDATED) ---
+                onAddTmde={() => setActiveInstrumentModal({ mode: 'tmde', data: null })}
+                onEditTmde={handleEditTmde}
+                
+                // --- UUT HANDLERS (UPDATED) ---
+                onEditUut={handleEditUut}
+                
+                onDeleteTmdeDefinition={onDeleteTmdeDefinition}
+                onDecrementTmdeQuantity={onDecrementTmdeQuantity}
+                
+                onDeleteUut={onDeleteUut}
+                onInlineUutUpdate={handleInlineUutUpdate}
+                onInlineTmdeUpdate={handleInlineTmdeUpdate}
 
-              // --- UUT HANDLERS (UPDATED) ---
-              onOpenUutModal={() => setActiveInstrumentModal({
-                  mode: 'uut',
-                  data: {
-                      description: sessionData.uutDescription,
-                      instrument: sessionData.uutInstrument,
-                      // We can pass measurementArea if available in sessionData UUTs list if needed
-                  }
-              })}
-              
-              onDeleteUut={onDeleteUut}
-              onInlineUutUpdate={handleInlineUutUpdate}
-              onInlineTmdeUpdate={handleInlineTmdeUpdate}
+                handleOpenSessionEditor={handleOpenSessionEditor}
 
-              handleOpenSessionEditor={handleOpenSessionEditor}
+                onUpdateTestPoint={onDataSave}
 
-              onUpdateTestPoint={onDataSave}
+                onDefineTestPoint={handleDefineTestPoint}
 
-              onDefineTestPoint={handleDefineTestPoint}
+                // --- Pass Selection Props ---
+                selectedTmdeIds={selectedTmdeIds}
+                onToggleTmdeSelection={handleToggleTmdeSelection}
+                onToggleAllTmdes={handleToggleAllTmdes}
 
-              // --- Pass Selection Props ---
-              selectedTmdeIds={selectedTmdeIds}
-              onToggleTmdeSelection={handleToggleTmdeSelection}
-              onToggleAllTmdes={handleToggleAllTmdes}
+                // --- Pass UUT Toggle Handler ---
+                onToggleUut={handleToggleUut}
+                
+                // --- Pass Global UUT Selection Props ---
+                currentUutSelection={currentUutSelection}
 
-              // --- Pass UUT Toggle Handler ---
-              onToggleUut={handleToggleUut}
-              
-              // --- Pass Global UUT Selection Props ---
-              currentUutSelection={currentUutSelection}
+                setContextMenu={setContextMenu}
+                setBreakdownPoint={setBreakdownPoint}
+                onBudgetRowContextMenu={handleBudgetRowContextMenu}
+                onShowDerivedBreakdown={() => {
+                    if (calcResults) handleBudgetRowContextMenu({ preventDefault: () => { } });
+                }}
+                onShowRiskBreakdown={handleShowRiskBreakdown}
+                onOpenRepeatability={(e) => {
+                    if (e && e.clientY) setModalPosition({ top: e.clientY, left: e.clientX });
+                    setEditingComponent(null);
+                    setRepeatabilityModalOpen(true);
+                }}
+                setNotification={setNotification}
+                onDeleteTestPoint={onDeleteTestPoint}
+                activeRangeIndices={activeRangeIndices}
+                onRangeSelectionChange={onRangeSelectionChange}
+                />
+            )}
 
-              setContextMenu={setContextMenu}
-              setBreakdownPoint={setBreakdownPoint}
-              onBudgetRowContextMenu={handleBudgetRowContextMenu}
-              onShowDerivedBreakdown={() => {
-                if (calcResults) handleBudgetRowContextMenu({ preventDefault: () => { } });
-              }}
-              onShowRiskBreakdown={handleShowRiskBreakdown}
-              onOpenRepeatability={(e) => {
-                if (e && e.clientY) setModalPosition({ top: e.clientY, left: e.clientX });
-                setEditingComponent(null);
-                setRepeatabilityModalOpen(true);
-              }}
-              setNotification={setNotification}
-              onDeleteTestPoint={onDeleteTestPoint}
-              activeRangeIndices={activeRangeIndices}
-              onRangeSelectionChange={onRangeSelectionChange}
-            />
-          )}
-
-          {analysisMode === "risk" && (
-            <div>
-              {!calcResults ? (
-                <div className="form-section-warning">
-                  <p>Uncertainty budget must be calculated first.</p>
-                </div>
-              ) : (
-                <>
-                  {riskResults ? (
+            {analysisMode === "risk" && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {!calcResults ? (
+                    <div className="form-section-warning" style={{gridColumn: '1 / -1'}}>
+                    <p>Uncertainty budget must be calculated first.</p>
+                    </div>
+                ) : (
                     <>
-                      <RiskAnalysisDashboard
+                    {riskResults ? (
+                        <>
+                        <RiskAnalysisDashboard
+                            results={riskResults}
+                            onShowBreakdown={handleShowRiskBreakdown}
+                            activeModals={activeRiskModals}
+                        />
+                        <RiskScatterplot
+                            results={riskResults}
+                            inputs={{
+                            LLow: parseFloat(riskInputs.LLow),
+                            LUp: parseFloat(riskInputs.LUp),
+                            }}
+                        />
+                        </>
+                    ) : (
+                        <div className="placeholder-content" style={{ minHeight: "200px", gridColumn: '1 / -1' }}>
+                        <p>Calculating risk...</p>
+                        </div>
+                    )}
+                    </>
+                )}
+                </div>
+            )}
+
+            {analysisMode === "riskmitigation" && (
+                <>
+                {!calcResults ? (
+                    <div className="form-section-warning">
+                    <p>Uncertainty budget must be calculated first.</p>
+                    </div>
+                ) : (
+                    <>
+                    {riskResults ? (
+                        <RiskMitigationDashboard
                         results={riskResults}
                         onShowBreakdown={handleShowRiskBreakdown}
                         activeModals={activeRiskModals}
-                      />
-                      <RiskScatterplot
-                        results={riskResults}
-                        inputs={{
-                          LLow: parseFloat(riskInputs.LLow),
-                          LUp: parseFloat(riskInputs.LUp),
-                        }}
-                      />
+                        />
+                    ) : (
+                        <div className="placeholder-content" style={{ minHeight: "200px" }}>
+                        <p>Calculating risk...</p>
+                        </div>
+                    )}
                     </>
-                  ) : (
-                    <div className="placeholder-content" style={{ minHeight: "200px" }}>
-                      <p>Calculating risk...</p>
-                    </div>
-                  )}
+                )}
                 </>
-              )}
-            </div>
-          )}
-
-          {analysisMode === "riskmitigation" && (
-            <>
-              {!calcResults ? (
-                <div className="form-section-warning">
-                  <p>Uncertainty budget must be calculated first.</p>
-                </div>
-              ) : (
-                <>
-                  {riskResults ? (
-                    <RiskMitigationDashboard
-                      results={riskResults}
-                      onShowBreakdown={handleShowRiskBreakdown}
-                      activeModals={activeRiskModals}
-                    />
-                  ) : (
-                    <div className="placeholder-content" style={{ minHeight: "200px" }}>
-                      <p>Calculating risk...</p>
-                    </div>
-                  )}
-                </>
-              )}
-            </>
-          )}
+            )}
+          </div>
         </>
       )}
     </div>

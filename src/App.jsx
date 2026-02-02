@@ -1,3 +1,6 @@
+/**
+ * src/App.jsx
+ */
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 
@@ -12,7 +15,6 @@ import OverviewModal from "./features/session/components/OverviewModal";
 import ContextMenu from "./components/common/ContextMenu";
 import FullBreakdownModal from "./features/analysis/components/BreakdownModals/FullBreakdownModal";
 import TestPointInfoModal from "./features/testPoints/components/TestPointInfoModal";
-// CHANGE 1: Import the Universal Modal instead of the old Builder
 import UniversalInstrumentModal from "./features/instruments/components/UniversalInstrumentModal";
 import UnresolvedToleranceModal from "./features/testPoints/components/UnresolvedToleranceModal";
 import HelpModal from "./components/common/HelpModal";
@@ -49,8 +51,7 @@ import {
   faCheckCircle
 } from "@fortawesome/free-solid-svg-icons";
 
-import ThemeContext from './context/ThemeContext'; // Import from separate file
-
+import ThemeContext from './context/ThemeContext';
 
 // --- HELPER COMPONENT: Sidebar Point Item (Supports Inline Editing) ---
 const SidebarPointItem = ({
@@ -307,7 +308,10 @@ function App() {
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
-  // NOTE: Keeping the state variable name same to avoid refactoring noise, but it opens the Universal Modal now
+  
+  // Instrument Manager Modal State
+  // We use this boolean to open the modal in 'library' mode from the Tools menu.
+  // Editing specific instances (UUT/TMDE) is handled via handlers passed to Analysis.
   const [isInstrumentBuilderOpen, setIsInstrumentBuilderOpen] = useState(false);
 
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -789,12 +793,6 @@ function App() {
     updateSession(updatedSession);
   };
 
-  const handleSaveInstrument = (instrument) => {
-    saveInstrument(instrument);
-    setIsInstrumentBuilderOpen(false);
-    setAppNotification({ title: "Success", message: `Instrument "${instrument.model}" saved.` });
-  };
-
   // --- NEW: Universal Save Handler ---
   // Handles saving Instruments to Library OR instances to Session
   const handleUniversalModalSave = (data) => {
@@ -838,9 +836,6 @@ function App() {
     else if ((data.type === 'tmde' || (data.type === 'library' && data.useAs === 'tmde')) && currentSessionData) {
          
          // Construct TMDE Object
-         // If coming from library "Use as...", we need to build the wrapper
-         // If coming from TMDE editor, data is already the wrapper
-         
          let newTmde = {};
          
          if (data.type === 'library' && data.useAs === 'tmde') {
@@ -853,7 +848,6 @@ function App() {
                 instrument: { ...data }, // The library item IS the instrument
                 isInstrumentBased: true
              };
-             // Clean up the instrument object to not be self-recursive if it was just data
              delete newTmde.instrument.useAs; 
          } else {
              // Saving from TMDE form
@@ -1014,8 +1008,6 @@ function App() {
     });
   };
 
-  // const handleUpdateSpecificTestPoint = (testPointId, updatedData) => {}; (Removed unused function)
-
   const handleSaveToFile = async () => {
     if (!currentSessionData) return;
     const sessionCache = sessionImageCache.get(currentSessionData.id);
@@ -1085,7 +1077,6 @@ function App() {
                 categorizedPoints.add(tp.id);
                 return true;
               }
-              // If tolerance is set explicitly but doesn't match this range, do NOT fallback to value
               return false;
             }
 
@@ -1206,7 +1197,7 @@ function App() {
     if (selectedRangeContext) {
       return {
         viewMode: 'range',
-        id: `${selectedRangeContext.uutId}-${selectedRangeContext.range._id}`, // Unique ID for React keys
+        id: `${selectedRangeContext.uutId}-${selectedRangeContext.range._id}`, 
         rangeData: selectedRangeContext.range,
         uutId: selectedRangeContext.uutId,
         measurementAreaId: selectedAreaId
@@ -1262,7 +1253,7 @@ function App() {
         {currentSessionData && (<> <FloatingNotepad isOpen={isNotepadOpen} onClose={() => setIsNotepadOpen(false)} notes={currentSessionData.notes || ""} onSave={handleUpdateNotes} /> <UnitConverter isOpen={isConverterOpen} onClose={() => setIsConverterOpen(false)} /> <ReverseTraceabilityTool isOpen={isTraceabilityOpen} onClose={() => setIsTraceabilityOpen(false)} /> </>)}
         <UnresolvedToleranceModal isOpen={!!unresolvedToleranceModal} matches={unresolvedToleranceModal?.matches} instrumentName={unresolvedToleranceModal?.instrumentName} onSelect={(selected) => { unresolvedToleranceModal.onSelect(selected); }} onClose={() => setUnresolvedToleranceModal(null)} />
         
-        {/* CHANGE 2: Render UniversalInstrumentModal with mode='library' and new SAVE handler */}
+        {/* Global Library Modal (Instrument Manager) */}
         <UniversalInstrumentModal 
             isOpen={isInstrumentBuilderOpen} 
             onClose={() => setIsInstrumentBuilderOpen(false)} 
@@ -1314,7 +1305,7 @@ function App() {
               {/* === SIDEBAR LIST === */}
               <div className="measurement-point-list">
 
-                {/* 1. DASHBOARD HOME BUTTON - UPDATED */}
+                {/* 1. DASHBOARD HOME BUTTON */}
                 <div
                   className={`sidebar-session-card ${selectedSessionId && !selectedAreaId && !selectedTestPointId ? 'active' : ''}`}
                   onClick={() => handleSelectSession(selectedSessionId)}
@@ -1323,25 +1314,11 @@ function App() {
                     <FontAwesomeIcon icon={faClipboardList} />
                   </div>
                   <div className="session-card-text">
-                    {/* UPDATED: Uses Session Name instead of static "Session Overview" */}
                     <span className="session-card-title">
                       {currentSessionData?.name || "Session Overview"}
                     </span>
-
-                    {/* Metadata Section */}
                     {currentSessionData && (
-                      <div style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--text-color-muted)',
-                        margin: '6px 0',
-                        padding: '6px 0',
-                        borderTop: '1px solid var(--border-color)',
-                        borderBottom: '1px solid var(--border-color)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '3px',
-                        lineHeight: '1.3'
-                      }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-color-muted)', margin: '6px 0', padding: '6px 0', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '3px', lineHeight: '1.3' }}>
                         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={currentSessionData.analyst}>
                           <strong>Analyst:</strong> {currentSessionData.analyst || "N/A"}
                         </div>
@@ -1356,13 +1333,11 @@ function App() {
                         </div>
                       </div>
                     )}
-
                     <span className="session-card-subtitle">{currentTestPoints.length} Points Total</span>
                   </div>
                 </div>
 
                 {sidebarData.map((areaData) => {
-                  //  Determine if this Area is the strictly selected item
                   const isAreaActive =
                     selectedAreaId === areaData.id &&
                     !selectedUutId &&
@@ -1371,8 +1346,6 @@ function App() {
 
                   return (
                     <div key={areaData.id} className="measurement-group-container">
-
-                      {/* 2. STICKY AREA HEADER (Now uses 'active' class) */}
                       <div
                         className={`area-header-sticky ${isAreaActive ? 'active' : ''}`}
                         onClick={() => handleSelectArea(areaData.id)}
@@ -1389,8 +1362,6 @@ function App() {
                       </div>
 
                       <div className="tree-branch">
-
-                        {/* 3. UUTs LOOP */}
                         {areaData.uutGroups.map(group => {
                           const isUutSelected = selectedUutId === group.id && !selectedTestPointId && !selectedRangeContext;
                           const isShowingAll = uutsShowingAllRanges.has(group.id);
@@ -1398,8 +1369,6 @@ function App() {
 
                           return (
                             <div key={group.id} style={{ marginBottom: '10px' }}>
-
-                              {/* UUT ITEM CARD */}
                               <div
                                 className={`uut-row ${isUutSelected ? 'active' : ''} ${isDragOver ? 'drag-over' : ''}`}
                                 onClick={() => handleSelectUut(group.id, areaData.id, group)}
@@ -1443,7 +1412,6 @@ function App() {
                                 </div>
                               </div>
 
-                              {/* 4. RANGES LOOP */}
                               <div style={{ paddingLeft: '15px' }}>
                                 {group.rangeGroups.map(range => {
                                   if (!isShowingAll && range.points.length === 0) return null;
@@ -1456,8 +1424,6 @@ function App() {
 
                                   return (
                                     <div key={`range-${range._id}`} style={{ marginBottom: '8px' }}>
-
-                                      {/* RANGE HEADER */}
                                       <div
                                         className={`range-label-row ${isRangeDragOver ? 'drag-over' : ''} ${isRangeSelected ? 'active' : ''}`}
                                         onClick={(e) => {
@@ -1485,15 +1451,13 @@ function App() {
                                         <span>{range.label}</span>
                                       </div>
 
-                                      {/* 5. POINTS */}
                                       {range.points.length === 0 ? (
                                         <div className="empty-branch-msg"></div>
                                       ) : (
                                         <>
-                                          {/* Column Headers for Points */}
                                           <div style={{
-                                            display: 'grid',  /* Changed to Grid to match item */
-                                            gridTemplateColumns: '45px 1fr', /* Match item columns */
+                                            display: 'grid',
+                                            gridTemplateColumns: '45px 1fr',
                                             fontSize: '0.7rem',
                                             color: 'var(--text-color-muted)',
                                             padding: '0 12px 4px 12px',
@@ -1507,7 +1471,6 @@ function App() {
                                             <span>Point</span>
                                           </div>
                                           {range.points.map(tp => {
-
                                             const isSelected = selectedTestPointId === tp.id && selectedTestPointContextUutId === group.id;
                                             return (
                                               <SidebarPointItem
@@ -1539,7 +1502,6 @@ function App() {
                                   );
                                 })}
 
-                                {/* Uncategorized Points */}
                                 {group.uncategorizedPoints && group.uncategorizedPoints.length > 0 && (
                                   <div style={{ marginTop: '8px' }}>
                                     <div className="range-label-row" style={{ color: 'var(--status-warning)' }}>
@@ -1576,7 +1538,6 @@ function App() {
                           );
                         })}
 
-                        {/* Unassigned Points */}
                         {areaData.unassignedPoints.length > 0 && (
                           <div style={{ marginTop: '15px', paddingLeft: '10px' }}>
                             <div className="range-label-row" style={{ color: 'var(--text-color-muted)' }}>

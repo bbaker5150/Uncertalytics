@@ -1,3 +1,6 @@
+/**
+ * src/features/analysis/components/UncertaintyPanel.jsx
+ */
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import * as math from 'mathjs';
 import Select from "react-select";
@@ -30,8 +33,6 @@ import {
     unitSystem,
     unitCategories
 } from "../../../utils/uncertaintyMath";
-
-// ... [Keep imports and Shared Helpers: resolveUutRangeHelper, calculateToleranceMetrics, SymbolButton, etc. unchanged] ...
 
 // --- SHARED HELPER: Resolve UUT Range ---
 const resolveUutRangeHelper = (uut, activeRangeIndices, savedTolerance, uutNominal) => {
@@ -498,8 +499,11 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
 // --- UPDATED: SUMMARY DASHBOARD ---
 const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint, rangeData, uutId, onSaveTestPoint, onEditSession, selectedPointIds, setSelectedPointIds, onSelectUut, onSelectTestPoint }) => {
     
-    // ... [Keep SummaryDashboard Logic Unchanged] ...
-    
+    // --- ADDED MISSING STATE ---
+    const [selectedUutIds, setSelectedUutIds] = useState([]);
+    const [localRangeIndices, setLocalRangeIndices] = useState({});
+    const [tmdeRangeIndices, setTmdeRangeIndices] = useState({});
+
     // Sorting State
     const [sortConfigs, setSortConfigs] = useState({});
 
@@ -1229,7 +1233,9 @@ function DetailedView({
     currentUutSelection = [],
     activeRangeIndices = {},
     onRangeSelectionChange,
-    onAddTmde
+    onAddTmde,
+    onEditUut, // PASSED FROM ANALYSIS
+    onEditTmde // PASSED FROM ANALYSIS
 }) {
 
     // --- DETAILED VIEW LOGIC ---
@@ -1715,10 +1721,17 @@ function DetailedView({
                                                 const isLinked = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id);
 
                                                 return (
-                                                    <tr key={uut.id} style={{
+                                                    <tr 
+                                                      key={uut.id} 
+                                                      style={{
                                                         backgroundColor: 'transparent',
-                                                        borderLeft: isLinked ? '4px solid var(--primary-color)' : '4px solid transparent'
-                                                    }}>
+                                                        borderLeft: isLinked ? '4px solid var(--primary-color)' : '4px solid transparent',
+                                                        cursor: 'pointer' // Add pointer cursor
+                                                      }}
+                                                      // ADDED: Double-click handler for UUT
+                                                      onDoubleClick={() => onEditUut && onEditUut(uut)}
+                                                      title="Double-click to edit UUT details"
+                                                    >
                                                         {/* Removed Checkbox Column */}
                                                         <td className="no-hover-cell" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }} title={uut.description}>
                                                             <div style={{ fontWeight: 600, color: isLinked ? 'var(--primary-color)' : 'var(--text-color)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -2131,10 +2144,12 @@ function DetailedView({
                                     <colgroup>
                                         <col style={{ width: '50px' }} />
                                         <col style={{ width: 'auto' }} />
+                                        {/* REMOVED: isDerived && <col style={{ width: '100px' }} /> */}
                                         {isDerived && <col style={{ width: '100px' }} />}
                                         <col style={{ width: '20%' }} />
                                         <col style={{ width: '20%' }} />
-                                        <col style={{ width: '15%' }} />
+                                        {/* Wrap the Meas. Point column width in isDerived check */}
+                                        {isDerived && <col style={{ width: '15%' }} />}
                                     </colgroup>
                                     <thead>
                                         <tr>
@@ -2143,7 +2158,8 @@ function DetailedView({
                                             {isDerived && <th>Input Var</th>}
                                             <th>Range</th>
                                             <th>Specification</th>
-                                            <th>Meas. Point</th>
+                                            {/* Only show Meas. Point column if derived */}
+                                            {isDerived && <th>Meas. Point</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2188,7 +2204,14 @@ function DetailedView({
                                                     }
 
                                                     return (
-                                                        <tr key={`${masterTmde.id}-${idx}`} className="tmde-row" style={{ opacity: isChecked ? 1 : 0.7 }}>
+                                                        <tr 
+                                                            key={`${masterTmde.id}-${idx}`} 
+                                                            className="tmde-row" 
+                                                            style={{ opacity: isChecked ? 1 : 0.7, cursor: 'pointer' }}
+                                                            // ADDED: Double-click handler for TMDE
+                                                            onDoubleClick={() => onEditTmde && onEditTmde(masterTmde)}
+                                                            title="Double-click to edit TMDE details"
+                                                        >
                                                             <td style={{ textAlign: 'center' }}>
                                                                 <input
                                                                     type="checkbox"
@@ -2202,9 +2225,9 @@ function DetailedView({
                                                                     {masterTmde.name || masterTmde.description}
                                                                 </div>
                                                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-color-muted)', marginTop: '2px' }}>
-                                                                    <span>ID: {masterTmde.assetId || 'N/A'}</span>
+                                                                    {/* REMOVED: ID Display */}
                                                                     {masterTmde.instrument && (
-                                                                        <span> • {masterTmde.instrument.manufacturer} {masterTmde.instrument.model}</span>
+                                                                        <span>{masterTmde.instrument.manufacturer} {masterTmde.instrument.model}</span>
                                                                     )}
                                                                 </div>
                                                             </td>
@@ -2253,16 +2276,19 @@ function DetailedView({
                                                             <td title={getToleranceSummary(effectiveTolerance)} style={{ fontSize: '0.85rem' }}>
                                                                 {specSummary}
                                                             </td>
-                                                            <td>
-                                                                {isChecked ? (
-                                                                    <EditableCell
-                                                                        value={displayValue}
-                                                                        suffix={displayUnit}
-                                                                        onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'nominal', val)}
-                                                                        type="number"
-                                                                    />
-                                                                ) : "-"}
-                                                            </td>
+                                                            {/* Only show Meas. Point CELL if derived */}
+                                                            {isDerived && (
+                                                                <td>
+                                                                    {isChecked ? (
+                                                                        <EditableCell
+                                                                            value={displayValue}
+                                                                            suffix={displayUnit}
+                                                                            onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'nominal', val)}
+                                                                            type="number"
+                                                                        />
+                                                                    ) : "-"}
+                                                                </td>
+                                                            )}
                                                         </tr>
                                                     );
                                                 });

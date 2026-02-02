@@ -442,16 +442,6 @@ export const calculateUncertaintyFromToleranceObject = (
      }
   }
 
-  // --- DEBUG PRINT START ---
-  // This will print the fully normalized object to the console
-  console.groupCollapsed("🔍 Tolerance Object Debug");
-  console.log(
-    "Normalized Tolerance Object:", 
-    JSON.stringify(toleranceObject, null, 2)
-  );
-  console.log("Reference Point:", referenceMeasurementPoint);
-  // --- DEBUG PRINT END ---
-
   const hasValidValue = referenceMeasurementPoint && 
                         referenceMeasurementPoint.value !== null && 
                         referenceMeasurementPoint.value !== undefined && 

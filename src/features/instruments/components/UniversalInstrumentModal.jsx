@@ -1,3 +1,6 @@
+/**
+ * src/features/instruments/components/UniversalInstrumentModal.jsx
+ */
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import ReactDOM from "react-dom";
 import Select from "react-select";
@@ -223,7 +226,6 @@ const UniversalInstrumentModal = ({
 
     // --- Handlers ---
     
-    // Selecting for EDITING (Library mode only)
     // Selecting for EDITING (Library mode only) or IMPORTING (if in UUT/TMDE mode)
     const handleEditLibraryItem = (inst) => {
         const newDef = JSON.parse(JSON.stringify(inst));
@@ -579,19 +581,44 @@ const UniversalInstrumentModal = ({
                                 </button>
                             </div>
                             
-                            {/* UUT SPECIFIC FIELDS */}
-                            {effectiveMode === 'uut' && (
-                                <div className="identity-grid">
-                                    <div className="floating-input-group full-width">
-                                        <input 
-                                            type="text" 
-                                            value={metaData.name} 
-                                            onChange={e => handleMetaChange('name', e.target.value)} 
-                                            placeholder=" " 
-                                        />
-                                        <label>UUT Description / Name (Required)</label>
-                                        <FontAwesomeIcon icon={faFingerprint} className="input-icon" />
-                                    </div>
+                            {/* Unified Instrument Definition Fields */}
+                            <div className="identity-grid">
+                                {/* Name / Description (Always Present) */}
+                                <div className="floating-input-group full-width">
+                                    <input 
+                                        type="text" 
+                                        value={metaData.name} 
+                                        onChange={e => handleMetaChange('name', e.target.value)} 
+                                        placeholder=" " 
+                                    />
+                                    <label>{effectiveMode === 'uut' ? 'UUT Description' : (effectiveMode === 'tmde' ? 'TMDE Name / Description' : 'Instrument Description')}</label>
+                                    <FontAwesomeIcon icon={effectiveMode === 'uut' ? faFingerprint : (effectiveMode === 'tmde' ? faTools : faTag)} className="input-icon" />
+                                </div>
+
+                                {/* Manufacturer & Model (Always Present & Matched) */}
+                                <div className="floating-input-group">
+                                    <input 
+                                        type="text" 
+                                        value={instrumentDef.manufacturer} 
+                                        onChange={e => setInstrumentDef({ ...instrumentDef, manufacturer: e.target.value })} 
+                                        placeholder=" " 
+                                    />
+                                    <label>Manufacturer</label>
+                                    <FontAwesomeIcon icon={faIndustry} className="input-icon" />
+                                </div>
+                                <div className="floating-input-group">
+                                    <input 
+                                        type="text" 
+                                        value={instrumentDef.model} 
+                                        onChange={e => setInstrumentDef({ ...instrumentDef, model: e.target.value })} 
+                                        placeholder=" " 
+                                    />
+                                    <label>Model</label>
+                                    <FontAwesomeIcon icon={faTag} className="input-icon" />
+                                </div>
+
+                                {/* Instance Specific Fields (Conditional but same grid) */}
+                                {effectiveMode === 'uut' && (
                                     <div className="floating-input-group">
                                         <input 
                                             type="text" 
@@ -602,105 +629,33 @@ const UniversalInstrumentModal = ({
                                         <label>Measurement Area</label>
                                         <FontAwesomeIcon icon={faLayerGroup} className="input-icon" />
                                     </div>
-                                    <div className="floating-input-group">
-                                        <input 
-                                            type="text" 
-                                            value={instrumentDef.manufacturer} 
-                                            onChange={e => setInstrumentDef({ ...instrumentDef, manufacturer: e.target.value })} 
-                                            placeholder=" " 
-                                        />
-                                        <label>Manufacturer</label>
-                                        <FontAwesomeIcon icon={faIndustry} className="input-icon" />
-                                    </div>
-                                    <div className="floating-input-group">
-                                        <input 
-                                            type="text" 
-                                            value={instrumentDef.model} 
-                                            onChange={e => setInstrumentDef({ ...instrumentDef, model: e.target.value })} 
-                                            placeholder=" " 
-                                        />
-                                        <label>Model</label>
-                                        <FontAwesomeIcon icon={faTag} className="input-icon" />
-                                    </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* TMDE SPECIFIC FIELDS */}
-                            {effectiveMode === 'tmde' && (
-                                <div className="identity-grid">
-                                    <div className="floating-input-group full-width">
-                                        <input 
-                                            type="text" 
-                                            value={metaData.name} 
-                                            onChange={e => handleMetaChange('name', e.target.value)} 
-                                            placeholder=" " 
-                                        />
-                                        <label>TMDE Name / Description (Required)</label>
-                                        <FontAwesomeIcon icon={faTools} className="input-icon" />
-                                    </div>
-                                    <div className="floating-input-group">
-                                        <input 
-                                            type="text" 
-                                            value={metaData.assetId} 
-                                            onChange={e => handleMetaChange('assetId', e.target.value)} 
-                                            placeholder=" " 
-                                        />
-                                        <label>Asset ID (Optional)</label>
-                                        <FontAwesomeIcon icon={faHashtag} className="input-icon" />
-                                    </div>
-                                    <div className="floating-input-group">
-                                        <input 
-                                            type="text" 
-                                            value={instrumentDef.manufacturer} 
-                                            onChange={e => setInstrumentDef({ ...instrumentDef, manufacturer: e.target.value })} 
-                                            placeholder=" " 
-                                        />
-                                        <label>Manufacturer</label>
-                                        <FontAwesomeIcon icon={faIndustry} className="input-icon" />
-                                    </div>
-                                    <div className="floating-input-group">
-                                        <input 
-                                            type="text" 
-                                            value={instrumentDef.model} 
-                                            onChange={e => setInstrumentDef({ ...instrumentDef, model: e.target.value })} 
-                                            placeholder=" " 
-                                        />
-                                        <label>Model</label>
-                                        <FontAwesomeIcon icon={faTag} className="input-icon" />
-                                    </div>
-                                    <div className="floating-input-group small-width">
-                                        <input 
-                                            type="number" 
-                                            min="1"
-                                            value={metaData.quantity} 
-                                            onChange={e => handleMetaChange('quantity', parseInt(e.target.value))} 
-                                            placeholder=" " 
-                                        />
-                                        <label>Qty</label>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* LIBRARY MODE (PURE INSTRUMENT) */}
-                            {effectiveMode === 'library' && (
-                                <div className="identity-grid">
-                                    <div className="floating-input-group">
-                                        <input type="text" value={instrumentDef.manufacturer} onChange={e => setInstrumentDef({ ...instrumentDef, manufacturer: e.target.value })} placeholder=" " />
-                                        <label>Manufacturer</label>
-                                        <FontAwesomeIcon icon={faIndustry} className="input-icon" />
-                                    </div>
-                                    <div className="floating-input-group">
-                                        <input type="text" value={instrumentDef.model} onChange={e => setInstrumentDef({ ...instrumentDef, model: e.target.value })} placeholder=" " />
-                                        <label>Model</label>
-                                        <FontAwesomeIcon icon={faTag} className="input-icon" />
-                                    </div>
-                                    <div className="floating-input-group full-width">
-                                        <input type="text" value={instrumentDef.description} onChange={e => setInstrumentDef({ ...instrumentDef, description: e.target.value })} placeholder=" " />
-                                        <label>Description</label>
-                                        <FontAwesomeIcon icon={faFingerprint} className="input-icon" />
-                                    </div>
-                                </div>
-                            )}
+                                {effectiveMode === 'tmde' && (
+                                    <>
+                                        <div className="floating-input-group">
+                                            <input 
+                                                type="text" 
+                                                value={metaData.assetId} 
+                                                onChange={e => handleMetaChange('assetId', e.target.value)} 
+                                                placeholder=" " 
+                                            />
+                                            <label>Asset ID</label>
+                                            <FontAwesomeIcon icon={faHashtag} className="input-icon" />
+                                        </div>
+                                        <div className="floating-input-group small-width">
+                                            <input 
+                                                type="number" 
+                                                min="1"
+                                                value={metaData.quantity} 
+                                                onChange={e => handleMetaChange('quantity', parseInt(e.target.value))} 
+                                                placeholder=" " 
+                                            />
+                                            <label>Qty</label>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
                         {/* Editor Body */}

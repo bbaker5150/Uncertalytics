@@ -65,9 +65,6 @@ export const getBudgetComponentsFromTolerance = (
   const nominalUnit = referenceMeasurementPoint.unit;
   const prefix = toleranceObject.name || "TMDE";
 
-  console.groupCollapsed(`[Budget Debug] Calculating for ${prefix}`);
-  console.log("Nominal:", nominalValue, nominalUnit);
-
   // --- ACCUMULATORS FOR LINEAR SUM ---
   let totalAccuracyHalfSpan_Base = 0;
   let activeDistributionDivisor = 1.732; // Default to Rectangular
@@ -228,6 +225,5 @@ export const getBudgetComponentsFromTolerance = (
      }
   }
 
-  console.groupEnd();
   return budgetComponents;
 };
