@@ -628,12 +628,6 @@ export const calculateUncertaintyFromToleranceObject = (
 
   const standardUncertainty = Math.sqrt(totalVariance);
 
-  // --- DEBUG PRINT RESULT ---
-  console.log("Calculated Breakdown:", JSON.stringify(breakdown, null, 2));
-  console.log("Standard Uncertainty:", standardUncertainty);
-  console.groupEnd();
-  // --- DEBUG END ---
-
   return {
     standardUncertainty,
     totalToleranceForTar: totalLinearTolerance,

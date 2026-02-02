@@ -34,6 +34,90 @@ import {
     unitCategories
 } from "../../../utils/uncertaintyMath";
 
+// --- HELPER: Decompose Tolerance into Rows (Intuitive Format) ---
+const getSpecRows = (tolerance) => {
+    if (!tolerance) return ["-"];
+    const rows = [];
+
+    // Robust Helper to extract numeric value from object or primitive
+    const getVal = (prop) => {
+        if (prop === undefined || prop === null) return "";
+        if (typeof prop === 'object') {
+            if (prop.value !== undefined && prop.value !== null) return prop.value;
+            if (prop.pcn !== undefined && prop.pcn !== null) return prop.pcn;
+            if (prop.reading !== undefined && prop.reading !== null) return prop.reading;
+            if (prop.range !== undefined && prop.range !== null) return prop.range;
+            if (prop.floor !== undefined && prop.floor !== null) return prop.floor;
+            return "";
+        }
+        return prop;
+    };
+
+    // 1. Explicit sub-components (recursion)
+    if (Array.isArray(tolerance.tolerances) && tolerance.tolerances.length > 0) {
+        tolerance.tolerances.forEach(t => {
+            rows.push(...getSpecRows(t));
+        });
+        return rows;
+    }
+
+    // 2. Standard Components - Intuitive Formatting
+    let foundComponent = false;
+
+    // Reading
+    if (tolerance.reading !== undefined && tolerance.reading !== null && tolerance.reading !== "") {
+        const val = getVal(tolerance.reading);
+        if (val !== "") {
+            rows.push(`± ${val}% of Reading`);
+            foundComponent = true;
+        }
+    }
+
+    // Range
+    if (tolerance.range !== undefined && tolerance.range !== null && tolerance.range !== "") {
+        const val = getVal(tolerance.range);
+        if (val !== "" && !isNaN(parseFloat(val))) {
+            rows.push(`± ${val}% of Range`);
+            foundComponent = true;
+        }
+    }
+
+    // Floor
+    if (tolerance.floor !== undefined && tolerance.floor !== null && tolerance.floor !== "") {
+        const val = getVal(tolerance.floor);
+        if (val !== "") {
+            rows.push(`± ${val} ${tolerance.unit || ''} Floor`);
+            foundComponent = true;
+        }
+    }
+
+    // Offset
+    if (tolerance.offset !== undefined && tolerance.offset !== null) {
+        const val = getVal(tolerance.offset);
+        if (val !== "") {
+            rows.push(`± ${val} ${tolerance.unit || ''} Offset`);
+            foundComponent = true;
+        }
+    }
+
+    // Linearity
+    if (tolerance.linearity !== undefined && tolerance.linearity !== null) {
+        const val = getVal(tolerance.linearity);
+        if (val !== "") {
+            rows.push(`± ${val} ${tolerance.unit || ''} Linearity`);
+            foundComponent = true;
+        }
+    }
+
+    // 3. Fallback
+    if (!foundComponent || rows.length === 0) {
+        const summary = getToleranceSummary(tolerance);
+        return [summary];
+    }
+
+    return rows;
+};
+
 // --- SHARED HELPER: Resolve UUT Range ---
 const resolveUutRangeHelper = (uut, activeRangeIndices, savedTolerance, uutNominal) => {
     // 1. Normalize Ranges
@@ -60,19 +144,19 @@ const resolveUutRangeHelper = (uut, activeRangeIndices, savedTolerance, uutNomin
     // Helper: fit check
     const doesRangeFit = (r) => {
         const val = parseFloat(uutNominal?.value);
-        if (isNaN(val)) return false; 
+        if (isNaN(val)) return false;
         const min = parseFloat(r.min);
         const max = parseFloat(r.max);
-        
+
         // Check unit
         const unitMatch = !r.unit || !uutNominal?.unit || r.unit.toLowerCase() === uutNominal.unit.toLowerCase();
         if (!unitMatch) return false;
 
         // Check value bounds
         if (!isNaN(min) && !isNaN(max)) return val >= min && val <= max;
-        
+
         // If no bounds, assume fit
-        return true; 
+        return true;
     };
 
     // 2. Identify Display Ranges
@@ -96,17 +180,17 @@ const resolveUutRangeHelper = (uut, activeRangeIndices, savedTolerance, uutNomin
         if (displayRanges[uiIndex]) {
             activeIndex = uiIndex;
         }
-    } 
-    
+    }
+
     // Priority B: Saved Tolerance (Robust Match)
     if (activeIndex === -1 && savedTolerance) {
-         activeIndex = displayRanges.findIndex(r => {
+        activeIndex = displayRanges.findIndex(r => {
             // ID Match (Best)
             if (r.id && savedTolerance.id && r.id === savedTolerance.id) return true;
-            
+
             // Name Match
             if (savedTolerance.range && r.range && savedTolerance.range === r.range) {
-                 return savedTolerance.functionName ? savedTolerance.functionName === r.functionName : true;
+                return savedTolerance.functionName ? savedTolerance.functionName === r.functionName : true;
             }
 
             // Props Match (Fallback)
@@ -114,7 +198,7 @@ const resolveUutRangeHelper = (uut, activeRangeIndices, savedTolerance, uutNomin
             const maxMatch = r.max == savedTolerance.max;
             const unitMatch = (r.unit || "") === (savedTolerance.unit || "");
             const funcMatch = r.functionName === savedTolerance.functionName; // strict function name
-            
+
             // Looser function match if one is missing? No, stay strict.
             return minMatch && maxMatch && unitMatch && (!r.functionName || funcMatch);
         });
@@ -131,11 +215,11 @@ const resolveUutRangeHelper = (uut, activeRangeIndices, savedTolerance, uutNomin
 // --- SHARED HELPER: Calculate Tolerance & Limits (Core Logic) ---
 const calculateToleranceMetrics = (activeTolerance, nominalObj) => {
     const nominalVal = parseFloat(nominalObj?.value);
-    
+
     if (!activeTolerance || Object.keys(activeTolerance).length === 0) {
         return { numericTolerance: null, limits: { low: "-", high: "-" }, display: "No Range / Spec" };
     }
-    
+
     if (isNaN(nominalVal)) {
         return { numericTolerance: null, limits: { low: "-", high: "-" }, display: "No Value" };
     }
@@ -190,7 +274,7 @@ const calculateToleranceMetrics = (activeTolerance, nominalObj) => {
         const rangePcn = getComponentValue(rangeComp);
         // Use the range's Max as Full Scale (FS)
         const fs = parseFloat(activeTolerance.max);
-        
+
         if (rangePcn !== 0 && !isNaN(fs)) {
             // Basic % of Range calculation
             total += Math.abs(fs * (rangePcn / 100));
@@ -242,10 +326,10 @@ const SymbolButton = ({ onSymbolClick, symbol, title }) => (
 );
 
 const symbolCategories = {
-    'Operators': [ { symbol: '+', title: 'Add' }, { symbol: '-', title: 'Subtract' }, { symbol: '*', title: 'Multiply' }, { symbol: '/', title: 'Divide' }, { symbol: '^', title: 'Power' }, { symbol: '()', title: 'Parentheses' }, { symbol: '%', title: 'Percent' } ],
-    'Functions': [ { symbol: 'sqrt()', title: 'Square Root' }, { symbol: 'abs()', title: 'Absolute Value' }, { symbol: 'log()', title: 'Log (base 10)' }, { symbol: 'ln()', title: 'Natural Log' }, { symbol: 'exp()', title: 'Exponential' } ],
-    'Trigonometry': [ { symbol: 'sin()', title: 'Sine' }, { symbol: 'cos()', title: 'Cosine' }, { symbol: 'tan()', title: 'Tangent' } ],
-    'Greek': [ { symbol: 'Δ', title: 'Delta' }, { symbol: 'θ', title: 'Theta' }, { symbol: 'λ', title: 'Lambda' }, { symbol: 'π', title: 'Pi' }, { symbol: 'Ω', title: 'Omega' } ]
+    'Operators': [{ symbol: '+', title: 'Add' }, { symbol: '-', title: 'Subtract' }, { symbol: '*', title: 'Multiply' }, { symbol: '/', title: 'Divide' }, { symbol: '^', title: 'Power' }, { symbol: '()', title: 'Parentheses' }, { symbol: '%', title: 'Percent' }],
+    'Functions': [{ symbol: 'sqrt()', title: 'Square Root' }, { symbol: 'abs()', title: 'Absolute Value' }, { symbol: 'log()', title: 'Log (base 10)' }, { symbol: 'ln()', title: 'Natural Log' }, { symbol: 'exp()', title: 'Exponential' }],
+    'Trigonometry': [{ symbol: 'sin()', title: 'Sine' }, { symbol: 'cos()', title: 'Cosine' }, { symbol: 'tan()', title: 'Tangent' }],
+    'Greek': [{ symbol: 'Δ', title: 'Delta' }, { symbol: 'θ', title: 'Theta' }, { symbol: 'λ', title: 'Lambda' }, { symbol: 'π', title: 'Pi' }, { symbol: 'Ω', title: 'Omega' }]
 };
 
 const customUnitSelectStyles = {
@@ -267,8 +351,8 @@ const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, p
     useEffect(() => { setCurrentValue(value); }, [value]);
     const handleBlur = () => { setIsEditing(false); const cleanVal = typeof currentValue === 'string' ? currentValue.trim() : currentValue; if (cleanVal != value) { onSave(cleanVal); } };
     const handleKeyDown = (e) => { if (e.key === 'Enter') { handleBlur(); } };
-    if (isEditing) { return ( <input autoFocus type={type} value={currentValue} onChange={(e) => setCurrentValue(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown} placeholder={placeholder} className={className} style={{ width: '100%', padding: '4px', boxSizing: 'border-box', ...style }} /> ) }
-    return ( <div onClick={() => setIsEditing(true)} style={{ cursor: 'text', minHeight: '20px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '2px', color: !value && placeholder ? 'var(--text-color-muted)' : 'inherit', ...style }} className={`editable-cell-display ${className}`} title="Click to edit" > {value || placeholder} {suffix} </div> )
+    if (isEditing) { return (<input autoFocus type={type} value={currentValue} onChange={(e) => setCurrentValue(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown} placeholder={placeholder} className={className} style={{ width: '100%', padding: '4px', boxSizing: 'border-box', ...style }} />) }
+    return (<div onClick={() => setIsEditing(true)} style={{ cursor: 'text', minHeight: '20px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '2px', color: !value && placeholder ? 'var(--text-color-muted)' : 'inherit', ...style }} className={`editable-cell-display ${className}`} title="Click to edit" > {value || placeholder} {suffix} </div>)
 };
 
 // ---  Inline Quick Add Row Component ---
@@ -278,7 +362,7 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
     const [unit, setUnit] = useState("");
     const [section, setSection] = useState("");
     const isDisabled = selectedUuts.length === 0;
-    
+
     // Auto-detect unit from selected UUT when selection changes
     useEffect(() => {
         if (selectedUuts.length > 0) {
@@ -288,19 +372,19 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                 setTimeout(() => setUnit(activeRange.unit), 0);
             }
         }
-    }, [selectedUuts, localRangeIndices, resolveRangeHelper, unit]); 
+    }, [selectedUuts, localRangeIndices, resolveRangeHelper, unit]);
 
     // Real-time Preview Calculation
     const previewMetrics = useMemo(() => {
         if (!val) return { display: "-", limits: { low: "-", high: "-" } };
 
         let activeTolerance = {};
-        
+
         // If UUTs selected, use the first one's active range logic
         if (selectedUuts.length > 0) {
             const primaryUut = selectedUuts[0];
             const nominalObj = { value: val, unit: unit };
-            
+
             // We pass the nominalObj to the helper so it can find the best fitting range if in auto-mode
             const { activeRange } = resolveRangeHelper(primaryUut, localRangeIndices, null, nominalObj);
             activeTolerance = activeRange || {};
@@ -317,11 +401,11 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
         let areaId = null;
         if (selectedUuts.length > 0) {
             const primaryUut = selectedUuts[0];
-            
+
             // 1. Direct ID if available
             if (primaryUut.measurementAreaId) {
                 areaId = primaryUut.measurementAreaId;
-            } 
+            }
             // 2. Lookup by Name via sessionData
             else if (primaryUut.measurementArea && sessionData?.measurementAreas) {
                 const matchedArea = sessionData.measurementAreas.find(a => a.name === primaryUut.measurementArea);
@@ -352,23 +436,23 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
     };
 
     return (
-        <tr style={{ 
-            borderBottom: '1px solid var(--border-color)', 
+        <tr style={{
+            borderBottom: '1px solid var(--border-color)',
             backgroundColor: 'var(--background-secondary)',
             transition: 'background-color 0.2s ease'
         }}>
             {/* Section Input */}
             <td className="cell-section" style={{ padding: '4px 8px' }}>
-                <input 
-                    type="text" 
+                <input
+                    type="text"
                     placeholder="Section"
                     value={section}
                     onChange={e => setSection(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={isDisabled}
                     className="quick-add-input organic-input"
-                    style={{ 
-                        width: '100%', 
+                    style={{
+                        width: '100%',
                         background: 'transparent',
                         border: 'none',
                         padding: '6px 0',
@@ -383,8 +467,8 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                 />
             </td>
             <td className="cell-value" style={{ padding: '4px 8px' }}>
-                <input 
-                    type="text" 
+                <input
+                    type="text"
                     placeholder={isDisabled ? "Select UUT..." : "Value..."}
                     value={val}
                     onChange={e => setVal(e.target.value)}
@@ -392,8 +476,8 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                     disabled={isDisabled}
                     className="quick-add-input organic-input"
                     title={isDisabled ? "Select a UUT from the list on the left to enable quick add" : "Enter value and press Enter"}
-                    style={{ 
-                        width: '100%', 
+                    style={{
+                        width: '100%',
                         background: 'transparent',
                         border: 'none',
                         padding: '6px 0',
@@ -409,16 +493,16 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                 />
             </td>
             <td className="cell-unit" style={{ padding: '4px 8px' }}>
-                <input 
-                    type="text" 
-                    placeholder="Unit" 
+                <input
+                    type="text"
+                    placeholder="Unit"
                     value={unit}
                     onChange={e => setUnit(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={isDisabled}
                     className="quick-add-input organic-input"
-                    style={{ 
-                        width: '100%', 
+                    style={{
+                        width: '100%',
                         background: 'transparent',
                         border: 'none',
                         padding: '6px 0',
@@ -447,16 +531,16 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                             </>
                         ) : '-'}
                     </span>
-                    
+
                     {/* Action Button (If Area Hidden) */}
                     {!showAreaColumn && !isDisabled && val && (
-                        <button 
+                        <button
                             onClick={handleSave}
                             className="btn-icon-only"
                             style={{
-                                color: 'var(--primary-color)', 
-                                background: 'transparent', 
-                                border: 'none', 
+                                color: 'var(--primary-color)',
+                                background: 'transparent',
+                                border: 'none',
                                 cursor: 'pointer',
                                 marginLeft: '8px'
                             }}
@@ -467,20 +551,20 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
                     )}
                 </div>
             </td>
-            
+
             {showAreaColumn && (
                 <td className="cell-area">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                         <span>{/* Area implies automatic or selected */}</span>
-                         {/* Action Button (If Area Shown) */}
+                        <span>{/* Area implies automatic or selected */}</span>
+                        {/* Action Button (If Area Shown) */}
                         {!isDisabled && val && (
-                            <button 
+                            <button
                                 onClick={handleSave}
                                 className="btn-icon-only"
                                 style={{
-                                    color: 'var(--primary-color)', 
-                                    background: 'transparent', 
-                                    border: 'none', 
+                                    color: 'var(--primary-color)',
+                                    background: 'transparent',
+                                    border: 'none',
                                     cursor: 'pointer'
                                 }}
                                 title="Save Point (Enter)"
@@ -498,7 +582,7 @@ const QuickAddRow = ({ selectedUuts, localRangeIndices, resolveRangeHelper, onSa
 
 // --- UPDATED: SUMMARY DASHBOARD ---
 const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint, onDeleteTestPoint, rangeData, uutId, onSaveTestPoint, onEditSession, selectedPointIds, setSelectedPointIds, onSelectUut, onSelectTestPoint }) => {
-    
+
     // --- ADDED MISSING STATE ---
     const [selectedUutIds, setSelectedUutIds] = useState([]);
     const [localRangeIndices, setLocalRangeIndices] = useState({});
@@ -513,7 +597,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
         let points = sessionData.testPoints || [];
         let displayTitle = "Session Overview";
         let displaySubtitle = "All Measurement Areas";
-        
+
         const isSessionView = viewMode === 'session';
 
         if (viewMode === 'area') {
@@ -537,15 +621,15 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
         else if (viewMode === 'range') {
             // ---  Range View Logic ---
             const uut = uuts.find(u => u.id === uutId);
-            
+
             // 1. Filter UUTs: Only the parent UUT
             uuts = uut ? [uut] : [];
-            
+
             // 2. Filter Points: Matches UUT AND Matches Range Characteristics
             points = points.filter(tp => {
                 // Must belong to the UUT
                 if (!tp.associatedUutIds || !tp.associatedUutIds.includes(uutId)) return false;
-                
+
                 // Must match the Range
                 const ptTol = tp.uutTolerance;
                 if (!ptTol) return false;
@@ -556,7 +640,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                 const maxMatch = ptTol.max == rangeData.max;
                 const unitMatch = (ptTol.unit || "") === (rangeData.unit || "");
                 const funcMatch = rangeData.functionName ? ptTol.functionName === rangeData.functionName : true;
-                
+
                 return minMatch && maxMatch && unitMatch && funcMatch;
             });
 
@@ -566,16 +650,16 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
         }
         else if (isSessionView) {
             displayTitle = sessionData.name || "Session Overview";
-            displaySubtitle = `Last Modified: ${new Date().toLocaleDateString()}`; 
+            displaySubtitle = `Last Modified: ${new Date().toLocaleDateString()}`;
         }
 
         // SORTING LOGIC REMOVED (Moved to Local Group Rendering)
-        
-        return { 
-            filteredUuts: uuts, 
-            filteredPoints: points, 
+
+        return {
+            filteredUuts: uuts,
+            filteredPoints: points,
             filteredTmdes: sessionData.tmdes || [], // Always show all TMDEs as requested
-            title: displayTitle, 
+            title: displayTitle,
             subtitle: displaySubtitle,
             showAreaColumn: isSessionView // Boolean flag
         };
@@ -616,12 +700,12 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
             }
         }
     };
-    
+
     // --- BATCH DELETE HANDLERS ---
     const handleBatchDelete = useCallback(() => {
         if (selectedPointIds.length === 0) return;
         if (onDeleteTestPoint) {
-            onDeleteTestPoint(selectedPointIds, false); 
+            onDeleteTestPoint(selectedPointIds, false);
             setSelectedPointIds([]);
         }
     }, [selectedPointIds, onDeleteTestPoint, setSelectedPointIds]);
@@ -643,8 +727,8 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
             if ((e.key === 'Delete' || e.key === 'Backspace') && selectedPointIds.length > 0) {
                 // Prevent backspace from navigating back if not in an input
                 if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-                     e.preventDefault();
-                     handleBatchDelete();
+                    e.preventDefault();
+                    handleBatchDelete();
                 }
             }
         };
@@ -663,11 +747,11 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
 
     return (
         <div className="configuration-panel" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-            
+
             {/* Header */}
             <div style={{ paddingBottom: '10px', borderBottom: '1px solid var(--border-color)' }}>
                 <h2 style={{ margin: 0, fontSize: '1.4rem' }}>
-                    {viewMode === 'range' && <FontAwesomeIcon icon={faRulerCombined} style={{marginRight: '10px', color:'var(--primary-color)'}} />}
+                    {viewMode === 'range' && <FontAwesomeIcon icon={faRulerCombined} style={{ marginRight: '10px', color: 'var(--primary-color)' }} />}
                     {title}
                 </h2>
                 <div style={{ color: 'var(--text-color-muted)', fontSize: '0.9rem', marginTop: '4px' }}>{subtitle}</div>
@@ -675,192 +759,191 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignItems: 'start' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
-                
-                {/* UUT TABLE */}
-                <div style={cardStyle}>
-                    <div style={headerStyle}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <FontAwesomeIcon icon={faMicroscope} />
-                            <span>Units Under Test ({filteredUuts.length})</span>
+
+                    {/* UUT TABLE */}
+                    <div style={cardStyle}>
+                        <div style={headerStyle}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FontAwesomeIcon icon={faMicroscope} />
+                                <span>Units Under Test ({filteredUuts.length})</span>
+                            </div>
+                            {selectedUutIds.length > 0 && (
+                                <span style={{ fontSize: '0.8rem', color: 'var(--primary-color)', fontWeight: 600 }}>{selectedUutIds.length} Selected</span>
+                            )}
                         </div>
-                        {selectedUutIds.length > 0 && (
-                             <span style={{fontSize: '0.8rem', color: 'var(--primary-color)', fontWeight: 600}}>{selectedUutIds.length} Selected</span>
-                        )}
-                    </div>
-                    <div className="panel-table-container" style={{ overflowX: 'auto', borderRadius: '8px', border: 'none' }}>
-                        <table className="instrument-summary-table compact-table" style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
-                            <colgroup>
-                                <col style={{ width: '4%' }} />
-                                <col style={{ width: showAreaColumn ? '30%' : '38%' }} />
-                                <col style={{ width: showAreaColumn ? '26%' : '30%' }} />
-                                <col style={{ width: showAreaColumn ? '25%' : '28%' }} />
-                                {showAreaColumn && <col style={{ width: '15%' }} />}
-                            </colgroup>
-                            <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                                <tr>
-                                    <th className="cell-compact" style={{ textAlign: 'center' }}>
-                                        <div style={{width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                           {/* Header Checkbox could go here */}
-                                        </div>
-                                    </th>
-                                    <th>Description</th>
-                                    <th>Range</th>
-                                    <th>Specification</th>
-                                    {showAreaColumn && <th>Area</th>}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredUuts.length === 0 ? (
-                                    <tr><td colSpan={showAreaColumn ? 5 : 4} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No UUTs found in this context.</td></tr>
-                                ) : (
-                                    filteredUuts.map(uut => {
-                                        let resolution = resolveUutRangeHelper(uut, localRangeIndices, null, null);
-                                        
-                                        // override if in Range View mode
-                                        if (viewMode === 'range' && rangeData) {
-                                            const matchIndex = resolution.ranges.findIndex(r => {
-                                                if (rangeData._id !== undefined && r._index !== undefined) {
-                                                    // This might be fragile if indices drift, but usually consistent
-                                                    return r._index === rangeData._id; 
-                                                }
-                                                // Fallback to properties match
-                                                const minMatch = r.min == rangeData.min;
-                                                const maxMatch = r.max == rangeData.max;
-                                                const unitMatch = (r.unit || "") === (rangeData.unit || "");
-                                                const funcMatch = rangeData.functionName ? r.functionName === rangeData.functionName : true;
-                                                return minMatch && maxMatch && unitMatch && funcMatch;
-                                            });
+                        <div className="panel-table-container" style={{ overflowX: 'auto', borderRadius: '8px', border: 'none' }}>
+                            <table className="instrument-summary-table compact-table" style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
+                                <colgroup>
+                                    <col style={{ width: '4%' }} />
+                                    <col style={{ width: showAreaColumn ? '30%' : '38%' }} />
+                                    <col style={{ width: showAreaColumn ? '26%' : '30%' }} />
+                                    <col style={{ width: showAreaColumn ? '25%' : '28%' }} />
+                                    {showAreaColumn && <col style={{ width: '15%' }} />}
+                                </colgroup>
+                                <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                                    <tr>
+                                        <th className="cell-compact" style={{ textAlign: 'center' }}>
+                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {/* Header Checkbox could go here */}
+                                            </div>
+                                        </th>
+                                        <th>Description</th>
+                                        <th>Range</th>
+                                        <th>Specification</th>
+                                        {showAreaColumn && <th>Area</th>}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredUuts.length === 0 ? (
+                                        <tr><td colSpan={showAreaColumn ? 5 : 4} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No UUTs found in this context.</td></tr>
+                                    ) : (
+                                        filteredUuts.map(uut => {
+                                            let resolution = resolveUutRangeHelper(uut, localRangeIndices, null, null);
 
-                                            if (matchIndex !== -1) {
-                                                const matched = resolution.ranges[matchIndex];
-                                                resolution = { ranges: [matched], activeIndex: 0, activeRange: matched };
-                                            }
-                                        }
-
-                                        // override if a Single Measurement Point is Selected
-                                        if (selectedPointIds.length === 1) {
-                                            const activePoint = filteredPoints.find(p => p.id === selectedPointIds[0]);
-                                            
-                                            // Ensure point is linked to this UUT and has a valid saved tolerance
-                                            if (activePoint && 
-                                                activePoint.associatedUutIds && 
-                                                activePoint.associatedUutIds.includes(uut.id) &&
-                                                activePoint.uutTolerance && 
-                                                Object.keys(activePoint.uutTolerance).length > 0) 
-                                            {
-                                                const targetTol = activePoint.uutTolerance;
-                                                
-                                                // Find matching range in the UUT's definition
+                                            // override if in Range View mode
+                                            if (viewMode === 'range' && rangeData) {
                                                 const matchIndex = resolution.ranges.findIndex(r => {
-                                                    // 1. Precise Match (ID/Index)
-                                                    if (targetTol._index !== undefined && r._index !== undefined && targetTol._index === r._index) return true;
-                                                    if (targetTol.id && r.id && targetTol.id === r.id) return true;
-
-                                                    // 2. Prop Match
-                                                    const minMatch = r.min == targetTol.min;
-                                                    const maxMatch = r.max == targetTol.max;
-                                                    const unitMatch = (r.unit || "") === (targetTol.unit || "");
-                                                    const funcMatch = targetTol.functionName ? r.functionName === targetTol.functionName : true;
+                                                    if (rangeData._id !== undefined && r._index !== undefined) {
+                                                        // This might be fragile if indices drift, but usually consistent
+                                                        return r._index === rangeData._id;
+                                                    }
+                                                    // Fallback to properties match
+                                                    const minMatch = r.min == rangeData.min;
+                                                    const maxMatch = r.max == rangeData.max;
+                                                    const unitMatch = (r.unit || "") === (rangeData.unit || "");
+                                                    const funcMatch = rangeData.functionName ? r.functionName === rangeData.functionName : true;
                                                     return minMatch && maxMatch && unitMatch && funcMatch;
                                                 });
 
                                                 if (matchIndex !== -1) {
-                                                    // Set active index to this range, so dropdown updates to show it
-                                                    resolution.activeIndex = matchIndex;
-                                                    resolution.activeRange = resolution.ranges[matchIndex];
+                                                    const matched = resolution.ranges[matchIndex];
+                                                    resolution = { ranges: [matched], activeIndex: 0, activeRange: matched };
                                                 }
                                             }
-                                        }
 
-                                        const { ranges, activeIndex, activeRange } = resolution;
-                                        const specSummary = getToleranceSummary(activeRange);
-                                        const hasMultipleRanges = ranges.length > 1;
-                                        const isChecked = selectedUutIds.includes(uut.id);
+                                            // override if a Single Measurement Point is Selected
+                                            if (selectedPointIds.length === 1) {
+                                                const activePoint = filteredPoints.find(p => p.id === selectedPointIds[0]);
 
-                                        // Lookup Area Name & Color
-                                        // Robust Lookup: Match ID OR Name
-                                        const area = sessionData.measurementAreas?.find(a => a.id === uut.measurementAreaId || a.name === uut.measurementArea);
-                                        const areaName = area ? area.name : (uut.measurementArea || '-');
-                                        const areaColor = area?.color || 'var(--text-color-muted)';
+                                                // Ensure point is linked to this UUT and has a valid saved tolerance
+                                                if (activePoint &&
+                                                    activePoint.associatedUutIds &&
+                                                    activePoint.associatedUutIds.includes(uut.id) &&
+                                                    activePoint.uutTolerance &&
+                                                    Object.keys(activePoint.uutTolerance).length > 0) {
+                                                    const targetTol = activePoint.uutTolerance;
 
-                                        return (
-                                            <tr key={uut.id} className={isChecked ? "selected-row" : ""} style={{ backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent' }} onDoubleClick={() => onSelectUut && onSelectUut(uut.id, uut.measurementAreaId, uut)}>
-                                                <td className="cell-compact" style={{ textAlign: 'center' }}>
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={isChecked} 
-                                                        onChange={() => handleUutSelect(uut.id)}
-                                                        style={{ cursor: 'pointer', width: '16px', height: '16px' }} 
-                                                    />
-                                                </td>
-                                                <td className="cell-description" style={{ 
-                                                    fontWeight: 600, 
-                                                    color: isChecked ? 'var(--primary-color)' : 'var(--text-color)',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    whiteSpace: 'nowrap',
-                                                    maxWidth: 0
-                                                }} title={uut.description}>
-                                                    {uut.description}
-                                                </td>
-                                                <td className="cell-value">
-                                                    {hasMultipleRanges ? (
-                                                        <select
-                                                            className="session-selector"
-                                                            style={{ 
-                                                                width: '100%', 
-                                                                padding: '4px 8px',
-                                                                fontSize: '0.85rem'
-                                                            }}
-                                                            value={activeIndex}
-                                                            onChange={(e) => setLocalRangeIndices(prev => ({...prev, [uut.id]: parseInt(e.target.value)}))}
-                                                        >
-                                                            {ranges.map((range, idx) => {
-                                                                const rangeLabel = (typeof range.range === 'string' ? range.range : null) || 
-                                                                                   (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
-                                                                const unitLabel = typeof range.unit === 'string' ? range.unit : '';
-                                                                return <option key={idx} value={idx}>{`${rangeLabel} ${unitLabel}`}</option>
-                                                            })}
-                                                        </select>
-                                                    ) : (
-                                                       <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>
-                                                            {(() => {
-                                                                const r = ranges[0];
-                                                                if (!r) return "Default";
-                                                                const rangeLabel = (r.min !== undefined && r.max !== undefined ? `${r.min} to ${r.max}` : null) 
-                                                                                || (typeof r.range === 'string' ? r.range : "Full Range");
-                                                                const unitLabel = typeof r.unit === 'string' ? r.unit : '';
-                                                                return `${rangeLabel} ${unitLabel}`;
-                                                            })()}
-                                                       </span>
-                                                    )}
-                                                </td>
-                                                <td className="cell-tolerance" style={{
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    whiteSpace: 'nowrap',
-                                                    maxWidth: 0
-                                                }} title={specSummary}>
-                                                    {specSummary}
-                                                </td>
-                                                {showAreaColumn && (
-                                                    <td className="cell-area" style={{
+                                                    // Find matching range in the UUT's definition
+                                                    const matchIndex = resolution.ranges.findIndex(r => {
+                                                        // 1. Precise Match (ID/Index)
+                                                        if (targetTol._index !== undefined && r._index !== undefined && targetTol._index === r._index) return true;
+                                                        if (targetTol.id && r.id && targetTol.id === r.id) return true;
+
+                                                        // 2. Prop Match
+                                                        const minMatch = r.min == targetTol.min;
+                                                        const maxMatch = r.max == targetTol.max;
+                                                        const unitMatch = (r.unit || "") === (targetTol.unit || "");
+                                                        const funcMatch = targetTol.functionName ? r.functionName === targetTol.functionName : true;
+                                                        return minMatch && maxMatch && unitMatch && funcMatch;
+                                                    });
+
+                                                    if (matchIndex !== -1) {
+                                                        // Set active index to this range, so dropdown updates to show it
+                                                        resolution.activeIndex = matchIndex;
+                                                        resolution.activeRange = resolution.ranges[matchIndex];
+                                                    }
+                                                }
+                                            }
+
+                                            const { ranges, activeIndex, activeRange } = resolution;
+                                            const specSummary = getToleranceSummary(activeRange);
+                                            const hasMultipleRanges = ranges.length > 1;
+                                            const isChecked = selectedUutIds.includes(uut.id);
+
+                                            // Lookup Area Name & Color
+                                            // Robust Lookup: Match ID OR Name
+                                            const area = sessionData.measurementAreas?.find(a => a.id === uut.measurementAreaId || a.name === uut.measurementArea);
+                                            const areaName = area ? area.name : (uut.measurementArea || '-');
+                                            const areaColor = area?.color || 'var(--text-color-muted)';
+
+                                            return (
+                                                <tr key={uut.id} className={isChecked ? "selected-row" : ""} style={{ backgroundColor: isChecked ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent' }} onDoubleClick={() => onSelectUut && onSelectUut(uut.id, uut.measurementAreaId, uut)}>
+                                                    <td className="cell-compact" style={{ textAlign: 'center' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isChecked}
+                                                            onChange={() => handleUutSelect(uut.id)}
+                                                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                                        />
+                                                    </td>
+                                                    <td className="cell-description" style={{
+                                                        fontWeight: 600,
+                                                        color: isChecked ? 'var(--primary-color)' : 'var(--text-color)',
                                                         overflow: 'hidden',
                                                         textOverflow: 'ellipsis',
                                                         whiteSpace: 'nowrap',
                                                         maxWidth: 0
-                                                    }} title={areaName}>
-                                                        <span style={{ color: areaColor }}>{areaName}</span>
+                                                    }} title={uut.description}>
+                                                        {uut.description}
                                                     </td>
-                                                )}
-                                            </tr>
-                                        )
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                                                    <td className="cell-value">
+                                                        {hasMultipleRanges ? (
+                                                            <select
+                                                                className="session-selector"
+                                                                style={{
+                                                                    width: '100%',
+                                                                    padding: '4px 8px',
+                                                                    fontSize: '0.85rem'
+                                                                }}
+                                                                value={activeIndex}
+                                                                onChange={(e) => setLocalRangeIndices(prev => ({ ...prev, [uut.id]: parseInt(e.target.value) }))}
+                                                            >
+                                                                {ranges.map((range, idx) => {
+                                                                    const rangeLabel = (typeof range.range === 'string' ? range.range : null) ||
+                                                                        (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
+                                                                    const unitLabel = typeof range.unit === 'string' ? range.unit : '';
+                                                                    return <option key={idx} value={idx}>{`${rangeLabel} ${unitLabel}`}</option>
+                                                                })}
+                                                            </select>
+                                                        ) : (
+                                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>
+                                                                {(() => {
+                                                                    const r = ranges[0];
+                                                                    if (!r) return "Default";
+                                                                    const rangeLabel = (r.min !== undefined && r.max !== undefined ? `${r.min} to ${r.max}` : null)
+                                                                        || (typeof r.range === 'string' ? r.range : "Full Range");
+                                                                    const unitLabel = typeof r.unit === 'string' ? r.unit : '';
+                                                                    return `${rangeLabel} ${unitLabel}`;
+                                                                })()}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="cell-tolerance" style={{
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                        maxWidth: 0
+                                                    }} title={specSummary}>
+                                                        {specSummary}
+                                                    </td>
+                                                    {showAreaColumn && (
+                                                        <td className="cell-area" style={{
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap',
+                                                            maxWidth: 0
+                                                        }} title={areaName}>
+                                                            <span style={{ color: areaColor }}>{areaName}</span>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            )
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
 
                 </div>
 
@@ -872,17 +955,17 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                             <FontAwesomeIcon icon={faCube} />
                             <span>Measurement Points ({filteredPoints.length})</span>
                         </div>
-                        
-                        <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             {selectedPointIds.length > 0 && (
-                                <button 
-                                    className="btn-icon-only delete" 
+                                <button
+                                    className="btn-icon-only delete"
                                     style={{
-                                        color: 'var(--status-bad)', 
-                                        width: '24px', 
-                                        height: '24px', 
-                                        borderRadius: '4px', 
-                                        opacity: 1, 
+                                        color: 'var(--status-bad)',
+                                        width: '24px',
+                                        height: '24px',
+                                        borderRadius: '4px',
+                                        opacity: 1,
                                         border: '1px solid rgba(255,82,82,0.3)',
                                         marginRight: '8px'
                                     }}
@@ -892,9 +975,9 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                     <FontAwesomeIcon icon={faTrashAlt} size="xs" />
                                 </button>
                             )}
-                            <button 
-                                className="btn-icon-only" 
-                                style={{backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px'}}
+                            <button
+                                className="btn-icon-only"
+                                style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
                                 onClick={handleAddPoint}
                                 title={viewMode === 'range' ? "Add Point to this Range" : "Add Measurement Point (uses selected UUTs)"}
                             >
@@ -915,13 +998,13 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                         Add New Measurement Point
                                     </td>
                                 </tr>
-                                <QuickAddRow 
+                                <QuickAddRow
                                     selectedUuts={sessionData.uuts.filter(u => selectedUutIds.includes(u.id))}
                                     localRangeIndices={localRangeIndices}
                                     resolveRangeHelper={resolveRangeWrapper}
                                     onSave={onSaveTestPoint}
                                     showAreaColumn={false}
-                                    sessionData={sessionData} 
+                                    sessionData={sessionData}
                                 />
 
                                 {filteredPoints.length === 0 ? (
@@ -949,10 +1032,10 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
 
                                         // Helper to render a group
                                         const renderGroup = (groupId, points, groupLabel, groupMeta = null) => {
-                                             // Resolve Sort Config
-                                             const config = sortConfigs[groupId] || { key: null, direction: 'ascending' };
+                                            // Resolve Sort Config
+                                            const config = sortConfigs[groupId] || { key: null, direction: 'ascending' };
 
-                                             const sortedPoints = [...points].sort((a, b) => {
+                                            const sortedPoints = [...points].sort((a, b) => {
                                                 if (!config.key) return 0;
                                                 let aVal = '', bVal = '';
 
@@ -970,19 +1053,19 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                         bVal = (b.testPointInfo?.parameter?.value || '').toString().toLowerCase();
                                                     }
                                                 }
-                                                
+
                                                 if (aVal < bVal) return config.direction === 'ascending' ? -1 : 1;
                                                 if (aVal > bVal) return config.direction === 'ascending' ? 1 : -1;
                                                 return 0;
-                                             });
+                                            });
 
-                                             return (
+                                            return (
                                                 <React.Fragment key={groupId}>
                                                     {/* GROUP HEADER (Title) */}
-                                                    <tr 
-                                                        style={{ 
-                                                            backgroundColor: 'var(--component-header-bg)', 
-                                                            borderTop: '2px solid var(--border-color)', 
+                                                    <tr
+                                                        style={{
+                                                            backgroundColor: 'var(--component-header-bg)',
+                                                            borderTop: '2px solid var(--border-color)',
                                                             borderBottom: '1px solid var(--border-color)',
                                                             cursor: groupId !== 'unassigned' ? 'pointer' : 'default'
                                                         }}
@@ -998,17 +1081,17 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                             {groupLabel} {groupMeta}
                                                         </td>
                                                     </tr>
-                                                    
+
                                                     {/* COLUMN HEADERS (Repeated per UUT) */}
                                                     <tr className="group-column-headers" style={{ backgroundColor: 'var(--background-secondary)', borderBottom: '1px solid var(--border-color)' }}>
-                                                        <th 
-                                                            className="cell-compact" 
+                                                        <th
+                                                            className="cell-compact"
                                                             style={{ fontWeight: 600, fontSize: '0.8rem', padding: '6px 8px', textAlign: 'left', cursor: 'pointer', color: 'var(--text-color-muted)' }}
                                                             onClick={() => handleSort(groupId, 'section')}
                                                         >
                                                             Section {config.key === 'section' && (config.direction === 'ascending' ? '▲' : '▼')}
                                                         </th>
-                                                        <th 
+                                                        <th
                                                             style={{ fontWeight: 600, fontSize: '0.8rem', padding: '6px 8px', textAlign: 'left', cursor: 'pointer', color: 'var(--text-color-muted)' }}
                                                             onClick={() => handleSort(groupId, 'point')}
                                                         >
@@ -1023,7 +1106,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                     {sortedPoints.map(tp => {
                                                         const param = tp.testPointInfo?.parameter || { value: '', unit: '' };
                                                         const isSelected = selectedPointIds.includes(tp.id);
-                                                        
+
                                                         let activeTolerance = tp.uutTolerance;
                                                         if ((!activeTolerance || Object.keys(activeTolerance).length === 0) && tp.associatedUutIds?.length > 0) {
                                                             const uut = sessionData.uuts?.find(u => u.id === tp.associatedUutIds[0]);
@@ -1036,12 +1119,12 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                         const { limits, display } = calculateToleranceMetrics(activeTolerance, param);
 
                                                         return (
-                                                            <tr 
-                                                                key={tp.id} 
+                                                            <tr
+                                                                key={tp.id}
                                                                 className={isSelected ? "selected-row" : ""}
                                                                 onClick={(e) => handleRowClick(e, tp.id)}
                                                                 onDoubleClick={() => onSelectTestPoint && onSelectTestPoint(tp.id, tp.associatedUutIds?.[0])}
-                                                                style={{ 
+                                                                style={{
                                                                     backgroundColor: isSelected ? 'rgba(var(--primary-rgb), 0.15)' : 'transparent',
                                                                     borderLeft: isSelected ? '4px solid var(--primary-color)' : '4px solid transparent',
                                                                     cursor: 'pointer',
@@ -1061,7 +1144,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                         );
                                                     })}
                                                 </React.Fragment>
-                                             );
+                                            );
                                         };
 
                                         return (
@@ -1069,7 +1152,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                 {uutOrder.map(uutId => {
                                                     const uut = sessionData.uuts?.find(u => u.id === uutId);
                                                     const groupPoints = groupedPoints[uutId];
-                                                    
+
                                                     const area = sessionData.measurementAreas?.find(a => a.id === uut?.measurementAreaId || a.name === uut?.measurementArea);
                                                     const areaName = area ? area.name : (uut?.measurementArea || '-');
                                                     const areaColor = area?.color || 'var(--text-color-muted)';
@@ -1080,7 +1163,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                             {uut?.description || "Unknown UUT"}
                                                         </span>
                                                     );
-                                                    
+
                                                     const meta = (
                                                         <span style={{ float: 'right', fontSize: '0.75rem', color: areaColor, border: `1px solid ${areaColor}`, borderRadius: '4px', padding: '1px 6px' }}>
                                                             {areaName}
@@ -1090,7 +1173,7 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                                     return renderGroup(uutId, groupPoints, label, meta);
                                                 })}
 
-                                                {unassignedPoints.length > 0 && renderGroup('unassigned', unassignedPoints, 
+                                                {unassignedPoints.length > 0 && renderGroup('unassigned', unassignedPoints,
                                                     <span style={{ fontStyle: 'italic', color: 'var(--text-color-muted)' }}>Unassigned Points</span>
                                                 )}
                                             </>
@@ -1098,102 +1181,102 @@ const SummaryDashboard = ({ viewMode, contextId, sessionData, onDefineTestPoint,
                                     })()
                                 )}
                                 {filteredPoints.length === 0 && (
-                                     <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No Measurement Points found. Use the input row above to add one.</td></tr>
+                                    <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No Measurement Points found. Use the input row above to add one.</td></tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-            
+
             {/* FULL WIDTH TMDE TABLE */}
             <div style={cardStyle}>
                 <div style={headerStyle}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FontAwesomeIcon icon={faTools} />
                         <span>Test Equipment (TMDE) ({filteredTmdes.length})</span>
                     </div>
                 </div>
                 <div className="panel-table-container" style={{ overflowX: 'auto', borderRadius: '8px', border: 'none' }}>
-                        <table className="instrument-summary-table compact-table" style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
-                            <colgroup>
-                                <col style={{ width: '42%' }} />
-                                <col style={{ width: '30%' }} />
-                                <col style={{ width: '28%' }} />
-                            </colgroup>
-                            <thead>
-                                <tr>
-                                    <th>Description</th>
-                                    <th>Range</th>
-                                    <th>Specification</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredTmdes.length === 0 ? (
-                                    <tr><td colSpan={3} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No TMDEs found in session.</td></tr>
-                                ) : (
-                                    filteredTmdes.map((tmde, idx) => {
-                                        // Reuse UUT helper for robust range resolution
-                                        // We treat the TMDE as a UUT for the purpose of range extraction
-                                        const resolution = resolveUutRangeHelper(tmde, tmdeRangeIndices, null, null);
-                                        const { ranges, activeIndex, activeRange } = resolution;
-                                        
-                                        // Calculate summary based on the SPECIFIC active range, not the whole object
-                                        const specSummary = getToleranceSummary(activeRange);
-                                        const hasMultipleRanges = ranges.length > 1;
+                    <table className="instrument-summary-table compact-table" style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
+                        <colgroup>
+                            <col style={{ width: '42%' }} />
+                            <col style={{ width: '30%' }} />
+                            <col style={{ width: '28%' }} />
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Range</th>
+                                <th>Specification</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredTmdes.length === 0 ? (
+                                <tr><td colSpan={3} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No TMDEs found in session.</td></tr>
+                            ) : (
+                                filteredTmdes.map((tmde, idx) => {
+                                    // Reuse UUT helper for robust range resolution
+                                    // We treat the TMDE as a UUT for the purpose of range extraction
+                                    const resolution = resolveUutRangeHelper(tmde, tmdeRangeIndices, null, null);
+                                    const { ranges, activeIndex, activeRange } = resolution;
 
-                                        return (
-                                            <tr key={tmde.id || idx}>
-                                                <td className="cell-description" style={{fontWeight: 600, padding: '8px 12px'}} title={tmde.name}>
-                                                    <div style={{ color: 'var(--text-color)' }}>{tmde.name}</div>
-                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-color-muted)', marginTop: '2px' }}>
-                                                        {tmde.instrument && (
-                                                            <span>{tmde.instrument.manufacturer} {tmde.instrument.model}</span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="cell-value">
-                                                    {hasMultipleRanges ? (
-                                                        <select
-                                                            className="session-selector"
-                                                            style={{ 
-                                                                width: '100%', 
-                                                                padding: '4px 8px',
-                                                                fontSize: '0.85rem'
-                                                            }}
-                                                            value={activeIndex}
-                                                            onChange={(e) => setTmdeRangeIndices(prev => ({...prev, [tmde.id]: parseInt(e.target.value)}))}
-                                                        >
-                                                            {ranges.map((range, rIdx) => {
-                                                                const rangeLabel = (typeof range.range === 'string' ? range.range : null) || 
-                                                                                   (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
-                                                                const unitLabel = typeof range.unit === 'string' ? range.unit : '';
-                                                                return <option key={rIdx} value={rIdx}>{`${rangeLabel} ${unitLabel}`}</option>
-                                                            })}
-                                                        </select>
-                                                    ) : (
-                                                       <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>
-                                                            {(() => {
-                                                                const r = ranges[0];
-                                                                if (!r) return "Default";
-                                                                const rangeLabel = (r.min !== undefined && r.max !== undefined ? `${r.min} to ${r.max}` : null) 
-                                                                                || (typeof r.range === 'string' ? r.range : "Full Range");
-                                                                const unitLabel = typeof r.unit === 'string' ? r.unit : '';
-                                                                return `${rangeLabel} ${unitLabel}`;
-                                                            })()}
-                                                       </span>
+                                    // Calculate summary based on the SPECIFIC active range, not the whole object
+                                    const specSummary = getToleranceSummary(activeRange);
+                                    const hasMultipleRanges = ranges.length > 1;
+
+                                    return (
+                                        <tr key={tmde.id || idx}>
+                                            <td className="cell-description" style={{ fontWeight: 600, padding: '8px 12px' }} title={tmde.name}>
+                                                <div style={{ color: 'var(--text-color)' }}>{tmde.name}</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-color-muted)', marginTop: '2px' }}>
+                                                    {tmde.instrument && (
+                                                        <span>{tmde.instrument.manufacturer} {tmde.instrument.model}</span>
                                                     )}
-                                                </td>
-                                                <td className="cell-tolerance" title={specSummary}>{specSummary}</td>
-                                            </tr>
-                                        )
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                                                </div>
+                                            </td>
+                                            <td className="cell-value">
+                                                {hasMultipleRanges ? (
+                                                    <select
+                                                        className="session-selector"
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '4px 8px',
+                                                            fontSize: '0.85rem'
+                                                        }}
+                                                        value={activeIndex}
+                                                        onChange={(e) => setTmdeRangeIndices(prev => ({ ...prev, [tmde.id]: parseInt(e.target.value) }))}
+                                                    >
+                                                        {ranges.map((range, rIdx) => {
+                                                            const rangeLabel = (typeof range.range === 'string' ? range.range : null) ||
+                                                                (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
+                                                            const unitLabel = typeof range.unit === 'string' ? range.unit : '';
+                                                            return <option key={rIdx} value={rIdx}>{`${rangeLabel} ${unitLabel}`}</option>
+                                                        })}
+                                                    </select>
+                                                ) : (
+                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>
+                                                        {(() => {
+                                                            const r = ranges[0];
+                                                            if (!r) return "Default";
+                                                            const rangeLabel = (r.min !== undefined && r.max !== undefined ? `${r.min} to ${r.max}` : null)
+                                                                || (typeof r.range === 'string' ? r.range : "Full Range");
+                                                            const unitLabel = typeof r.unit === 'string' ? r.unit : '';
+                                                            return `${rangeLabel} ${unitLabel}`;
+                                                        })()}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="cell-tolerance" title={specSummary}>{specSummary}</td>
+                                        </tr>
+                                    )
+                                })
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            
+
             {/* Guidance Footer */}
             <div style={{ padding: '20px', backgroundColor: 'rgba(var(--primary-rgb), 0.05)', borderRadius: '8px', border: '1px dashed var(--primary-color)', textAlign: 'center' }}>
                 <p style={{ margin: 0, color: 'var(--text-color)' }}>
@@ -1234,23 +1317,16 @@ function DetailedView({
     activeRangeIndices = {},
     onRangeSelectionChange,
     onAddTmde,
-    onEditUut, // PASSED FROM ANALYSIS
-    onEditTmde // PASSED FROM ANALYSIS
+    onEditUut, 
+    onEditTmde
 }) {
-
-    // --- DETAILED VIEW LOGIC ---
-
-    
 
     const [isSymbolMenuOpen, setIsSymbolMenuOpen] = useState(false);
     const [tmdeRangeIndices, setTmdeRangeIndices] = useState({});
 
     const equationInputRef = useRef(null);
-
     const symbolMenuRef = useRef(null);
-
     const symbolButtonRef = useRef(null);
-
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -1263,19 +1339,21 @@ function DetailedView({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-
     const uutToleranceData = useMemo(() => {
         const isUnassigned = !testPointData.associatedUutIds || testPointData.associatedUutIds.length === 0;
         if (isUnassigned) return {};
         return propUutToleranceData || {};
     }, [propUutToleranceData, testPointData.associatedUutIds]);
 
-
-    // Use Shared Helper, but inject parent state (activeRangeIndices)
+    // --- RESOLUTION HELPER WITH DEBUG LOGS ---
     const resolveUutRange = useCallback((uut) => {
-        return resolveUutRangeHelper(uut, activeRangeIndices, uutToleranceData, uutNominal);
+        const resolution = resolveUutRangeHelper(uut, activeRangeIndices, uutToleranceData, uutNominal);
+        // Log to confirm we are seeing the updated spec
+        if(uut.ranges && uut.ranges.length > 0) {
+             // console.log(`DEBUG: Resolved ${uut.description}`, resolution.activeRange);
+        }
+        return resolution;
     }, [activeRangeIndices, uutToleranceData, uutNominal]);
-
 
     const groupedUnitOptions = useMemo(() => {
         const allSupportedUnits = Object.keys(unitSystem.units);
@@ -1308,30 +1386,14 @@ function DetailedView({
     }, []);
 
     const activeMeasurementAreaId = testPointData.measurementAreaId;
-    const activeArea = sessionData.measurementAreas?.find(a => a.id === activeMeasurementAreaId);
 
-    // --- REFINED RELEVANT UUTS LOGIC (UPDATED: FILTER TO SINGLE UUT IF POINT EXISTS) ---
-
-    const relevantUuts = useMemo(() => {
-        if (!sessionData.uuts) return [];
-
-        // 1. Specific Point View: Show ONLY linked UUT(s)
-        if (testPointData.id && testPointData.associatedUutIds?.length > 0) {
-             return sessionData.uuts.filter(u => testPointData.associatedUutIds.includes(u.id));
-        }
-
-        // 2. New Point / Unassigned: Show all UUTs in the active Area
-        return sessionData.uuts.filter(u => {
-            const idMatch = u.measurementAreaId === activeMeasurementAreaId;
-            const nameMatch = activeArea && u.measurementArea === activeArea.name;
-            return idMatch || nameMatch;
-        });
-    }, [sessionData.uuts, activeMeasurementAreaId, activeArea, testPointData]);
+    // --- FIX 1: NO MEMOIZATION FOR UUT DATA ---
+    // We read directly from sessionData to ensure we catch mutations/updates from the modal
+    const relevantUuts = sessionData.uuts || [];
 
     const associatedUutIds = testPointData.associatedUutIds || [];
     const isDerived = testPointData.measurementType === "derived";
     const isUnassigned = associatedUutIds.length === 0;
-
 
     const availableVariables = useMemo(() => {
         if (!isDerived) return [];
@@ -1352,13 +1414,6 @@ function DetailedView({
     const handleRangeChange = (uutId, newIndex, ranges) => {
         if (onRangeSelectionChange) {
             onRangeSelectionChange(prev => ({ ...prev, [uutId]: newIndex }));
-        }
-
-        const isLinkedToPoint = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uutId);
-
-        if (isLinkedToPoint && onUpdateTestPoint) {
-            const selectedRange = ranges[newIndex];
-            onUpdateTestPoint({ uutTolerance: selectedRange });
         }
     };
 
@@ -1386,7 +1441,6 @@ function DetailedView({
             return;
         }
 
-        // SIMPLIFIED DELETE LOGIC: Direct delete, no UUT selection required
         setNotification({
             title: "Delete Measurement Point",
             message: "Are you sure you want to delete this measurement point?",
@@ -1509,17 +1563,16 @@ function DetailedView({
         }
     };
 
+    // --- FIX 2: TMDE UNCHECK LOGIC ---
     const handleToggleTmdeUsage = (tmdeId, isChecked) => {
         if (isChecked) {
             const sourceTmde = sessionData.tmdes.find(t => t.id === tmdeId);
             if (sourceTmde) {
                 // Resolve Active Range based on current dropdown selection or default
-                // We pass 'null' for savedTolerance because we are freshly creating this instance
                 const resolution = resolveUutRangeHelper(sourceTmde, tmdeRangeIndices, null, null);
                 const activeRange = resolution.activeRange || {};
-
-                // CRITICAL FIX: Destructure 'id' out of activeRange so it doesn't overwrite the TMDE's unique ID
-                // basic tolerance parameters are what we want
+                
+                // CRITICAL: Destructure 'id' out so it doesn't overwrite the TMDE's unique ID
                 const { id: rangeId, ...rangeSpecs } = activeRange;
 
                 const newInstance = { 
@@ -1534,24 +1587,22 @@ function DetailedView({
                 onUpdateTestPoint({ tmdeTolerances: newTolerances });
             }
         } else {
-            const newTolerances = tmdeTolerancesData.filter(t => t.id !== tmdeId);
+            // UPDATED: Filter by both id AND sourceId to ensure removal
+            const newTolerances = tmdeTolerancesData.filter(t => 
+                t.id !== tmdeId && t.sourceId !== tmdeId
+            );
             onUpdateTestPoint({ tmdeTolerances: newTolerances });
         }
     };
 
     const handleTmdeRangeChange = (tmde, newIndex, ranges) => {
-        // 1. Update UI Selection State
         setTmdeRangeIndices(prev => ({ ...prev, [tmde.id]: newIndex }));
 
-        // 2. If this TMDE is currently active (checked) in the budget, update its data locally
         const activeInstance = tmdeTolerancesData.find(t => t.id === tmde.id);
-        
         if (activeInstance && onUpdateTestPoint) {
              const selectedRange = ranges[newIndex] || {};
              const { id: rangeId, ...rangeSpecs } = selectedRange;
 
-             // Merge new range properties into the existing active instance
-             // preserving other props like 'variableType' or 'quantity' AND 'id'
              const updatedInstance = { 
                  ...activeInstance, 
                  ...rangeSpecs,
@@ -1625,25 +1676,18 @@ function DetailedView({
         neutral: { borderColor: 'var(--border-color)', backgroundColor: 'transparent', color: 'var(--text-color-muted)', icon: null }
     }[calcStatus];
 
-    // --- Active Tolerance Calculation ---
     const primaryUutId = testPointData.associatedUutIds?.[0];
     const primaryUut = relevantUuts.find(u => u.id === primaryUutId);
 
-
     const activeResolvedTolerance = useMemo(() => {
         if (!primaryUut) return uutToleranceData;
-
-        // Pass 1: Resolve Active Range
         const { activeRange } = resolveUutRange(primaryUut);
-
         return (activeRange && Object.keys(activeRange).length > 0) ? activeRange : uutToleranceData;
-    }, [primaryUut, resolveUutRange, uutToleranceData]); // Re-run when resolveUutRange changes
+    }, [primaryUut, resolveUutRange, uutToleranceData]);
 
-    // --- FIX 2: Auto-Save Active Range ---
-
+    // Auto-Save Effect
     useEffect(() => {
         if (activeResolvedTolerance && uutToleranceData) {
-            // Check if the auto-resolved tolerance differs from what is saved
             const isDifferent = 
                 activeResolvedTolerance.range !== uutToleranceData.range ||
                 activeResolvedTolerance.min != uutToleranceData.min ||
@@ -1651,23 +1695,15 @@ function DetailedView({
                 activeResolvedTolerance.unit !== uutToleranceData.unit;
 
             if (isDifferent && onUpdateTestPoint) {
-                // Auto-save the new range so UI and Backend stay in sync
                 onUpdateTestPoint({ uutTolerance: activeResolvedTolerance });
             }
         }
     }, [activeResolvedTolerance, uutToleranceData, onUpdateTestPoint]);
 
-
-    // (unused numericTotalTolerance removed)
-
-    // --- DISPLAY 1: Tolerance String ---
-
     const calculatedToleranceDisplay = useMemo(() => {
         const result = calculateToleranceMetrics(activeResolvedTolerance, uutNominal);
         return result.display;
     }, [activeResolvedTolerance, uutNominal]);
-
-    // --- DISPLAY 2: Limits ---
 
     const calculatedLimits = useMemo(() => {
         const result = calculateToleranceMetrics(activeResolvedTolerance, uutNominal);
@@ -1708,85 +1744,109 @@ function DetailedView({
                                         {relevantUuts.length === 0 ? (
                                             <tr>
                                                 <td colSpan="3" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
-                                                    {/* Better Empty State Message */}
                                                     No associated UUTs found.
                                                 </td>
                                             </tr>
                                         ) : (
                                             relevantUuts.map((uut) => {
                                                 const { ranges, activeIndex, activeRange } = resolveUutRange(uut);
-                                                const specSummary = getToleranceSummary(activeRange);
                                                 const hasMultipleRanges = ranges.length > 1;
-
                                                 const isLinked = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id);
+                                                
+                                                const specRows = getSpecRows(activeRange);
+                                                const rowSpan = specRows.length > 0 ? specRows.length : 1;
 
                                                 return (
-                                                    <tr 
-                                                      key={uut.id} 
-                                                      style={{
-                                                        backgroundColor: 'transparent',
-                                                        borderLeft: isLinked ? '4px solid var(--primary-color)' : '4px solid transparent',
-                                                        cursor: 'pointer' // Add pointer cursor
-                                                      }}
-                                                      // ADDED: Double-click handler for UUT
-                                                      onDoubleClick={() => onEditUut && onEditUut(uut)}
-                                                      title="Double-click to edit UUT details"
-                                                    >
-                                                        {/* Removed Checkbox Column */}
-                                                        <td className="no-hover-cell" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }} title={uut.description}>
-                                                            <div style={{ fontWeight: 600, color: isLinked ? 'var(--primary-color)' : 'var(--text-color)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                                {uut.description}
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            {hasMultipleRanges ? (
-                                                                <select
-                                                                    className="session-selector" 
-                                                                    style={{ 
-                                                                        width: '100%',
-                                                                        padding: '4px 8px',
-                                                                        fontSize: '0.85rem'
-                                                                    }}
-                                                                    value={activeIndex}
-                                                                    onChange={(e) => handleRangeChange(uut.id, parseInt(e.target.value, 10), ranges)}
-                                                                >
-                                                                    {ranges.map((range, idx) => {
-                                                                        let rangeText = (typeof range.range === 'string' ? range.range : null);
-                                                                        if (!rangeText) {
-                                                                            if (range.min !== undefined && range.max !== undefined) {
-                                                                                rangeText = `${range.min} to ${range.max}`;
-                                                                            } else {
-                                                                                rangeText = "Full Range";
+                                                    <React.Fragment key={uut.id}>
+                                                        <tr 
+                                                            style={{
+                                                                backgroundColor: 'transparent',
+                                                                borderLeft: isLinked ? '4px solid var(--primary-color)' : '4px solid transparent',
+                                                                cursor: 'pointer' 
+                                                            }}
+                                                            onDoubleClick={() => onEditUut && onEditUut(uut)}
+                                                            title="Double-click to edit UUT details"
+                                                        >
+                                                            <td 
+                                                                rowSpan={rowSpan}
+                                                                className="no-hover-cell" 
+                                                                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0, verticalAlign: 'top' }} 
+                                                                title={uut.description}
+                                                            >
+                                                                <div style={{ fontWeight: 600, color: isLinked ? 'var(--primary-color)' : 'var(--text-color)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                    {uut.description}
+                                                                </div>
+                                                            </td>
+                                                            
+                                                            <td rowSpan={rowSpan} style={{ verticalAlign: 'top' }}>
+                                                                {hasMultipleRanges ? (
+                                                                    <select
+                                                                        className="session-selector"
+                                                                        style={{ 
+                                                                            width: '100%', 
+                                                                            padding: '4px 8px',
+                                                                            fontSize: '0.85rem'
+                                                                        }}
+                                                                        value={activeIndex}
+                                                                        onChange={(e) => handleRangeChange(uut.id, parseInt(e.target.value), ranges)}
+                                                                        onClick={(e) => e.stopPropagation()} 
+                                                                    >
+                                                                        {ranges.map((range, idx) => {
+                                                                            let rangeText = (typeof range.range === 'string' ? range.range : null);
+                                                                            if (!rangeText) {
+                                                                                if (range.min !== undefined && range.max !== undefined) {
+                                                                                    rangeText = `${range.min} to ${range.max}`;
+                                                                                } else {
+                                                                                    rangeText = "Full Range";
+                                                                                }
                                                                             }
-                                                                        }
-                                                                        const label = `${rangeText} ${range.unit || ''}`;
-                                                                        return <option key={idx} value={idx}>{label}</option>
-                                                                    })}
-                                                                </select>
-                                                            ) : (
-                                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>
-                                                                    {(() => {
-                                                                        const r = ranges[0];
-                                                                        if (!r) return "-";
-                                                                        let rangeText = (typeof r.range === 'string' ? r.range : null);
-                                                                        if (!rangeText) {
-                                                                            if (r.min !== undefined && r.max !== undefined) {
-                                                                                rangeText = `${r.min} to ${r.max}`;
-                                                                            } else {
-                                                                                rangeText = "Full Range";
+                                                                            const label = `${rangeText} ${range.unit || ''}`;
+                                                                            return <option key={idx} value={idx}>{label}</option>
+                                                                        })}
+                                                                    </select>
+                                                                ) : (
+                                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>
+                                                                        {(() => {
+                                                                            const r = ranges[0];
+                                                                            if (!r) return "-";
+                                                                            let rangeText = (typeof r.range === 'string' ? r.range : null);
+                                                                            if (!rangeText) {
+                                                                                if (r.min !== undefined && r.max !== undefined) {
+                                                                                    rangeText = `${r.min} to ${r.max}`;
+                                                                                } else {
+                                                                                    rangeText = "Full Range";
+                                                                                }
                                                                             }
-                                                                        }
-                                                                        return `${rangeText} ${r.unit || ''}`;
-                                                                    })()}
+                                                                            return `${rangeText} ${r.unit || ''}`;
+                                                                        })()}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            
+                                                            <td className="no-hover-cell" style={{ verticalAlign: 'top' }} title={specRows[0]}>
+                                                                <span style={{ fontSize: '0.85rem' }}>
+                                                                    {specRows[0]}
                                                                 </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="no-hover-cell" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }} title={specSummary}>
-                                                            <span style={{ fontSize: '0.85rem' }}>
-                                                                {specSummary}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
+                                                            </td>
+                                                        </tr>
+
+                                                        {specRows.slice(1).map((specComp, idx) => (
+                                                            <tr 
+                                                                key={`${uut.id}-spec-${idx}`}
+                                                                style={{
+                                                                    backgroundColor: 'transparent',
+                                                                    borderLeft: isLinked ? '4px solid var(--primary-color)' : '4px solid transparent',
+                                                                    cursor: 'pointer' 
+                                                                }}
+                                                            >
+                                                                <td className="no-hover-cell" style={{ verticalAlign: 'top', borderTop: 'none' }} title={specComp}>
+                                                                    <span style={{ fontSize: '0.85rem' }}>
+                                                                        {specComp}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </React.Fragment>
                                                 );
                                             })
                                         )}
@@ -1846,7 +1906,6 @@ function DetailedView({
                                     <tbody>
                                         {hasMeasurementPoint ? (
                                             <tr>
-                                                {/* 1. Section */}
                                                 <td style={{ paddingLeft: '20px' }}>
                                                     <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
                                                         <EditableCell
@@ -1857,7 +1916,6 @@ function DetailedView({
                                                     </div>
                                                 </td>
 
-                                                {/* 2. Point */}
                                                 <td style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary-color)' }}>
                                                         <EditableCell
@@ -1869,14 +1927,12 @@ function DetailedView({
                                                     </div>
                                                 </td>
 
-                                                {/* 2. Unit - MOVED */}
                                                 <td>
                                                     <div style={{ fontWeight: 600, paddingLeft: '4px' }}>
                                                         {uutNominal?.unit}
                                                     </div>
                                                 </td>
 
-                                                {/* 3. Tolerance */}
                                                 <td>
                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                         {isUnassigned && (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) ? (
@@ -1891,21 +1947,18 @@ function DetailedView({
                                                     </div>
                                                 </td>
 
-                                                {/* 4. Low Limit */}
                                                 <td>
                                                     <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
                                                         {calculatedLimits.low}
                                                     </span>
                                                 </td>
 
-                                                {/* 5. High Limit */}
                                                 <td>
                                                     <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
                                                         {calculatedLimits.high}
                                                     </span>
                                                 </td>
 
-                                                {/* 6. Actions */}
                                                 <td className="action-cell" style={{ paddingRight: '20px' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'center' }}>
                                                         <span
@@ -1939,280 +1992,260 @@ function DetailedView({
                     </div>
             </div>
 
-            {/* --- MIDDLE ROW: EQUATION (Full Width) --- */}
+            {/* --- MIDDLE ROW: EQUATION --- */}
             <div style={{ marginBottom: '30px' }}>
-{/* Equation Editor */}
-                    {isDerived && equationDisplayData && (
-                        <div>
-                            <h3 style={sectionTitleStyle}>Measurement Equation</h3>
-                            <div style={{
-                                backgroundColor: 'var(--content-background)',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '8px',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
-                                padding: '20px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '15px'
-                            }}>
-                                <div className="input-with-symbol-button">
-                                    <input
-                                        ref={equationInputRef}
-                                        type="text"
-                                        value={equationDisplayData.equation}
-                                        onChange={(e) => handleEquationChange(e.target.value)}
-                                        placeholder="e.g. V / R or W * L"
-                                        style={{ fontFamily: 'monospace' }}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="symbol-toggle-button"
-                                        title="Show Symbols"
-                                        ref={symbolButtonRef}
-                                        onClick={() => setIsSymbolMenuOpen(!isSymbolMenuOpen)}
+                {isDerived && equationDisplayData && (
+                    <div>
+                        <h3 style={sectionTitleStyle}>Measurement Equation</h3>
+                        <div style={{
+                            backgroundColor: 'var(--content-background)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
+                            padding: '20px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '15px'
+                        }}>
+                            <div className="input-with-symbol-button">
+                                <input
+                                    ref={equationInputRef}
+                                    type="text"
+                                    value={equationDisplayData.equation}
+                                    onChange={(e) => handleEquationChange(e.target.value)}
+                                    placeholder="e.g. V / R or W * L"
+                                    style={{ fontFamily: 'monospace' }}
+                                />
+                                <button
+                                    type="button"
+                                    className="symbol-toggle-button"
+                                    title="Show Symbols"
+                                    ref={symbolButtonRef}
+                                    onClick={() => setIsSymbolMenuOpen(!isSymbolMenuOpen)}
+                                >
+                                    f(x)
+                                </button>
+
+                                {isSymbolMenuOpen && (
+                                    <div
+                                        className="symbol-popout"
+                                        ref={symbolMenuRef}
+                                        style={{ maxHeight: '300px', overflowY: 'auto' }}
                                     >
-                                        f(x)
-                                    </button>
-
-                                    {isSymbolMenuOpen && (
-                                        <div
-                                            className="symbol-popout"
-                                            ref={symbolMenuRef}
-                                            style={{ maxHeight: '300px', overflowY: 'auto' }}
-                                        >
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '5px', borderBottom: '1px solid var(--border-color)' }}>
-                                                <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Math Symbols</span>
-                                                <span onClick={() => setIsSymbolMenuOpen(false)} style={{ cursor: 'pointer' }}><FontAwesomeIcon icon={faTimes} /></span>
-                                            </div>
-                                            {Object.entries(symbolCategories).map(([category, symbols]) => (
-                                                <div key={category} className="symbol-category">
-                                                    <h5 className="symbol-category-title">{category}</h5>
-                                                    <div className="symbol-category-grid">
-                                                        {symbols.map(s => (
-                                                            <SymbolButton
-                                                                key={s.symbol}
-                                                                symbol={s.symbol}
-                                                                title={s.title}
-                                                                onSymbolClick={handleSymbolClick}
-                                                            />
-                                                        ))}
-                                                    </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '5px', borderBottom: '1px solid var(--border-color)' }}>
+                                            <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Math Symbols</span>
+                                            <span onClick={() => setIsSymbolMenuOpen(false)} style={{ cursor: 'pointer' }}><FontAwesomeIcon icon={faTimes} /></span>
+                                        </div>
+                                        {Object.entries(symbolCategories).map(([category, symbols]) => (
+                                            <div key={category} className="symbol-category">
+                                                <h5 className="symbol-category-title">{category}</h5>
+                                                <div className="symbol-category-grid">
+                                                    {symbols.map(s => (
+                                                        <SymbolButton
+                                                            key={s.symbol}
+                                                            symbol={s.symbol}
+                                                            title={s.title}
+                                                            onSymbolClick={handleSymbolClick}
+                                                        />
+                                                    ))}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {calcStatus !== 'neutral' && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '10px 14px',
-                                        borderRadius: '6px',
-                                        border: `1px solid ${calcStatusStyle.borderColor}`,
-                                        backgroundColor: calcStatusStyle.backgroundColor,
-                                        fontSize: '0.9rem',
-                                        fontWeight: 500,
-                                        color: calcStatusStyle.color
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <FontAwesomeIcon icon={calcStatusStyle.icon} />
-                                            <span>
-                                                Calculated: <strong>{calculatedNominal?.toPrecision(6)} {uutNominal?.unit}</strong>
-                                            </span>
-                                        </div>
-                                        <div style={{ color: 'var(--text-color-muted)', fontSize: '0.85rem' }}>
-                                            (Target: {targetNominal?.toPrecision(6)} {uutNominal?.unit})
-                                        </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
+                            </div>
 
-                                <div className="var-map-grid" style={{ flex: 1 }}>
-                                    {equationDisplayData.variables.map((v) => (
-                                        <div key={v.symbol} className={`var-card-modern ${v.isAssigned ? 'assigned' : 'unassigned'}`}>
-                                            <div className="var-card-header">
-                                                <div className="var-symbol-badge">{v.symbol}</div>
-                                                <input
-                                                    type="text"
-                                                    className="var-name-input"
-                                                    value={v.name}
-                                                    placeholder="Map to (e.g. Volts)..."
-                                                    onChange={(e) => handleVariableMappingChange(v.symbol, e.target.value)}
-                                                />
+                            {calcStatus !== 'neutral' && (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '10px 14px',
+                                    borderRadius: '6px',
+                                    border: `1px solid ${calcStatusStyle.borderColor}`,
+                                    backgroundColor: calcStatusStyle.backgroundColor,
+                                    fontSize: '0.9rem',
+                                    fontWeight: 500,
+                                    color: calcStatusStyle.color
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <FontAwesomeIcon icon={calcStatusStyle.icon} />
+                                        <span>
+                                            Calculated: <strong>{calculatedNominal?.toPrecision(6)} {uutNominal?.unit}</strong>
+                                        </span>
+                                    </div>
+                                    <div style={{ color: 'var(--text-color-muted)', fontSize: '0.85rem' }}>
+                                        (Target: {targetNominal?.toPrecision(6)} {uutNominal?.unit})
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="var-map-grid" style={{ flex: 1 }}>
+                                {equationDisplayData.variables.map((v) => (
+                                    <div key={v.symbol} className={`var-card-modern ${v.isAssigned ? 'assigned' : 'unassigned'}`}>
+                                        <div className="var-card-header">
+                                            <div className="var-symbol-badge">{v.symbol}</div>
+                                            <input
+                                                type="text"
+                                                className="var-name-input"
+                                                value={v.name}
+                                                placeholder="Map to (e.g. Volts)..."
+                                                onChange={(e) => handleVariableMappingChange(v.symbol, e.target.value)}
+                                            />
+                                        </div>
+
+                                        <div className="var-card-body">
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px' }}>
+                                                    ASSIGNED SOURCE
+                                                </label>
+                                                <select
+                                                    className="var-source-select"
+                                                    value={v.tmdeId || ""}
+                                                    onChange={(e) => handleAssignTmdeToVariable(v.symbol, e.target.value)}
+                                                    disabled={!v.name}
+                                                >
+                                                    <option value="">-- No Source (Manual Entry) --</option>
+                                                    {sessionData.tmdes?.map(tmde => (
+                                                        <option key={tmde.id} value={tmde.id}>
+                                                            {tmde.name || "Unnamed TMDE"}
+                                                        </option>
+                                                    ))}
+                                                </select>
                                             </div>
 
-                                            <div className="var-card-body">
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px' }}>
-                                                        ASSIGNED SOURCE
-                                                    </label>
-                                                    <select
-                                                        className="var-source-select"
-                                                        value={v.tmdeId || ""}
-                                                        onChange={(e) => handleAssignTmdeToVariable(v.symbol, e.target.value)}
-                                                        disabled={!v.name}
-                                                    >
-                                                        <option value="">-- No Source (Manual Entry) --</option>
-                                                        {sessionData.tmdes?.map(tmde => (
-                                                            <option key={tmde.id} value={tmde.id}>
-                                                                {tmde.name || "Unnamed TMDE"}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px' }}>
-                                                        VALUE
-                                                    </label>
-                                                    {v.isAssigned ? (
-                                                        <div className="var-value-display">
-                                                            <EditableCell
-                                                                value={v.value}
-                                                                type="number"
-                                                                onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(v.tmdeId, 'nominal', val)}
-                                                                style={{
-                                                                    fontFamily: "'Consolas', monospace",
-                                                                    fontSize: "1.1rem",
-                                                                    fontWeight: 700,
-                                                                    color: "var(--primary-color)",
-                                                                    backgroundColor: "transparent",
-                                                                    border: "none",
-                                                                    padding: 0,
-                                                                    width: "100px"
-                                                                }}
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-color-muted)', marginBottom: '5px' }}>
+                                                    VALUE
+                                                </label>
+                                                {v.isAssigned ? (
+                                                    <div className="var-value-display">
+                                                        <EditableCell
+                                                            value={v.value}
+                                                            type="number"
+                                                            onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(v.tmdeId, 'nominal', val)}
+                                                            style={{
+                                                                fontFamily: "'Consolas', monospace",
+                                                                fontSize: "1.1rem",
+                                                                fontWeight: 700,
+                                                                color: "var(--primary-color)",
+                                                                backgroundColor: "transparent",
+                                                                border: "none",
+                                                                padding: 0,
+                                                                width: "100px"
+                                                            }}
+                                                        />
+                                                        <div style={{ width: '85px', marginLeft: '5px', borderBottom: '1px dashed var(--border-color)' }}>
+                                                            <Select
+                                                                options={groupedUnitOptions}
+                                                                value={
+                                                                    groupedUnitOptions
+                                                                        .flatMap(g => g.options)
+                                                                        .find(opt => opt.value === v.unit) || (v.unit ? { value: v.unit, label: v.unit } : null)
+                                                                }
+                                                                onChange={(opt) => onInlineTmdeUpdate && onInlineTmdeUpdate(v.tmdeId, 'unit', opt.value)}
+                                                                styles={customUnitSelectStyles}
+                                                                placeholder="Unit"
+                                                                menuPortalTarget={document.body}
+                                                                isSearchable={true}
                                                             />
-                                                            <div style={{ width: '85px', marginLeft: '5px', borderBottom: '1px dashed var(--border-color)' }}>
-                                                                <Select
-                                                                    options={groupedUnitOptions}
-                                                                    value={
-                                                                        groupedUnitOptions
-                                                                            .flatMap(g => g.options)
-                                                                            .find(opt => opt.value === v.unit) || (v.unit ? { value: v.unit, label: v.unit } : null)
-                                                                    }
-                                                                    onChange={(opt) => onInlineTmdeUpdate && onInlineTmdeUpdate(v.tmdeId, 'unit', opt.value)}
-                                                                    styles={customUnitSelectStyles}
-                                                                    placeholder="Unit"
-                                                                    menuPortalTarget={document.body}
-                                                                    isSearchable={true}
-                                                                />
-                                                            </div>
                                                         </div>
-                                                    ) : (
-                                                        <div className="var-value-display" style={{ backgroundColor: 'var(--input-background)' }}>
-                                                            <span style={{ color: 'var(--text-color-muted)', fontSize: '0.9rem', fontStyle: 'italic' }}>
-                                                                <FontAwesomeIcon icon={faExclamationTriangle} style={{ color: 'var(--status-warning)', marginRight: '6px' }} />
-                                                                Map source above
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="var-value-display" style={{ backgroundColor: 'var(--input-background)' }}>
+                                                        <span style={{ color: 'var(--text-color-muted)', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                                                            <FontAwesomeIcon icon={faExclamationTriangle} style={{ color: 'var(--status-warning)', marginRight: '6px' }} />
+                                                            Map source above
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    )}
-                
+                    </div>
+                )}
             </div>
 
             {/* --- BOTTOM ROW: TMDEs (Full Width) --- */}
             <div style={{ marginBottom: '30px' }}>
-{/* 2. TMDE LIST */}
-                    <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                            <h3 style={{ ...sectionTitleStyle, margin: 0 }}>Measurement Standards (TMDE)</h3>
-                            <span 
-                                onClick={onAddTmde}
-                                className="action-icon"
-                                title="Add TMDE"
-                                style={{ 
-                                    cursor: "pointer", 
-                                    color: "var(--primary-color)",
-                                    fontSize: '0.9rem',
-                                    fontWeight: 600
-                                }}
-                            >
-                                <FontAwesomeIcon icon={faPlus} /> Add
-                            </span>
-                        </div>
-                        <div style={cardStyle}>
-                            <div className="panel-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1 }}>
-                                <table className="instrument-summary-table compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
-                                    <colgroup>
-                                        <col style={{ width: '50px' }} />
-                                        <col style={{ width: 'auto' }} />
-                                        {/* REMOVED: isDerived && <col style={{ width: '100px' }} /> */}
-                                        {isDerived && <col style={{ width: '100px' }} />}
-                                        <col style={{ width: '20%' }} />
-                                        <col style={{ width: '20%' }} />
-                                        {/* Wrap the Meas. Point column width in isDerived check */}
-                                        {isDerived && <col style={{ width: '15%' }} />}
-                                    </colgroup>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ textAlign: 'center' }}>Use</th>
-                                            <th>Description</th>
-                                            {isDerived && <th>Input Var</th>}
-                                            <th>Range</th>
-                                            <th>Specification</th>
-                                            {/* Only show Meas. Point column if derived */}
-                                            {isDerived && <th>Meas. Point</th>}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(!sessionData.tmdes || sessionData.tmdes.length === 0) ? (
-                                            <tr>
-                                                <td colSpan={isDerived ? "6" : "5"} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
-                                                    No TMDEs defined in Session.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            sessionData.tmdes.map((masterTmde) => {
-                                                const activeInstances = tmdeTolerancesData.filter(t => t.id === masterTmde.id || (t.sourceId && t.sourceId === masterTmde.id));
-                                                // If we have active instances, render them. Otherwise render the master (unchecked)
-                                                // We treat the row as the 'instance' control
-                                                const rowsToRender = activeInstances.length > 0 ? activeInstances : [masterTmde];
+                <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <h3 style={{ ...sectionTitleStyle, margin: 0 }}>Measurement Standards (TMDE)</h3>
+                        <span 
+                            onClick={onAddTmde}
+                            className="action-icon"
+                            title="Add TMDE"
+                            style={{ 
+                                cursor: "pointer", 
+                                color: "var(--primary-color)",
+                                fontSize: '0.9rem',
+                                fontWeight: 600
+                            }}
+                        >
+                            <FontAwesomeIcon icon={faPlus} /> Add
+                        </span>
+                    </div>
+                    <div style={cardStyle}>
+                        <div className="panel-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1 }}>
+                            <table className="instrument-summary-table compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+                                <colgroup>
+                                    <col style={{ width: '50px' }} />
+                                    <col style={{ width: isDerived ? '30%' : '35%' }} />
+                                    {isDerived && <col style={{ width: '100px' }} />}
+                                    <col style={{ width: isDerived ? '25%' : '30%' }} />
+                                    <col style={{ width: isDerived ? '25%' : '30%' }} />
+                                    {isDerived && <col style={{ width: '15%' }} />}
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th style={{ textAlign: 'center' }}>Use</th>
+                                        <th>Description</th>
+                                        {isDerived && <th>Input Var</th>}
+                                        <th>Range</th>
+                                        <th>Specification</th>
+                                        {isDerived && <th>Meas. Point</th>}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(!sessionData.tmdes || sessionData.tmdes.length === 0) ? (
+                                        <tr><td colSpan={isDerived ? "6" : "5"} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>No TMDEs defined in Session.</td></tr>
+                                    ) : (
+                                        sessionData.tmdes.map((masterTmde) => {
+                                            const activeInstances = tmdeTolerancesData.filter(t => t.id === masterTmde.id || (t.sourceId && t.sourceId === masterTmde.id));
+                                            const rowsToRender = activeInstances.length > 0 ? activeInstances : [masterTmde];
 
-                                                return rowsToRender.map((tmdeInstance, idx) => {
-                                                    const isChecked = activeInstances.includes(tmdeInstance);
-                                                    const referencePoint = tmdeInstance.measurementPoint || { value: '', unit: '' };
-                                                    const isError = !referencePoint.value || !referencePoint.unit;
+                                            return rowsToRender.map((tmdeInstance, idx) => {
+                                                const isChecked = activeInstances.includes(tmdeInstance);
+                                                const referencePoint = tmdeInstance.measurementPoint || { value: '', unit: '' };
+                                                
+                                                const displayValue = isChecked ? referencePoint.value : '';
+                                                const displayUnit = isChecked ? referencePoint.unit : (masterTmde.measurementPoint?.unit || '');
 
-                                                    const displayValue = isChecked ? referencePoint.value : '';
-                                                    const displayUnit = isChecked ? referencePoint.unit : (masterTmde.measurementPoint?.unit || '');
+                                                const savedTolerance = isChecked ? tmdeInstance : null;
+                                                const resolution = resolveUutRangeHelper(masterTmde, tmdeRangeIndices, savedTolerance, null);
+                                                const { ranges, activeIndex, activeRange } = resolution;
+                                                const hasMultipleRanges = ranges.length > 1;
+                                                
+                                                // FIX 3: MATCH UUT FORMATTING
+                                                // Always use activeRange for display
+                                                const effectiveTolerance = activeRange;
+                                                const specRows = getSpecRows(effectiveTolerance);
+                                                const rowSpan = specRows.length > 0 ? specRows.length : 1;
+                                                
+                                                const safeDescription = masterTmde.description || masterTmde.name || (masterTmde.instrument ? `${masterTmde.instrument.manufacturer} ${masterTmde.instrument.model}` : "Unknown TMDE");
 
-                                                    // Resolve Range Logic for this specific instance/row
-                                                    // For active instances, we pass 'tmdeInstance' as savedTolerance so it detects the correct active range index
-                                                    // For inactive masters, it uses 'tmdeRangeIndices' state or default
-                                                    const savedTolerance = isChecked ? tmdeInstance : null;
-                                                    const resolution = resolveUutRangeHelper(masterTmde, tmdeRangeIndices, savedTolerance, null);
-                                                    const { ranges, activeIndex, activeRange } = resolution;
-                                                    const hasMultipleRanges = ranges.length > 1;
-                                                    
-                                                    // If checked, we use the instance's tolerance for summary. If not, the resolved default.
-                                                    const effectiveTolerance = isChecked ? tmdeInstance : activeRange;
-                                                    const specSummary = getToleranceSummary(effectiveTolerance);
-
-                                                    let stdUncDisplay = "-";
-                                                    if (isChecked && !isError) {
-                                                        const { standardUncertainty: uPpm } = calculateUncertaintyFromToleranceObject(tmdeInstance, referencePoint);
-                                                        const uAbs = convertPpmToUnit(uPpm, referencePoint.unit, referencePoint);
-                                                        stdUncDisplay = typeof uAbs === "number" ? `${uAbs.toPrecision(3)}` : uAbs;
-                                                    }
-
-                                                    return (
+                                                return (
+                                                    <React.Fragment key={`${masterTmde.id}-${idx}`}>
                                                         <tr 
-                                                            key={`${masterTmde.id}-${idx}`} 
                                                             className="tmde-row" 
                                                             style={{ opacity: isChecked ? 1 : 0.7, cursor: 'pointer' }}
-                                                            // ADDED: Double-click handler for TMDE
                                                             onDoubleClick={() => onEditTmde && onEditTmde(masterTmde)}
                                                             title="Double-click to edit TMDE details"
                                                         >
-                                                            <td style={{ textAlign: 'center' }}>
+                                                            <td rowSpan={rowSpan} style={{ textAlign: 'center', verticalAlign: 'top' }}>
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={isChecked}
@@ -2220,19 +2253,15 @@ function DetailedView({
                                                                     style={{ cursor: 'pointer' }}
                                                                 />
                                                             </td>
-                                                            <td className="cell-description">
+                                                            
+                                                            <td rowSpan={rowSpan} className="cell-description" style={{ verticalAlign: 'top' }}>
                                                                 <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
-                                                                    {masterTmde.name || masterTmde.description}
-                                                                </div>
-                                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-color-muted)', marginTop: '2px' }}>
-                                                                    {/* REMOVED: ID Display */}
-                                                                    {masterTmde.instrument && (
-                                                                        <span>{masterTmde.instrument.manufacturer} {masterTmde.instrument.model}</span>
-                                                                    )}
+                                                                    {safeDescription}
                                                                 </div>
                                                             </td>
+                                                            
                                                             {isDerived && (
-                                                                <td>
+                                                                <td rowSpan={rowSpan} style={{ verticalAlign: 'top' }}>
                                                                     {isChecked ? (
                                                                         <select
                                                                             value={availableVariables.includes(tmdeInstance.variableType) ? tmdeInstance.variableType : ""}
@@ -2247,38 +2276,42 @@ function DetailedView({
                                                                     ) : "-"}
                                                                 </td>
                                                             )}
-                                                            <td className="cell-value">
+                                                            
+                                                            <td rowSpan={rowSpan} className="cell-value" style={{ verticalAlign: 'top' }}>
                                                                 {hasMultipleRanges ? (
                                                                     <select
                                                                         className="session-selector"
-                                                                        style={{ 
-                                                                            width: '100%', 
-                                                                            padding: '2px 4px',
-                                                                            fontSize: '0.75rem',
-                                                                            maxWidth: '100%'
-                                                                        }}
+                                                                        style={{ width: '100%', padding: '4px 8px', fontSize: '0.85rem' }}
                                                                         value={activeIndex}
                                                                         onChange={(e) => handleTmdeRangeChange(masterTmde, parseInt(e.target.value), ranges)}
+                                                                        onClick={(e) => e.stopPropagation()}
                                                                     >
                                                                         {ranges.map((range, rIdx) => {
-                                                                            const rangeLabel = (typeof range.range === 'string' ? range.range : null) || 
-                                                                                            (range.min !== undefined && range.max !== undefined ? `${range.min} to ${range.max}` : "Full Range");
-                                                                            const unitLabel = typeof range.unit === 'string' ? range.unit : '';
-                                                                            return <option key={rIdx} value={rIdx}>{`${rangeLabel} ${unitLabel}`}</option>
+                                                                            let rangeText = (typeof range.range === 'string' ? range.range : null);
+                                                                            if (!rangeText) {
+                                                                                if (range.min !== undefined && range.max !== undefined) rangeText = `${range.min} to ${range.max}`;
+                                                                                else rangeText = "Full Range";
+                                                                            }
+                                                                            const label = `${rangeText} ${range.unit || ''}`;
+                                                                            return <option key={rIdx} value={rIdx}>{label}</option>
                                                                         })}
                                                                     </select>
                                                                 ) : (
-                                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-color-muted)' }}>
-                                                                        {ranges[0] ? (ranges[0].range || "Default Range") : "Default Range"}
-                                                                        </span>
+                                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-color-muted)' }}>
+                                                                    {ranges[0] ? (ranges[0].range || "Default Range") : "Default Range"}
+                                                                    </span>
                                                                 )}
                                                             </td>
-                                                            <td title={getToleranceSummary(effectiveTolerance)} style={{ fontSize: '0.85rem' }}>
-                                                                {specSummary}
+                                                            
+                                                            {/* Spec Column (Matched UUT Formatting) */}
+                                                            <td className="no-hover-cell" style={{ verticalAlign: 'top' }} title={specRows[0]}>
+                                                                <span style={{ fontSize: '0.85rem' }}>
+                                                                    {specRows[0]}
+                                                                </span>
                                                             </td>
-                                                            {/* Only show Meas. Point CELL if derived */}
+                                                            
                                                             {isDerived && (
-                                                                <td>
+                                                                <td rowSpan={rowSpan} style={{ verticalAlign: 'top' }}>
                                                                     {isChecked ? (
                                                                         <EditableCell
                                                                             value={displayValue}
@@ -2290,18 +2323,33 @@ function DetailedView({
                                                                 </td>
                                                             )}
                                                         </tr>
-                                                    );
-                                                });
+
+                                                        {/* SUBSEQUENT ROWS */}
+                                                        {specRows.slice(1).map((specComp, sIdx) => (
+                                                            <tr 
+                                                                key={`${masterTmde.id}-${idx}-spec-${sIdx}`}
+                                                                className="tmde-row" 
+                                                                style={{ opacity: isChecked ? 1 : 0.7, cursor: 'pointer' }}
+                                                            >
+                                                                <td className="no-hover-cell" style={{ verticalAlign: 'top', borderTop: 'none' }} title={specComp}>
+                                                                    <span style={{ fontSize: '0.85rem' }}>
+                                                                        {specComp}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </React.Fragment>
+                                                );
                                             })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
+                </div>
             </div>
 
-            {/* --- UNCERTAINTY BUDGET & GRAPH --- */}
             {hasMeasurementPoint ? (
                 hasUnassignedVariables || isBackendMappingError ? (
                     <div className="placeholder-content" style={{ padding: '20px', color: 'var(--text-color-muted)' }}>
@@ -2360,9 +2408,7 @@ function DetailedView({
             )}
         </div>
     );
-};
-
-
+}
 
 const UncertaintyPanel = (props) => {
     const { testPointData, sessionData, onDefineTestPoint, onDeleteTestPoint, onSaveTestPoint } = props;

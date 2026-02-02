@@ -333,11 +333,34 @@ function Analysis({
     const { mode } = activeInstrumentModal;
 
     if (mode === 'uut') {
-        handleSaveUut({
-            description: data.description,
-            instrument: data.instrument,
-            tolerance: null // Implies recalculate from instrument
-        });
+        // 1. Update the UUT List (Fixes the Table Update Issue)
+        if (onSessionSave) {
+            const currentUuts = sessionData.uuts || [];
+            const existingIndex = currentUuts.findIndex(u => u.id === data.id);
+            
+            let updatedUuts;
+            if (existingIndex > -1) {
+                // Update existing UUT definition in the list
+                updatedUuts = currentUuts.map((u, i) => i === existingIndex ? { ...u, ...data } : u);
+            } else {
+                // Add new UUT definition if it doesn't exist
+                updatedUuts = [...currentUuts, data];
+            }
+
+            // Save the updated list to session, preserving other legacy fields if needed
+            onSessionSave({
+                ...sessionData,
+                uuts: updatedUuts,
+                // Keep legacy fields in sync for safety, though the table relies on 'uuts'
+                uutDescription: data.description,
+                uutInstrument: data.instrument
+            });
+        }
+
+        // 2. Trigger local test point update 
+        // Clearing tolerance forces the calculation hook to re-evaluate against the new specs
+        onDataSave({ uutTolerance: null });
+
     } else if (mode === 'tmde') {
         handleSaveTmde(data);
     }
