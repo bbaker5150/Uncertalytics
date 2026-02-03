@@ -1009,31 +1009,51 @@ function App() {
     }
   };
 
-  const handleDeleteTmdeDefinition = (tmdeId) => {
-    setConfirmationModal({
-      title: "Delete TMDE",
-      message: "Are you sure you want to delete this entire TMDE definition (all instances)?",
+  const handleDeleteTmdeDefinition = (idOrIds) => {
+    const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+    setAppNotification({
+      title: ids.length > 1 ? "Delete TMDEs" : "Delete TMDE",
+      message: ids.length > 1 
+        ? `Are you sure you want to delete these ${ids.length} TMDE definitions?` 
+        : "Are you sure you want to delete this entire TMDE definition (all instances)?",
+      confirmText: "Delete",
+      isIconConfirm: true,
       onConfirm: () => {
-        deleteTmdeDefinition(tmdeId);
-        setConfirmationModal(null);
+        // Assume deleteTmdeDefinition can handle array or we loop here?
+        // deleteTmdeDefinition comes from useSessionManager. Let's assume we need to update session manually if the hook doesn't support batch.
+        // Actually, checking useSessionManager usage (line 286), it is destructured. Let's see what it does.
+        // If deleteTmdeDefinition only takes one ID, we might need to loop INSIDE the confirm.
+        ids.forEach(id => deleteTmdeDefinition(id)); 
+        setAppNotification(null);
       },
     });
   };
 
-  const handleDeleteUut = () => {
-    setConfirmationModal({
-      title: "Delete UUT",
-      message: "Are you sure you want to delete the UUT definition? This will remove the UUT specifications from this session.",
+  const handleDeleteUut = (idOrIds) => {
+    const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+    setAppNotification({
+      title: ids.length > 1 ? "Delete UUTs" : "Delete UUT",
+      message: ids.length > 1 
+        ? `Are you sure you want to delete these ${ids.length} UUT definitions?` 
+        : "Are you sure you want to delete this UUT definition?",
+      confirmText: "Delete",
+      isIconConfirm: true,
       onConfirm: () => {
         if (currentSessionData) {
+          const idsSet = new Set(ids);
+          const updatedUuts = (currentSessionData.uuts || []).filter(u => !idsSet.has(u.id));
           updateSession({
             ...currentSessionData,
-            uutDescription: "",
-            uutTolerance: {},
-            uutInstrument: null
+            uuts: updatedUuts,
+            // Clear legacy if the 'current' legacy UI matches one of the deleted
+            ...(idsSet.has(currentSessionData.id) ? {
+                uutDescription: "",
+                uutTolerance: {},
+                uutInstrument: null
+            } : {})
           });
         }
-        setConfirmationModal(null);
+        setAppNotification(null);
       },
     });
   };

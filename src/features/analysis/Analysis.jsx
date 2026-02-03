@@ -681,6 +681,13 @@ function Analysis({
             // --- Navigation Handlers ---
             onSelectUut={onSelectUut}
             onSelectTestPoint={onSelectTestPoint}
+
+            // --- Enable UUT/TMDE Actions in Summary Views ---
+            onDeleteUut={onDeleteUut}
+            onDeleteTmdeDefinition={onDeleteTmdeDefinition}
+            onEditUut={handleEditUut}
+            onEditTmde={handleEditTmde}
+            onAddTmde={() => setActiveInstrumentModal({ mode: 'tmde', data: null })}
          />
       ) : (
         <>

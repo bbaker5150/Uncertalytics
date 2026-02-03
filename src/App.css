@@ -112,6 +112,12 @@
   --table-header-text: #495057;
   --shadow-color: rgba(0, 0, 0, 0.1);
   --heading-color: #2c3e50;
+
+  /* Table Highlighting (Industry Grade) */
+  --table-hover-row-bg: rgba(33, 37, 41, 0.03);
+  --table-hover-col-bg: rgba(33, 37, 41, 0.02);
+  --table-selected-row-bg: rgba(0, 123, 255, 0.12);
+  --table-selected-border: var(--primary-color);
 }
 
 /* --- 1B. BASE DARK MODE --- */
@@ -173,6 +179,12 @@ body.dark-mode {
   --table-header-text: #e2e8f0;
   --shadow-color: rgba(0, 0, 0, 0.5);
   --heading-color: #ffffff;
+
+  /* Table Highlighting (Dark Mode) */
+  --table-hover-row-bg: rgba(255, 255, 255, 0.04);
+  --table-hover-col-bg: rgba(255, 255, 255, 0.02);
+  --table-selected-row-bg: rgba(144, 202, 249, 0.15);
+  --table-selected-border: var(--primary-color);
 }
 
 /* =================================================================== */
@@ -258,6 +270,12 @@ body.theme-orbital {
 
   /* Risk Colors */
   --risk-value-color: #0891b2;
+
+  /* Orbital Table Highlighting (Light) */
+  --table-hover-row-bg: rgba(8, 145, 178, 0.08);
+  --table-hover-col-bg: rgba(8, 145, 178, 0.04);
+  --table-selected-row-bg: rgba(8, 145, 178, 0.18);
+  --table-selected-border: var(--orbital-cyan);
 }
 
 /* --- DARK MODE PALETTE (Override: "Deep Space") --- */
@@ -304,6 +322,12 @@ body.theme-orbital.dark-mode {
 
   /* Toggle */
   --toggle-bg-off: rgba(255, 255, 255, 0.1);
+
+  /* Orbital Table Highlighting (Dark) */
+  --table-hover-row-bg: rgba(6, 182, 212, 0.1);
+  --table-hover-col-bg: rgba(6, 182, 212, 0.05);
+  --table-selected-row-bg: rgba(6, 182, 212, 0.2);
+  --table-selected-border: var(--orbital-cyan);
 }
 
 /* ------------------------------------------------------------------- */
@@ -656,6 +680,12 @@ body.theme-cyberpunk {
     linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
   background-size: 50px 50px;
   background-attachment: fixed;
+
+  /* Cyberpunk Table Highlighting (Light - The Lab) */
+  --table-hover-row-bg: rgba(255, 0, 255, 0.05);
+  --table-hover-col-bg: rgba(0, 255, 255, 0.05);
+  --table-selected-row-bg: rgba(0, 255, 255, 0.15);
+  --table-selected-border: var(--primary-color);
 }
 
 /* --- DARK MODE: "NIGHT CITY" (Neon/Grid) --- */
@@ -771,6 +801,14 @@ body.theme-cyberpunk .content-area::after {
   right: -2px;
   border-left: none;
   border-top: none;
+}
+
+body.theme-cyberpunk.dark-mode {
+  /* Cyberpunk Table Highlighting (Dark - Night City) */
+  --table-hover-row-bg: rgba(0, 243, 255, 0.15);
+  --table-hover-col-bg: rgba(255, 0, 85, 0.08); /* Cross-hatch feel */
+  --table-selected-row-bg: rgba(0, 243, 255, 0.25);
+  --table-selected-border: var(--cyber-cyan);
 }
 
 body.theme-cyberpunk.dark-mode .content-area {
@@ -1502,6 +1540,57 @@ body.theme-cyberpunk .button {
 
 .dark-mode-toggle input:checked + .slider:before {
   transform: translateX(22px);
+}
+
+
+/* =================================================================== */
+/* TABLE HIGHLIGHTING CLASSES (INDUSTRY GRADE)                         */
+/* =================================================================== */
+
+.industry-table {
+  border-collapse: collapse; /* Ensure borders align */
+  width: 100%;
+}
+
+.industry-table tbody tr {
+  transition: background-color 0.1s ease;
+}
+
+/* Row Hover */
+.industry-table tbody tr:hover {
+  background-color: var(--table-hover-row-bg) !important;
+}
+
+/* Column Hover cell class (applied via JS) */
+.col-hovered {
+  background-color: var(--table-hover-col-bg);
+}
+
+/* Intersection of Row Hover and Col Hover */
+.industry-table tbody tr:hover td.col-hovered {
+  background-color: color-mix(in srgb, var(--table-hover-row-bg), var(--table-hover-col-bg));
+  /* Fallback if color-mix not supported: just one or the other, or darken */
+}
+
+/* Selected Row */
+.industry-table tr.selected-row {
+  background-color: var(--table-selected-row-bg) !important;
+  border-left: 4px solid var(--table-selected-border);
+}
+
+/* Selected Row + Hover */
+/* Maintain selected color but allow slight darken or lighten if needed */
+.industry-table tr.selected-row:hover {
+  background-color: var(--table-selected-row-bg) !important; /* Keep selection dominant */
+  filter: brightness(0.98); /* Subtle interaction feedback */
+}
+
+/* Subtle border for columns option? (User asked for highlighting, usually BG) */
+
+/* Cyberpunk Table Overrides for Industry Grade */
+body.theme-cyberpunk .industry-table tr.selected-row {
+  box-shadow: inset 2px 0 0 var(--cyber-cyan);
+  border-left: 2px solid var(--cyber-cyan);
 }
 
 /* =================================================================== */
