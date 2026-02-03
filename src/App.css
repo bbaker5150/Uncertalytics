@@ -1179,7 +1179,9 @@ body.theme-cyberpunk .button {
 }
 
 .results-sidebar {
-  flex: 0 0 350px;
+  flex: 0 0 420px;
+  min-width: 420px;
+  max-width: 500px;
   display: flex;
   flex-direction: column;
 
@@ -1197,6 +1199,107 @@ body.theme-cyberpunk .button {
   transition:
     background-color 0.3s ease,
     border-color 0.3s ease;
+}
+
+/* --- SIDEBAR POINT GRID ITEMS (Premium Polished) --- */
+.point-grid-item {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px 8px 16px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+  min-height: 32px;
+}
+
+.point-grid-item:hover {
+  background: var(--primary-color-light);
+  border-color: rgba(var(--primary-rgb), 0.15);
+}
+
+.point-grid-item.active {
+  background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.15) 0%, transparent 100%);
+  border-left: 3px solid var(--primary-color);
+  padding-left: 13px; /* Compensate for border */
+}
+
+.point-grid-item.table-highlight {
+  background: rgba(var(--primary-rgb), 0.08);
+  border-left: 2px solid var(--primary-color);
+  padding-left: 14px;
+}
+
+.point-grid-item .point-section {
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--text-color);
+  text-align: right;
+  padding-right: 6px;
+  border-right: 2px solid var(--border-color);
+  cursor: text;
+}
+
+.point-grid-item .point-value {
+  font-family: "Consolas", "Monaco", monospace;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  cursor: text;
+}
+
+.point-grid-item .point-tolerance,
+.point-grid-item .point-limits {
+  font-size: 0.7rem;
+  color: var(--text-color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Column Header Row */
+.sidebar-column-headers {
+  display: grid;
+  font-size: 0.65rem;
+  color: var(--text-color-muted);
+  padding: 4px 12px 6px 16px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
+  opacity: 0.8;
+  gap: 8px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Sidebar Column Toggle Button Enhancement */
+.sidebar-column-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--input-background);
+  color: var(--text-color-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-column-toggle:hover,
+.sidebar-column-toggle.active {
+  background: var(--primary-color-light);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.sidebar-column-toggle svg {
+  font-size: 0.8rem;
 }
 
 .sidebar-header {
@@ -4047,6 +4150,41 @@ body.dark-mode .final-result-display {
 .context-menu li.destructive:hover {
   background-color: var(--status-bad);
   color: white;
+}
+
+/* Context Menu Header */
+.context-menu-header {
+  padding: 8px 12px 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-color-muted);
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 4px;
+}
+
+/* Context Menu Item (div-based, for custom menus) */
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color);
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.context-menu-item:hover {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color-dark);
+}
+
+.context-menu-item.checked {
+  background-color: rgba(var(--primary-rgb), 0.08);
 }
 
 /* =================================================================== */

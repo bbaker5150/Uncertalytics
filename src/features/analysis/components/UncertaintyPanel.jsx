@@ -18,6 +18,56 @@ import {
     faTools
 } from "@fortawesome/free-solid-svg-icons";
 
+// --- Constants ---
+const customUnitSelectStyles = {
+    control: (provided) => ({
+        ...provided,
+        minHeight: '30px',
+        height: '30px',
+        fontSize: '0.85rem',
+        backgroundColor: 'var(--input-background)',
+        borderColor: 'var(--border-color)',
+        color: 'var(--text-color)',
+        boxShadow: 'none',
+        '&:hover': {
+            borderColor: 'var(--primary-color)'
+        }
+    }),
+    menu: (provided) => ({
+        ...provided,
+        zIndex: 9999,
+        backgroundColor: 'var(--header-background)',
+        border: '1px solid var(--border-color)',
+        boxShadow: 'var(--box-shadow-glow)'
+    }),
+    singleValue: (provided) => ({
+        ...provided,
+        color: 'var(--text-color)'
+    }),
+    input: (provided) => ({
+        ...provided,
+        color: 'var(--text-color)'
+    }),
+    option: (provided, state) => ({
+        ...provided,
+        backgroundColor: state.isSelected ? 'var(--primary-color)' : (state.isFocused ? 'var(--primary-color-light)' : 'transparent'),
+        color: state.isSelected ? '#ffffff' : 'var(--text-color)',
+        cursor: 'pointer',
+        fontSize: '0.85rem'
+    })
+};
+
+const symbolCategories = [
+    {
+        name: "Operators",
+        symbols: ["+", "-", "*", "/", "(", ")", "^", "sqrt"]
+    },
+    {
+        name: "Greek",
+        symbols: ["alpha", "beta", "delta", "theta", "sigma", "pi"]
+    }
+];
+
 // Sub-components
 import UncertaintyBudgetTable from "./UncertaintyBudgetTable";
 import PercentageBarGraph from "./ContributionPlot";
@@ -595,7 +645,6 @@ const SummaryDashboard = ({
     viewMode,
     contextId,
     sessionData,
-    onDefineTestPoint,
     onDeleteTestPoint,
     rangeData,
     uutId,
@@ -689,15 +738,7 @@ const SummaryDashboard = ({
     const handleUutClick = (e, id) => handleRowSelection(e, id, selectedUutIds, setSelectedUutIds);
     const handleTmdeClick = (e, id) => handleRowSelection(e, id, selectedTmdeIds, setSelectedTmdeIds);
 
-    const handleAddPoint = () => {
-        if (onDefineTestPoint) {
-            if (viewMode === 'range') {
-                onDefineTestPoint([uutId], rangeData);
-            } else {
-                onDefineTestPoint(selectedUutIds);
-            }
-        }
-    };
+
 
     // NEW: Batch Delete for UUTs
     const handleDeleteSelectedUuts = useCallback(() => {
@@ -941,17 +982,10 @@ const SummaryDashboard = ({
                     <div style={headerStyle}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <FontAwesomeIcon icon={faCube} />
-                            <span>Measurement Points ({filteredPoints.length})</span>
+                            <span>Quick Add Measurement</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <button
-                                className="btn-icon-only"
-                                style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
-                                onClick={handleAddPoint}
-                                title="Add Measurement Point"
-                            >
-                                <FontAwesomeIcon icon={faPlus} size="xs" />
-                            </button>
+                            {/* Actions minimized */}
                         </div>
                     </div>
                     <div className="panel-table-container" tabIndex="0">
@@ -976,10 +1010,10 @@ const SummaryDashboard = ({
                                     hoveredCell={hoveredCell}
                                     setHoveredCell={setHoveredCell}
                                 />
-                                {filteredPoints.length === 0 && (
+                                {filteredPoints.length > 0 && (
                                     <tr>
                                         <td colSpan={5} style={{ textAlign: 'center', padding: '12px', color: 'var(--text-color-muted)', fontSize: '0.85rem', fontStyle: 'italic', borderTop: '1px solid var(--border-color)' }}>
-                                            Full point list available in sidebar
+                                            View and manage all {filteredPoints.length} points in the sidebar
                                         </td>
                                     </tr>
                                 )}

@@ -1,7 +1,7 @@
 /**
  * src/App.jsx
  */
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 // --- Components ---
@@ -67,7 +67,8 @@ const SidebarPointItem = ({
   onModalOpen,
   onSave,
   onContextMenu,
-  onDragStart
+  onDragStart,
+  visibleColumns = { section: true, value: true, tolerance: true, limits: true }
 }) => {
   const [editingField, setEditingField] = useState(null); // 'section' | 'value' | null
   const [tempValue, setTempValue] = useState("");
@@ -115,7 +116,6 @@ const SidebarPointItem = ({
 
   // Safe Accessors
   const displayValue = point.testPointInfo?.parameter?.value;
-  const displayUnit = point.testPointInfo?.parameter?.unit;
 
   // Calculate Metrics
   const toleranceSummary = React.useMemo(() => {
@@ -134,6 +134,18 @@ const SidebarPointItem = ({
     return `${shortLow} → ${shortHigh}`;
   }, [point.uutTolerance, point.testPointInfo]);
 
+  // Dynamic Grid Layout - More generous sizing
+  const gridTemplate = React.useMemo(() => {
+    const parts = [];
+    if (visibleColumns.section) parts.push('50px');
+    if (visibleColumns.value) parts.push('80px');
+    if (visibleColumns.tolerance) parts.push('minmax(70px, 1fr)');
+    if (visibleColumns.limits) parts.push('minmax(80px, 1.5fr)');
+    // Fallback if all hidden (unlikely)
+    if (parts.length === 0) return '1fr';
+    return parts.join(' ');
+  }, [visibleColumns]);
+
 
   return (
     <div
@@ -141,7 +153,7 @@ const SidebarPointItem = ({
       className={`point-grid-item ${isSelected ? 'active' : ''} ${isTableSelected ? 'table-highlight' : ''}`}
       style={{
         display: 'grid',
-        gridTemplateColumns: '40px 65px 65px 1fr', // Adjusted Grid: Sect | Value | Tol | Limit
+        gridTemplateColumns: gridTemplate, 
         gap: '4px',
         alignItems: 'center',
         padding: '4px 8px 4px 12px'
@@ -162,64 +174,71 @@ const SidebarPointItem = ({
       onContextMenu={(e) => onContextMenu(e, point)}
     >
       {/* Col 1: Section */}
-      {editingField === 'section' ? (
-        <input
-          autoFocus
-          className="sidebar-inline-input section"
-          value={tempValue}
-          onChange={e => setTempValue(e.target.value)}
-          onBlur={commitEdit}
-          onKeyDown={handleKeyDown}
-          onClick={e => e.stopPropagation()}
-          placeholder="-"
-          style={{ width: '100%' }}
-        />
-      ) : (
-        <span
-          className="point-section"
-          onClick={(e) => handleSingleClickEdit(e, 'section', point.section)}
-          title="Click to edit Section"
-          style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-        >
-          {point.section || '-'}
-        </span>
+      {visibleColumns.section && (
+          editingField === 'section' ? (
+            <input
+              autoFocus
+              className="sidebar-inline-input section"
+              value={tempValue}
+              onChange={e => setTempValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              onClick={e => e.stopPropagation()}
+              placeholder="-"
+              style={{ width: '100%' }}
+            />
+          ) : (
+            <span
+              className="point-section"
+              onClick={(e) => handleSingleClickEdit(e, 'section', point.section)}
+              title="Click to edit Section"
+              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {point.section || '-'}
+            </span>
+          )
       )}
 
       {/* Col 2: Value */}
-      {editingField === 'value' ? (
-        <div className="sidebar-inline-input-wrapper" style={{ width: '100%' }}>
-          <input
-            autoFocus
-            className="sidebar-inline-input value"
-            value={tempValue}
-            onChange={e => setTempValue(e.target.value)}
-            onBlur={commitEdit}
-            onKeyDown={handleKeyDown}
-            onClick={e => e.stopPropagation()}
-            style={{ width: '100%' }}
-          />
-        </div>
-      ) : (
-        <span
-          className="point-value"
-          onClick={(e) => handleSingleClickEdit(e, 'value', displayValue)}
-          title="Click to edit Value"
-          style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-        >
-          {displayValue || <span style={{ opacity: 0.3 }}>-</span>}
-           {/* Unit hidden in compact view or small? */}
-        </span>
+      {visibleColumns.value && (
+          editingField === 'value' ? (
+            <div className="sidebar-inline-input-wrapper" style={{ width: '100%' }}>
+              <input
+                autoFocus
+                className="sidebar-inline-input value"
+                value={tempValue}
+                onChange={e => setTempValue(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={handleKeyDown}
+                onClick={e => e.stopPropagation()}
+                style={{ width: '100%' }}
+              />
+            </div>
+          ) : (
+            <span
+              className="point-value"
+              onClick={(e) => handleSingleClickEdit(e, 'value', displayValue)}
+              title="Click to edit Value"
+              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {displayValue || <span style={{ opacity: 0.3 }}>-</span>}
+            </span>
+          )
       )}
 
       {/* Col 3: Tolerance */}
-      <span style={{ fontSize: '0.7rem', color: 'var(--text-color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={toleranceSummary}>
-         {toleranceSummary !== 'Not Set' && toleranceSummary !== 'Not Calculated' ? toleranceSummary : '-'}
-      </span>
+      {visibleColumns.tolerance && (
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={toleranceSummary}>
+          {toleranceSummary !== 'Not Set' && toleranceSummary !== 'Not Calculated' ? toleranceSummary : '-'}
+        </span>
+      )}
 
       {/* Col 4: Limits */}
-      <span style={{ fontSize: '0.7rem', color: 'var(--text-color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={limitsSummary}>
-         {limitsSummary}
-      </span>
+      {visibleColumns.limits && (
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={limitsSummary}>
+          {limitsSummary}
+        </span>
+      )}
 
     </div>
   );
@@ -367,6 +386,26 @@ function App() {
   const [initialSessionTab, setInitialSessionTab] = useState("details");
   const [sessionImageCache, setSessionImageCache] = useState(new Map());
   const [riskResults, setRiskResults] = useState(null);
+
+  // --- SIDEBAR PREFERENCES ---
+  const [sidebarColumns, setSidebarColumns] = useState({
+      section: true,
+      value: true,
+      tolerance: true,
+      limits: true
+  });
+  const [isColumnMenuOpen, setIsColumnMenuOpen] = useState(false);
+  const columnMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (columnMenuRef.current && !columnMenuRef.current.contains(event.target)) {
+        setIsColumnMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // --- SELECTION & VIRTUAL STATE ---
   const [selectedAreaId, setSelectedAreaId] = useState(null);
@@ -1389,6 +1428,57 @@ function App() {
                   </select>
                 </div>
                 <div className="sidebar-view-controls">
+                  <div style={{ position: 'relative' }} ref={columnMenuRef}>
+                    <button 
+                        onClick={() => setIsColumnMenuOpen(!isColumnMenuOpen)} 
+                        title="Customize Visible Columns" 
+                        className={`sidebar-column-toggle ${isColumnMenuOpen ? 'active' : ''}`}
+                    >
+                        <FontAwesomeIcon icon={faRulerCombined} />
+                        <span>Columns</span>
+                    </button>
+                    {isColumnMenuOpen && (
+                        <div className="context-menu" style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, width: '200px', zIndex: 3000 }}>
+                            <div className="context-menu-header">Show/Hide Columns</div>
+                            <div 
+                                className={`context-menu-item ${sidebarColumns.section ? 'checked' : ''}`}
+                                onClick={() => setSidebarColumns(prev => ({ ...prev, section: !prev.section }))}
+                            >
+                                <span style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
+                                    {sidebarColumns.section && <FontAwesomeIcon icon={faCheckCircle} size="sm" style={{ color: 'var(--status-good)' }} />}
+                                </span>
+                                <span>Section</span>
+                            </div>
+                            <div 
+                                className={`context-menu-item ${sidebarColumns.value ? 'checked' : ''}`}
+                                onClick={() => setSidebarColumns(prev => ({ ...prev, value: !prev.value }))}
+                            >
+                                <span style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
+                                    {sidebarColumns.value && <FontAwesomeIcon icon={faCheckCircle} size="sm" style={{ color: 'var(--status-good)' }} />}
+                                </span>
+                                <span>Value</span>
+                            </div>
+                            <div 
+                                className={`context-menu-item ${sidebarColumns.tolerance ? 'checked' : ''}`}
+                                onClick={() => setSidebarColumns(prev => ({ ...prev, tolerance: !prev.tolerance }))}
+                            >
+                                <span style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
+                                    {sidebarColumns.tolerance && <FontAwesomeIcon icon={faCheckCircle} size="sm" style={{ color: 'var(--status-good)' }} />}
+                                </span>
+                                <span>Tolerance</span>
+                            </div>
+                            <div 
+                                className={`context-menu-item ${sidebarColumns.limits ? 'checked' : ''}`}
+                                onClick={() => setSidebarColumns(prev => ({ ...prev, limits: !prev.limits }))}
+                            >
+                                <span style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
+                                    {sidebarColumns.limits && <FontAwesomeIcon icon={faCheckCircle} size="sm" style={{ color: 'var(--status-good)' }} />}
+                                </span>
+                                <span>Limits</span>
+                            </div>
+                        </div>
+                    )}
+                  </div>
                   <button onClick={handleAddNewSession} title="Add New Session" className="sidebar-action-button"><FontAwesomeIcon icon={faPlus} /></button>
                   <button onClick={() => handleOpenSessionEditor("details")} title="Edit Session" className="sidebar-action-button"><FontAwesomeIcon icon={faEdit} /></button>
                   <button onClick={() => handleDeleteSession(selectedSessionId)} title="Delete Session" className="sidebar-action-button delete"><FontAwesomeIcon icon={faTrashAlt} /></button>
@@ -1431,14 +1521,16 @@ function App() {
                 </div>
 
                 {sidebarData.map((areaData) => {
-                  // COLLAPSE LOGIC: Area
-                  const isAreaExpanded = selectedAreaId === areaData.id;
-
                   const isAreaActive =
                     selectedAreaId === areaData.id &&
                     !selectedUutId &&
                     !selectedTestPointId &&
                     !selectedRangeContext;
+                    
+                  // FIXED COLLAPSE LOGIC: Keep open if a child is selected
+                  const isAreaExpanded = selectedAreaId === areaData.id || 
+                    (selectedTestPointContextUutId && areaData.uutGroups.some(u => u.id === selectedTestPointContextUutId)) ||
+                    (selectedUutId && areaData.uutGroups.some(u => u.id === selectedUutId));
 
                   return (
                     <div key={areaData.id} className="measurement-group-container">
@@ -1560,24 +1652,25 @@ function App() {
                                               <div className="empty-branch-msg"></div>
                                             ) : (
                                               <>
-                                                {/* NEW COLUMN HEADERS */}
-                                                <div style={{
-                                                  display: 'grid',
-                                                  gridTemplateColumns: '40px 65px 65px 1fr', // Matches SidebarPointItem
-                                                  fontSize: '0.65rem',
-                                                  color: 'var(--text-color-muted)',
-                                                  padding: '0 8px 4px 12px',
-                                                  marginBottom: '2px',
-                                                  borderBottom: '1px solid var(--border-color)',
-                                                  opacity: 0.7,
-                                                  gap: '4px',
-                                                  textTransform: 'uppercase',
-                                                  fontWeight: 600
-                                                }}>
-                                                  <span>Sect.</span>
-                                                  <span>Value</span>
-                                                  <span>Tol.</span>
-                                                  <span>Limits</span>
+                                                {/* Column Headers - Using CSS class */}
+                                                <div 
+                                                  className="sidebar-column-headers"
+                                                  style={{
+                                                    gridTemplateColumns: (() => {
+                                                          const parts = [];
+                                                          if (sidebarColumns.section) parts.push('50px');
+                                                          if (sidebarColumns.value) parts.push('80px');
+                                                          if (sidebarColumns.tolerance) parts.push('minmax(70px, 1fr)');
+                                                          if (sidebarColumns.limits) parts.push('minmax(80px, 1.5fr)');
+                                                          if (parts.length === 0) return '1fr';
+                                                          return parts.join(' ');
+                                                    })(),
+                                                  }}
+                                                >
+                                                  {sidebarColumns.section && <span>Sect.</span>}
+                                                  {sidebarColumns.value && <span>Value</span>}
+                                                  {sidebarColumns.tolerance && <span>Tolerance</span>}
+                                                  {sidebarColumns.limits && <span>Limits</span>}
                                                 </div>
                                                 {range.points.map(tp => {
                                                   const isSelected = selectedTestPointId === tp.id;
@@ -1587,6 +1680,7 @@ function App() {
                                                       point={tp}
                                                       isSelected={isSelected}
                                                       isTableSelected={selectedTablePointIds.includes(tp.id)}
+                                                      visibleColumns={sidebarColumns}
                                                       onSelect={() => handleSelectTestPoint(tp.id, group.id)}
                                                       onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
                                                       onSave={handleInlinePointUpdate}
