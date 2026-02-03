@@ -50,7 +50,9 @@ import {
   faPaste,
   faCheckCircle,
   faFilter,
-  faSlidersH
+  faSlidersH,
+  faChevronDown,
+  faChevronRight
 } from "@fortawesome/free-solid-svg-icons";
 
 import ThemeContext from './context/ThemeContext';
@@ -423,6 +425,11 @@ function App() {
 
   // UPDATED: Tracks which UUTs are explicitly SHOWING all ranges. 
   const [uutsShowingAllRanges, setUutsShowingAllRanges] = useState(new Set());
+  
+  // --- SIDEBAR EXPANSION STATE (Simple accordion control) ---
+  const [expandedAreas, setExpandedAreas] = useState(new Set());
+  const [expandedUuts, setExpandedUuts] = useState(new Set());
+  const [expandedRanges, setExpandedRanges] = useState(new Set());
 
   // Tracks which UUT "folder" was clicked in the sidebar to enforce context
   const [selectedTestPointContextUutId, setSelectedTestPointContextUutId] = useState(null);
@@ -722,9 +729,21 @@ function App() {
   };
 
   const handleSelectArea = (areaId) => {
+    // Toggle area expansion (accordion style)
+    setExpandedAreas(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(areaId)) {
+        newSet.delete(areaId);
+      } else {
+        newSet.add(areaId);
+      }
+      return newSet;
+    });
+    
+    // Set selection for the main panel
     setSelectedAreaId(areaId);
     setSelectedUutId(null);
-    setSelectedRangeContext(null); // Clear range
+    setSelectedRangeContext(null);
     setSelectedTestPointId(null);
     setSelectedTestPointContextUutId(null);
     setCurrentUutSelection([]);
@@ -733,9 +752,21 @@ function App() {
   };
 
   const handleSelectUut = (uutId, areaId) => {
+    // Toggle UUT expansion (accordion style)
+    setExpandedUuts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(uutId)) {
+        newSet.delete(uutId);
+      } else {
+        newSet.add(uutId);
+      }
+      return newSet;
+    });
+    
+    // Set selection for the main panel
     setSelectedUutId(uutId);
     setSelectedAreaId(areaId);
-    setSelectedRangeContext(null); // Clear range
+    setSelectedRangeContext(null);
     setSelectedTestPointId(null);
     setSelectedTestPointContextUutId(null);
     setCurrentUutSelection([uutId]);
@@ -745,6 +776,20 @@ function App() {
 
   // ---  Handle Range Selection ---
   const handleSelectRange = (uutId, range, areaId) => {
+    const rangeKey = `${uutId}-${range._id}`;
+    
+    // Toggle range expansion (accordion style)
+    setExpandedRanges(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(rangeKey)) {
+        newSet.delete(rangeKey);
+      } else {
+        newSet.add(rangeKey);
+      }
+      return newSet;
+    });
+    
+    // Set selection for the main panel
     setSelectedRangeContext({ uutId, range });
     setSelectedUutId(null);
     setSelectedTestPointId(null);
@@ -1603,10 +1648,8 @@ function App() {
                     !selectedTestPointId &&
                     !selectedRangeContext;
                     
-                  // FIXED COLLAPSE LOGIC: Keep open if a child is selected
-                  const isAreaExpanded = selectedAreaId === areaData.id || 
-                    (selectedTestPointContextUutId && areaData.uutGroups.some(u => u.id === selectedTestPointContextUutId)) ||
-                    (selectedUutId && areaData.uutGroups.some(u => u.id === selectedUutId));
+                  // Pure accordion: only expandedAreas Set determines visibility
+                  const isAreaExpanded = expandedAreas.has(areaData.id);
 
                   return (
                     <div key={areaData.id} className="measurement-group-container">
@@ -1614,6 +1657,15 @@ function App() {
                         className={`area-header-sticky ${isAreaActive ? 'active' : ''}`}
                         onClick={() => handleSelectArea(areaData.id)}
                       >
+                        <FontAwesomeIcon
+                          icon={isAreaExpanded ? faChevronDown : faChevronRight}
+                          style={{ 
+                            opacity: 0.6, 
+                            marginRight: '8px',
+                            fontSize: '0.75em',
+                            width: '10px'
+                          }}
+                        />
                         <FontAwesomeIcon
                           icon={faLayerGroup}
                           style={{
@@ -1628,12 +1680,8 @@ function App() {
                       {isAreaExpanded && (
                         <div className="tree-branch">
                           {areaData.uutGroups.map(group => {
-                            // COLLAPSE LOGIC: UUT
-                            const isUutExpanded = 
-                                (selectedUutId === group.id) || 
-                                (selectedRangeContext && selectedRangeContext.uutId === group.id) || 
-                                (selectedTestPointContextUutId === group.id) ||
-                                uutsShowingAllRanges.has(group.id);
+                            // Pure accordion: only expandedUuts Set determines visibility
+                            const isUutExpanded = expandedUuts.has(group.id);
 
                             const isUutSelected = selectedUutId === group.id && !selectedTestPointId && !selectedRangeContext;
                             const isShowingAll = uutsShowingAllRanges.has(group.id);
@@ -1663,6 +1711,15 @@ function App() {
                                   }}
                                 >
                                   <div className="uut-info">
+                                    <FontAwesomeIcon 
+                                      icon={isUutExpanded ? faChevronDown : faChevronRight}
+                                      style={{ 
+                                        opacity: 0.6, 
+                                        marginRight: '8px',
+                                        fontSize: '0.75em',
+                                        width: '10px'
+                                      }}
+                                    />
                                     <FontAwesomeIcon icon={faMicroscope} style={{ opacity: 0.6 }} />
                                     <span>{group.description}</span>
                                   </div>
@@ -1690,6 +1747,7 @@ function App() {
                                         if (!isShowingAll && range.points.length === 0) return null;
                                         const rangeKey = `${group.id}-${range._id}`;
                                         const isRangeDragOver = dragOverTargetId === rangeKey;
+                                        const isRangeExpanded = expandedRanges.has(rangeKey);
 
                                         const isRangeSelected = selectedRangeContext &&
                                           selectedRangeContext.uutId === group.id &&
@@ -1720,13 +1778,28 @@ function App() {
                                                 });
                                               }}
                                             >
+                                              <FontAwesomeIcon 
+                                                icon={isRangeExpanded ? faChevronDown : faChevronRight}
+                                                style={{ 
+                                                  opacity: 0.6, 
+                                                  marginRight: '8px',
+                                                  fontSize: '0.7em',
+                                                  width: '8px'
+                                                }}
+                                              />
                                               <FontAwesomeIcon icon={faRulerCombined} size="xs" style={{ opacity: isRangeSelected ? 1 : 0.5 }} />
                                               <span>{range.label}</span>
+                                              {range.points.length > 0 && (
+                                                <span style={{ marginLeft: 'auto', opacity: 0.5, fontSize: '0.75em' }}>
+                                                  ({range.points.length})
+                                                </span>
+                                              )}
                                             </div>
 
-                                            {range.points.length === 0 ? (
+                                            {/* Points only show when range is expanded */}
+                                            {isRangeExpanded && range.points.length === 0 ? (
                                               <div className="empty-branch-msg"></div>
-                                            ) : (
+                                            ) : isRangeExpanded && (
                                               <>
                                                 {/* Horizontal scroll wrapper for future column expansion */}
                                                 <div className="sidebar-points-scroll-wrapper">
