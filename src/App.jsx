@@ -53,6 +53,11 @@ import {
 
 import ThemeContext from './context/ThemeContext';
 
+import {
+  getToleranceErrorSummary,
+  getAbsoluteLimits
+} from "./utils/uncertaintyMath";
+
 // --- HELPER COMPONENT: Sidebar Point Item (Supports Inline Editing) ---
 const SidebarPointItem = ({
   point,
@@ -112,10 +117,35 @@ const SidebarPointItem = ({
   const displayValue = point.testPointInfo?.parameter?.value;
   const displayUnit = point.testPointInfo?.parameter?.unit;
 
+  // Calculate Metrics
+  const toleranceSummary = React.useMemo(() => {
+    const ptParam = point.testPointInfo?.parameter;
+    return getToleranceErrorSummary(point.uutTolerance, ptParam);
+  }, [point.uutTolerance, point.testPointInfo]);
+
+  const limitsSummary = React.useMemo(() => {
+    const ptParam = point.testPointInfo?.parameter;
+    const limits = getAbsoluteLimits(point.uutTolerance, ptParam);
+    if (!limits || limits.low === 'N/A') return '-';
+    // Format compact: L -> H
+    // Strip units for compactness if needed, or keep short
+    const shortLow = limits.low.split(' ')[0];
+    const shortHigh = limits.high.split(' ')[0];
+    return `${shortLow} → ${shortHigh}`;
+  }, [point.uutTolerance, point.testPointInfo]);
+
+
   return (
     <div
       draggable={!editingField}
       className={`point-grid-item ${isSelected ? 'active' : ''} ${isTableSelected ? 'table-highlight' : ''}`}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '40px 65px 65px 1fr', // Adjusted Grid: Sect | Value | Tol | Limit
+        gap: '4px',
+        alignItems: 'center',
+        padding: '4px 8px 4px 12px'
+      }}
       onClick={(e) => {
         if (!editingField) {
           e.stopPropagation();
@@ -131,7 +161,7 @@ const SidebarPointItem = ({
       }}
       onContextMenu={(e) => onContextMenu(e, point)}
     >
-      {/* Section Column */}
+      {/* Col 1: Section */}
       {editingField === 'section' ? (
         <input
           autoFocus
@@ -142,20 +172,22 @@ const SidebarPointItem = ({
           onKeyDown={handleKeyDown}
           onClick={e => e.stopPropagation()}
           placeholder="-"
+          style={{ width: '100%' }}
         />
       ) : (
         <span
           className="point-section"
           onClick={(e) => handleSingleClickEdit(e, 'section', point.section)}
           title="Click to edit Section"
+          style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         >
           {point.section || '-'}
         </span>
       )}
 
-      {/* Value Column */}
+      {/* Col 2: Value */}
       {editingField === 'value' ? (
-        <div className="sidebar-inline-input-wrapper">
+        <div className="sidebar-inline-input-wrapper" style={{ width: '100%' }}>
           <input
             autoFocus
             className="sidebar-inline-input value"
@@ -164,20 +196,31 @@ const SidebarPointItem = ({
             onBlur={commitEdit}
             onKeyDown={handleKeyDown}
             onClick={e => e.stopPropagation()}
+            style={{ width: '100%' }}
           />
-          <small>{displayUnit}</small>
         </div>
       ) : (
         <span
           className="point-value"
           onClick={(e) => handleSingleClickEdit(e, 'value', displayValue)}
           title="Click to edit Value"
+          style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         >
-          {/* If value is empty, show a placeholder so it's clickable */}
           {displayValue || <span style={{ opacity: 0.3 }}>-</span>}
-          {displayValue && <small style={{ marginLeft: '4px', color: 'var(--text-color-muted)' }}>{displayUnit}</small>}
+           {/* Unit hidden in compact view or small? */}
         </span>
       )}
+
+      {/* Col 3: Tolerance */}
+      <span style={{ fontSize: '0.7rem', color: 'var(--text-color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={toleranceSummary}>
+         {toleranceSummary !== 'Not Set' && toleranceSummary !== 'Not Calculated' ? toleranceSummary : '-'}
+      </span>
+
+      {/* Col 4: Limits */}
+      <span style={{ fontSize: '0.7rem', color: 'var(--text-color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={limitsSummary}>
+         {limitsSummary}
+      </span>
+
     </div>
   );
 };
@@ -397,7 +440,7 @@ function App() {
       isIconConfirm: true,
       onConfirm: performDelete,
     });
-  }, [currentSessionData, updateSession, selectedTestPointId]);
+  }, [currentSessionData, updateSession, selectedTestPointId, setSelectedTestPointId]);
 
   // --- COPY / PASTE HANDLERS (Moved up for scope access in useEffect) ---
   const handleCopyPoint = useCallback((point) => {
@@ -512,7 +555,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [migrateToDisk, selectedTestPointId, selectedUutId, selectedTestPointContextUutId, clipboardPoint, currentTestPoints, currentSessionData, selectedAreaId, selectedRangeContext]);
+  }, [migrateToDisk, selectedTestPointId, selectedUutId, selectedTestPointContextUutId, clipboardPoint, currentTestPoints, currentSessionData, selectedAreaId, selectedRangeContext, handleCopyPoint, handleDeleteTestPoint, handlePastePoint]);
 
   useEffect(() => {
     const body = document.body;
@@ -1388,6 +1431,9 @@ function App() {
                 </div>
 
                 {sidebarData.map((areaData) => {
+                  // COLLAPSE LOGIC: Area
+                  const isAreaExpanded = selectedAreaId === areaData.id;
+
                   const isAreaActive =
                     selectedAreaId === areaData.id &&
                     !selectedUutId &&
@@ -1411,215 +1457,232 @@ function App() {
                         <span className="area-label">{areaData.name}</span>
                       </div>
 
-                      <div className="tree-branch">
-                        {areaData.uutGroups.map(group => {
-                          const isUutSelected = selectedUutId === group.id && !selectedTestPointId && !selectedRangeContext;
-                          const isShowingAll = uutsShowingAllRanges.has(group.id);
-                          const isDragOver = dragOverTargetId === group.id;
+                      {isAreaExpanded && (
+                        <div className="tree-branch">
+                          {areaData.uutGroups.map(group => {
+                            // COLLAPSE LOGIC: UUT
+                            const isUutExpanded = 
+                                (selectedUutId === group.id) || 
+                                (selectedRangeContext && selectedRangeContext.uutId === group.id) || 
+                                (selectedTestPointContextUutId === group.id) ||
+                                uutsShowingAllRanges.has(group.id);
 
-                          return (
-                            <div key={group.id} style={{ marginBottom: '10px' }}>
-                              <div
-                                className={`uut-row ${isUutSelected ? 'active' : ''} ${isDragOver ? 'drag-over' : ''}`}
-                                onClick={() => handleSelectUut(group.id, areaData.id, group)}
-                                onDragOver={(e) => handleDragOver(e, group.id)}
-                                onDragLeave={handleDragLeave}
-                                onDrop={(e) => handleDrop(e, group.id, areaData.id)}
-                                onContextMenu={(e) => {
-                                  e.preventDefault();
-                                  setContextMenu({
-                                    x: e.pageX, y: e.pageY,
-                                    items: [
-                                      {
-                                        label: "Paste Point Here",
-                                        action: () => handlePastePoint(group.id, areaData.id),
-                                        icon: faPaste,
-                                        className: !clipboardPoint ? 'disabled' : ''
-                                      },
-                                    ],
-                                  });
-                                }}
-                              >
-                                <div className="uut-info">
-                                  <FontAwesomeIcon icon={faMicroscope} style={{ opacity: 0.6 }} />
-                                  <span>{group.description}</span>
+                            const isUutSelected = selectedUutId === group.id && !selectedTestPointId && !selectedRangeContext;
+                            const isShowingAll = uutsShowingAllRanges.has(group.id);
+                            const isDragOver = dragOverTargetId === group.id;
+
+                            return (
+                              <div key={group.id} style={{ marginBottom: '10px' }}>
+                                <div
+                                  className={`uut-row ${isUutSelected ? 'active' : ''} ${isDragOver ? 'drag-over' : ''}`}
+                                  onClick={() => handleSelectUut(group.id, areaData.id, group)}
+                                  onDragOver={(e) => handleDragOver(e, group.id)}
+                                  onDragLeave={handleDragLeave}
+                                  onDrop={(e) => handleDrop(e, group.id, areaData.id)}
+                                  onContextMenu={(e) => {
+                                    e.preventDefault();
+                                    setContextMenu({
+                                      x: e.pageX, y: e.pageY,
+                                      items: [
+                                        {
+                                          label: "Paste Point Here",
+                                          action: () => handlePastePoint(group.id, areaData.id),
+                                          icon: faPaste,
+                                          className: !clipboardPoint ? 'disabled' : ''
+                                        },
+                                      ],
+                                    });
+                                  }}
+                                >
+                                  <div className="uut-info">
+                                    <FontAwesomeIcon icon={faMicroscope} style={{ opacity: 0.6 }} />
+                                    <span>{group.description}</span>
+                                  </div>
+                                  <div className="uut-actions-group">
+                                    <button
+                                      className={`btn-icon-only small ${isShowingAll ? 'active' : ''}`}
+                                      onClick={(e) => { e.stopPropagation(); toggleUutEmptyRanges(group.id); }}
+                                      title={isShowingAll ? "Hide Empty Ranges" : "Show All Ranges"}
+                                    >
+                                      <FontAwesomeIcon icon={isShowingAll ? faEyeSlash : faEye} size="xs" />
+                                    </button>
+                                    <button
+                                      className="btn-icon-only small"
+                                      onClick={(e) => { e.stopPropagation(); handleAddNewTestPoint(areaData.id, group.id); }}
+                                      title="Add Point"
+                                    >
+                                      <FontAwesomeIcon icon={faPlus} size="xs" />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="uut-actions-group">
-                                  <button
-                                    className={`btn-icon-only small ${isShowingAll ? 'active' : ''}`}
-                                    onClick={(e) => { e.stopPropagation(); toggleUutEmptyRanges(group.id); }}
-                                    title={isShowingAll ? "Hide Empty Ranges" : "Show All Ranges"}
-                                  >
-                                    <FontAwesomeIcon icon={isShowingAll ? faEyeSlash : faEye} size="xs" />
-                                  </button>
-                                  <button
-                                    className="btn-icon-only small"
-                                    onClick={(e) => { e.stopPropagation(); handleAddNewTestPoint(areaData.id, group.id); }}
-                                    title="Add Point"
-                                  >
-                                    <FontAwesomeIcon icon={faPlus} size="xs" />
-                                  </button>
-                                </div>
-                              </div>
 
-                              <div style={{ paddingLeft: '15px' }}>
-                                {group.rangeGroups.map(range => {
-                                  if (!isShowingAll && range.points.length === 0) return null;
-                                  const rangeKey = `${group.id}-${range._id}`;
-                                  const isRangeDragOver = dragOverTargetId === rangeKey;
+                                {isUutExpanded && (
+                                    <div style={{ paddingLeft: '15px' }}>
+                                      {group.rangeGroups.map(range => {
+                                        if (!isShowingAll && range.points.length === 0) return null;
+                                        const rangeKey = `${group.id}-${range._id}`;
+                                        const isRangeDragOver = dragOverTargetId === rangeKey;
 
-                                  const isRangeSelected = selectedRangeContext &&
-                                    selectedRangeContext.uutId === group.id &&
-                                    selectedRangeContext.range._id === range._id;
+                                        const isRangeSelected = selectedRangeContext &&
+                                          selectedRangeContext.uutId === group.id &&
+                                          selectedRangeContext.range._id === range._id;
 
-                                  return (
-                                    <div key={`range-${range._id}`} style={{ marginBottom: '8px' }}>
-                                      <div
-                                        className={`range-label-row ${isRangeDragOver ? 'drag-over' : ''} ${isRangeSelected ? 'active' : ''}`}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleSelectRange(group.id, range, areaData.id);
-                                        }}
-                                        onDragOver={(e) => handleDragOver(e, rangeKey)}
-                                        onDrop={(e) => handleDrop(e, group.id, areaData.id, range)}
-                                        onContextMenu={(e) => {
-                                          e.preventDefault();
-                                          setContextMenu({
-                                            x: e.pageX, y: e.pageY,
-                                            items: [
-                                              {
-                                                label: "Paste Point in Range",
-                                                action: () => handlePastePoint(group.id, areaData.id, range),
-                                                icon: faPaste,
-                                                className: !clipboardPoint ? 'disabled' : ''
-                                              },
-                                            ],
-                                          });
-                                        }}
-                                      >
-                                        <FontAwesomeIcon icon={faRulerCombined} size="xs" style={{ opacity: isRangeSelected ? 1 : 0.5 }} />
-                                        <span>{range.label}</span>
-                                      </div>
+                                        return (
+                                          <div key={`range-${range._id}`} style={{ marginBottom: '8px' }}>
+                                            <div
+                                              className={`range-label-row ${isRangeDragOver ? 'drag-over' : ''} ${isRangeSelected ? 'active' : ''}`}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleSelectRange(group.id, range, areaData.id);
+                                              }}
+                                              onDragOver={(e) => handleDragOver(e, rangeKey)}
+                                              onDrop={(e) => handleDrop(e, group.id, areaData.id, range)}
+                                              onContextMenu={(e) => {
+                                                e.preventDefault();
+                                                setContextMenu({
+                                                  x: e.pageX, y: e.pageY,
+                                                  items: [
+                                                    {
+                                                      label: "Paste Point in Range",
+                                                      action: () => handlePastePoint(group.id, areaData.id, range),
+                                                      icon: faPaste,
+                                                      className: !clipboardPoint ? 'disabled' : ''
+                                                    },
+                                                  ],
+                                                });
+                                              }}
+                                            >
+                                              <FontAwesomeIcon icon={faRulerCombined} size="xs" style={{ opacity: isRangeSelected ? 1 : 0.5 }} />
+                                              <span>{range.label}</span>
+                                            </div>
 
-                                      {range.points.length === 0 ? (
-                                        <div className="empty-branch-msg"></div>
-                                      ) : (
-                                        <>
-                                          <div style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: '45px 1fr',
-                                            fontSize: '0.7rem',
-                                            color: 'var(--text-color-muted)',
-                                            padding: '0 12px 4px 12px',
-                                            marginBottom: '2px',
-                                            borderBottom: '1px solid var(--border-color)',
-                                            borderLeft: '4px solid transparent',
-                                            opacity: 0.7,
-                                            gap: '10px'
-                                          }}>
-                                            <span style={{ textAlign: 'right', paddingRight: '2px' }}>Sect.</span>
-                                            <span>Point</span>
+                                            {range.points.length === 0 ? (
+                                              <div className="empty-branch-msg"></div>
+                                            ) : (
+                                              <>
+                                                {/* NEW COLUMN HEADERS */}
+                                                <div style={{
+                                                  display: 'grid',
+                                                  gridTemplateColumns: '40px 65px 65px 1fr', // Matches SidebarPointItem
+                                                  fontSize: '0.65rem',
+                                                  color: 'var(--text-color-muted)',
+                                                  padding: '0 8px 4px 12px',
+                                                  marginBottom: '2px',
+                                                  borderBottom: '1px solid var(--border-color)',
+                                                  opacity: 0.7,
+                                                  gap: '4px',
+                                                  textTransform: 'uppercase',
+                                                  fontWeight: 600
+                                                }}>
+                                                  <span>Sect.</span>
+                                                  <span>Value</span>
+                                                  <span>Tol.</span>
+                                                  <span>Limits</span>
+                                                </div>
+                                                {range.points.map(tp => {
+                                                  const isSelected = selectedTestPointId === tp.id;
+                                                  return (
+                                                    <SidebarPointItem
+                                                      key={tp.id}
+                                                      point={tp}
+                                                      isSelected={isSelected}
+                                                      isTableSelected={selectedTablePointIds.includes(tp.id)}
+                                                      onSelect={() => handleSelectTestPoint(tp.id, group.id)}
+                                                      onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
+                                                      onSave={handleInlinePointUpdate}
+                                                      onDragStart={handleDragStart}
+                                                      onContextMenu={(e, p) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setContextMenu({
+                                                          x: e.pageX, y: e.pageY,
+                                                          items: [
+                                                            { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                                            { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                                          ],
+                                                        });
+                                                      }}
+                                                    />
+                                                  );
+                                                })}
+                                              </>
+                                            )}
                                           </div>
-                                          {range.points.map(tp => {
-                                            const isSelected = selectedTestPointId === tp.id && selectedTestPointContextUutId === group.id;
-                                            return (
-                                              <SidebarPointItem
-                                                key={tp.id}
-                                                point={tp}
-                                                isSelected={isSelected}
-                                                isTableSelected={selectedTablePointIds.includes(tp.id)}
-                                                onSelect={() => handleSelectTestPoint(tp.id, group.id)}
-                                                onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
-                                                onSave={handleInlinePointUpdate}
-                                                onDragStart={handleDragStart}
-                                                onContextMenu={(e, p) => {
-                                                  e.preventDefault();
-                                                  e.stopPropagation();
-                                                  setContextMenu({
-                                                    x: e.pageX, y: e.pageY,
-                                                    items: [
-                                                      { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
-                                                      { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
-                                                    ],
-                                                  });
-                                                }}
-                                              />
-                                            );
-                                          })}
-                                        </>
+                                        );
+                                      })}
+
+                                      {/* UNCATEGORIZED POINTS */}
+                                      {group.uncategorizedPoints && group.uncategorizedPoints.length > 0 && (
+                                        <div style={{ marginTop: '8px' }}>
+                                          <div className="range-label-row" style={{ color: 'var(--status-warning)' }}>
+                                            <FontAwesomeIcon icon={faLayerGroup} size="xs" />
+                                            <span>Other Points</span>
+                                          </div>
+                                          {group.uncategorizedPoints.map(tp => (
+                                            <SidebarPointItem
+                                              key={tp.id}
+                                              point={tp}
+                                              isSelected={selectedTestPointId === tp.id}
+                                              isTableSelected={selectedTablePointIds.includes(tp.id)}
+                                              onSelect={() => handleSelectTestPoint(tp.id, group.id)}
+                                              onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
+                                              onSave={handleInlinePointUpdate}
+                                              onDragStart={handleDragStart}
+                                              onContextMenu={(e, p) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setContextMenu({
+                                                  x: e.pageX, y: e.pageY,
+                                                  items: [
+                                                    { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                                    { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                                  ],
+                                                });
+                                              }}
+                                            />
+                                          ))}
+                                        </div>
                                       )}
                                     </div>
-                                  );
-                                })}
-
-                                {group.uncategorizedPoints && group.uncategorizedPoints.length > 0 && (
-                                  <div style={{ marginTop: '8px' }}>
-                                    <div className="range-label-row" style={{ color: 'var(--status-warning)' }}>
-                                      <FontAwesomeIcon icon={faLayerGroup} size="xs" />
-                                      <span>Other Points</span>
-                                    </div>
-                                    {group.uncategorizedPoints.map(tp => (
-                                      <SidebarPointItem
-                                        key={tp.id}
-                                        point={tp}
-                                        isSelected={selectedTestPointId === tp.id}
-                                        isTableSelected={selectedTablePointIds.includes(tp.id)}
-                                        onSelect={() => handleSelectTestPoint(tp.id, group.id)}
-                                        onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
-                                        onSave={handleInlinePointUpdate}
-                                        onDragStart={handleDragStart}
-                                        onContextMenu={(e, p) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          setContextMenu({
-                                            x: e.pageX, y: e.pageY,
-                                            items: [
-                                              { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
-                                              { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
-                                            ],
-                                          });
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
                                 )}
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
 
-                        {areaData.unassignedPoints.length > 0 && (
-                          <div style={{ marginTop: '15px', paddingLeft: '10px' }}>
-                            <div className="range-label-row" style={{ color: 'var(--text-color-muted)' }}>
-                              <FontAwesomeIcon icon={faLayerGroup} size="xs" style={{ opacity: 0.5 }} />
-                              <span>Unassigned Points</span>
+                          {/* UNASSIGNED POINTS IN AREA */}
+                          {areaData.unassignedPoints.length > 0 && (
+                            <div style={{ marginTop: '15px', paddingLeft: '10px' }}>
+                              <div className="range-label-row" style={{ color: 'var(--text-color-muted)' }}>
+                                <FontAwesomeIcon icon={faLayerGroup} size="xs" style={{ opacity: 0.5 }} />
+                                <span>Unassigned Points</span>
+                              </div>
+                              {areaData.unassignedPoints.map(tp => (
+                                <SidebarPointItem
+                                  key={tp.id}
+                                  point={tp}
+                                  isSelected={selectedTestPointId === tp.id}
+                                  isTableSelected={selectedTablePointIds.includes(tp.id)}
+                                  onSelect={() => handleSelectTestPoint(tp.id, null)}
+                                  onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
+                                  onSave={handleInlinePointUpdate}
+                                  onDragStart={handleDragStart}
+                                  onContextMenu={(e, p) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setContextMenu({
+                                      x: e.pageX, y: e.pageY,
+                                      items: [
+                                        { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                        { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                      ],
+                                    });
+                                  }}
+                                />
+                              ))}
                             </div>
-                            {areaData.unassignedPoints.map(tp => (
-                              <SidebarPointItem
-                                key={tp.id}
-                                point={tp}
-                                isSelected={selectedTestPointId === tp.id}
-                                isTableSelected={selectedTablePointIds.includes(tp.id)}
-                                onSelect={() => handleSelectTestPoint(tp.id, null)}
-                                onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
-                                onSave={handleInlinePointUpdate}
-                                onDragStart={handleDragStart}
-                                onContextMenu={(e, p) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setContextMenu({
-                                    x: e.pageX, y: e.pageY,
-                                    items: [
-                                      { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
-                                      { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
-                                    ],
-                                  });
-                                }}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

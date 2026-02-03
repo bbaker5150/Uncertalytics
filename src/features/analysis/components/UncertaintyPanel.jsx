@@ -3,7 +3,6 @@
  */
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import * as math from 'mathjs';
-import Select from "react-select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faPlus,
@@ -353,38 +352,9 @@ const calculateToleranceMetrics = (activeTolerance, nominalObj) => {
 
 
 // --- HELPERS FOR EQUATION EDITOR ---
-const SymbolButton = ({ onSymbolClick, symbol, title }) => (
-    <button
-        type="button"
-        className="symbol-button"
-        title={title || `Insert ${symbol}`}
-        onClick={() => onSymbolClick(symbol)}
-        onMouseDown={(e) => e.preventDefault()}
-    >
-        {symbol.replace('()', '( )')}
-    </button>
-);
 
-const symbolCategories = {
-    'Operators': [{ symbol: '+', title: 'Add' }, { symbol: '-', title: 'Subtract' }, { symbol: '*', title: 'Multiply' }, { symbol: '/', title: 'Divide' }, { symbol: '^', title: 'Power' }, { symbol: '()', title: 'Parentheses' }, { symbol: '%', title: 'Percent' }],
-    'Functions': [{ symbol: 'sqrt()', title: 'Square Root' }, { symbol: 'abs()', title: 'Absolute Value' }, { symbol: 'log()', title: 'Log (base 10)' }, { symbol: 'ln()', title: 'Natural Log' }, { symbol: 'exp()', title: 'Exponential' }],
-    'Trigonometry': [{ symbol: 'sin()', title: 'Sine' }, { symbol: 'cos()', title: 'Cosine' }, { symbol: 'tan()', title: 'Tangent' }],
-    'Greek': [{ symbol: 'Δ', title: 'Delta' }, { symbol: 'θ', title: 'Theta' }, { symbol: 'λ', title: 'Lambda' }, { symbol: 'π', title: 'Pi' }, { symbol: 'Ω', title: 'Omega' }]
-};
 
-const customUnitSelectStyles = {
-    control: (provided) => ({ ...provided, minHeight: '28px', height: '28px', width: '100px', fontSize: '0.8rem', border: 'none', backgroundColor: 'transparent', boxShadow: 'none', cursor: 'pointer', textAlign: 'right' }),
-    valueContainer: (provided) => ({ ...provided, height: '28px', padding: '0 4px', justifyContent: 'flex-end' }),
-    input: (provided) => ({ ...provided, margin: 0, padding: 0, color: 'var(--text-color)' }),
-    singleValue: (provided) => ({ ...provided, color: 'var(--text-color-muted)', fontWeight: 600 }),
-    indicatorsContainer: (provided) => ({ ...provided, height: '28px', }),
-    dropdownIndicator: (provided) => ({ ...provided, padding: '2px', color: 'var(--text-color-muted)' }),
-    indicatorSeparator: () => ({ display: 'none' }),
-    menu: (provided) => ({ ...provided, backgroundColor: 'var(--content-background)', border: '1px solid var(--border-color)', zIndex: 9999, width: '180px', right: 0 }),
-    groupHeading: (provided) => ({ ...provided, color: 'var(--primary-color)', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', padding: '8px 12px 4px' }),
-    option: (provided, state) => ({ ...provided, backgroundColor: state.isSelected ? 'var(--primary-color)' : state.isFocused ? 'var(--hover-background)' : 'transparent', color: state.isSelected ? '#fff' : 'var(--text-color)', fontSize: '0.8rem', cursor: 'pointer', textAlign: 'left', paddingLeft: '20px' })
-};
-
+// --- RE-INSERTED EDITABLE CELL COMPONENT ---
 const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, placeholder = "", className = "" }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentValue, setCurrentValue] = useState(value);
@@ -653,8 +623,7 @@ const SummaryDashboard = ({
     // Industry Grade Highlighting State
     const [hoveredCell, setHoveredCell] = useState({ tableId: null, colIndex: null });
 
-    // Sorting State
-    const [sortConfigs, setSortConfigs] = useState({});
+
 
     // Filter Data based on Hierarchy
     const { filteredUuts, filteredPoints, filteredTmdes, title, subtitle, showAreaColumn } = useMemo(() => {
@@ -716,18 +685,9 @@ const SummaryDashboard = ({
     // --- HANDLERS ---
 
     // Selection Handlers (Wrapped)
+    // Selection Handlers (Wrapped)
     const handleUutClick = (e, id) => handleRowSelection(e, id, selectedUutIds, setSelectedUutIds);
     const handleTmdeClick = (e, id) => handleRowSelection(e, id, selectedTmdeIds, setSelectedTmdeIds);
-    // Point selection uses prop setter
-    const handlePointClick = (e, id) => handleRowSelection(e, id, selectedPointIds, setSelectedPointIds);
-
-    const handleSort = (groupId, key) => {
-        setSortConfigs(prev => {
-            const currentConfig = prev[groupId] || { key: null, direction: 'ascending' };
-            const newDirection = currentConfig.key === key && currentConfig.direction === 'ascending' ? 'descending' : 'ascending';
-            return { ...prev, [groupId]: { key, direction: newDirection } };
-        });
-    };
 
     const handleAddPoint = () => {
         if (onDefineTestPoint) {
@@ -739,29 +699,21 @@ const SummaryDashboard = ({
         }
     };
 
-    const handleBatchDelete = useCallback(() => {
-        if (selectedPointIds.length === 0) return;
-        if (onDeleteTestPoint) {
-            onDeleteTestPoint(selectedPointIds, false);
-            setSelectedPointIds([]);
-        }
-    }, [selectedPointIds, onDeleteTestPoint, setSelectedPointIds]);
-
     // NEW: Batch Delete for UUTs
-    const handleDeleteSelectedUuts = () => {
+    const handleDeleteSelectedUuts = useCallback(() => {
         if (onDeleteUut && selectedUutIds.length > 0) {
             onDeleteUut(selectedUutIds);
             setSelectedUutIds([]);
         }
-    };
+    }, [onDeleteUut, selectedUutIds]);
 
     // NEW: Batch Delete for TMDEs
-    const handleDeleteSelectedTmdes = () => {
+    const handleDeleteSelectedTmdes = useCallback(() => {
         if (onDeleteTmdeDefinition && selectedTmdeIds.length > 0) {
             onDeleteTmdeDefinition(selectedTmdeIds);
             setSelectedTmdeIds([]);
         }
-    };
+    }, [onDeleteTmdeDefinition, selectedTmdeIds]);
 
     // Keyboard Listener for Delete
     useEffect(() => {
@@ -769,10 +721,7 @@ const SummaryDashboard = ({
             if ((e.key === 'Delete' || e.key === 'Backspace')) {
                 // Determine context based on what is selected
                 if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-                    if (selectedPointIds.length > 0) {
-                        e.preventDefault();
-                        handleBatchDelete();
-                    } else if (selectedUutIds.length > 0) {
+                    if (selectedUutIds.length > 0) {
                         e.preventDefault();
                         handleDeleteSelectedUuts();
                     } else if (selectedTmdeIds.length > 0) {
@@ -784,7 +733,7 @@ const SummaryDashboard = ({
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedPointIds, selectedUutIds, selectedTmdeIds, onDeleteTestPoint, handleDeleteSelectedUuts, handleDeleteSelectedTmdes]);
+    }, [selectedUutIds, selectedTmdeIds, handleDeleteSelectedUuts, handleDeleteSelectedTmdes]);
 
     // Wrapper for the helper to pass to QuickAddRow
     const resolveRangeWrapper = (uut, indices, savedTol, nominal) => {
@@ -995,16 +944,6 @@ const SummaryDashboard = ({
                             <span>Measurement Points ({filteredPoints.length})</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {selectedPointIds.length > 0 && (
-                                <button
-                                    className="btn-icon-only delete"
-                                    style={{ color: 'var(--status-bad)', width: '24px', height: '24px', borderRadius: '4px', opacity: 1, border: '1px solid rgba(255,82,82,0.3)', marginRight: '8px' }}
-                                    onClick={handleBatchDelete}
-                                    title={`Delete ${selectedPointIds.length} Selected Points`}
-                                >
-                                    <FontAwesomeIcon icon={faTrashAlt} size="xs" />
-                                </button>
-                            )}
                             <button
                                 className="btn-icon-only"
                                 style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
@@ -1037,65 +976,13 @@ const SummaryDashboard = ({
                                     hoveredCell={hoveredCell}
                                     setHoveredCell={setHoveredCell}
                                 />
-                                {filteredPoints.length > 0 && (() => {
-                                    // ... [Grouping Logic - Same as before] ...
-                                    const groupedPoints = {};
-                                    const unassignedPoints = [];
-                                    filteredPoints.forEach(tp => {
-                                        const uutId = tp.associatedUutIds?.[0];
-                                        if (uutId) {
-                                            if (!groupedPoints[uutId]) groupedPoints[uutId] = [];
-                                            groupedPoints[uutId].push(tp);
-                                        } else unassignedPoints.push(tp);
-                                    });
-                                    // ...
-                                    const uutOrder = filteredUuts.map(u => u.id).filter(id => groupedPoints[id]);
-                                    Object.keys(groupedPoints).forEach(id => { if (!uutOrder.includes(id)) uutOrder.push(id); });
-
-                                    return (
-                                        <>
-                                            {uutOrder.map(uutId => {
-                                                const groupPoints = groupedPoints[uutId];
-                                                const uut = sessionData.uuts?.find(u => u.id === uutId);
-                                                return (
-                                                    <React.Fragment key={uutId}>
-                                                        <tr style={{ backgroundColor: 'var(--component-header-bg)', borderTop: '2px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
-                                                            <td colSpan={5} style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-color)', fontSize: '0.9rem' }}>
-                                                                <FontAwesomeIcon icon={faMicroscope} style={{ marginRight: '6px', color: 'var(--primary-color)', opacity: 0.7 }} />
-                                                                {uut?.description || "Unknown UUT"}
-                                                            </td>
-                                                        </tr>
-                                                        {/* Headers omitted for brevity */}
-                                                        {groupPoints.map(tp => {
-                                                            const param = tp.testPointInfo?.parameter || { value: '', unit: '' };
-                                                            const isSelected = selectedPointIds.includes(tp.id);
-                                                            let activeTolerance = tp.uutTolerance || {};
-                                                            // ... calc logic ...
-                                                            const { limits, display } = calculateToleranceMetrics(activeTolerance, param);
-
-                                                            return (
-                                                                <tr
-                                                                    key={tp.id}
-                                                                    className={isSelected ? "selected-row" : ""}
-                                                                    onClick={(e) => handlePointClick(e, tp.id)} // UPDATED
-                                                                    style={{
-                                                                        cursor: 'pointer'
-                                                                    }}
-                                                                >
-                                                                    <td className={`cell-section ${hoveredCell.tableId === 'points' && hoveredCell.colIndex === 0 ? 'col-hovered' : ''}`} onMouseEnter={() => setHoveredCell({ tableId: 'points', colIndex: 0 })}>{tp.section || '-'}</td>
-                                                                    <td className={`cell-value ${hoveredCell.tableId === 'points' && hoveredCell.colIndex === 1 ? 'col-hovered' : ''}`} onMouseEnter={() => setHoveredCell({ tableId: 'points', colIndex: 1 })}>{param.value}</td>
-                                                                    <td className={`cell-unit ${hoveredCell.tableId === 'points' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`} onMouseEnter={() => setHoveredCell({ tableId: 'points', colIndex: 2 })}>{param.unit}</td>
-                                                                    <td className={`cell-tolerance ${hoveredCell.tableId === 'points' && hoveredCell.colIndex === 3 ? 'col-hovered' : ''}`} onMouseEnter={() => setHoveredCell({ tableId: 'points', colIndex: 3 })}>{display}</td>
-                                                                    <td className={`cell-limit ${hoveredCell.tableId === 'points' && hoveredCell.colIndex === 4 ? 'col-hovered' : ''}`} onMouseEnter={() => setHoveredCell({ tableId: 'points', colIndex: 4 })}>{limits.low} → {limits.high}</td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </React.Fragment>
-                                                )
-                                            })}
-                                        </>
-                                    );
-                                })()}
+                                {filteredPoints.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} style={{ textAlign: 'center', padding: '12px', color: 'var(--text-color-muted)', fontSize: '0.85rem', fontStyle: 'italic', borderTop: '1px solid var(--border-color)' }}>
+                                            Full point list available in sidebar
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
