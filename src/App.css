@@ -1277,29 +1277,261 @@ body.theme-cyberpunk .button {
 }
 
 /* Sidebar Column Toggle Button Enhancement */
-.sidebar-column-toggle {
+/* --- Sidebar Toolbar (Filter + Quick Add) --- */
+.sidebar-toolbar {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  gap: 8px;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
-  border: 1px solid var(--border-color);
-  background: var(--input-background);
+  border: none;
+  background: transparent;
   color: var(--text-color-muted);
   font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-filter-btn:hover,
+.sidebar-filter-btn.active {
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary-color);
+}
+
+/* Filter Dropdown */
+.sidebar-filter-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  background: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 6px;
+  z-index: 3000;
+  min-width: 130px;
+  animation: filterDropdownIn 0.12s ease-out;
+}
+
+@keyframes filterDropdownIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-color);
+  border-radius: 4px;
+  transition: background-color 0.1s ease;
+}
+
+.filter-option:hover {
+  background: var(--primary-color-light);
+}
+
+.filter-option input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary-color);
+  margin: 0;
+  cursor: pointer;
+}
+
+/* --- Sidebar Quick Add (Inline) --- */
+.sidebar-quick-add {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-quick-add .quick-add-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--input-background);
+  color: var(--text-color);
+  font-size: 0.75rem;
+  transition: all 0.15s ease;
+}
+
+.sidebar-quick-add .quick-add-input.unit {
+  flex: 0 0 50px;
+  text-align: center;
+}
+
+.sidebar-quick-add .quick-add-input.section {
+  flex: 0 0 60px;
+}
+
+.sidebar-quick-add .quick-add-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
+.sidebar-quick-add .quick-add-input::placeholder {
+  color: var(--text-color-muted);
+  font-size: 0.7rem;
+}
+
+.sidebar-quick-add .quick-add-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: var(--primary-color);
+  color: white;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-quick-add .quick-add-submit:hover:not(:disabled) {
+  background: var(--primary-color-dark);
+  transform: translateY(-1px);
+}
+
+.sidebar-quick-add .quick-add-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --- Point Items Horizontal Scroll Wrapper (Future-Proofing) --- */
+.sidebar-points-scroll-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+.sidebar-points-scroll-wrapper::-webkit-scrollbar {
+  height: 4px;
+}
+
+.sidebar-points-scroll-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-points-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 2px;
+}
+
+/* Ensure point grid items don't shrink */
+.point-grid-item {
+  min-width: fit-content;
+}
+
+/* =================================================================== */
+/* QUICK ADD CARD (Clean & Simple)                                     */
+/* =================================================================== */
+
+.quick-add-card {
+  background: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.15s ease;
+}
+
+.quick-add-card:hover {
+  border-color: rgba(var(--primary-rgb), 0.3);
+}
+
+.quick-add-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(var(--primary-rgb), 0.04);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--primary-color);
+}
+
+.quick-add-body {
+  padding: 12px;
+}
+
+/* Quick Add Form Row Styling */
+.quick-add-body tr {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.quick-add-body td {
+  flex: 1;
+  min-width: 100px;
+  padding: 0 !important;
+  border: none !important;
+}
+
+.quick-add-body input,
+.quick-add-body select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--input-background);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.quick-add-body input:focus,
+.quick-add-body select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+}
+
+.quick-add-body input::placeholder {
+  color: var(--text-color-muted);
+  font-style: italic;
+}
+
+.quick-add-body .btn-icon-only {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.sidebar-column-toggle:hover,
-.sidebar-column-toggle.active {
-  background: var(--primary-color-light);
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.sidebar-column-toggle svg {
-  font-size: 0.8rem;
+.quick-add-body .btn-icon-only:hover {
+  background: var(--primary-color-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
 }
 
 .sidebar-header {

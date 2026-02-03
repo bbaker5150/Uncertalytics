@@ -669,6 +669,10 @@ function Analysis({
             selectedTablePointIds={selectedTablePointIds}
             setSelectedTablePointIds={setSelectedTablePointIds}
 
+            // --- Global UUT Selection for Sidebar Quick Add ---
+            currentUutSelection={currentUutSelection}
+            setCurrentUutSelection={setCurrentUutSelection}
+
             // Passing empty/null props for detailed view specifics to avoid proptype warnings
             calcResults={null}
             calculationError={null}

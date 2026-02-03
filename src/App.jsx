@@ -48,7 +48,9 @@ import {
   faClipboardList,
   faCopy,
   faPaste,
-  faCheckCircle
+  faCheckCircle,
+  faFilter,
+  faSlidersH
 } from "@fortawesome/free-solid-svg-icons";
 
 import ThemeContext from './context/ThemeContext';
@@ -396,6 +398,11 @@ function App() {
   });
   const [isColumnMenuOpen, setIsColumnMenuOpen] = useState(false);
   const columnMenuRef = useRef(null);
+  
+  // --- QUICK ADD STATE (Sidebar) ---
+  const [quickAddSection, setQuickAddSection] = useState("");
+  const [quickAddValue, setQuickAddValue] = useState("");
+  const [quickAddUnit, setQuickAddUnit] = useState("");
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -1080,6 +1087,57 @@ function App() {
     saveTestPoint(updatedPoint, null);
   };
 
+  // --- Quick Add handler for sidebar toolbar ---
+  const handleQuickAddPoint = () => {
+    if (!quickAddValue || !quickAddUnit) return;
+    
+    // Determine which UUTs to add the point to
+    // Priority: 1) selectedUutId (UUT view) 2) currentUutSelection (Session/Area view)
+    const targetUutIds = selectedUutId 
+      ? [selectedUutId] 
+      : currentUutSelection.length > 0 
+        ? currentUutSelection 
+        : [];
+    
+    if (targetUutIds.length === 0) return;
+    
+    // Get measurement area from first UUT or selected area
+    const firstUut = currentSessionData?.uuts?.find(u => u.id === targetUutIds[0]);
+    const areaId = firstUut?.measurementAreaId || selectedAreaId;
+    
+    // Helper to create point with resolved tolerance
+    const createPointForUut = (uutId) => {
+      const uut = currentSessionData?.uuts?.find(u => u.id === uutId);
+      // Resolve tolerance from UUT instrument definition
+      const resolvedTolerance = uut ? findMatchingRange(uut, quickAddValue, quickAddUnit) : null;
+      
+      return {
+        section: quickAddSection,
+        measurementType: "direct",
+        testPointInfo: {
+          parameter: { name: "Measurement", value: quickAddValue, unit: quickAddUnit }
+        },
+        associatedUutIds: [uutId],
+        measurementAreaId: uut?.measurementAreaId || areaId,
+        uutTolerance: resolvedTolerance
+      };
+    };
+    
+    if (targetUutIds.length === 1) {
+      // Single UUT - create one point
+      saveTestPoint(createPointForUut(targetUutIds[0]), null);
+    } else {
+      // Multiple UUTs - create a point for each with resolved tolerance
+      const batchPoints = targetUutIds.map(createPointForUut);
+      saveTestPoint(batchPoints, null);
+    }
+    
+    setQuickAddSection("");
+    setQuickAddValue("");
+    setQuickAddUnit("");
+    showToast(`Point${targetUutIds.length > 1 ? 's' : ''} added to ${targetUutIds.length} UUT${targetUutIds.length > 1 ? 's' : ''}`);
+  };
+
   const handleAnalysisDataSave = (updates) => {
     if (selectedTestPointId) {
       updateTestPointData(updates);
@@ -1428,57 +1486,6 @@ function App() {
                   </select>
                 </div>
                 <div className="sidebar-view-controls">
-                  <div style={{ position: 'relative' }} ref={columnMenuRef}>
-                    <button 
-                        onClick={() => setIsColumnMenuOpen(!isColumnMenuOpen)} 
-                        title="Customize Visible Columns" 
-                        className={`sidebar-column-toggle ${isColumnMenuOpen ? 'active' : ''}`}
-                    >
-                        <FontAwesomeIcon icon={faRulerCombined} />
-                        <span>Columns</span>
-                    </button>
-                    {isColumnMenuOpen && (
-                        <div className="context-menu" style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, width: '200px', zIndex: 3000 }}>
-                            <div className="context-menu-header">Show/Hide Columns</div>
-                            <div 
-                                className={`context-menu-item ${sidebarColumns.section ? 'checked' : ''}`}
-                                onClick={() => setSidebarColumns(prev => ({ ...prev, section: !prev.section }))}
-                            >
-                                <span style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                                    {sidebarColumns.section && <FontAwesomeIcon icon={faCheckCircle} size="sm" style={{ color: 'var(--status-good)' }} />}
-                                </span>
-                                <span>Section</span>
-                            </div>
-                            <div 
-                                className={`context-menu-item ${sidebarColumns.value ? 'checked' : ''}`}
-                                onClick={() => setSidebarColumns(prev => ({ ...prev, value: !prev.value }))}
-                            >
-                                <span style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                                    {sidebarColumns.value && <FontAwesomeIcon icon={faCheckCircle} size="sm" style={{ color: 'var(--status-good)' }} />}
-                                </span>
-                                <span>Value</span>
-                            </div>
-                            <div 
-                                className={`context-menu-item ${sidebarColumns.tolerance ? 'checked' : ''}`}
-                                onClick={() => setSidebarColumns(prev => ({ ...prev, tolerance: !prev.tolerance }))}
-                            >
-                                <span style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                                    {sidebarColumns.tolerance && <FontAwesomeIcon icon={faCheckCircle} size="sm" style={{ color: 'var(--status-good)' }} />}
-                                </span>
-                                <span>Tolerance</span>
-                            </div>
-                            <div 
-                                className={`context-menu-item ${sidebarColumns.limits ? 'checked' : ''}`}
-                                onClick={() => setSidebarColumns(prev => ({ ...prev, limits: !prev.limits }))}
-                            >
-                                <span style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                                    {sidebarColumns.limits && <FontAwesomeIcon icon={faCheckCircle} size="sm" style={{ color: 'var(--status-good)' }} />}
-                                </span>
-                                <span>Limits</span>
-                            </div>
-                        </div>
-                    )}
-                  </div>
                   <button onClick={handleAddNewSession} title="Add New Session" className="sidebar-action-button"><FontAwesomeIcon icon={faPlus} /></button>
                   <button onClick={() => handleOpenSessionEditor("details")} title="Edit Session" className="sidebar-action-button"><FontAwesomeIcon icon={faEdit} /></button>
                   <button onClick={() => handleDeleteSession(selectedSessionId)} title="Delete Session" className="sidebar-action-button delete"><FontAwesomeIcon icon={faTrashAlt} /></button>
@@ -1517,6 +1524,75 @@ function App() {
                       </div>
                     )}
                     <span className="session-card-subtitle">{currentTestPoints.length} Points Total</span>
+                  </div>
+                </div>
+
+                {/* Sidebar Toolbar: Filter + Quick Add */}
+                <div className="sidebar-toolbar" ref={columnMenuRef}>
+                  {/* Filter Button */}
+                  <button 
+                      onClick={() => setIsColumnMenuOpen(!isColumnMenuOpen)} 
+                      title="Filter visible columns" 
+                      className={`sidebar-filter-btn ${isColumnMenuOpen ? 'active' : ''}`}
+                  >
+                      <FontAwesomeIcon icon={faSlidersH} />
+                  </button>
+                  {isColumnMenuOpen && (
+                      <div className="sidebar-filter-dropdown">
+                          {[
+                            { key: 'section', label: 'Section' },
+                            { key: 'value', label: 'Value' },
+                            { key: 'tolerance', label: 'Tolerance' },
+                            { key: 'limits', label: 'Limits' }
+                          ].map(col => (
+                            <label key={col.key} className="filter-option">
+                              <input 
+                                type="checkbox" 
+                                checked={sidebarColumns[col.key]} 
+                                onChange={() => setSidebarColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
+                              />
+                              <span>{col.label}</span>
+                            </label>
+                          ))}
+                      </div>
+                  )}
+
+                  {/* Quick Add Inline Form */}
+                  <div className="sidebar-quick-add">
+                    <input 
+                      type="text"
+                      placeholder="Section"
+                      value={quickAddSection}
+                      onChange={(e) => setQuickAddSection(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleQuickAddPoint()}
+                      className="quick-add-input section"
+                    />
+                    <input 
+                      type="text"
+                      placeholder="Value"
+                      value={quickAddValue}
+                      onChange={(e) => setQuickAddValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleQuickAddPoint()}
+                      className="quick-add-input"
+                    />
+                    <input 
+                      type="text"
+                      placeholder="Unit"
+                      value={quickAddUnit}
+                      onChange={(e) => setQuickAddUnit(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleQuickAddPoint()}
+                      className="quick-add-input unit"
+                    />
+                    <button 
+                      onClick={handleQuickAddPoint}
+                      disabled={!quickAddValue || !quickAddUnit || (!selectedUutId && currentUutSelection.length === 0)}
+                      className="quick-add-submit"
+                      title={(!selectedUutId && currentUutSelection.length === 0) 
+                        ? "Select UUT(s) from panel first" 
+                        : `Add point to ${selectedUutId ? '1' : currentUutSelection.length} UUT${!selectedUutId && currentUutSelection.length > 1 ? 's' : ''} (Enter)`}
+                    >
+                      <FontAwesomeIcon icon={faPlus} />
+                    </button>
                   </div>
                 </div>
 
@@ -1652,53 +1728,56 @@ function App() {
                                               <div className="empty-branch-msg"></div>
                                             ) : (
                                               <>
-                                                {/* Column Headers - Using CSS class */}
-                                                <div 
-                                                  className="sidebar-column-headers"
-                                                  style={{
-                                                    gridTemplateColumns: (() => {
-                                                          const parts = [];
-                                                          if (sidebarColumns.section) parts.push('50px');
-                                                          if (sidebarColumns.value) parts.push('80px');
-                                                          if (sidebarColumns.tolerance) parts.push('minmax(70px, 1fr)');
-                                                          if (sidebarColumns.limits) parts.push('minmax(80px, 1.5fr)');
-                                                          if (parts.length === 0) return '1fr';
-                                                          return parts.join(' ');
-                                                    })(),
-                                                  }}
-                                                >
-                                                  {sidebarColumns.section && <span>Sect.</span>}
-                                                  {sidebarColumns.value && <span>Value</span>}
-                                                  {sidebarColumns.tolerance && <span>Tolerance</span>}
-                                                  {sidebarColumns.limits && <span>Limits</span>}
+                                                {/* Horizontal scroll wrapper for future column expansion */}
+                                                <div className="sidebar-points-scroll-wrapper">
+                                                  {/* Column Headers - Using CSS class */}
+                                                  <div 
+                                                    className="sidebar-column-headers"
+                                                    style={{
+                                                      gridTemplateColumns: (() => {
+                                                            const parts = [];
+                                                            if (sidebarColumns.section) parts.push('50px');
+                                                            if (sidebarColumns.value) parts.push('80px');
+                                                            if (sidebarColumns.tolerance) parts.push('minmax(70px, 1fr)');
+                                                            if (sidebarColumns.limits) parts.push('minmax(80px, 1.5fr)');
+                                                            if (parts.length === 0) return '1fr';
+                                                            return parts.join(' ');
+                                                      })(),
+                                                    }}
+                                                  >
+                                                    {sidebarColumns.section && <span>Sect.</span>}
+                                                    {sidebarColumns.value && <span>Value</span>}
+                                                    {sidebarColumns.tolerance && <span>Tolerance</span>}
+                                                    {sidebarColumns.limits && <span>Limits</span>}
+                                                  </div>
+                                                  {range.points.map(tp => {
+                                                    const isSelected = selectedTestPointId === tp.id;
+                                                    return (
+                                                      <SidebarPointItem
+                                                        key={tp.id}
+                                                        point={tp}
+                                                        isSelected={isSelected}
+                                                        isTableSelected={selectedTablePointIds.includes(tp.id)}
+                                                        visibleColumns={sidebarColumns}
+                                                        onSelect={() => handleSelectTestPoint(tp.id, group.id)}
+                                                        onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
+                                                        onSave={handleInlinePointUpdate}
+                                                        onDragStart={handleDragStart}
+                                                        onContextMenu={(e, p) => {
+                                                          e.preventDefault();
+                                                          e.stopPropagation();
+                                                          setContextMenu({
+                                                            x: e.pageX, y: e.pageY,
+                                                            items: [
+                                                              { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                                              { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                                            ],
+                                                          });
+                                                        }}
+                                                      />
+                                                    );
+                                                  })}
                                                 </div>
-                                                {range.points.map(tp => {
-                                                  const isSelected = selectedTestPointId === tp.id;
-                                                  return (
-                                                    <SidebarPointItem
-                                                      key={tp.id}
-                                                      point={tp}
-                                                      isSelected={isSelected}
-                                                      isTableSelected={selectedTablePointIds.includes(tp.id)}
-                                                      visibleColumns={sidebarColumns}
-                                                      onSelect={() => handleSelectTestPoint(tp.id, group.id)}
-                                                      onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
-                                                      onSave={handleInlinePointUpdate}
-                                                      onDragStart={handleDragStart}
-                                                      onContextMenu={(e, p) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        setContextMenu({
-                                                          x: e.pageX, y: e.pageY,
-                                                          items: [
-                                                            { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
-                                                            { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
-                                                          ],
-                                                        });
-                                                      }}
-                                                    />
-                                                  );
-                                                })}
                                               </>
                                             )}
                                           </div>

@@ -659,11 +659,16 @@ const SummaryDashboard = ({
     onDeleteTmdeDefinition,
     onEditUut,
     onAddTmde,
-    onEditTmde
+    onEditTmde,
+    // Global UUT Selection (synced with sidebar Quick Add)
+    currentUutSelection = [],
+    setCurrentUutSelection
 }) => {
 
     // --- SELECTION STATE ---
-    const [selectedUutIds, setSelectedUutIds] = useState([]);
+    // Use global UUT selection for sync with sidebar Quick Add
+    const selectedUutIds = currentUutSelection || [];
+    const setSelectedUutIds = setCurrentUutSelection || (() => {});
     const [selectedTmdeIds, setSelectedTmdeIds] = useState([]);
 
     const [localRangeIndices, setLocalRangeIndices] = useState({});
@@ -977,50 +982,6 @@ const SummaryDashboard = ({
 
                 </div>
 
-                {/* MEASUREMENT POINTS TABLE */}
-                <div style={cardStyle}>
-                    <div style={headerStyle}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <FontAwesomeIcon icon={faCube} />
-                            <span>Quick Add Measurement</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {/* Actions minimized */}
-                        </div>
-                    </div>
-                    <div className="panel-table-container" tabIndex="0">
-                        <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => setHoveredCell({ tableId: null, colIndex: null })} style={{ margin: 0, border: 'none', boxShadow: 'none' }}>
-                            <tbody>
-                                <tr style={{ backgroundColor: 'rgba(var(--primary-rgb), 0.05)', borderBottom: '1px solid var(--border-color)' }}>
-                                    <td colSpan={5} style={{ padding: '6px 12px', fontWeight: 600, color: 'var(--primary-color)', fontSize: '0.8rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                                        <FontAwesomeIcon icon={faPlus} style={{ marginRight: '8px' }} />
-                                        Add New Measurement Point
-                                    </td>
-                                </tr>
-                                <QuickAddRow
-                                    selectedUuts={sessionData.uuts.filter(u => selectedUutIds.includes(u.id))}
-                                    localRangeIndices={localRangeIndices}
-                                    resolveRangeHelper={resolveRangeWrapper}
-                                    onSave={onSaveTestPoint}
-                                    showAreaColumn={false}
-                                    sessionData={sessionData}
-                                    viewMode={viewMode}
-                                    rangeData={rangeData}
-                                    contextId={uutId}
-                                    hoveredCell={hoveredCell}
-                                    setHoveredCell={setHoveredCell}
-                                />
-                                {filteredPoints.length > 0 && (
-                                    <tr>
-                                        <td colSpan={5} style={{ textAlign: 'center', padding: '12px', color: 'var(--text-color-muted)', fontSize: '0.85rem', fontStyle: 'italic', borderTop: '1px solid var(--border-color)' }}>
-                                            View and manage all {filteredPoints.length} points in the sidebar
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
 
             {/* FULL WIDTH TMDE TABLE */}
@@ -2388,6 +2349,10 @@ const UncertaintyPanel = (props) => {
                 onEditSession={props.handleOpenSessionEditor}
                 selectedPointIds={props.selectedTablePointIds || []}
                 setSelectedPointIds={props.setSelectedTablePointIds || (() => { })}
+
+                // Global UUT Selection for Sidebar Quick Add
+                currentUutSelection={props.currentUutSelection}
+                setCurrentUutSelection={props.setCurrentUutSelection}
 
                 // Navigation Handlers
                 onSelectUut={props.onSelectUut}
