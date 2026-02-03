@@ -695,13 +695,39 @@ function App() {
     setUutsShowingAllRanges(newSet);
   };
 
-  const handleAddNewTestPoint = (areaId = null, specificUutId = null, specificRange = null) => {
+  const handleAddNewTestPoint = (arg1 = null, arg2 = null, arg3 = null) => {
+    let areaId = null;
+    let uutIds = [];
+    let specificRange = null;
+
+    // Detect Source: Analysis Dashboard passes ([ids], rangeObj)
+    if (Array.isArray(arg1)) {
+      uutIds = arg1;
+      specificRange = arg2;
+      
+      // Attempt to resolve Area ID from the first UUT
+      if (uutIds.length > 0) {
+        const uut = currentSessionData?.uuts?.find(u => u.id === uutIds[0]);
+        if (uut) areaId = uut.measurementAreaId;
+      } else {
+        areaId = selectedAreaId;
+      }
+    } 
+    // Detect Source: Sidebar passes (areaId, uutId, rangeObj?)
+    else {
+      areaId = arg1;
+      const specificUutId = arg2;
+      specificRange = arg3;
+      if (specificUutId) uutIds = [specificUutId];
+    }
+
+    // Logic to build Initial Data
     let initialData = {};
 
-    if (specificUutId && specificRange) {
+    if (uutIds.length > 0 && specificRange) {
       initialData = {
         measurementAreaId: areaId,
-        associatedUutIds: [specificUutId],
+        associatedUutIds: uutIds,
         uutTolerance: specificRange,
         testPointInfo: {
           parameter: {
@@ -710,34 +736,38 @@ function App() {
           }
         }
       };
-      setSelectedTestPointContextUutId(specificUutId);
-      setActiveRangeIndices(prev => ({ ...prev, [specificUutId]: specificRange._id || 0 }));
+      // Ensure context is set so it opens in the right folder visually
+      setSelectedTestPointContextUutId(uutIds[0]);
+      if(specificRange._id !== undefined) {
+         setActiveRangeIndices(prev => ({ ...prev, [uutIds[0]]: specificRange._id }));
+      }
     }
-    else if (specificUutId) {
+    else if (uutIds.length > 0) {
       initialData = {
         measurementAreaId: areaId,
-        associatedUutIds: [specificUutId],
+        associatedUutIds: uutIds,
       };
-      setSelectedTestPointContextUutId(specificUutId);
+      setSelectedTestPointContextUutId(uutIds[0]);
     }
     else if (currentUutSelection.length > 0) {
-      initialData = {
+       // Fallback to global selection if no args passed (e.g. main add button)
+       initialData = {
         measurementAreaId: areaId || selectedAreaId,
         associatedUutIds: currentUutSelection,
       };
-
+      
       const primaryUutId = currentUutSelection[0];
       const primaryUut = currentSessionData?.uuts?.find(u => u.id === primaryUutId);
-
+      
       if (primaryUut && currentUutSelection.length === 1) {
-        const availableRanges = getAllUutRanges(primaryUut);
-        const selectedIndex = activeRangeIndices[primaryUutId];
-
-        if (selectedIndex !== undefined && availableRanges[selectedIndex]) {
-          initialData.uutTolerance = availableRanges[selectedIndex];
-        } else if (availableRanges.length > 0) {
-          initialData.uutTolerance = availableRanges[0];
-        }
+         const availableRanges = getAllUutRanges(primaryUut);
+         const selectedIndex = activeRangeIndices[primaryUutId];
+         
+         if (selectedIndex !== undefined && availableRanges[selectedIndex]) {
+             initialData.uutTolerance = availableRanges[selectedIndex];
+         } else if (availableRanges.length > 0) {
+             initialData.uutTolerance = availableRanges[0];
+         }
       }
     }
     else {
@@ -1607,6 +1637,7 @@ function App() {
                     setSelectedTablePointIds={setSelectedTablePointIds}
                     onSelectUut={handleSelectUut}
                     onSelectTestPoint={handleSelectTestPoint}
+                    onDefineTestPoint={handleAddNewTestPoint}
                   />
                 </TestPointDetailView>
               ) : (
