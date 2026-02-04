@@ -87,8 +87,6 @@ export const useUncertaintyCalculation = (
       const derivedNominalUnit = uutNominal.unit;
       const targetUnitInfo = unitSystem.units[derivedNominalUnit];
 
-      const derivedQuantityName = uutNominal.name || "Derived";
-
       if (!targetUnitInfo || isNaN(targetUnitInfo.to_si)) {
         throw new Error(
           `Derived unit '${derivedNominalUnit}' is not valid or has no SI conversion.`
@@ -96,7 +94,38 @@ export const useUncertaintyCalculation = (
       }
 
       if (testPointData.measurementType === "derived") {
-        // --- UPDATED LOGIC START ---
+        
+        // --- FIX START: PRE-CALCULATION GUARD ---
+        // Check for mapped TMDEs with empty/invalid values to prevent Math Engine crash.
+        const activeMappedVars = Object.values(testPointData.variableMappings || {}).filter(v => v);
+        const mappedTmdes = tmdeTolerancesData.filter(t => 
+            t.variableType && activeMappedVars.includes(t.variableType)
+        );
+
+        const hasInvalidValues = mappedTmdes.some(t => {
+            const val = t.measurementPoint?.value;
+            // Allow 0, but reject "" (empty string), null, undefined, or non-numeric strings
+            return val === "" || val === null || val === undefined || isNaN(parseFloat(val));
+        });
+
+        if (hasInvalidValues) {
+             setCalcResults(null);
+             // Return silently. This is a "User is typing" state, not a system error.
+             if (testPointData.is_detailed_uncertainty_calculated) {
+                onDataSave({
+                    combined_uncertainty: null,
+                    effective_dof: null,
+                    k_value: null,
+                    expanded_uncertainty: null,
+                    is_detailed_uncertainty_calculated: false,
+                    calculatedBudgetComponents: [],
+                    calculatedNominalValue: null,
+                });
+             }
+             return; 
+        }
+        // --- FIX END ---
+
         const derivedCalculationResult = calculateDerivedUncertainty(
           testPointData.equationString,
           testPointData.variableMappings,
@@ -241,7 +270,6 @@ export const useUncertaintyCalculation = (
         effectiveDof = Infinity;
       } else {
         // --- DIRECT MEASUREMENT LOGIC ---
-        // NOTE: Resolution calculation removed. It must be added manually.
         
         let totalVariancePPM = 0;
 

@@ -238,7 +238,6 @@ function Analysis({
   };
 
   const handleSaveTmde = (tmdeToSave) => {
-    // 1. Update Session Data (Global Inventory)
     if (onSessionSave) {
         const currentTmdes = sessionData.tmdes || [];
         const existingSessionIndex = currentTmdes.findIndex(t => t.id === tmdeToSave.id);
@@ -256,15 +255,11 @@ function Analysis({
         });
     }
 
-    // 2. Update Local Test Point Data (Budget)
     const updatedTolerances = tmdeTolerancesData.map((t) => {
-        // Check if this active instance is the one being edited
         if (t.id === tmdeToSave.id || t.sourceId === tmdeToSave.id) {
             
-            // A. Identify the New Instrument Definition
             const newInstDef = tmdeToSave.instrument || tmdeToSave;
             
-            // B. Resolve the Correct Function and Range
             let newRanges = [];
             let funcName = t.functionName; 
             let func = null;
@@ -283,7 +278,6 @@ function Analysis({
                  funcName = ""; 
             }
             
-            // C. Resolve the Active Index
             let activeIndex = (t._index !== undefined) ? t._index : 0;
             if (!newRanges[activeIndex]) {
                 activeIndex = 0;
@@ -291,34 +285,26 @@ function Analysis({
             
             const newActiveRange = newRanges[activeIndex] || {};
             
-            // D. PREPARE FLATTENED SPECS (The Fix)
-            // We must flatten 'tolerances' to the top level because the UI components 
-            // (UncertaintyPanel / getToleranceSummary) expect keys like 'reading', 'floor' 
-            // to be direct properties of the object, not nested.
             const flattenedSpecs = {
                 ...newActiveRange,
                 ...(newActiveRange.tolerances || newActiveRange.tolerance || {})
             };
 
-            // E. Clean old spec keys to prevent stale data
-            // We strip all potential tolerance keys from the OLD instance before merging the new ones
             const { 
                 reading, floor, range, tolerance, tolerances, min, max, unit, resolution,
                 ...safeInstanceMeta 
             } = t;
 
-            // F. Construct Updated Instance
             return { 
-                ...safeInstanceMeta,       // Keeps ID, measurementPoint, quantity, variableType
-                ...tmdeToSave,             // Updates top-level meta (Name, Asset ID)
-                ...flattenedSpecs,         // Applies NEW Flattened Specs
+                ...safeInstanceMeta,       
+                ...tmdeToSave,             
+                ...flattenedSpecs,         
                 
-                // Explicit Overrides
                 id: t.id,                  
                 sourceId: tmdeToSave.id,   
                 functionName: funcName,    
                 _index: activeIndex,       
-                measurementPoint: t.measurementPoint 
+                measurementPoint: tmdeToSave.measurementPoint || t.measurementPoint
             };
         }
         return t;
@@ -376,11 +362,13 @@ function Analysis({
         const resetTmdes = selectedTmdes.map(t => ({
           ...t,
           id: Date.now() + Math.random(), 
+          name: t.name || t.description || "Unnamed Device", 
           measurementPoint: {
             ...t.measurementPoint,
             value: "" 
           }
         }));
+
         finalData.tmdeTolerances = resetTmdes;
         finalData.copyTmdes = false; 
       } else if (!finalData.id && selectedTmdeIds.length === 0) {
@@ -394,7 +382,6 @@ function Analysis({
     setTestPointModalOpen(false);
     if (setCurrentUutSelection) setCurrentUutSelection([]);
   };
-
   const handleSaveManualComponent = (componentData) => {
     let updatedComponents;
     if (editingComponent) {
@@ -526,26 +513,38 @@ function Analysis({
     }
   };
 
-  const handleInlineTmdeUpdate = (id, field, value) => {
+ const handleInlineTmdeUpdate = (id, field, value) => {
     const tmdeToUpdate = tmdeTolerancesData.find(t => t.id === id);
     if (!tmdeToUpdate) return;
 
+    // Create a shallow copy of the TMDE
     const newTmde = { ...tmdeToUpdate };
+    
+    // CRITICAL FIX: Ensure measurementPoint structure exists.
+    // If it's missing, default to empty strings so we don't crash when accessing properties.
+    const currentMP = newTmde.measurementPoint || { value: '', unit: '' };
+
     if (field === 'name') {
       newTmde.name = value;
     } else if (field === 'nominal') {
+      // CRITICAL FIX: Do NOT use parseFloat() here. 
+      // 1. Passing raw strings allows users to type decimals (e.g., "0.") without it snapping to "0".
+      // 2. Empty strings "" are preserved, preventing NaN errors in the math engine.
       newTmde.measurementPoint = {
-        ...newTmde.measurementPoint,
-        value: parseFloat(value)
+        ...currentMP,
+        value: value 
       };
     } else if (field === 'variableType') {
       newTmde.variableType = value;
     } else if (field === 'unit') {
+      // CRITICAL FIX: Update unit while preserving the existing value
       newTmde.measurementPoint = {
-        ...newTmde.measurementPoint,
+        ...currentMP,
         unit: value
       };
     }
+
+    // Save the changes
     handleSaveTmde(newTmde);
   };
 

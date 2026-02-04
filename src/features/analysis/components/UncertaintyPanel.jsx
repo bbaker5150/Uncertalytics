@@ -2,6 +2,7 @@
  * src/features/analysis/components/UncertaintyPanel.jsx
  */
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import Select from 'react-select';
 import * as math from 'mathjs';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -407,12 +408,47 @@ const calculateToleranceMetrics = (activeTolerance, nominalObj) => {
 // --- RE-INSERTED EDITABLE CELL COMPONENT ---
 const EditableCell = ({ value, onSave, type = "text", suffix = "", style = {}, placeholder = "", className = "" }) => {
     const [isEditing, setIsEditing] = useState(false);
-    const [currentValue, setCurrentValue] = useState(value);
-    useEffect(() => { setCurrentValue(value); }, [value]);
-    const handleBlur = () => { setIsEditing(false); const cleanVal = typeof currentValue === 'string' ? currentValue.trim() : currentValue; if (cleanVal != value) { onSave(cleanVal); } };
+    
+    // FIX: Default to "" if value is null/undefined
+    const [currentValue, setCurrentValue] = useState(value ?? ""); 
+    
+    // FIX: Update effect to also handle null/undefined
+    useEffect(() => { setCurrentValue(value ?? ""); }, [value]);
+
+    const handleBlur = () => { 
+        setIsEditing(false); 
+        const cleanVal = typeof currentValue === 'string' ? currentValue.trim() : currentValue; 
+        if (cleanVal != value) { onSave(cleanVal); } 
+    };
+    
     const handleKeyDown = (e) => { if (e.key === 'Enter') { handleBlur(); } };
-    if (isEditing) { return (<input autoFocus type={type} value={currentValue} onChange={(e) => setCurrentValue(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown} placeholder={placeholder} className={className} style={{ width: '100%', padding: '4px', boxSizing: 'border-box', ...style }} />) }
-    return (<div onClick={() => setIsEditing(true)} style={{ cursor: 'text', minHeight: '20px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '2px', color: !value && placeholder ? 'var(--text-color-muted)' : 'inherit', ...style }} className={`editable-cell-display ${className}`} title="Click to edit" > {value || placeholder} {suffix} </div>)
+    
+    if (isEditing) { 
+        return (
+            <input 
+                autoFocus 
+                type={type} 
+                // FIX: Ensure value is never undefined in the input tag
+                value={currentValue ?? ""} 
+                onChange={(e) => setCurrentValue(e.target.value)} 
+                onBlur={handleBlur} 
+                onKeyDown={handleKeyDown} 
+                placeholder={placeholder} 
+                className={className} 
+                style={{ width: '100%', padding: '4px', boxSizing: 'border-box', ...style }} 
+            />
+        ) 
+    }
+    return (
+        <div 
+            onClick={() => setIsEditing(true)} 
+            style={{ cursor: 'text', minHeight: '20px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '2px', color: !value && placeholder ? 'var(--text-color-muted)' : 'inherit', ...style }} 
+            className={`editable-cell-display ${className}`} 
+            title="Click to edit" 
+        > 
+            {value || placeholder} {suffix} 
+        </div>
+    )
 };
 
 // ---  Inline Quick Add Row Component ---
@@ -1410,7 +1446,12 @@ function DetailedView({
 
         const isActive = tmdeTolerancesData.some(t => t.id === realTmdeId);
         if (!isActive) {
-            const newTolerance = { ...targetTmde, variableType: varName, quantity: 1 };
+            const newTolerance = { 
+                ...targetTmde, 
+                variableType: varName, 
+                quantity: 1,
+                measurementPoint: targetTmde.measurementPoint || { value: '', unit: '' } 
+            };
             const newTolerances = [...tmdeTolerancesData, newTolerance];
             onUpdateTestPoint({ tmdeTolerances: newTolerances });
         } else if (onInlineTmdeUpdate) {
@@ -1483,7 +1524,8 @@ function DetailedView({
                 isAssigned: !!assignedTmde,
                 value: assignedTmde?.measurementPoint?.value,
                 unit: assignedTmde?.measurementPoint?.unit,
-                instrumentName: assignedTmde?.name,
+                // --- FIX: Add fallback for name to prevent crash ---
+                instrumentName: assignedTmde?.name || "Unknown Device", 
                 tmdeId: assignedTmde?.id
             };
         });
@@ -1494,8 +1536,7 @@ function DetailedView({
         };
     }, [isDerived, testPointData, tmdeTolerancesData]);
 
-    const mainGridStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', width: '100%', alignItems: 'start', marginBottom: '30px' };
-    const verticalColumnStyle = { minWidth: 0, display: 'flex', flexDirection: 'column', gap: '20px' };
+
     const cardStyle = { backgroundColor: 'var(--content-background)', border: '1px solid var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', width: '100%' };
     const headerStyle = { padding: '12px 16px', backgroundColor: 'var(--background-secondary)', borderBottom: '1px solid var(--border-color)', fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' };
     const sectionTitleStyle = { margin: '0 0 10px 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)', textTransform: 'uppercase', letterSpacing: '0.5px' };
@@ -1566,297 +1607,285 @@ function DetailedView({
     return (
         <div className="configuration-panel">
 
-            <div style={mainGridStyle}>
-
-                {/* --- LEFT COLUMN: UUT & TMDEs --- */}
-                <div style={verticalColumnStyle}>
-
-                    {/* 1. UUT INFORMATION */}
-                    <div style={cardStyle}>
-                        <div style={headerStyle}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <FontAwesomeIcon icon={faMicroscope} />
-                                <span>Unit Under Test</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {selectedUutIds.length > 0 && (
-                                    <button
-                                        className="btn-icon-only delete"
-                                        style={{ color: 'var(--status-bad)', width: '24px', height: '24px', borderRadius: '4px', opacity: 1, border: '1px solid rgba(255,82,82,0.3)', marginRight: '8px' }}
-                                        onClick={handleDeleteSelectedUuts}
-                                        title={`Delete ${selectedUutIds.length} Selected UUTs`}
-                                    >
-                                        <FontAwesomeIcon icon={faTrashAlt} size="xs" />
-                                    </button>
-                                )}
-                                <button
-                                    className="btn-icon-only"
-                                    style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
-                                    onClick={() => onEditUut && onEditUut(null)}
-                                    title="Add New UUT"
-                                >
-                                    <FontAwesomeIcon icon={faPlus} size="xs" />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '300px' }}>
-                                <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => setHoveredCell({ tableId: null, colIndex: null })} style={{ width: '100%', minWidth: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
-                                    <colgroup>
-                                        <col style={{ width: '40%' }} />
-                                        <col style={{ width: '30%' }} />
-                                        <col style={{ width: '30%' }} />
-                                    </colgroup>
-                                    <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                                        <tr>
-                                            <th>Description</th>
-                                            <th>Range</th>
-                                            <th>Specification</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {relevantUuts.length === 0 ? (
-                                            <tr>
-                                                <td colSpan="3" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
-                                                    No associated UUTs found.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            relevantUuts.map((uut) => {
-                                                const { ranges, activeIndex, activeRange } = resolveUutRange(uut);
-                                                const isLinked = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id);
-                                                const specRows = getSpecRows(activeRange);
-                                                const rowSpan = specRows.length > 0 ? specRows.length : 1;
-                                                const isSelected = selectedUutIds.includes(uut.id);
-
-                                                return (
-                                                    <React.Fragment key={uut.id}>
-                                                            <tr
-                                                                className={isSelected ? "selected-row" : ""}
-                                                                style={{
-                                                                    borderLeft: isLinked ? '4px solid var(--primary-color)' : (isSelected ? '4px solid var(--primary-color)' : '4px solid transparent'),
-                                                                    cursor: 'pointer',
-                                                                    transition: 'all 0.1s ease'
-                                                                }}
-                                                                // CLICK HANDLERS
-                                                                onClick={(e) => handleUutClick(e, uut.id)}
-                                                                onDoubleClick={() => onEditUut && onEditUut(uut)}
-                                                                title="Click to select, Double-click to edit UUT details"
-                                                            >
-                                                                <td
-                                                                    rowSpan={rowSpan}
-                                                                    className={`cell-description ${hoveredCell.tableId === 'uut_det' && hoveredCell.colIndex === 0 ? 'col-hovered' : ''}`}
-                                                                    onMouseEnter={() => setHoveredCell({ tableId: 'uut_det', colIndex: 0 })}
-                                                                    style={{ verticalAlign: 'top', fontWeight: 600, color: isLinked ? 'var(--primary-color)' : 'var(--text-color)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
-                                                                >
-                                                                    {uut.description}
-                                                                </td>
-
-                                                                <td
-                                                                    rowSpan={rowSpan}
-                                                                    className={`cell-value ${hoveredCell.tableId === 'uut_det' && hoveredCell.colIndex === 1 ? 'col-hovered' : ''}`}
-                                                                    onMouseEnter={() => setHoveredCell({ tableId: 'uut_det', colIndex: 1 })}
-                                                                    onClick={e => e.stopPropagation()}
-                                                                    style={{ verticalAlign: 'top' }}
-                                                                >
-                                                                    <select
-                                                                        className="session-selector"
-                                                                        style={{ width: '100%', padding: '4px 8px', fontSize: '0.85rem' }}
-                                                                        value={activeIndex}
-                                                                        onChange={(e) => handleRangeChange(uut.id, parseInt(e.target.value), ranges)}
-                                                                    >
-                                                                        {ranges.map((range, idx) => {
-                                                                            let rangeText = (typeof range.range === 'string' ? range.range : null);
-                                                                            if (!rangeText) {
-                                                                                if (range.min !== undefined && range.max !== undefined) {
-                                                                                    rangeText = `${range.min} to ${range.max}`;
-                                                                                } else {
-                                                                                    rangeText = "Full Range";
-                                                                                }
-                                                                            }
-                                                                            const label = `${rangeText} ${range.unit || ''}`;
-                                                                            return <option key={idx} value={idx}>{label}</option>
-                                                                        })}
-                                                                    </select>
-                                                                </td>
-
-                                                                <td
-                                                                    className={`cell-spec ${hoveredCell.tableId === 'uut_det' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
-                                                                    onMouseEnter={() => setHoveredCell({ tableId: 'uut_det', colIndex: 2 })}
-                                                                    style={{ verticalAlign: 'top' }}
-                                                                    title={specRows[0]}
-                                                                >
-                                                                    <span style={{ fontSize: '0.85rem' }}>
-                                                                        {specRows[0]}
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-
-                                                        {specRows.slice(1).map((specComp, sIdx) => (
-                                                            <tr
-                                                                key={`${uut.id}-spec-${sIdx}`}
-                                                                className={isSelected ? "selected-row" : ""}
-                                                                style={{
-                                                                    borderLeft: isLinked || isSelected ? '4px solid var(--primary-color)' : '4px solid transparent',
-                                                                    cursor: 'pointer'
-                                                                }}
-                                                            >
-                                                               <td
-                                                                    className={`cell-spec ${hoveredCell.tableId === 'uut_det' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
-                                                                    onMouseEnter={() => setHoveredCell({ tableId: 'uut_det', colIndex: 2 })}
-                                                                    style={{ verticalAlign: 'top', borderTop: '1px dashed var(--border-color)' }}
-                                                                    title={specComp}
-                                                                >
-                                                                    <span style={{ fontSize: '0.85rem' }}>
-                                                                        {specComp}
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </React.Fragment>
-                                                );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
+            {/* 1. UUT INFORMATION (Now stacked at the top) */}
+            <div style={cardStyle}>
+                <div style={headerStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FontAwesomeIcon icon={faMicroscope} />
+                        <span>Unit Under Test</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {selectedUutIds.length > 0 && (
+                            <button
+                                className="btn-icon-only delete"
+                                style={{ color: 'var(--status-bad)', width: '24px', height: '24px', borderRadius: '4px', opacity: 1, border: '1px solid rgba(255,82,82,0.3)', marginRight: '8px' }}
+                                onClick={handleDeleteSelectedUuts}
+                                title={`Delete ${selectedUutIds.length} Selected UUTs`}
+                            >
+                                <FontAwesomeIcon icon={faTrashAlt} size="xs" />
+                            </button>
+                        )}
+                        <button
+                            className="btn-icon-only"
+                            style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
+                            onClick={() => onEditUut && onEditUut(null)}
+                            title="Add New UUT"
+                        >
+                            <FontAwesomeIcon icon={faPlus} size="xs" />
+                        </button>
+                    </div>
                 </div>
+                <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '300px' }}>
+                    <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => setHoveredCell({ tableId: null, colIndex: null })} style={{ width: '100%', minWidth: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                        <colgroup>
+                            <col style={{ width: '40%' }} />
+                            <col style={{ width: '30%' }} />
+                            <col style={{ width: '30%' }} />
+                        </colgroup>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                            <tr>
+                                <th>Description</th>
+                                <th>Range</th>
+                                <th>Specification</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {relevantUuts.length === 0 ? (
+                                <tr>
+                                    <td colSpan="3" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
+                                        No associated UUTs found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                relevantUuts.map((uut) => {
+                                    const { ranges, activeIndex, activeRange } = resolveUutRange(uut);
+                                    const isLinked = testPointData.associatedUutIds && testPointData.associatedUutIds.includes(uut.id);
+                                    const specRows = getSpecRows(activeRange);
+                                    const rowSpan = specRows.length > 0 ? specRows.length : 1;
+                                    const isSelected = selectedUutIds.includes(uut.id);
 
-                {/* --- RIGHT COLUMN --- */}
-                <div style={verticalColumnStyle}>
-                    {/* 3. MEASUREMENT POINT TABLE (Original) */}
-                    <div style={cardStyle}>
-                        <div style={headerStyle}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <FontAwesomeIcon icon={faRulerCombined} />
-                                <span>Measurement Point</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {!hasMeasurementPoint && (
-                                    <button
-                                        className="btn-icon-only"
-                                        style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
-                                        onClick={handleActionAdd}
-                                        title="Add Measurement Point"
-                                    >
-                                        <FontAwesomeIcon icon={faPlus} size="xs" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1, overflowX: 'auto' }}>
-                                <table className="instrument-summary-table" style={{ width: '100%', tableLayout: 'fixed' }}>
-                                    <colgroup>
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '10%' }} />
-                                        <col style={{ width: '20%' }} />
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '10%' }} />
-                                    </colgroup>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ paddingLeft: '20px' }}>Section</th>
-                                            <th>Point</th>
-                                            <th>Unit</th>
-                                            <th>Tolerance</th>
-                                            <th>Low Limit</th>
-                                            <th>High Limit</th>
-                                            <th style={{ textAlign: 'center', paddingRight: '20px' }}>
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {hasMeasurementPoint ? (
-                                            <tr>
-                                                <td style={{ paddingLeft: '20px' }}>
-                                                    <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
-                                                        <EditableCell
-                                                            value={testPointData.section}
-                                                            onSave={(val) => onUpdateTestPoint && onUpdateTestPoint({ section: val })}
-                                                            placeholder="General"
-                                                        />
-                                                    </div>
+                                    return (
+                                        <React.Fragment key={uut.id}>
+                                            <tr
+                                                className={isSelected ? "selected-row" : ""}
+                                                style={{
+                                                    borderLeft: isLinked ? '4px solid var(--primary-color)' : (isSelected ? '4px solid var(--primary-color)' : '4px solid transparent'),
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.1s ease'
+                                                }}
+                                                // CLICK HANDLERS
+                                                onClick={(e) => handleUutClick(e, uut.id)}
+                                                onDoubleClick={() => onEditUut && onEditUut(uut)}
+                                                title="Click to select, Double-click to edit UUT details"
+                                            >
+                                                <td
+                                                    rowSpan={rowSpan}
+                                                    className={`cell-description ${hoveredCell.tableId === 'uut_det' && hoveredCell.colIndex === 0 ? 'col-hovered' : ''}`}
+                                                    onMouseEnter={() => setHoveredCell({ tableId: 'uut_det', colIndex: 0 })}
+                                                    style={{ verticalAlign: 'top', fontWeight: 600, color: isLinked ? 'var(--primary-color)' : 'var(--text-color)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
+                                                >
+                                                    {uut.description}
                                                 </td>
 
-                                                <td style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                    <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary-color)' }}>
-                                                        <EditableCell
-                                                            value={uutNominal?.value}
-                                                            onSave={(val) => onInlineUutUpdate && onInlineUutUpdate('nominal', val)}
-                                                            type="number"
-                                                            placeholder="0.00"
-                                                        />
-                                                    </div>
+                                                <td
+                                                    rowSpan={rowSpan}
+                                                    className={`cell-value ${hoveredCell.tableId === 'uut_det' && hoveredCell.colIndex === 1 ? 'col-hovered' : ''}`}
+                                                    onMouseEnter={() => setHoveredCell({ tableId: 'uut_det', colIndex: 1 })}
+                                                    onClick={e => e.stopPropagation()}
+                                                    style={{ verticalAlign: 'top' }}
+                                                >
+                                                    <select
+                                                        className="session-selector"
+                                                        style={{ width: '100%', padding: '4px 8px', fontSize: '0.85rem' }}
+                                                        value={activeIndex}
+                                                        onChange={(e) => handleRangeChange(uut.id, parseInt(e.target.value), ranges)}
+                                                    >
+                                                        {ranges.map((range, idx) => {
+                                                            let rangeText = (typeof range.range === 'string' ? range.range : null);
+                                                            if (!rangeText) {
+                                                                if (range.min !== undefined && range.max !== undefined) {
+                                                                    rangeText = `${range.min} to ${range.max}`;
+                                                                } else {
+                                                                    rangeText = "Full Range";
+                                                                }
+                                                            }
+                                                            const label = `${rangeText} ${range.unit || ''}`;
+                                                            return <option key={idx} value={idx}>{label}</option>
+                                                        })}
+                                                    </select>
                                                 </td>
 
-                                                <td>
-                                                    <div style={{ fontWeight: 600, paddingLeft: '4px' }}>
-                                                        {uutNominal?.unit}
-                                                    </div>
-                                                </td>
-
-                                                <td>
-                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                        {isUnassigned && (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) ? (
-                                                            <span style={{ fontWeight: 400, color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
-                                                                No UUT / Spec
-                                                            </span>
-                                                        ) : (
-                                                            <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
-                                                                {calculatedToleranceDisplay}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-
-                                                <td>
-                                                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
-                                                        {calculatedLimits.low}
+                                                <td
+                                                    className={`cell-spec ${hoveredCell.tableId === 'uut_det' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
+                                                    onMouseEnter={() => setHoveredCell({ tableId: 'uut_det', colIndex: 2 })}
+                                                    style={{ verticalAlign: 'top' }}
+                                                    title={specRows[0]}
+                                                >
+                                                    <span style={{ fontSize: '0.85rem' }}>
+                                                        {specRows[0]}
                                                     </span>
                                                 </td>
+                                            </tr>
 
-                                                <td>
-                                                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
-                                                        {calculatedLimits.high}
-                                                    </span>
-                                                </td>
-
-                                                <td className="action-cell" style={{ paddingRight: '20px' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                                        <span
-                                                            className="action-icon"
-                                                            onClick={handleActionRemove}
-                                                            title="Delete or Unassign"
-                                                            style={{
-                                                                cursor: "pointer",
-                                                                color: "var(--status-bad)",
-                                                                fontSize: '0.9rem'
-                                                            }}
-                                                        >
-                                                            <FontAwesomeIcon icon={faTrashAlt} />
+                                            {specRows.slice(1).map((specComp, sIdx) => (
+                                                <tr
+                                                    key={`${uut.id}-spec-${sIdx}`}
+                                                    className={isSelected ? "selected-row" : ""}
+                                                    style={{
+                                                        borderLeft: isLinked || isSelected ? '4px solid var(--primary-color)' : '4px solid transparent',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <td
+                                                        className={`cell-spec ${hoveredCell.tableId === 'uut_det' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
+                                                        onMouseEnter={() => setHoveredCell({ tableId: 'uut_det', colIndex: 2 })}
+                                                        style={{ verticalAlign: 'top', borderTop: '1px dashed var(--border-color)' }}
+                                                        title={specComp}
+                                                    >
+                                                        <span style={{ fontSize: '0.85rem' }}>
+                                                            {specComp}
                                                         </span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            <tr>
-                                                <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>
-                                                    No active point. Select a UUT range on the left and define a point.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            {/* --- MIDDLE ROW: EQUATION --- */}
+            {/* 2. MEASUREMENT POINT TABLE (Now stacked below UUT) */}
+            <div style={cardStyle}>
+                <div style={headerStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FontAwesomeIcon icon={faRulerCombined} />
+                        <span>Measurement Point</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {!hasMeasurementPoint && (
+                            <button
+                                className="btn-icon-only"
+                                style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
+                                onClick={handleActionAdd}
+                                title="Add Measurement Point"
+                            >
+                                <FontAwesomeIcon icon={faPlus} size="xs" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+                <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1, overflowX: 'auto' }}>
+                    <table className="instrument-summary-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+                        <colgroup>
+                            <col style={{ width: '15%' }} />
+                            <col style={{ width: '15%' }} />
+                            <col style={{ width: '10%' }} />
+                            <col style={{ width: '20%' }} />
+                            <col style={{ width: '15%' }} />
+                            <col style={{ width: '15%' }} />
+                            <col style={{ width: '10%' }} />
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th style={{ paddingLeft: '20px' }}>Section</th>
+                                <th>Point</th>
+                                <th>Unit</th>
+                                <th>Tolerance</th>
+                                <th>Low Limit</th>
+                                <th>High Limit</th>
+                                <th style={{ textAlign: 'center', paddingRight: '20px' }}>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {hasMeasurementPoint ? (
+                                <tr>
+                                    <td style={{ paddingLeft: '20px' }}>
+                                        <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
+                                            <EditableCell
+                                                value={testPointData.section}
+                                                onSave={(val) => onUpdateTestPoint && onUpdateTestPoint({ section: val })}
+                                                placeholder="General"
+                                            />
+                                        </div>
+                                    </td>
+
+                                    <td style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary-color)' }}>
+                                            <EditableCell
+                                                value={uutNominal?.value}
+                                                onSave={(val) => onInlineUutUpdate && onInlineUutUpdate('nominal', val)}
+                                                type="number"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <div style={{ fontWeight: 600, paddingLeft: '4px' }}>
+                                            {uutNominal?.unit}
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            {isUnassigned && (!activeResolvedTolerance || Object.keys(activeResolvedTolerance).length === 0) ? (
+                                                <span style={{ fontWeight: 400, color: 'var(--text-color-muted)', fontStyle: 'italic' }}>
+                                                    No UUT / Spec
+                                                </span>
+                                            ) : (
+                                                <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
+                                                    {calculatedToleranceDisplay}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
+                                            {calculatedLimits.low}
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)' }}>
+                                            {calculatedLimits.high}
+                                        </span>
+                                    </td>
+
+                                    <td className="action-cell" style={{ paddingRight: '20px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                            <span
+                                                className="action-icon"
+                                                onClick={handleActionRemove}
+                                                title="Delete or Unassign"
+                                                style={{
+                                                    cursor: "pointer",
+                                                    color: "var(--status-bad)",
+                                                    fontSize: '0.9rem'
+                                                }}
+                                            >
+                                                <FontAwesomeIcon icon={faTrashAlt} />
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-color-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>
+                                        No active point. Select a UUT range on the left and define a point.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* --- MIDDLE ROW: EQUATION (Kept as is) --- */}
             <div style={{ marginBottom: '30px' }}>
                 {isDerived && equationDisplayData && (
                     <div>
@@ -1952,7 +1981,7 @@ function DetailedView({
                                             <input
                                                 type="text"
                                                 className="var-name-input"
-                                                value={v.name}
+                                                value={v.name || ""}
                                                 placeholder="Map to (e.g. Volts)..."
                                                 onChange={(e) => handleVariableMappingChange(v.symbol, e.target.value)}
                                             />
@@ -2007,7 +2036,7 @@ function DetailedView({
                                                                         .flatMap(g => g.options)
                                                                         .find(opt => opt.value === v.unit) || (v.unit ? { value: v.unit, label: v.unit } : null)
                                                                 }
-                                                                onChange={(opt) => onInlineTmdeUpdate && onInlineTmdeUpdate(v.tmdeId, 'unit', opt.value)}
+                                                                onChange={(opt) => onInlineTmdeUpdate && opt && onInlineTmdeUpdate(v.tmdeId, 'unit', opt.value)}
                                                                 styles={customUnitSelectStyles}
                                                                 placeholder="Unit"
                                                                 menuPortalTarget={document.body}
@@ -2033,7 +2062,7 @@ function DetailedView({
                 )}
             </div>
 
-            {/* --- BOTTOM ROW: TMDEs (Full Width - UPDATED) --- */}
+            {/* --- BOTTOM ROW: TMDEs (Kept as is) --- */}
             <div style={{ marginBottom: '30px' }}>
                 <div style={cardStyle}>
                     <div style={headerStyle}>
@@ -2064,204 +2093,204 @@ function DetailedView({
                     </div>
 
                     <div className="panel-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1 }}>
-                            <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => setHoveredCell({ tableId: null, colIndex: null })} style={{ width: '100%', tableLayout: 'fixed' }}>
-                                <colgroup>
-                                    <col style={{ width: '50px' }} />
-                                    <col style={{ width: isDerived ? '30%' : '35%' }} />
-                                    {isDerived && <col style={{ width: '100px' }} />}
-                                    <col style={{ width: isDerived ? '25%' : '30%' }} />
-                                    <col style={{ width: isDerived ? '25%' : '30%' }} />
-                                    {isDerived && <col style={{ width: '15%' }} />}
-                                </colgroup>
-                                <thead>
-                                    <tr>
-                                        <th style={{ textAlign: 'center' }}>Use</th>
-                                        <th>Description</th>
-                                        {isDerived && <th>Input Var</th>}
-                                        <th>Range</th>
-                                        <th>Specification</th>
-                                        {isDerived && <th>Meas. Point</th>}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {(!sessionData.tmdes || sessionData.tmdes.length === 0) ? (
-                                        <tr><td colSpan={isDerived ? "6" : "5"} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>No TMDEs defined in Session.</td></tr>
-                                    ) : (
-                                        sessionData.tmdes.map((masterTmde) => {
-                                            // Check selection state
-                                            const isSelectedRow = selectedTmdeIds.includes(masterTmde.id);
+                        <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => setHoveredCell({ tableId: null, colIndex: null })} style={{ width: '100%', tableLayout: 'fixed' }}>
+                            <colgroup>
+                                <col style={{ width: '50px' }} />
+                                <col style={{ width: isDerived ? '30%' : '35%' }} />
+                                {isDerived && <col style={{ width: '100px' }} />}
+                                <col style={{ width: isDerived ? '25%' : '30%' }} />
+                                <col style={{ width: isDerived ? '25%' : '30%' }} />
+                                {isDerived && <col style={{ width: '15%' }} />}
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th style={{ textAlign: 'center' }}>Use</th>
+                                    <th>Description</th>
+                                    {isDerived && <th>Input Var</th>}
+                                    <th>Range</th>
+                                    <th>Specification</th>
+                                    {isDerived && <th>Meas. Point</th>}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {(!sessionData.tmdes || sessionData.tmdes.length === 0) ? (
+                                    <tr><td colSpan={isDerived ? "6" : "5"} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>No TMDEs defined in Session.</td></tr>
+                                ) : (
+                                    sessionData.tmdes.map((masterTmde) => {
+                                        // Check selection state
+                                        const isSelectedRow = selectedTmdeIds.includes(masterTmde.id);
 
-                                            const activeInstances = tmdeTolerancesData.filter(t => t.id === masterTmde.id || (t.sourceId && t.sourceId === masterTmde.id));
-                                            const rowsToRender = activeInstances.length > 0 ? activeInstances : [masterTmde];
+                                        const activeInstances = tmdeTolerancesData.filter(t => t.id === masterTmde.id || (t.sourceId && t.sourceId === masterTmde.id));
+                                        const rowsToRender = activeInstances.length > 0 ? activeInstances : [masterTmde];
 
-                                            return rowsToRender.map((tmdeInstance, idx) => {
-                                                const isChecked = activeInstances.includes(tmdeInstance);
-                                                const referencePoint = tmdeInstance.measurementPoint || { value: '', unit: '' };
+                                        return rowsToRender.map((tmdeInstance, idx) => {
+                                            const isChecked = activeInstances.includes(tmdeInstance);
+                                            const referencePoint = tmdeInstance.measurementPoint || { value: '', unit: '' };
 
-                                                const displayValue = isChecked ? referencePoint.value : '';
-                                                const displayUnit = isChecked ? referencePoint.unit : (masterTmde.measurementPoint?.unit || '');
+                                            const displayValue = isChecked ? referencePoint.value : '';
+                                            const displayUnit = isChecked ? referencePoint.unit : (masterTmde.measurementPoint?.unit || '');
 
-                                                const savedTolerance = isChecked ? tmdeInstance : null;
-                                                const resolution = resolveUutRangeHelper(masterTmde, tmdeRangeIndices, savedTolerance, null);
-                                                const { ranges, activeIndex, activeRange } = resolution;
+                                            const savedTolerance = isChecked ? tmdeInstance : null;
+                                            const resolution = resolveUutRangeHelper(masterTmde, tmdeRangeIndices, savedTolerance, null);
+                                            const { ranges, activeIndex, activeRange } = resolution;
 
-                                                const effectiveTolerance = activeRange;
-                                                const specRows = getSpecRows(effectiveTolerance);
-                                                const rowSpan = specRows.length > 0 ? specRows.length : 1;
+                                            const effectiveTolerance = activeRange;
+                                            const specRows = getSpecRows(effectiveTolerance);
+                                            const rowSpan = specRows.length > 0 ? specRows.length : 1;
 
-                                                const safeDescription = masterTmde.description || masterTmde.name || (masterTmde.instrument ? `${masterTmde.instrument.manufacturer} ${masterTmde.instrument.model}` : "Unknown TMDE");
+                                            const safeDescription = masterTmde.description || masterTmde.name || (masterTmde.instrument ? `${masterTmde.instrument.manufacturer} ${masterTmde.instrument.model}` : "Unknown TMDE");
 
-                                                return (
-                                                    <React.Fragment key={`${masterTmde.id}-${idx}`}>
-                                                        <tr
-                                                            className="tmde-row"
-                                                            style={{
-                                                                // Apply Selection Highlight
-                                                                backgroundColor: isSelectedRow ? 'rgba(var(--primary-rgb), 0.15)' : 'transparent',
-                                                                borderLeft: isSelectedRow ? '4px solid var(--primary-color)' : '4px solid transparent',
-                                                                opacity: isChecked ? 1 : (isSelectedRow ? 1 : 0.7),
-                                                                cursor: 'pointer'
-                                                            }}
-                                                            // Click Handlers
-                                                            onClick={(e) => handleTmdeClick(e, masterTmde.id)}
-                                                            onDoubleClick={() => onEditTmde && onEditTmde(masterTmde)}
-                                                            title="Click to select, Double-click to edit TMDE details"
+                                            return (
+                                                <React.Fragment key={`${masterTmde.id}-${idx}`}>
+                                                    <tr
+                                                        className="tmde-row"
+                                                        style={{
+                                                            // Apply Selection Highlight
+                                                            backgroundColor: isSelectedRow ? 'rgba(var(--primary-rgb), 0.15)' : 'transparent',
+                                                            borderLeft: isSelectedRow ? '4px solid var(--primary-color)' : '4px solid transparent',
+                                                            opacity: isChecked ? 1 : (isSelectedRow ? 1 : 0.7),
+                                                            cursor: 'pointer'
+                                                        }}
+                                                        // Click Handlers
+                                                        onClick={(e) => handleTmdeClick(e, masterTmde.id)}
+                                                        onDoubleClick={() => onEditTmde && onEditTmde(masterTmde)}
+                                                        title="Click to select, Double-click to edit TMDE details"
+                                                    >
+                                                        <td
+                                                            rowSpan={rowSpan}
+                                                            style={{ textAlign: 'center', verticalAlign: 'top' }}
+                                                            onClick={e => e.stopPropagation()}
+                                                            className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 0 ? 'col-hovered' : ''}`}
+                                                            onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 0 })}
                                                         >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={(e) => handleToggleTmdeUsage(masterTmde.id, e.target.checked)}
+                                                                style={{ cursor: 'pointer' }}
+                                                            />
+                                                        </td>
+
+                                                        <td
+                                                            rowSpan={rowSpan}
+                                                            className={`cell-description ${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 1 ? 'col-hovered' : ''}`}
+                                                            onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 1 })}
+                                                            style={{ verticalAlign: 'top' }}
+                                                        >
+                                                            <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
+                                                                {safeDescription}
+                                                            </div>
+                                                        </td>
+
+                                                        {isDerived && (
                                                             <td
                                                                 rowSpan={rowSpan}
-                                                                style={{ textAlign: 'center', verticalAlign: 'top' }}
-                                                                onClick={e => e.stopPropagation()}
-                                                                className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 0 ? 'col-hovered' : ''}`}
-                                                                onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 0 })}
-                                                            >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isChecked}
-                                                                    onChange={(e) => handleToggleTmdeUsage(masterTmde.id, e.target.checked)}
-                                                                    style={{ cursor: 'pointer' }}
-                                                                />
-                                                            </td>
-
-                                                            <td
-                                                                rowSpan={rowSpan}
-                                                                className={`cell-description ${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 1 ? 'col-hovered' : ''}`}
-                                                                onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 1 })}
-                                                                style={{ verticalAlign: 'top' }}
-                                                            >
-                                                                <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>
-                                                                    {safeDescription}
-                                                                </div>
-                                                            </td>
-
-                                                            {isDerived && (
-                                                                <td
-                                                                    rowSpan={rowSpan}
-                                                                    style={{ verticalAlign: 'top' }}
-                                                                    onClick={e => e.stopPropagation()}
-                                                                    className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
-                                                                    onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 2 })}
-                                                                >
-                                                                    {isChecked ? (
-                                                                        <select
-                                                                            value={availableVariables.includes(tmdeInstance.variableType) ? tmdeInstance.variableType : ""}
-                                                                            onChange={(e) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'variableType', e.target.value)}
-                                                                            className="mini-select"
-                                                                        >
-                                                                            <option value="" disabled>--</option>
-                                                                            {availableVariables.map(v => (
-                                                                                <option key={v} value={v}>{v}</option>
-                                                                            ))}
-                                                                        </select>
-                                                                    ) : "-"}
-                                                                </td>
-                                                            )}
-
-                                                            <td
-                                                                rowSpan={rowSpan}
-                                                                className={`cell-value ${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === (isDerived ? 3 : 2) ? 'col-hovered' : ''}`}
-                                                                onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: isDerived ? 3 : 2 })}
                                                                 style={{ verticalAlign: 'top' }}
                                                                 onClick={e => e.stopPropagation()}
+                                                                className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
+                                                                onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 2 })}
                                                             >
-                                                                <select
-                                                                    className="session-selector"
-                                                                    style={{ width: '100%', padding: '4px 8px', fontSize: '0.85rem' }}
-                                                                    value={activeIndex}
-                                                                    onChange={(e) => handleTmdeRangeChange(masterTmde, parseInt(e.target.value), ranges)}
-                                                                >
-                                                                    {ranges.map((range, rIdx) => {
-                                                                        let rangeText = (typeof range.range === 'string' ? range.range : null);
-                                                                        if (!rangeText) {
-                                                                            if (range.min !== undefined && range.max !== undefined) rangeText = `${range.min} to ${range.max}`;
-                                                                            else rangeText = "Full Range";
-                                                                        }
-                                                                        const label = `${rangeText} ${range.unit || ''}`;
-                                                                        return <option key={rIdx} value={rIdx}>{label}</option>
-                                                                    })}
-                                                                </select>
+                                                                {isChecked ? (
+                                                                    <select
+                                                                        value={availableVariables.includes(tmdeInstance.variableType) ? tmdeInstance.variableType : ""}
+                                                                        onChange={(e) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'variableType', e.target.value)}
+                                                                        className="mini-select"
+                                                                    >
+                                                                        <option value="" disabled>--</option>
+                                                                        {availableVariables.map(v => (
+                                                                            <option key={v} value={v}>{v}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                ) : "-"}
                                                             </td>
+                                                        )}
 
+                                                        <td
+                                                            rowSpan={rowSpan}
+                                                            className={`cell-value ${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === (isDerived ? 3 : 2) ? 'col-hovered' : ''}`}
+                                                            onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: isDerived ? 3 : 2 })}
+                                                            style={{ verticalAlign: 'top' }}
+                                                            onClick={e => e.stopPropagation()}
+                                                        >
+                                                            <select
+                                                                className="session-selector"
+                                                                style={{ width: '100%', padding: '4px 8px', fontSize: '0.85rem' }}
+                                                                value={activeIndex}
+                                                                onChange={(e) => handleTmdeRangeChange(masterTmde, parseInt(e.target.value), ranges)}
+                                                            >
+                                                                {ranges.map((range, rIdx) => {
+                                                                    let rangeText = (typeof range.range === 'string' ? range.range : null);
+                                                                    if (!rangeText) {
+                                                                        if (range.min !== undefined && range.max !== undefined) rangeText = `${range.min} to ${range.max}`;
+                                                                        else rangeText = "Full Range";
+                                                                    }
+                                                                    const label = `${rangeText} ${range.unit || ''}`;
+                                                                    return <option key={rIdx} value={rIdx}>{label}</option>
+                                                                })}
+                                                            </select>
+                                                        </td>
+
+                                                        <td
+                                                            className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === (isDerived ? 4 : 3) ? 'col-hovered' : ''}`}
+                                                            onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: isDerived ? 4 : 3 })}
+                                                            style={{ verticalAlign: 'top' }}
+                                                            title={specRows[0]}
+                                                        >
+                                                            <span style={{ fontSize: '0.85rem' }}>
+                                                                {specRows[0]}
+                                                            </span>
+                                                        </td>
+
+                                                        {isDerived && (
+                                                            <td
+                                                                rowSpan={rowSpan}
+                                                                style={{ verticalAlign: 'top' }}
+                                                                onClick={e => e.stopPropagation()}
+                                                                className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 5 ? 'col-hovered' : ''}`}
+                                                                onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 5 })}
+                                                            >
+                                                                {isChecked ? (
+                                                                    <EditableCell
+                                                                        value={displayValue}
+                                                                        suffix={displayUnit}
+                                                                        onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'nominal', val)}
+                                                                        type="number"
+                                                                    />
+                                                                ) : "-"}
+                                                            </td>
+                                                        )}
+                                                    </tr>
+
+                                                    {specRows.slice(1).map((specComp, sIdx) => (
+                                                        <tr
+                                                            key={`${masterTmde.id}-${idx}-spec-${sIdx}`}
+                                                            className={isSelectedRow ? "selected-row" : ""}
+                                                            style={{
+                                                                borderLeft: isSelectedRow ? '4px solid var(--primary-color)' : '4px solid transparent',
+                                                                opacity: isChecked ? 1 : 0.7
+                                                            }}
+                                                        >
                                                             <td
                                                                 className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === (isDerived ? 4 : 3) ? 'col-hovered' : ''}`}
                                                                 onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: isDerived ? 4 : 3 })}
-                                                                style={{ verticalAlign: 'top' }}
-                                                                title={specRows[0]}
+                                                                style={{ verticalAlign: 'top', borderTop: '1px dashed var(--border-color)' }}
+                                                                title={specComp}
                                                             >
                                                                 <span style={{ fontSize: '0.85rem' }}>
-                                                                    {specRows[0]}
+                                                                    {specComp}
                                                                 </span>
                                                             </td>
-
-                                                            {isDerived && (
-                                                                <td
-                                                                    rowSpan={rowSpan}
-                                                                    style={{ verticalAlign: 'top' }}
-                                                                    onClick={e => e.stopPropagation()}
-                                                                    className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 5 ? 'col-hovered' : ''}`}
-                                                                    onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 5 })}
-                                                                >
-                                                                    {isChecked ? (
-                                                                        <EditableCell
-                                                                            value={displayValue}
-                                                                            suffix={displayUnit}
-                                                                            onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'nominal', val)}
-                                                                            type="number"
-                                                                        />
-                                                                    ) : "-"}
-                                                                </td>
-                                                            )}
                                                         </tr>
-
-                                                        {specRows.slice(1).map((specComp, sIdx) => (
-                                                            <tr
-                                                                key={`${masterTmde.id}-${idx}-spec-${sIdx}`}
-                                                                className={isSelectedRow ? "selected-row" : ""}
-                                                                style={{
-                                                                    borderLeft: isSelectedRow ? '4px solid var(--primary-color)' : '4px solid transparent',
-                                                                    opacity: isChecked ? 1 : 0.7
-                                                                }}
-                                                            >
-                                                                <td
-                                                                    className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === (isDerived ? 4 : 3) ? 'col-hovered' : ''}`}
-                                                                    onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: isDerived ? 4 : 3 })}
-                                                                    style={{ verticalAlign: 'top', borderTop: '1px dashed var(--border-color)' }}
-                                                                    title={specComp}
-                                                                >
-                                                                    <span style={{ fontSize: '0.85rem' }}>
-                                                                        {specComp}
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </React.Fragment>
-                                                );
-                                            })
+                                                    ))}
+                                                </React.Fragment>
+                                            );
                                         })
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                    })
+                                )}
+                            </tbody>
+                        </table>
                     </div>
+                </div>
             </div>
 
             {hasMeasurementPoint ? (
