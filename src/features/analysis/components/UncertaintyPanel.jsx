@@ -1421,43 +1421,55 @@ function DetailedView({
     };
 
     const handleAssignTmdeToVariable = (symbol, tmdeIdStr) => {
-        const varName = testPointData.variableMappings?.[symbol] || "";
-        if (!varName) return;
+    const varName = testPointData.variableMappings?.[symbol] || "";
+    if (!varName) return;
 
-        if (!tmdeIdStr) {
-            const currentAssigned = tmdeTolerancesData.find(t => t.variableType === varName);
-            if (currentAssigned && onInlineTmdeUpdate) {
-                onInlineTmdeUpdate(currentAssigned.id, 'variableType', "");
-            }
-            return;
+    if (!tmdeIdStr) {
+        const currentAssigned = tmdeTolerancesData.find(t => t.variableType === varName);
+        if (currentAssigned && onInlineTmdeUpdate) {
+            onInlineTmdeUpdate(currentAssigned.id, 'variableType', "");
         }
+        return;
+    }
 
-        const targetTmde = sessionData.tmdes?.find(t => t.id == tmdeIdStr) || tmdeTolerancesData.find(t => t.id == tmdeIdStr);
-        if (!targetTmde) return;
+    const targetTmde = sessionData.tmdes?.find(t => t.id == tmdeIdStr) || tmdeTolerancesData.find(t => t.id == tmdeIdStr);
+    if (!targetTmde) return;
 
-        const realTmdeId = targetTmde.id;
-        const previousHolder = tmdeTolerancesData.find(t => t.variableType === varName);
+    const realTmdeId = targetTmde.id;
+    const previousHolder = tmdeTolerancesData.find(t => t.variableType === varName);
 
-        if (previousHolder && previousHolder.id === realTmdeId) return;
+    if (previousHolder && previousHolder.id === realTmdeId) return;
 
-        if (previousHolder && onInlineTmdeUpdate) {
-            onInlineTmdeUpdate(previousHolder.id, 'variableType', "");
-        }
+    if (previousHolder && onInlineTmdeUpdate) {
+        onInlineTmdeUpdate(previousHolder.id, 'variableType', "");
+    }
 
-        const isActive = tmdeTolerancesData.some(t => t.id === realTmdeId);
-        if (!isActive) {
-            const newTolerance = { 
-                ...targetTmde, 
-                variableType: varName, 
-                quantity: 1,
-                measurementPoint: targetTmde.measurementPoint || { value: '', unit: '' } 
-            };
-            const newTolerances = [...tmdeTolerancesData, newTolerance];
-            onUpdateTestPoint({ tmdeTolerances: newTolerances });
-        } else if (onInlineTmdeUpdate) {
-            onInlineTmdeUpdate(realTmdeId, 'variableType', varName);
-        }
-    };
+    const isActive = tmdeTolerancesData.some(t => t.id === realTmdeId);
+
+    if (!isActive) {
+        const newTolerance = { 
+            ...targetTmde, 
+            variableType: varName, 
+            quantity: 1, 
+            measurementPoint: targetTmde.measurementPoint || { value: '', unit: '' } 
+        };
+        const newTolerances = [...tmdeTolerancesData, newTolerance];
+        onUpdateTestPoint({ tmdeTolerances: newTolerances });
+    } else {
+        const uniqueInstanceId = `${realTmdeId}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        
+        const newTolerance = { 
+            ...targetTmde,
+            id: uniqueInstanceId,
+            sourceId: realTmdeId,
+            variableType: varName, 
+            quantity: 1, 
+            measurementPoint: targetTmde.measurementPoint || { value: '', unit: '' } 
+        };
+        const newTolerances = [...tmdeTolerancesData, newTolerance];
+        onUpdateTestPoint({ tmdeTolerances: newTolerances });
+    }
+};
 
     const handleToggleTmdeUsage = (tmdeId, isChecked) => {
         if (isChecked) {
