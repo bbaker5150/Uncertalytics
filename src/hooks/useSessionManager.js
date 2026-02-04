@@ -91,7 +91,8 @@ const useSessionManager = () => {
             if (!selectedSessionId) {
                 const mostRecent = loadedSessions[0];
                 setSelectedSessionId(mostRecent.id);
-                setSelectedTestPointId(mostRecent.testPoints?.[0]?.id || null);
+                // CHANGE: Default to Session Overview (null), not the first point
+                setSelectedTestPointId(null); 
             }
           }
         }
@@ -109,7 +110,8 @@ const useSessionManager = () => {
                     setSessions(parsed);
                     if (!selectedSessionId || !parsed.find(s => s.id === selectedSessionId)) {
                         setSelectedSessionId(parsed[0].id);
-                        setSelectedTestPointId(parsed[0].testPoints?.[0]?.id || null);
+                        // CHANGE: Default to Session Overview (null)
+                        setSelectedTestPointId(null);
                     }
                 } else {
                     setSessions([]);
@@ -419,8 +421,7 @@ const useSessionManager = () => {
       if (selectedSessionId === sessionId) {
         const newSelectedSession = newSessions[0];
         setSelectedSessionId(newSelectedSession.id);
-        const newTpId = newSelectedSession.testPoints?.[0]?.id || null;
-        setSelectedTestPointId(newTpId);
+        setSelectedTestPointId(null);
       }
       setSessions(newSessions);
     }
@@ -435,6 +436,7 @@ const useSessionManager = () => {
         return [loadedSession, ...prev];
     });
     setSelectedSessionId(loadedSession.id);
+    setSelectedTestPointId(null);
     setSelectedTestPointId(loadedSession.testPoints?.[0]?.id || null);
     
     const imagesToSave = (loadedSession.noteImages || [])

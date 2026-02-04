@@ -1643,6 +1643,34 @@ body.theme-cyberpunk .button {
   margin-bottom: 10px;
 }
 
+/* --- SIDEBAR RESIZER --- */
+.sidebar-resizer {
+  width: 5px;
+  cursor: col-resize;
+  position: absolute;
+  top: 0;
+  right: -2px; /* Hang slightly off the edge */
+  bottom: 0;
+  z-index: 100;
+  background-color: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer:active {
+  background-color: var(--primary-color);
+  opacity: 0.5;
+}
+
+/* Ensure measurement point items truncate correctly */
+.point-section, 
+.point-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
 .measurement-point-list {
   display: flex;
   flex-direction: column;

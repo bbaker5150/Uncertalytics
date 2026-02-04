@@ -52,7 +52,9 @@ import {
   faFilter,
   faSlidersH,
   faChevronDown,
-  faChevronRight
+  faChevronRight,
+  faExpandArrowsAlt,
+  faCompressArrowsAlt
 } from "@fortawesome/free-solid-svg-icons";
 
 import ThemeContext from './context/ThemeContext';
@@ -61,6 +63,28 @@ import {
   getToleranceErrorSummary,
   getAbsoluteLimits
 } from "./utils/uncertaintyMath";
+
+const getSidebarGridTemplate = (visibleColumns) => {
+  const parts = [];
+  // Fixed widths for stable columns
+  if (visibleColumns.section) parts.push('50px');
+  if (visibleColumns.value) parts.push('80px');
+
+  // Fluid widths for variable content (Tolerance/Limits)
+  // minmax(0, Xfr) ensures they can shrink below their content size (truncation) 
+  // instead of forcing the container to overflow, which breaks alignment.
+  if (visibleColumns.tolerance) parts.push('minmax(0, 1fr)');
+  if (visibleColumns.limits) parts.push('minmax(0, 1.5fr)');
+
+  // Fixed widths for Risk Columns to ensure perfect vertical alignment
+  if (visibleColumns.pfa) parts.push('55px');
+  if (visibleColumns.pfr) parts.push('55px');
+  if (visibleColumns.tur) parts.push('55px');
+  if (visibleColumns.tar) parts.push('55px');
+
+  if (parts.length === 0) return '1fr';
+  return parts.join(' ');
+}
 
 // --- HELPER COMPONENT: Sidebar Point Item (Supports Inline Editing) ---
 const SidebarPointItem = ({
@@ -72,7 +96,7 @@ const SidebarPointItem = ({
   onSave,
   onContextMenu,
   onDragStart,
-  visibleColumns = { section: true, value: true, tolerance: true, limits: true }
+  visibleColumns = { section: true, value: true, tolerance: true, limits: true, pfa: false, pfr: false, tur: false, tar: false }
 }) => {
   const [editingField, setEditingField] = useState(null); // 'section' | 'value' | null
   const [tempValue, setTempValue] = useState("");
@@ -120,6 +144,36 @@ const SidebarPointItem = ({
 
   // Safe Accessors
   const displayValue = point.testPointInfo?.parameter?.value;
+  const risk = point.riskMetrics || {};
+
+  // --- COLOR LOGIC (Matches UncertaintyPanel) ---
+  const getPfaColor = (val) => {
+    if (val === undefined || val === null) return 'var(--text-color-muted)';
+    if (val > 5) return 'var(--status-bad)';       // Red (> 5%)
+    if (val > 2) return 'var(--status-warning)';   // Yellow (2% - 5%)
+    return 'var(--status-good)';                   // Green (< 2%)
+  };
+
+  const getPfrColor = (val) => {
+    // PFR usually follows PFA logic or is purely informational (Blue/Muted)
+    // Adjust logic here if you have specific thresholds for PFR
+    if (val === undefined || val === null) return 'var(--text-color-muted)';
+    return 'var(--text-color-muted)';
+  };
+
+  const getTurColor = (val) => {
+    if (val === undefined || val === null) return 'var(--text-color-muted)';
+    if (val < 4) return 'var(--status-warning)';   // Yellow (< 4:1)
+    if (val < 1) return 'var(--status-bad)';       // Red (< 1:1) - Optional strict check
+    return 'var(--status-good)';                   // Green (>= 4:1)
+  };
+
+  const getTarColor = (val) => {
+    // TAR matches TUR logic generally
+    if (val === undefined || val === null) return 'var(--text-color-muted)';
+    if (val < 4) return 'var(--status-warning)';
+    return 'var(--status-good)';
+  };
 
   // Calculate Metrics
   const toleranceSummary = React.useMemo(() => {
@@ -138,29 +192,18 @@ const SidebarPointItem = ({
     return `${shortLow} → ${shortHigh}`;
   }, [point.uutTolerance, point.testPointInfo]);
 
-  // Dynamic Grid Layout - More generous sizing
-  const gridTemplate = React.useMemo(() => {
-    const parts = [];
-    if (visibleColumns.section) parts.push('50px');
-    if (visibleColumns.value) parts.push('80px');
-    if (visibleColumns.tolerance) parts.push('minmax(70px, 1fr)');
-    if (visibleColumns.limits) parts.push('minmax(80px, 1.5fr)');
-    // Fallback if all hidden (unlikely)
-    if (parts.length === 0) return '1fr';
-    return parts.join(' ');
-  }, [visibleColumns]);
-
-
   return (
     <div
       draggable={!editingField}
       className={`point-grid-item ${isSelected ? 'active' : ''} ${isTableSelected ? 'table-highlight' : ''}`}
       style={{
         display: 'grid',
-        gridTemplateColumns: gridTemplate, 
+        gridTemplateColumns: getSidebarGridTemplate(visibleColumns),
         gap: '4px',
         alignItems: 'center',
-        padding: '4px 8px 4px 12px'
+        padding: '4px 8px 4px 12px',
+        // minWidth: 'max-content',
+        width: '100%'
       }}
       onClick={(e) => {
         if (!editingField) {
@@ -179,55 +222,55 @@ const SidebarPointItem = ({
     >
       {/* Col 1: Section */}
       {visibleColumns.section && (
-          editingField === 'section' ? (
+        editingField === 'section' ? (
+          <input
+            autoFocus
+            className="sidebar-inline-input section"
+            value={tempValue}
+            onChange={e => setTempValue(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={handleKeyDown}
+            onClick={e => e.stopPropagation()}
+            placeholder="-"
+            style={{ width: '100%' }}
+          />
+        ) : (
+          <span
+            className="point-section"
+            onClick={(e) => handleSingleClickEdit(e, 'section', point.section)}
+            title="Click to edit Section"
+            style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {point.section || '-'}
+          </span>
+        )
+      )}
+
+      {/* Col 2: Value */}
+      {visibleColumns.value && (
+        editingField === 'value' ? (
+          <div className="sidebar-inline-input-wrapper" style={{ width: '100%' }}>
             <input
               autoFocus
-              className="sidebar-inline-input section"
+              className="sidebar-inline-input value"
               value={tempValue}
               onChange={e => setTempValue(e.target.value)}
               onBlur={commitEdit}
               onKeyDown={handleKeyDown}
               onClick={e => e.stopPropagation()}
-              placeholder="-"
               style={{ width: '100%' }}
             />
-          ) : (
-            <span
-              className="point-section"
-              onClick={(e) => handleSingleClickEdit(e, 'section', point.section)}
-              title="Click to edit Section"
-              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            >
-              {point.section || '-'}
-            </span>
-          )
-      )}
-
-      {/* Col 2: Value */}
-      {visibleColumns.value && (
-          editingField === 'value' ? (
-            <div className="sidebar-inline-input-wrapper" style={{ width: '100%' }}>
-              <input
-                autoFocus
-                className="sidebar-inline-input value"
-                value={tempValue}
-                onChange={e => setTempValue(e.target.value)}
-                onBlur={commitEdit}
-                onKeyDown={handleKeyDown}
-                onClick={e => e.stopPropagation()}
-                style={{ width: '100%' }}
-              />
-            </div>
-          ) : (
-            <span
-              className="point-value"
-              onClick={(e) => handleSingleClickEdit(e, 'value', displayValue)}
-              title="Click to edit Value"
-              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            >
-              {displayValue || <span style={{ opacity: 0.3 }}>-</span>}
-            </span>
-          )
+          </div>
+        ) : (
+          <span
+            className="point-value"
+            onClick={(e) => handleSingleClickEdit(e, 'value', displayValue)}
+            title="Click to edit Value"
+            style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {displayValue || <span style={{ opacity: 0.3 }}>-</span>}
+          </span>
+        )
       )}
 
       {/* Col 3: Tolerance */}
@@ -241,6 +284,28 @@ const SidebarPointItem = ({
       {visibleColumns.limits && (
         <span style={{ fontSize: '0.7rem', color: 'var(--text-color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={limitsSummary}>
           {limitsSummary}
+        </span>
+      )}
+
+      {/* Col 5-8 Risk Columns */}
+      {visibleColumns.pfa && (
+        <span style={{ fontSize: '0.7rem', color: getPfaColor(risk.pfa), fontWeight: 600, textAlign: 'center' }} title={`PFA: ${risk.pfa}%`}>
+          {risk.pfa !== undefined ? `${Number(risk.pfa).toFixed(2)}%` : '-'}
+        </span>
+      )}
+      {visibleColumns.pfr && (
+        <span style={{ fontSize: '0.7rem', color: getPfrColor(risk.pfr), textAlign: 'center' }} title={`PFR: ${risk.pfr}%`}>
+          {risk.pfr !== undefined ? `${Number(risk.pfr).toFixed(2)}%` : '-'}
+        </span>
+      )}
+      {visibleColumns.tur && (
+        <span style={{ fontSize: '0.7rem', color: getTurColor(risk.tur), fontWeight: 600, textAlign: 'center' }} title={`TUR: ${risk.tur}:1`}>
+          {risk.tur !== undefined ? `${Number(risk.tur).toFixed(1)}` : '-'}
+        </span>
+      )}
+      {visibleColumns.tar && (
+        <span style={{ fontSize: '0.7rem', color: getTarColor(risk.tar), textAlign: 'center' }} title={`TAR: ${risk.tar}:1`}>
+          {risk.tar !== undefined ? `${Number(risk.tar).toFixed(1)}` : '-'}
         </span>
       )}
 
@@ -374,7 +439,7 @@ function App() {
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
-  
+
   // Instrument Manager Modal State
   // We use this boolean to open the modal in 'library' mode from the Tools menu.
   // Editing specific instances (UUT/TMDE) is handled via handlers passed to Analysis.
@@ -391,16 +456,88 @@ function App() {
   const [sessionImageCache, setSessionImageCache] = useState(new Map());
   const [riskResults, setRiskResults] = useState(null);
 
+  const [sidebarWidth, setSidebarWidth] = useState(420); // Default comfortable width
+  const isResizingRef = useRef(false);
+
   // --- SIDEBAR PREFERENCES ---
   const [sidebarColumns, setSidebarColumns] = useState({
-      section: true,
-      value: true,
-      tolerance: true,
-      limits: true
+    section: true,
+    value: true,
+    tolerance: true,
+    limits: true,
+    pfa: true,
+    pfr: true,
+    tur: false,
+    tar: false
   });
+  const [isGlobalExpanded, setIsGlobalExpanded] = useState(false);
+
+  // Resize Effect
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizingRef.current) return;
+      // Clamp width between 300px and 800px (or window limit)
+      const newWidth = Math.max(300, Math.min(e.clientX, window.innerWidth - 200));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (isResizingRef.current) {
+        isResizingRef.current = false;
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = 'auto'; // Re-enable selection
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const startResizing = (e) => {
+    e.preventDefault(); // Prevent text selection start
+    isResizingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none'; // Disable text selection while dragging
+  };
+
+  // Unified button handler
+  const handleToggleExpandAll = () => {
+    if (isGlobalExpanded) {
+      // Collapse Logic
+      setExpandedAreas(new Set());
+      setExpandedUuts(new Set());
+      setExpandedRanges(new Set());
+      setIsGlobalExpanded(false);
+    } else {
+      // Expand Logic
+      const allAreaIds = new Set(sidebarData.map(area => area.id));
+      const allUutIds = new Set();
+      const allRangeKeys = new Set();
+
+      sidebarData.forEach(area => {
+        area.uutGroups.forEach(group => {
+          allUutIds.add(group.id);
+          group.rangeGroups.forEach(range => {
+            allRangeKeys.add(`${group.id}-${range._id}`);
+          });
+        });
+      });
+
+      setExpandedAreas(allAreaIds);
+      setExpandedUuts(allUutIds);
+      setExpandedRanges(allRangeKeys);
+      setIsGlobalExpanded(true);
+    }
+  };
+
   const [isColumnMenuOpen, setIsColumnMenuOpen] = useState(false);
   const columnMenuRef = useRef(null);
-  
+
   // --- QUICK ADD STATE (Sidebar) ---
   const [quickAddSection, setQuickAddSection] = useState("");
   const [quickAddValue, setQuickAddValue] = useState("");
@@ -425,7 +562,7 @@ function App() {
 
   // UPDATED: Tracks which UUTs are explicitly SHOWING all ranges. 
   const [uutsShowingAllRanges, setUutsShowingAllRanges] = useState(new Set());
-  
+
   // --- SIDEBAR EXPANSION STATE (Simple accordion control) ---
   const [expandedAreas, setExpandedAreas] = useState(new Set());
   const [expandedUuts, setExpandedUuts] = useState(new Set());
@@ -455,6 +592,35 @@ function App() {
       setToast(null);
     }, 3000); // clear after 3 seconds
   };
+
+  const handleExpandAll = () => {
+    // 1. Collect all Area IDs
+    const allAreaIds = new Set(sidebarData.map(area => area.id));
+
+    // 2. Collect all UUT IDs and Range Keys
+    const allUutIds = new Set();
+    const allRangeKeys = new Set();
+
+    sidebarData.forEach(area => {
+      area.uutGroups.forEach(group => {
+        allUutIds.add(group.id);
+        group.rangeGroups.forEach(range => {
+          const rangeKey = `${group.id}-${range._id}`;
+          allRangeKeys.add(rangeKey);
+        });
+      });
+    });
+
+    setExpandedAreas(allAreaIds);
+    setExpandedUuts(allUutIds);
+    setExpandedRanges(allRangeKeys);
+  };
+
+  const handleCollapseAll = () => {
+    setExpandedAreas(new Set());
+    setExpandedUuts(new Set());
+    setExpandedRanges(new Set());
+  }
 
   // --- DELETE HELPER (Defined before useEffect so it can be used inside) ---
   const handleDeleteTestPoint = useCallback((idOrIds, immediate = false) => {
@@ -739,7 +905,7 @@ function App() {
       }
       return newSet;
     });
-    
+
     // Set selection for the main panel
     setSelectedAreaId(areaId);
     setSelectedUutId(null);
@@ -762,7 +928,7 @@ function App() {
       }
       return newSet;
     });
-    
+
     // Set selection for the main panel
     setSelectedUutId(uutId);
     setSelectedAreaId(areaId);
@@ -777,7 +943,7 @@ function App() {
   // ---  Handle Range Selection ---
   const handleSelectRange = (uutId, range, areaId) => {
     const rangeKey = `${uutId}-${range._id}`;
-    
+
     // Toggle range expansion (accordion style)
     setExpandedRanges(prev => {
       const newSet = new Set(prev);
@@ -788,7 +954,7 @@ function App() {
       }
       return newSet;
     });
-    
+
     // Set selection for the main panel
     setSelectedRangeContext({ uutId, range });
     setSelectedUutId(null);
@@ -838,7 +1004,7 @@ function App() {
     if (Array.isArray(arg1)) {
       uutIds = arg1;
       specificRange = arg2;
-      
+
       // Attempt to resolve Area ID from the first UUT
       if (uutIds.length > 0) {
         const uut = currentSessionData?.uuts?.find(u => u.id === uutIds[0]);
@@ -846,7 +1012,7 @@ function App() {
       } else {
         areaId = selectedAreaId;
       }
-    } 
+    }
     // Detect Source: Sidebar passes (areaId, uutId, rangeObj?)
     else {
       areaId = arg1;
@@ -872,8 +1038,8 @@ function App() {
       };
       // Ensure context is set so it opens in the right folder visually
       setSelectedTestPointContextUutId(uutIds[0]);
-      if(specificRange._id !== undefined) {
-         setActiveRangeIndices(prev => ({ ...prev, [uutIds[0]]: specificRange._id }));
+      if (specificRange._id !== undefined) {
+        setActiveRangeIndices(prev => ({ ...prev, [uutIds[0]]: specificRange._id }));
       }
     }
     else if (uutIds.length > 0) {
@@ -884,24 +1050,24 @@ function App() {
       setSelectedTestPointContextUutId(uutIds[0]);
     }
     else if (currentUutSelection.length > 0) {
-       // Fallback to global selection if no args passed (e.g. main add button)
-       initialData = {
+      // Fallback to global selection if no args passed (e.g. main add button)
+      initialData = {
         measurementAreaId: areaId || selectedAreaId,
         associatedUutIds: currentUutSelection,
       };
-      
+
       const primaryUutId = currentUutSelection[0];
       const primaryUut = currentSessionData?.uuts?.find(u => u.id === primaryUutId);
-      
+
       if (primaryUut && currentUutSelection.length === 1) {
-         const availableRanges = getAllUutRanges(primaryUut);
-         const selectedIndex = activeRangeIndices[primaryUutId];
-         
-         if (selectedIndex !== undefined && availableRanges[selectedIndex]) {
-             initialData.uutTolerance = availableRanges[selectedIndex];
-         } else if (availableRanges.length > 0) {
-             initialData.uutTolerance = availableRanges[0];
-         }
+        const availableRanges = getAllUutRanges(primaryUut);
+        const selectedIndex = activeRangeIndices[primaryUutId];
+
+        if (selectedIndex !== undefined && availableRanges[selectedIndex]) {
+          initialData.uutTolerance = availableRanges[selectedIndex];
+        } else if (availableRanges.length > 0) {
+          initialData.uutTolerance = availableRanges[0];
+        }
       }
     }
     else {
@@ -962,114 +1128,114 @@ function App() {
   const handleUniversalModalSave = (data) => {
     // CASE 1: Saving a UUT (New or Edit)
     if (data.type === 'uut' && currentSessionData) {
-        
-        // 1. Resolve Measurement Area (Fix for Sidebar Issue)
-        let resolvedAreaId = data.measurementAreaId || selectedAreaId || null;
-        let updatedMeasurementAreas = [...(currentSessionData.measurementAreas || [])];
-        
-        // If user typed a new area name that isn't in our list, create it.
-        if (!resolvedAreaId && data.measurementArea) {
-             const existingArea = updatedMeasurementAreas.find(a => a.name === data.measurementArea);
-             if (existingArea) {
-                 resolvedAreaId = existingArea.id;
-             } else {
-                 const newArea = { id: uuidv4(), name: data.measurementArea, color: '#3498db' };
-                 updatedMeasurementAreas.push(newArea);
-                 resolvedAreaId = newArea.id;
-             }
-        }
 
-        const newUut = {
-            id: data.id || uuidv4(),
-            description: data.description || data.name,
-            measurementArea: data.measurementArea,
-            measurementAreaId: resolvedAreaId,
-            instrument: data.instrument // The full instrument def
-        };
-        
-        const updatedUuts = [...(currentSessionData.uuts || []), newUut];
-        
-        updateSession({ 
-            ...currentSessionData, 
-            uuts: updatedUuts, 
-            measurementAreas: updatedMeasurementAreas // Ensure new areas are saved
-        });
-        showToast(`UUT "${newUut.description}" added to session.`);
-    } 
+      // 1. Resolve Measurement Area (Fix for Sidebar Issue)
+      let resolvedAreaId = data.measurementAreaId || selectedAreaId || null;
+      let updatedMeasurementAreas = [...(currentSessionData.measurementAreas || [])];
+
+      // If user typed a new area name that isn't in our list, create it.
+      if (!resolvedAreaId && data.measurementArea) {
+        const existingArea = updatedMeasurementAreas.find(a => a.name === data.measurementArea);
+        if (existingArea) {
+          resolvedAreaId = existingArea.id;
+        } else {
+          const newArea = { id: uuidv4(), name: data.measurementArea, color: '#3498db' };
+          updatedMeasurementAreas.push(newArea);
+          resolvedAreaId = newArea.id;
+        }
+      }
+
+      const newUut = {
+        id: data.id || uuidv4(),
+        description: data.description || data.name,
+        measurementArea: data.measurementArea,
+        measurementAreaId: resolvedAreaId,
+        instrument: data.instrument // The full instrument def
+      };
+
+      const updatedUuts = [...(currentSessionData.uuts || []), newUut];
+
+      updateSession({
+        ...currentSessionData,
+        uuts: updatedUuts,
+        measurementAreas: updatedMeasurementAreas // Ensure new areas are saved
+      });
+      showToast(`UUT "${newUut.description}" added to session.`);
+    }
     // CASE 2: Saving a TMDE (Direct Edit or "Use as TMDE" from Library)
     else if ((data.type === 'tmde' || (data.type === 'library' && data.useAs === 'tmde')) && currentSessionData) {
-         
-         // Construct TMDE Object
-         let newTmde = {};
-         
-         if (data.type === 'library' && data.useAs === 'tmde') {
-             // Converting Library Item -> Session TMDE
-             newTmde = {
-                id: uuidv4(),
-                name: `${data.manufacturer} ${data.model}`,
-                quantity: 1,
-                assetId: "",
-                instrument: { ...data }, // The library item IS the instrument
-                isInstrumentBased: true
-             };
-             delete newTmde.instrument.useAs; 
-         } else {
-             // Saving from TMDE form
-             newTmde = {
-                id: data.id || uuidv4(),
-                name: data.name,
-                quantity: data.quantity,
-                assetId: data.assetId,
-                instrument: data.instrument,
-                isInstrumentBased: true
-             };
-         }
 
-         const updatedTmdes = [...(currentSessionData.tmdes || []), newTmde];
-         updateSession({ ...currentSessionData, tmdes: updatedTmdes });
-         showToast(`TMDE "${newTmde.name}" added to session.`);
-    } 
+      // Construct TMDE Object
+      let newTmde = {};
+
+      if (data.type === 'library' && data.useAs === 'tmde') {
+        // Converting Library Item -> Session TMDE
+        newTmde = {
+          id: uuidv4(),
+          name: `${data.manufacturer} ${data.model}`,
+          quantity: 1,
+          assetId: "",
+          instrument: { ...data }, // The library item IS the instrument
+          isInstrumentBased: true
+        };
+        delete newTmde.instrument.useAs;
+      } else {
+        // Saving from TMDE form
+        newTmde = {
+          id: data.id || uuidv4(),
+          name: data.name,
+          quantity: data.quantity,
+          assetId: data.assetId,
+          instrument: data.instrument,
+          isInstrumentBased: true
+        };
+      }
+
+      const updatedTmdes = [...(currentSessionData.tmdes || []), newTmde];
+      updateSession({ ...currentSessionData, tmdes: updatedTmdes });
+      showToast(`TMDE "${newTmde.name}" added to session.`);
+    }
     // CASE 3: Saving a UUT from "Use as UUT" Library Action
     else if (data.type === 'library' && data.useAs === 'uut' && currentSessionData) {
-         // Resolve Area (Default to current selection or Create Default)
-         let resolvedAreaId = selectedAreaId;
-         let updatedMeasurementAreas = [...(currentSessionData.measurementAreas || [])];
-         
-         if (!resolvedAreaId) {
-             // Check for default
-             const defaultArea = updatedMeasurementAreas.find(a => a.name === "General");
-             if (defaultArea) {
-                 resolvedAreaId = defaultArea.id;
-             } else {
-                 const newArea = { id: uuidv4(), name: "General", color: '#3498db' };
-                 updatedMeasurementAreas.push(newArea);
-                 resolvedAreaId = newArea.id;
-             }
-         }
+      // Resolve Area (Default to current selection or Create Default)
+      let resolvedAreaId = selectedAreaId;
+      let updatedMeasurementAreas = [...(currentSessionData.measurementAreas || [])];
 
-         const newUut = {
-            id: uuidv4(),
-            description: `${data.manufacturer} ${data.model}`,
-            measurementArea: updatedMeasurementAreas.find(a => a.id === resolvedAreaId)?.name || "General",
-            measurementAreaId: resolvedAreaId,
-            instrument: { ...data }
-         };
-         delete newUut.instrument.useAs;
+      if (!resolvedAreaId) {
+        // Check for default
+        const defaultArea = updatedMeasurementAreas.find(a => a.name === "General");
+        if (defaultArea) {
+          resolvedAreaId = defaultArea.id;
+        } else {
+          const newArea = { id: uuidv4(), name: "General", color: '#3498db' };
+          updatedMeasurementAreas.push(newArea);
+          resolvedAreaId = newArea.id;
+        }
+      }
 
-         const updatedUuts = [...(currentSessionData.uuts || []), newUut];
-         updateSession({ 
-             ...currentSessionData, 
-             uuts: updatedUuts, 
-             measurementAreas: updatedMeasurementAreas 
-         });
-         showToast(`UUT "${newUut.description}" added to session.`);
+      const newUut = {
+        id: uuidv4(),
+        description: `${data.manufacturer} ${data.model}`,
+        measurementArea: updatedMeasurementAreas.find(a => a.id === resolvedAreaId)?.name || "General",
+        measurementAreaId: resolvedAreaId,
+        instrument: { ...data }
+      };
+      delete newUut.instrument.useAs;
+
+      const updatedUuts = [...(currentSessionData.uuts || []), newUut];
+      updateSession({
+        ...currentSessionData,
+        uuts: updatedUuts,
+        measurementAreas: updatedMeasurementAreas
+      });
+      showToast(`UUT "${newUut.description}" added to session.`);
     }
     else {
-        // Standard Library Save (Managing the Library itself)
-        saveInstrument(data);
-        showToast(`Instrument "${data.model}" saved to library.`);
+      // Standard Library Save (Managing the Library itself)
+      saveInstrument(data);
+      showToast(`Instrument "${data.model}" saved to library.`);
     }
-    
+
     setIsInstrumentBuilderOpen(false);
   };
 
@@ -1135,27 +1301,27 @@ function App() {
   // --- Quick Add handler for sidebar toolbar ---
   const handleQuickAddPoint = () => {
     if (!quickAddValue || !quickAddUnit) return;
-    
+
     // Determine which UUTs to add the point to
     // Priority: 1) selectedUutId (UUT view) 2) currentUutSelection (Session/Area view)
-    const targetUutIds = selectedUutId 
-      ? [selectedUutId] 
-      : currentUutSelection.length > 0 
-        ? currentUutSelection 
+    const targetUutIds = selectedUutId
+      ? [selectedUutId]
+      : currentUutSelection.length > 0
+        ? currentUutSelection
         : [];
-    
+
     if (targetUutIds.length === 0) return;
-    
+
     // Get measurement area from first UUT or selected area
     const firstUut = currentSessionData?.uuts?.find(u => u.id === targetUutIds[0]);
     const areaId = firstUut?.measurementAreaId || selectedAreaId;
-    
+
     // Helper to create point with resolved tolerance
     const createPointForUut = (uutId) => {
       const uut = currentSessionData?.uuts?.find(u => u.id === uutId);
       // Resolve tolerance from UUT instrument definition
       const resolvedTolerance = uut ? findMatchingRange(uut, quickAddValue, quickAddUnit) : null;
-      
+
       return {
         section: quickAddSection,
         measurementType: "direct",
@@ -1167,7 +1333,7 @@ function App() {
         uutTolerance: resolvedTolerance
       };
     };
-    
+
     if (targetUutIds.length === 1) {
       // Single UUT - create one point
       saveTestPoint(createPointForUut(targetUutIds[0]), null);
@@ -1176,7 +1342,7 @@ function App() {
       const batchPoints = targetUutIds.map(createPointForUut);
       saveTestPoint(batchPoints, null);
     }
-    
+
     setQuickAddSection("");
     setQuickAddValue("");
     setQuickAddUnit("");
@@ -1198,8 +1364,8 @@ function App() {
     const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
     setAppNotification({
       title: ids.length > 1 ? "Delete TMDEs" : "Delete TMDE",
-      message: ids.length > 1 
-        ? `Are you sure you want to delete these ${ids.length} TMDE definitions?` 
+      message: ids.length > 1
+        ? `Are you sure you want to delete these ${ids.length} TMDE definitions?`
         : "Are you sure you want to delete this entire TMDE definition (all instances)?",
       confirmText: "Delete",
       isIconConfirm: true,
@@ -1208,7 +1374,7 @@ function App() {
         // deleteTmdeDefinition comes from useSessionManager. Let's assume we need to update session manually if the hook doesn't support batch.
         // Actually, checking useSessionManager usage (line 286), it is destructured. Let's see what it does.
         // If deleteTmdeDefinition only takes one ID, we might need to loop INSIDE the confirm.
-        ids.forEach(id => deleteTmdeDefinition(id)); 
+        ids.forEach(id => deleteTmdeDefinition(id));
         setAppNotification(null);
       },
     });
@@ -1218,8 +1384,8 @@ function App() {
     const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
     setAppNotification({
       title: ids.length > 1 ? "Delete UUTs" : "Delete UUT",
-      message: ids.length > 1 
-        ? `Are you sure you want to delete these ${ids.length} UUT definitions?` 
+      message: ids.length > 1
+        ? `Are you sure you want to delete these ${ids.length} UUT definitions?`
         : "Are you sure you want to delete this UUT definition?",
       confirmText: "Delete",
       isIconConfirm: true,
@@ -1232,9 +1398,9 @@ function App() {
             uuts: updatedUuts,
             // Clear legacy if the 'current' legacy UI matches one of the deleted
             ...(idsSet.has(currentSessionData.id) ? {
-                uutDescription: "",
-                uutTolerance: {},
-                uutInstrument: null
+              uutDescription: "",
+              uutTolerance: {},
+              uutInstrument: null
             } : {})
           });
         }
@@ -1432,7 +1598,7 @@ function App() {
     if (selectedRangeContext) {
       return {
         viewMode: 'range',
-        id: `${selectedRangeContext.uutId}-${selectedRangeContext.range._id}`, 
+        id: `${selectedRangeContext.uutId}-${selectedRangeContext.range._id}`,
         rangeData: selectedRangeContext.range,
         uutId: selectedRangeContext.uutId,
         measurementAreaId: selectedAreaId
@@ -1487,15 +1653,15 @@ function App() {
         <BugReportModal isOpen={isBugReportOpen} onClose={() => setIsBugReportOpen(false)} reports={bugReports} onSave={saveBugReport} onDelete={handleDeleteBugReport} />
         {currentSessionData && (<> <FloatingNotepad isOpen={isNotepadOpen} onClose={() => setIsNotepadOpen(false)} notes={currentSessionData.notes || ""} onSave={handleUpdateNotes} /> <UnitConverter isOpen={isConverterOpen} onClose={() => setIsConverterOpen(false)} /> <ReverseTraceabilityTool isOpen={isTraceabilityOpen} onClose={() => setIsTraceabilityOpen(false)} /> </>)}
         <UnresolvedToleranceModal isOpen={!!unresolvedToleranceModal} matches={unresolvedToleranceModal?.matches} instrumentName={unresolvedToleranceModal?.instrumentName} onSelect={(selected) => { unresolvedToleranceModal.onSelect(selected); }} onClose={() => setUnresolvedToleranceModal(null)} />
-        
+
         {/* Global Library Modal (Instrument Manager) */}
-        <UniversalInstrumentModal 
-            isOpen={isInstrumentBuilderOpen} 
-            onClose={() => setIsInstrumentBuilderOpen(false)} 
-            onSave={handleUniversalModalSave} 
-            onDelete={deleteInstrument} 
-            instruments={instruments} 
-            mode="library"
+        <UniversalInstrumentModal
+          isOpen={isInstrumentBuilderOpen}
+          onClose={() => setIsInstrumentBuilderOpen(false)}
+          onSave={handleUniversalModalSave}
+          onDelete={deleteInstrument}
+          instruments={instruments}
+          mode="library"
         />
 
         {confirmationModal && (<div className="modal-overlay" style={{ zIndex: 2001 }}> <div className="modal-content"> <button onClick={() => setConfirmationModal(null)} className="modal-close-button" > &times; </button> <h3>{confirmationModal.title}</h3> <p>{confirmationModal.message}</p> <div className="modal-actions" style={{ justifyContent: "center", gap: "15px" }} > <button className="button" style={{ backgroundColor: "var(--status-bad)" }} onClick={confirmationModal.onConfirm} > Delete </button> </div> </div> </div>)}
@@ -1522,7 +1688,22 @@ function App() {
           </div>
 
           <div className="results-workflow-container">
-            <aside className="results-sidebar">
+            <aside
+              className="results-sidebar"
+              style={{
+                // Use state width
+                width: `${sidebarWidth}px`,
+                minWidth: `${sidebarWidth}px`, // Force rigid width
+                maxWidth: `${sidebarWidth}px`,
+                position: 'relative' // Needed for resizer positioning
+              }}
+            >
+              {/* NEW: DRAG HANDLE */}
+              <div
+                className="sidebar-resizer"
+                onMouseDown={startResizing}
+                title="Drag to resize sidebar"
+              />
               <div className="sidebar-header" style={{ alignItems: "flex-end" }}>
                 <div className="session-controls">
                   <label htmlFor="session-select">Analysis Session</label>
@@ -1574,37 +1755,54 @@ function App() {
 
                 {/* Sidebar Toolbar: Filter + Quick Add */}
                 <div className="sidebar-toolbar" ref={columnMenuRef}>
-                  {/* Filter Button */}
-                  <button 
-                      onClick={() => setIsColumnMenuOpen(!isColumnMenuOpen)} 
-                      title="Filter visible columns" 
-                      className={`sidebar-filter-btn ${isColumnMenuOpen ? 'active' : ''}`}
+
+                  {/* 3. UNIFIED EXPAND/COLLAPSE BUTTON */}
+                  <button
+                    onClick={handleToggleExpandAll}
+                    title={isGlobalExpanded ? "Collapse All" : "Expand All"}
+                    className="sidebar-filter-btn"
+                    style={{ marginRight: '6px' }}
                   >
-                      <FontAwesomeIcon icon={faSlidersH} />
+                    {/* Swaps icon based on state */}
+                    <FontAwesomeIcon icon={isGlobalExpanded ? faCompressArrowsAlt : faExpandArrowsAlt} />
                   </button>
+
+                  {/* Filter Button */}
+                  <button
+                    onClick={() => setIsColumnMenuOpen(!isColumnMenuOpen)}
+                    title="Filter visible columns"
+                    className={`sidebar-filter-btn ${isColumnMenuOpen ? 'active' : ''}`}
+                  >
+                    <FontAwesomeIcon icon={faSlidersH} />
+                  </button>
+
                   {isColumnMenuOpen && (
-                      <div className="sidebar-filter-dropdown">
-                          {[
-                            { key: 'section', label: 'Section' },
-                            { key: 'value', label: 'Value' },
-                            { key: 'tolerance', label: 'Tolerance' },
-                            { key: 'limits', label: 'Limits' }
-                          ].map(col => (
-                            <label key={col.key} className="filter-option">
-                              <input 
-                                type="checkbox" 
-                                checked={sidebarColumns[col.key]} 
-                                onChange={() => setSidebarColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
-                              />
-                              <span>{col.label}</span>
-                            </label>
-                          ))}
-                      </div>
+                    <div className="sidebar-filter-dropdown">
+                      {[
+                        { key: 'section', label: 'Section' },
+                        { key: 'value', label: 'Value' },
+                        { key: 'tolerance', label: 'Tolerance' },
+                        { key: 'limits', label: 'Limits' },
+                        { key: 'pfa', label: 'PFA' },
+                        { key: 'pfr', label: 'PFR' },
+                        { key: 'tur', label: 'TUR' },
+                        { key: 'tar', label: 'TAR' },
+                      ].map(col => (
+                        <label key={col.key} className="filter-option">
+                          <input
+                            type="checkbox"
+                            checked={sidebarColumns[col.key]}
+                            onChange={() => setSidebarColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
+                          />
+                          <span>{col.label}</span>
+                        </label>
+                      ))}
+                    </div>
                   )}
 
                   {/* Quick Add Inline Form */}
                   <div className="sidebar-quick-add">
-                    <input 
+                    <input
                       type="text"
                       placeholder="Section"
                       value={quickAddSection}
@@ -1612,7 +1810,7 @@ function App() {
                       onKeyDown={(e) => e.key === 'Enter' && handleQuickAddPoint()}
                       className="quick-add-input section"
                     />
-                    <input 
+                    <input
                       type="text"
                       placeholder="Value"
                       value={quickAddValue}
@@ -1620,7 +1818,7 @@ function App() {
                       onKeyDown={(e) => e.key === 'Enter' && handleQuickAddPoint()}
                       className="quick-add-input"
                     />
-                    <input 
+                    <input
                       type="text"
                       placeholder="Unit"
                       value={quickAddUnit}
@@ -1628,12 +1826,12 @@ function App() {
                       onKeyDown={(e) => e.key === 'Enter' && handleQuickAddPoint()}
                       className="quick-add-input unit"
                     />
-                    <button 
+                    <button
                       onClick={handleQuickAddPoint}
                       disabled={!quickAddValue || !quickAddUnit || (!selectedUutId && currentUutSelection.length === 0)}
                       className="quick-add-submit"
-                      title={(!selectedUutId && currentUutSelection.length === 0) 
-                        ? "Select UUT(s) from panel first" 
+                      title={(!selectedUutId && currentUutSelection.length === 0)
+                        ? "Select UUT(s) from panel first"
                         : `Add point to ${selectedUutId ? '1' : currentUutSelection.length} UUT${!selectedUutId && currentUutSelection.length > 1 ? 's' : ''} (Enter)`}
                     >
                       <FontAwesomeIcon icon={faPlus} />
@@ -1647,7 +1845,7 @@ function App() {
                     !selectedUutId &&
                     !selectedTestPointId &&
                     !selectedRangeContext;
-                    
+
                   // Pure accordion: only expandedAreas Set determines visibility
                   const isAreaExpanded = expandedAreas.has(areaData.id);
 
@@ -1659,8 +1857,8 @@ function App() {
                       >
                         <FontAwesomeIcon
                           icon={isAreaExpanded ? faChevronDown : faChevronRight}
-                          style={{ 
-                            opacity: 0.6, 
+                          style={{
+                            opacity: 0.6,
                             marginRight: '8px',
                             fontSize: '0.75em',
                             width: '10px'
@@ -1711,10 +1909,10 @@ function App() {
                                   }}
                                 >
                                   <div className="uut-info">
-                                    <FontAwesomeIcon 
+                                    <FontAwesomeIcon
                                       icon={isUutExpanded ? faChevronDown : faChevronRight}
-                                      style={{ 
-                                        opacity: 0.6, 
+                                      style={{
+                                        opacity: 0.6,
                                         marginRight: '8px',
                                         fontSize: '0.75em',
                                         width: '10px'
@@ -1742,154 +1940,158 @@ function App() {
                                 </div>
 
                                 {isUutExpanded && (
-                                    <div style={{ paddingLeft: '15px' }}>
-                                      {group.rangeGroups.map(range => {
-                                        if (!isShowingAll && range.points.length === 0) return null;
-                                        const rangeKey = `${group.id}-${range._id}`;
-                                        const isRangeDragOver = dragOverTargetId === rangeKey;
-                                        const isRangeExpanded = expandedRanges.has(rangeKey);
+                                  <div style={{ paddingLeft: '15px' }}>
+                                    {group.rangeGroups.map(range => {
+                                      if (!isShowingAll && range.points.length === 0) return null;
+                                      const rangeKey = `${group.id}-${range._id}`;
+                                      const isRangeDragOver = dragOverTargetId === rangeKey;
+                                      const isRangeExpanded = expandedRanges.has(rangeKey);
 
-                                        const isRangeSelected = selectedRangeContext &&
-                                          selectedRangeContext.uutId === group.id &&
-                                          selectedRangeContext.range._id === range._id;
+                                      const isRangeSelected = selectedRangeContext &&
+                                        selectedRangeContext.uutId === group.id &&
+                                        selectedRangeContext.range._id === range._id;
 
-                                        return (
-                                          <div key={`range-${range._id}`} style={{ marginBottom: '8px' }}>
-                                            <div
-                                              className={`range-label-row ${isRangeDragOver ? 'drag-over' : ''} ${isRangeSelected ? 'active' : ''}`}
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleSelectRange(group.id, range, areaData.id);
-                                              }}
-                                              onDragOver={(e) => handleDragOver(e, rangeKey)}
-                                              onDrop={(e) => handleDrop(e, group.id, areaData.id, range)}
-                                              onContextMenu={(e) => {
-                                                e.preventDefault();
-                                                setContextMenu({
-                                                  x: e.pageX, y: e.pageY,
-                                                  items: [
-                                                    {
-                                                      label: "Paste Point in Range",
-                                                      action: () => handlePastePoint(group.id, areaData.id, range),
-                                                      icon: faPaste,
-                                                      className: !clipboardPoint ? 'disabled' : ''
-                                                    },
-                                                  ],
-                                                });
-                                              }}
-                                            >
-                                              <FontAwesomeIcon 
-                                                icon={isRangeExpanded ? faChevronDown : faChevronRight}
-                                                style={{ 
-                                                  opacity: 0.6, 
-                                                  marginRight: '8px',
-                                                  fontSize: '0.7em',
-                                                  width: '8px'
-                                                }}
-                                              />
-                                              <FontAwesomeIcon icon={faRulerCombined} size="xs" style={{ opacity: isRangeSelected ? 1 : 0.5 }} />
-                                              <span>{range.label}</span>
-                                              {range.points.length > 0 && (
-                                                <span style={{ marginLeft: 'auto', opacity: 0.5, fontSize: '0.75em' }}>
-                                                  ({range.points.length})
-                                                </span>
-                                              )}
-                                            </div>
-
-                                            {/* Points only show when range is expanded */}
-                                            {isRangeExpanded && range.points.length === 0 ? (
-                                              <div className="empty-branch-msg"></div>
-                                            ) : isRangeExpanded && (
-                                              <>
-                                                {/* Horizontal scroll wrapper for future column expansion */}
-                                                <div className="sidebar-points-scroll-wrapper">
-                                                  {/* Column Headers - Using CSS class */}
-                                                  <div 
-                                                    className="sidebar-column-headers"
-                                                    style={{
-                                                      gridTemplateColumns: (() => {
-                                                            const parts = [];
-                                                            if (sidebarColumns.section) parts.push('50px');
-                                                            if (sidebarColumns.value) parts.push('80px');
-                                                            if (sidebarColumns.tolerance) parts.push('minmax(70px, 1fr)');
-                                                            if (sidebarColumns.limits) parts.push('minmax(80px, 1.5fr)');
-                                                            if (parts.length === 0) return '1fr';
-                                                            return parts.join(' ');
-                                                      })(),
-                                                    }}
-                                                  >
-                                                    {sidebarColumns.section && <span>Sect.</span>}
-                                                    {sidebarColumns.value && <span>Value</span>}
-                                                    {sidebarColumns.tolerance && <span>Tolerance</span>}
-                                                    {sidebarColumns.limits && <span>Limits</span>}
-                                                  </div>
-                                                  {range.points.map(tp => {
-                                                    const isSelected = selectedTestPointId === tp.id;
-                                                    return (
-                                                      <SidebarPointItem
-                                                        key={tp.id}
-                                                        point={tp}
-                                                        isSelected={isSelected}
-                                                        isTableSelected={selectedTablePointIds.includes(tp.id)}
-                                                        visibleColumns={sidebarColumns}
-                                                        onSelect={() => handleSelectTestPoint(tp.id, group.id)}
-                                                        onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
-                                                        onSave={handleInlinePointUpdate}
-                                                        onDragStart={handleDragStart}
-                                                        onContextMenu={(e, p) => {
-                                                          e.preventDefault();
-                                                          e.stopPropagation();
-                                                          setContextMenu({
-                                                            x: e.pageX, y: e.pageY,
-                                                            items: [
-                                                              { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
-                                                              { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
-                                                            ],
-                                                          });
-                                                        }}
-                                                      />
-                                                    );
-                                                  })}
-                                                </div>
-                                              </>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-
-                                      {/* UNCATEGORIZED POINTS */}
-                                      {group.uncategorizedPoints && group.uncategorizedPoints.length > 0 && (
-                                        <div style={{ marginTop: '8px' }}>
-                                          <div className="range-label-row" style={{ color: 'var(--status-warning)' }}>
-                                            <FontAwesomeIcon icon={faLayerGroup} size="xs" />
-                                            <span>Other Points</span>
-                                          </div>
-                                          {group.uncategorizedPoints.map(tp => (
-                                            <SidebarPointItem
-                                              key={tp.id}
-                                              point={tp}
-                                              isSelected={selectedTestPointId === tp.id}
-                                              isTableSelected={selectedTablePointIds.includes(tp.id)}
-                                              onSelect={() => handleSelectTestPoint(tp.id, group.id)}
-                                              onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
-                                              onSave={handleInlinePointUpdate}
-                                              onDragStart={handleDragStart}
-                                              onContextMenu={(e, p) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setContextMenu({
-                                                  x: e.pageX, y: e.pageY,
-                                                  items: [
-                                                    { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
-                                                    { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
-                                                  ],
-                                                });
+                                      return (
+                                        <div key={`range-${range._id}`} style={{ marginBottom: '8px' }}>
+                                          <div
+                                            className={`range-label-row ${isRangeDragOver ? 'drag-over' : ''} ${isRangeSelected ? 'active' : ''}`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleSelectRange(group.id, range, areaData.id);
+                                            }}
+                                            onDragOver={(e) => handleDragOver(e, rangeKey)}
+                                            onDrop={(e) => handleDrop(e, group.id, areaData.id, range)}
+                                            onContextMenu={(e) => {
+                                              e.preventDefault();
+                                              setContextMenu({
+                                                x: e.pageX, y: e.pageY,
+                                                items: [
+                                                  {
+                                                    label: "Paste Point in Range",
+                                                    action: () => handlePastePoint(group.id, areaData.id, range),
+                                                    icon: faPaste,
+                                                    className: !clipboardPoint ? 'disabled' : ''
+                                                  },
+                                                ],
+                                              });
+                                            }}
+                                          >
+                                            <FontAwesomeIcon
+                                              icon={isRangeExpanded ? faChevronDown : faChevronRight}
+                                              style={{
+                                                opacity: 0.6,
+                                                marginRight: '8px',
+                                                fontSize: '0.7em',
+                                                width: '8px'
                                               }}
                                             />
-                                          ))}
+                                            <FontAwesomeIcon icon={faRulerCombined} size="xs" style={{ opacity: isRangeSelected ? 1 : 0.5 }} />
+                                            <span>{range.label}</span>
+                                            {range.points.length > 0 && (
+                                              <span style={{ marginLeft: 'auto', opacity: 0.5, fontSize: '0.75em' }}>
+                                                ({range.points.length})
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          {/* Points only show when range is expanded */}
+                                          {isRangeExpanded && range.points.length === 0 ? (
+                                            <div className="empty-branch-msg"></div>
+                                          ) : isRangeExpanded && (
+                                            <>
+                                              {/* Horizontal scroll wrapper for future column expansion */}
+                                              <div className="sidebar-points-scroll-wrapper">
+                                                {/* Column Headers - Using CSS class */}
+                                                <div
+                                                  className="sidebar-column-headers"
+                                                  style={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: getSidebarGridTemplate(sidebarColumns),
+                                                    gap: '4px', // Match row gap
+                                                    padding: '4px 8px 4px 12px',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 'bold',
+                                                    color: 'var(--text-color-muted)',
+                                                    borderBottom: '1px solid var(--border-color)',
+                                                    width: '100%' // Match container
+                                                  }}
+                                                >
+                                                  {sidebarColumns.section && <span>Sect.</span>}
+                                                  {sidebarColumns.value && <span>Value</span>}
+                                                  {sidebarColumns.tolerance && <span>Tolerance</span>}
+                                                  {sidebarColumns.limits && <span>Limits</span>}
+                                                  {sidebarColumns.pfa && <span style={{ textAlign: 'center' }}>PFA</span>}
+                                                  {sidebarColumns.pfr && <span style={{ textAlign: 'center' }}>PFR</span>}
+                                                  {sidebarColumns.tur && <span style={{ textAlign: 'center' }}>TUR</span>}
+                                                  {sidebarColumns.tar && <span style={{ textAlign: 'center' }}>TAR</span>}
+                                                </div>
+                                                {range.points.map(tp => {
+                                                  const isSelected = selectedTestPointId === tp.id;
+                                                  return (
+                                                    <SidebarPointItem
+                                                      key={tp.id}
+                                                      point={tp}
+                                                      isSelected={isSelected}
+                                                      isTableSelected={selectedTablePointIds.includes(tp.id)}
+                                                      visibleColumns={sidebarColumns}
+                                                      onSelect={() => handleSelectTestPoint(tp.id, group.id)}
+                                                      onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
+                                                      onSave={handleInlinePointUpdate}
+                                                      onDragStart={handleDragStart}
+                                                      onContextMenu={(e, p) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setContextMenu({
+                                                          x: e.pageX, y: e.pageY,
+                                                          items: [
+                                                            { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                                            { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                                          ],
+                                                        });
+                                                      }}
+                                                    />
+                                                  );
+                                                })}
+                                              </div>
+                                            </>
+                                          )}
                                         </div>
-                                      )}
-                                    </div>
+                                      );
+                                    })}
+
+                                    {/* UNCATEGORIZED POINTS */}
+                                    {group.uncategorizedPoints && group.uncategorizedPoints.length > 0 && (
+                                      <div style={{ marginTop: '8px' }}>
+                                        <div className="range-label-row" style={{ color: 'var(--status-warning)' }}>
+                                          <FontAwesomeIcon icon={faLayerGroup} size="xs" />
+                                          <span>Other Points</span>
+                                        </div>
+                                        {group.uncategorizedPoints.map(tp => (
+                                          <SidebarPointItem
+                                            key={tp.id}
+                                            point={tp}
+                                            isSelected={selectedTestPointId === tp.id}
+                                            isTableSelected={selectedTablePointIds.includes(tp.id)}
+                                            onSelect={() => handleSelectTestPoint(tp.id, group.id)}
+                                            onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
+                                            onSave={handleInlinePointUpdate}
+                                            onDragStart={handleDragStart}
+                                            onContextMenu={(e, p) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              setContextMenu({
+                                                x: e.pageX, y: e.pageY,
+                                                items: [
+                                                  { label: "Copy Point", action: () => handleCopyPoint(p), icon: faCopy },
+                                                  { label: "Delete Point", action: () => handleDeleteTestPoint(p.id), icon: faTrashAlt, className: "destructive" },
+                                                ],
+                                              });
+                                            }}
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             );
