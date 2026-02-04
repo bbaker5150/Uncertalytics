@@ -69,14 +69,10 @@ const getSidebarGridTemplate = (visibleColumns) => {
   // Fixed widths for stable columns
   if (visibleColumns.section) parts.push('50px');
   if (visibleColumns.value) parts.push('80px');
+  if (visibleColumns.tolerance) parts.push('minmax(100px, 1fr)');
+  if (visibleColumns.limits) parts.push('minmax(120px, 1.5fr)');
 
-  // Fluid widths for variable content (Tolerance/Limits)
-  // minmax(0, Xfr) ensures they can shrink below their content size (truncation) 
-  // instead of forcing the container to overflow, which breaks alignment.
-  if (visibleColumns.tolerance) parts.push('minmax(0, 1fr)');
-  if (visibleColumns.limits) parts.push('minmax(0, 1.5fr)');
-
-  // Fixed widths for Risk Columns to ensure perfect vertical alignment
+  // Fixed widths for Risk Columns
   if (visibleColumns.pfa) parts.push('55px');
   if (visibleColumns.pfr) parts.push('55px');
   if (visibleColumns.tur) parts.push('55px');
@@ -84,7 +80,7 @@ const getSidebarGridTemplate = (visibleColumns) => {
 
   if (parts.length === 0) return '1fr';
   return parts.join(' ');
-}
+};
 
 // --- HELPER COMPONENT: Sidebar Point Item (Supports Inline Editing) ---
 const SidebarPointItem = ({
@@ -185,8 +181,6 @@ const SidebarPointItem = ({
     const ptParam = point.testPointInfo?.parameter;
     const limits = getAbsoluteLimits(point.uutTolerance, ptParam);
     if (!limits || limits.low === 'N/A') return '-';
-    // Format compact: L -> H
-    // Strip units for compactness if needed, or keep short
     const shortLow = limits.low.split(' ')[0];
     const shortHigh = limits.high.split(' ')[0];
     return `${shortLow} → ${shortHigh}`;
@@ -202,7 +196,7 @@ const SidebarPointItem = ({
         gap: '4px',
         alignItems: 'center',
         padding: '4px 8px 4px 12px',
-        // minWidth: 'max-content',
+        minWidth: 'min-content',
         width: '100%'
       }}
       onClick={(e) => {
@@ -456,7 +450,7 @@ function App() {
   const [sessionImageCache, setSessionImageCache] = useState(new Map());
   const [riskResults, setRiskResults] = useState(null);
 
-  const [sidebarWidth, setSidebarWidth] = useState(420); // Default comfortable width
+  const [sidebarWidth, setSidebarWidth] = useState(550); 
   const isResizingRef = useRef(false);
 
   // --- SIDEBAR PREFERENCES ---
@@ -476,8 +470,21 @@ function App() {
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isResizingRef.current) return;
-      // Clamp width between 300px and 800px (or window limit)
-      const newWidth = Math.max(300, Math.min(e.clientX, window.innerWidth - 200));
+
+      // --- CONFIGURATION ---
+      const MIN_SIDEBAR_WIDTH = 300;
+      const MAX_SIDEBAR_WIDTH = 750; // 1. Hard Cap: Never wider than this
+      const MIN_CONTENT_WIDTH = 600; // 2. Safety Margin: Reserve this much space for the main panel
+
+      // Calculate the available width for the sidebar based on window size
+      const dynamicMaxWidth = window.innerWidth - MIN_CONTENT_WIDTH;
+
+      // The effective limit is the smaller of the hard cap or the dynamic limit
+      const effectiveLimit = Math.min(MAX_SIDEBAR_WIDTH, dynamicMaxWidth);
+
+      // Apply constraints
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(e.clientX, effectiveLimit));
+      
       setSidebarWidth(newWidth);
     };
 
@@ -485,7 +492,7 @@ function App() {
       if (isResizingRef.current) {
         isResizingRef.current = false;
         document.body.style.cursor = 'default';
-        document.body.style.userSelect = 'auto'; // Re-enable selection
+        document.body.style.userSelect = 'auto'; 
       }
     };
 
@@ -1690,12 +1697,13 @@ function App() {
           <div className="results-workflow-container">
             <aside
               className="results-sidebar"
-              style={{
-                // Use state width
-                width: `${sidebarWidth}px`,
-                minWidth: `${sidebarWidth}px`, // Force rigid width
+              style={{ 
+                width: `${sidebarWidth}px`, 
+                minWidth: `${sidebarWidth}px`,
                 maxWidth: `${sidebarWidth}px`,
-                position: 'relative' // Needed for resizer positioning
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column' 
               }}
             >
               {/* NEW: DRAG HANDLE */}
@@ -2007,13 +2015,14 @@ function App() {
                                                   style={{
                                                     display: 'grid',
                                                     gridTemplateColumns: getSidebarGridTemplate(sidebarColumns),
-                                                    gap: '4px', // Match row gap
+                                                    gap: '4px',
                                                     padding: '4px 8px 4px 12px',
                                                     fontSize: '0.7rem',
                                                     fontWeight: 'bold',
                                                     color: 'var(--text-color-muted)',
                                                     borderBottom: '1px solid var(--border-color)',
-                                                    width: '100%' // Match container
+                                                    width: '100%',
+                                                    minWidth: 'min-content'
                                                   }}
                                                 >
                                                   {sidebarColumns.section && <span>Sect.</span>}

@@ -26,6 +26,11 @@
 /* =================================================================== */
 
 /* --- 1A. BASE LIGHT THEME (Default) --- */
+
+* {
+  box-sizing: border-box;
+}
+
 :root {
   /* Typography: Modern, clean, high-readability */
   --main-font:
@@ -1425,8 +1430,10 @@ body.theme-cyberpunk .button {
 .sidebar-points-scroll-wrapper {
   overflow-x: auto;
   overflow-y: visible;
-  margin: 0 -4px;
-  padding: 0 4px;
+  margin: 0; 
+  width: 100%;
+  box-sizing: border-box;
+  scrollbar-width: thin;
 }
 
 .sidebar-points-scroll-wrapper::-webkit-scrollbar {
@@ -1676,7 +1683,7 @@ body.theme-cyberpunk .button {
   flex-direction: column;
   gap: 4px;
   overflow-y: auto;
-  /* Allow scrolling for long lists */
+  overflow-x: hidden;
 }
 
 .measurement-point-item {
