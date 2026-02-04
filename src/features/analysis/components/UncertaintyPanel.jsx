@@ -801,195 +801,188 @@ const SummaryDashboard = ({
                 <div style={{ color: 'var(--text-color-muted)', fontSize: '0.9rem', marginTop: '4px' }}>{subtitle}</div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignItems: 'start' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
-
-                    {/* UUT TABLE */}
-                    <div style={cardStyle}>
-                        <div style={headerStyle}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <FontAwesomeIcon icon={faMicroscope} />
-                                <span>Units Under Test ({filteredUuts.length})</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {/* DELETE BUTTON */}
-                                {selectedUutIds.length > 0 && (
-                                    <button
-                                        className="btn-icon-only delete"
-                                        style={{ color: 'var(--status-bad)', width: '24px', height: '24px', borderRadius: '4px', opacity: 1, border: '1px solid rgba(255,82,82,0.3)', marginRight: '8px' }}
-                                        onClick={handleDeleteSelectedUuts}
-                                        title={`Delete ${selectedUutIds.length} Selected UUTs`}
-                                    >
-                                        <FontAwesomeIcon icon={faTrashAlt} size="xs" />
-                                    </button>
-                                )}
-                                {/* ADD BUTTON */}
-                                <button
-                                    className="btn-icon-only"
-                                    style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
-                                    onClick={() => onEditUut && onEditUut(null)} // Trigger Add
-                                    title="Add New UUT"
-                                >
-                                    <FontAwesomeIcon icon={faPlus} size="xs" />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="panel-table-container" style={{ overflowX: 'auto', borderRadius: '8px', border: 'none' }}>
-                            <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => setHoveredCell({ tableId: null, colIndex: null })} style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
-                                <colgroup>
-                                    <col style={{ width: showAreaColumn ? '34%' : '42%' }} />
-                                    <col style={{ width: showAreaColumn ? '26%' : '30%' }} />
-                                    <col style={{ width: showAreaColumn ? '25%' : '28%' }} />
-                                    {showAreaColumn && <col style={{ width: '15%' }} />}
-                                </colgroup>
-                                <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                                    <tr>
-                                        <th>Description</th>
-                                        <th>Range</th>
-                                        <th>Specification</th>
-                                        {showAreaColumn && <th>Area</th>}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredUuts.length === 0 ? (
-                                        <tr><td colSpan={showAreaColumn ? 4 : 3} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No UUTs found in this context.</td></tr>
-                                    ) : (
-                                        filteredUuts.map(uut => {
-                                            // Resolution logic: Always show full ranges, but SMART DEFAULT to the matching range if in 'range' view
-                                            let resolution = resolveUutRangeHelper(uut, localRangeIndices, null, null);
-
-                                            if (viewMode === 'range' && rangeData && localRangeIndices[uut.id] === undefined) {
-                                                const matchIndex = resolution.ranges.findIndex(r => {
-                                                    if (rangeData._id !== undefined && r._index !== undefined) return r._index === rangeData._id;
-                                                    const minMatch = r.min == rangeData.min;
-                                                    const maxMatch = r.max == rangeData.max;
-                                                    const unitMatch = (r.unit || "") === (rangeData.unit || "");
-                                                    return minMatch && maxMatch && unitMatch;
-                                                });
-                                                
-                                                if (matchIndex !== -1) {
-                                                    // Override active selection only, keep ranges intact for full dropdown
-                                                    resolution = { 
-                                                        ...resolution,
-                                                        activeIndex: matchIndex, 
-                                                        activeRange: resolution.ranges[matchIndex] 
-                                                    };
-                                                }
-                                            }
-
-                                            const { ranges, activeIndex, activeRange } = resolution;
-                                            const specRows = getSpecRows(activeRange);
-                                            const rowSpan = specRows.length > 0 ? specRows.length : 1;
-
-                                            // CHECK SELECTION
-                                            const isSelected = selectedUutIds.includes(uut.id);
-
-                                            const area = sessionData.measurementAreas?.find(a => a.id === uut.measurementAreaId || a.name === uut.measurementArea);
-                                            const areaName = area ? area.name : (uut.measurementArea || '-');
-                                            const areaColor = area?.color || 'var(--text-color-muted)';
-
-                                            return (
-                                                <React.Fragment key={uut.id}>
-                                                    <tr
-                                                        className={isSelected ? "selected-row" : ""}
-                                                        // CLICK HANDLERS
-                                                        onClick={(e) => handleUutClick(e, uut.id)}
-                                                        onDoubleClick={() => onSelectUut && onSelectUut(uut.id, uut.measurementAreaId, uut)}
-                                                        style={{
-                                                            cursor: 'pointer',
-                                                            transition: 'all 0.1s ease',
-                                                            borderBottom: specRows.length > 1 ? 'none' : undefined
-                                                        }}
-                                                    >
-                                                        <td
-                                                            rowSpan={rowSpan}
-                                                            className={`cell-description ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 0 ? 'col-hovered' : ''}`}
-                                                            onMouseEnter={() => setHoveredCell({ tableId: 'uut', colIndex: 0 })}
-                                                            style={{ verticalAlign: 'top', fontWeight: 600, color: 'var(--text-color)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
-                                                            title={uut.description}
-                                                        >
-                                                            {uut.description}
-                                                        </td>
-                                                        <td
-                                                            rowSpan={rowSpan}
-                                                            className={`cell-value ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 1 ? 'col-hovered' : ''}`}
-                                                            onMouseEnter={() => setHoveredCell({ tableId: 'uut', colIndex: 1 })}
-                                                            onClick={e => e.stopPropagation()}
-                                                            style={{ verticalAlign: 'top' }}
-                                                        >
-                                                            <select
-                                                                className="session-selector"
-                                                                style={{ width: '100%', padding: '4px 8px', fontSize: '0.85rem' }}
-                                                                value={activeIndex}
-                                                                onChange={(e) => setLocalRangeIndices(prev => ({ ...prev, [uut.id]: parseInt(e.target.value) }))}
-                                                            >
-                                                                {ranges.map((range, idx) => {
-                                                                    const rangeLabel = (typeof range.range === 'string' ? range.range : null) || (range.min !== undefined ? `${range.min} to ${range.max}` : "Full Range");
-                                                                    return <option key={idx} value={idx}>{`${rangeLabel} ${range.unit || ''}`}</option>
-                                                                })}
-                                                            </select>
-                                                        </td>
-                                                        <td
-                                                            className={`cell-tolerance ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
-                                                            onMouseEnter={() => setHoveredCell({ tableId: 'uut', colIndex: 2 })}
-                                                            title={specRows[0]}
-                                                            style={{ verticalAlign: 'top', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
-                                                        >
-                                                            {specRows[0]}
-                                                        </td>
-                                                        {showAreaColumn && (
-                                                            <td
-                                                                rowSpan={rowSpan}
-                                                                className={`cell-area ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 3 ? 'col-hovered' : ''}`}
-                                                                onMouseEnter={() => setHoveredCell({ tableId: 'uut', colIndex: 3 })}
-                                                                title={areaName}
-                                                                style={{ verticalAlign: 'top', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
-                                                            >
-                                                                <span style={{ color: areaColor }}>{areaName}</span>
-                                                            </td>
-                                                        )}
-                                                    </tr>
-                                                    {specRows.slice(1).map((specComp, sIdx) => (
-                                                        <tr
-                                                            key={`${uut.id}-spec-${sIdx}`}
-                                                            className={isSelected ? "selected-row" : ""}
-                                                            style={{
-                                                                cursor: 'pointer',
-                                                                transition: 'all 0.1s ease',
-                                                                backgroundColor: isSelected ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
-                                                            }}
-                                                            onClick={(e) => handleUutClick(e, uut.id)}
-                                                            onDoubleClick={() => onSelectUut && onSelectUut(uut.id, uut.measurementAreaId, uut)}
-                                                        >
-                                                            <td
-                                                                className={`cell-tolerance ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
-                                                                onMouseEnter={() => setHoveredCell({ tableId: 'uut', colIndex: 2 })}
-                                                                title={specComp}
-                                                                style={{ verticalAlign: 'top', borderTop: '1px dashed var(--border-color)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
-                                                            >
-                                                                {specComp}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </React.Fragment>
-                                            )
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+            {/* UUT TABLE - Now stacked vertically (Grid wrapper removed) */}
+            <div style={cardStyle}>
+                <div style={headerStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FontAwesomeIcon icon={faMicroscope} />
+                        <span>Units Under Test ({filteredUuts.length})</span>
                     </div>
-
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* DELETE BUTTON */}
+                        {selectedUutIds.length > 0 && (
+                            <button
+                                className="btn-icon-only delete"
+                                style={{ color: 'var(--status-bad)', width: '24px', height: '24px', borderRadius: '4px', opacity: 1, border: '1px solid rgba(255,82,82,0.3)', marginRight: '8px' }}
+                                onClick={handleDeleteSelectedUuts}
+                                title={`Delete ${selectedUutIds.length} Selected UUTs`}
+                            >
+                                <FontAwesomeIcon icon={faTrashAlt} size="xs" />
+                            </button>
+                        )}
+                        {/* ADD BUTTON */}
+                        <button
+                            className="btn-icon-only"
+                            style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
+                            onClick={() => onEditUut && onEditUut(null)} // Trigger Add
+                            title="Add New UUT"
+                        >
+                            <FontAwesomeIcon icon={faPlus} size="xs" />
+                        </button>
+                    </div>
                 </div>
+                <div className="panel-table-container" style={{ overflowX: 'auto', borderRadius: '8px', border: 'none' }}>
+                    <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => setHoveredCell({ tableId: null, colIndex: null })} style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
+                        <colgroup>
+                            <col style={{ width: showAreaColumn ? '34%' : '42%' }} />
+                            <col style={{ width: showAreaColumn ? '26%' : '30%' }} />
+                            <col style={{ width: showAreaColumn ? '25%' : '28%' }} />
+                            {showAreaColumn && <col style={{ width: '15%' }} />}
+                        </colgroup>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                            <tr>
+                                <th>Description</th>
+                                <th>Range</th>
+                                <th>Specification</th>
+                                {showAreaColumn && <th>Area</th>}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredUuts.length === 0 ? (
+                                <tr><td colSpan={showAreaColumn ? 4 : 3} style={{ padding: '20px', textAlign: 'center', fontStyle: 'italic', color: 'var(--text-color-muted)' }}>No UUTs found in this context.</td></tr>
+                            ) : (
+                                filteredUuts.map(uut => {
+                                    // Resolution logic: Always show full ranges, but SMART DEFAULT to the matching range if in 'range' view
+                                    let resolution = resolveUutRangeHelper(uut, localRangeIndices, null, null);
 
+                                    if (viewMode === 'range' && rangeData && localRangeIndices[uut.id] === undefined) {
+                                        const matchIndex = resolution.ranges.findIndex(r => {
+                                            if (rangeData._id !== undefined && r._index !== undefined) return r._index === rangeData._id;
+                                            const minMatch = r.min == rangeData.min;
+                                            const maxMatch = r.max == rangeData.max;
+                                            const unitMatch = (r.unit || "") === (rangeData.unit || "");
+                                            return minMatch && maxMatch && unitMatch;
+                                        });
+
+                                        if (matchIndex !== -1) {
+                                            // Override active selection only, keep ranges intact for full dropdown
+                                            resolution = {
+                                                ...resolution,
+                                                activeIndex: matchIndex,
+                                                activeRange: resolution.ranges[matchIndex]
+                                            };
+                                        }
+                                    }
+
+                                    const { ranges, activeIndex, activeRange } = resolution;
+                                    const specRows = getSpecRows(activeRange);
+                                    const rowSpan = specRows.length > 0 ? specRows.length : 1;
+
+                                    // CHECK SELECTION
+                                    const isSelected = selectedUutIds.includes(uut.id);
+
+                                    const area = sessionData.measurementAreas?.find(a => a.id === uut.measurementAreaId || a.name === uut.measurementArea);
+                                    const areaName = area ? area.name : (uut.measurementArea || '-');
+                                    const areaColor = area?.color || 'var(--text-color-muted)';
+
+                                    return (
+                                        <React.Fragment key={uut.id}>
+                                            <tr
+                                                className={isSelected ? "selected-row" : ""}
+                                                // CLICK HANDLERS
+                                                onClick={(e) => handleUutClick(e, uut.id)}
+                                                onDoubleClick={() => onSelectUut && onSelectUut(uut.id, uut.measurementAreaId, uut)}
+                                                style={{
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.1s ease',
+                                                    borderBottom: specRows.length > 1 ? 'none' : undefined
+                                                }}
+                                            >
+                                                <td
+                                                    rowSpan={rowSpan}
+                                                    className={`cell-description ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 0 ? 'col-hovered' : ''}`}
+                                                    onMouseEnter={() => setHoveredCell({ tableId: 'uut', colIndex: 0 })}
+                                                    style={{ verticalAlign: 'top', fontWeight: 600, color: 'var(--text-color)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
+                                                    title={uut.description}
+                                                >
+                                                    {uut.description}
+                                                </td>
+                                                <td
+                                                    rowSpan={rowSpan}
+                                                    className={`cell-value ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 1 ? 'col-hovered' : ''}`}
+                                                    onMouseEnter={() => setHoveredCell({ tableId: 'uut', colIndex: 1 })}
+                                                    onClick={e => e.stopPropagation()}
+                                                    style={{ verticalAlign: 'top' }}
+                                                >
+                                                    <select
+                                                        className="session-selector"
+                                                        style={{ width: '100%', padding: '4px 8px', fontSize: '0.85rem' }}
+                                                        value={activeIndex}
+                                                        onChange={(e) => setLocalRangeIndices(prev => ({ ...prev, [uut.id]: parseInt(e.target.value) }))}
+                                                    >
+                                                        {ranges.map((range, idx) => {
+                                                            const rangeLabel = (typeof range.range === 'string' ? range.range : null) || (range.min !== undefined ? `${range.min} to ${range.max}` : "Full Range");
+                                                            return <option key={idx} value={idx}>{`${rangeLabel} ${range.unit || ''}`}</option>
+                                                        })}
+                                                    </select>
+                                                </td>
+                                                <td
+                                                    className={`cell-tolerance ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
+                                                    onMouseEnter={() => setHoveredCell({ tableId: 'uut', colIndex: 2 })}
+                                                    title={specRows[0]}
+                                                    style={{ verticalAlign: 'top', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
+                                                >
+                                                    {specRows[0]}
+                                                </td>
+                                                {showAreaColumn && (
+                                                    <td
+                                                        rowSpan={rowSpan}
+                                                        className={`cell-area ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 3 ? 'col-hovered' : ''}`}
+                                                        onMouseEnter={() => setHoveredCell({ tableId: 'uut', colIndex: 3 })}
+                                                        title={areaName}
+                                                        style={{ verticalAlign: 'top', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
+                                                    >
+                                                        <span style={{ color: areaColor }}>{areaName}</span>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                            {specRows.slice(1).map((specComp, sIdx) => (
+                                                <tr
+                                                    key={`${uut.id}-spec-${sIdx}`}
+                                                    className={isSelected ? "selected-row" : ""}
+                                                    style={{
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.1s ease',
+                                                        backgroundColor: isSelected ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
+                                                    }}
+                                                    onClick={(e) => handleUutClick(e, uut.id)}
+                                                    onDoubleClick={() => onSelectUut && onSelectUut(uut.id, uut.measurementAreaId, uut)}
+                                                >
+                                                    <td
+                                                        className={`cell-tolerance ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
+                                                        onMouseEnter={() => setHoveredCell({ tableId: 'uut', colIndex: 2 })}
+                                                        title={specComp}
+                                                        style={{ verticalAlign: 'top', borderTop: '1px dashed var(--border-color)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
+                                                    >
+                                                        {specComp}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
+                                    )
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            {/* FULL WIDTH TMDE TABLE */}
+            {/* FULL WIDTH TMDE TABLE - Stacked Below UUT Table */}
             <div style={cardStyle}>
                 <div style={headerStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FontAwesomeIcon icon={faTools} />
-                        <span>Test Equipment (TMDE) ({filteredTmdes.length})</span>
+                        <span>Test Measurement Device Equipment ({filteredTmdes.length})</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {/* DELETE BUTTON */}
