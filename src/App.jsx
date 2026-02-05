@@ -70,8 +70,11 @@ const getSidebarGridTemplate = (visibleColumns) => {
   // Fixed widths for stable columns
   if (visibleColumns.section) parts.push('50px');
   if (visibleColumns.value) parts.push('80px');
-  if (visibleColumns.tolerance) parts.push('minmax(100px, 1fr)');
-  if (visibleColumns.limits) parts.push('minmax(120px, 1.5fr)');
+  if (visibleColumns.tolerance) parts.push('minmax(80px, 1fr)');
+  
+  // Split Limits Columns
+  if (visibleColumns.lowLimit) parts.push('minmax(60px, 0.8fr)');
+  if (visibleColumns.highLimit) parts.push('minmax(60px, 0.8fr)');
 
   // Fixed widths for Risk Columns
   if (visibleColumns.pfa) parts.push('55px');
@@ -93,7 +96,7 @@ const SidebarPointItem = ({
   onSave,
   onContextMenu,
   onDragStart,
-  visibleColumns = { section: true, value: true, tolerance: true, limits: true, pfa: false, pfr: false, tur: false, tar: false }
+  visibleColumns = { section: true, value: true, tolerance: true, lowLimit: true, highLimit: true, pfa: false, pfr: false, tur: false, tar: false }
 }) => {
   const [editingField, setEditingField] = useState(null); // 'section' | 'value' | null
   const [tempValue, setTempValue] = useState("");
@@ -178,13 +181,13 @@ const SidebarPointItem = ({
     return getToleranceErrorSummary(point.uutTolerance, ptParam);
   }, [point.uutTolerance, point.testPointInfo]);
 
-  const limitsSummary = React.useMemo(() => {
+  const limitsData = React.useMemo(() => {
     const ptParam = point.testPointInfo?.parameter;
     const limits = getAbsoluteLimits(point.uutTolerance, ptParam);
-    if (!limits || limits.low === 'N/A') return '-';
+    if (!limits || limits.low === 'N/A') return { low: '-', high: '-' };
     const shortLow = limits.low.split(' ')[0];
     const shortHigh = limits.high.split(' ')[0];
-    return `${shortLow} → ${shortHigh}`;
+    return { low: shortLow, high: shortHigh };
   }, [point.uutTolerance, point.testPointInfo]);
 
   return (
@@ -275,10 +278,17 @@ const SidebarPointItem = ({
         </span>
       )}
 
-      {/* Col 4: Limits */}
-      {visibleColumns.limits && (
-        <span style={{ fontSize: '0.7rem', color: 'var(--text-color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={limitsSummary}>
-          {limitsSummary}
+      {/* Col 4: Low Limit */}
+      {visibleColumns.lowLimit && (
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`Low: ${limitsData.low}`}>
+          {limitsData.low}
+        </span>
+      )}
+
+      {/* Col 5: High Limit */}
+      {visibleColumns.highLimit && (
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`High: ${limitsData.high}`}>
+          {limitsData.high}
         </span>
       )}
 
@@ -645,7 +655,8 @@ function App() {
     section: true,
     value: true,
     tolerance: true,
-    limits: true,
+    lowLimit: true,
+    highLimit: true,
     pfa: true,
     pfr: true,
     tur: false,
@@ -2179,7 +2190,8 @@ function App() {
                           { key: 'section', label: 'Section' },
                           { key: 'value', label: 'Value' },
                           { key: 'tolerance', label: 'Tolerance' },
-                          { key: 'limits', label: 'Limits' },
+                          { key: 'lowLimit', label: 'Low Limit' },
+                          { key: 'highLimit', label: 'High Limit' },
                           { key: 'pfa', label: 'PFA' },
                           { key: 'pfr', label: 'PFR' },
                           { key: 'tur', label: 'TUR' },
@@ -2377,10 +2389,11 @@ function App() {
                                                     minWidth: 'min-content'
                                                   }}
                                                 >
-                                                  {sidebarColumns.section && <span>Sect.</span>}
+                                                {sidebarColumns.section && <span>Sect.</span>}
                                                   {sidebarColumns.value && <span>Value</span>}
                                                   {sidebarColumns.tolerance && <span>Tolerance</span>}
-                                                  {sidebarColumns.limits && <span>Limits</span>}
+                                                  {sidebarColumns.lowLimit && <span>Low</span>}
+                                                  {sidebarColumns.highLimit && <span>High</span>}
                                                   {sidebarColumns.pfa && <span style={{ textAlign: 'center' }}>PFA</span>}
                                                   {sidebarColumns.pfr && <span style={{ textAlign: 'center' }}>PFR</span>}
                                                   {sidebarColumns.tur && <span style={{ textAlign: 'center' }}>TUR</span>}
