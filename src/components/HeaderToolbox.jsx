@@ -363,7 +363,7 @@ const HeaderToolbox = ({
           )}
 
           <button
-              className={`toolbox-button ${isDarkMode ? "active" : ""}`}
+              className="toolbox-button"
               onClick={() => setIsDarkMode(!isDarkMode)}
               title="Toggle Dark Mode"
             >

@@ -8138,3 +8138,47 @@ body.theme-cyberpunk.dark-mode .point-grid-item.active .point-section {
     color: var(--primary-color) !important;
     opacity: 0.9;
 }
+
+/* =================================================================== */
+/* 102. CYBERPUNK NIGHT CITY: HEADER & TOOLBAR ANIMATIONS              */
+/* =================================================================== */
+
+@keyframes nightCityPulse {
+  0% { 
+    border-color: #00f3ff; 
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.4), inset 0 0 5px rgba(0, 243, 255, 0.1);
+    color: #00f3ff;
+  }
+  33% { 
+    border-color: #ff0055; 
+    box-shadow: 0 0 10px rgba(255, 0, 85, 0.4), inset 0 0 5px rgba(255, 0, 85, 0.1);
+    color: #ff0055;
+  }
+  66% { 
+    border-color: #fcee0a; 
+    box-shadow: 0 0 10px rgba(252, 238, 10, 0.4), inset 0 0 5px rgba(252, 238, 10, 0.1);
+    color: #fcee0a;
+  }
+  100% { 
+    border-color: #00f3ff; 
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.4), inset 0 0 5px rgba(0, 243, 255, 0.1);
+    color: #00f3ff;
+  }
+}
+
+/* Header Toolbox Animation (The Floating Deck) */
+body.theme-cyberpunk.dark-mode .header-toolbox {
+  border: 2px solid #00f3ff;
+  animation: nightCityPulse 8s infinite linear;
+  background-color: rgba(0, 0, 0, 0.8); /* Ensure readability against background */
+}
+
+/* Toolbar Buttons: Active/Hover Animation */
+body.theme-cyberpunk.dark-mode .toolbox-button:hover,
+body.theme-cyberpunk.dark-mode .toolbox-button:active,
+body.theme-cyberpunk.dark-mode .toolbox-button.active {
+   animation: nightCityPulse 2s infinite linear !important;
+   background-color: rgba(0, 0, 0, 0.6) !important;
+   border-width: 1px !important;
+   color: #fff; 
+}
