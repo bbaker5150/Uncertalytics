@@ -1198,6 +1198,7 @@ function DetailedView({
     // Industry Grade Highlighting State
     // Industry Grade Highlighting State
     const [hoveredCell, setHoveredCell] = useState({ tableId: null, colIndex: null });
+    const [hoveredRowId, setHoveredRowId] = useState(null);
 
     const equationInputRef = useRef(null);
     const symbolMenuRef = useRef(null);
@@ -1653,7 +1654,7 @@ function DetailedView({
                     </div>
                 </div>
                 <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', overflowX: 'auto', flex: 1, maxHeight: '300px' }}>
-                    <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => setHoveredCell({ tableId: null, colIndex: null })} style={{ width: '100%', minWidth: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                    <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => { setHoveredCell({ tableId: null, colIndex: null }); setHoveredRowId(null); }} style={{ width: '100%', minWidth: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                         <colgroup>
                             <col style={{ width: '40%' }} />
                             <col style={{ width: '30%' }} />
@@ -1684,7 +1685,8 @@ function DetailedView({
                                     return (
                                         <React.Fragment key={uut.id}>
                                             <tr
-                                                className={isSelected ? "selected-row" : ""}
+                                                className={`${isSelected ? "selected-row" : ""} ${hoveredRowId === uut.id ? "row-hovered" : ""}`}
+                                                onMouseEnter={() => setHoveredRowId(uut.id)}
                                                 style={{
                                                     borderLeft: isLinked ? '4px solid var(--primary-color)' : (isSelected ? '4px solid var(--primary-color)' : '4px solid transparent'),
                                                     cursor: 'pointer',
@@ -1747,7 +1749,8 @@ function DetailedView({
                                             {specRows.slice(1).map((specComp, sIdx) => (
                                                 <tr
                                                     key={`${uut.id}-spec-${sIdx}`}
-                                                    className={isSelected ? "selected-row" : ""}
+                                                    className={`${isSelected ? "selected-row spec-row" : "spec-row"} ${hoveredRowId === uut.id ? "row-hovered" : ""}`}
+                                                    onMouseEnter={() => setHoveredRowId(uut.id)}
                                                     style={{
                                                         borderLeft: isLinked || isSelected ? '4px solid var(--primary-color)' : '4px solid transparent',
                                                         cursor: 'pointer'
@@ -1795,7 +1798,7 @@ function DetailedView({
                     </div>
                 </div>
                 <div className="instrument-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1, overflowX: 'auto' }}>
-                    <table className="instrument-summary-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+                    <table className="instrument-summary-table industry-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                         <colgroup>
                             <col style={{ width: '15%' }} />
                             <col style={{ width: '15%' }} />
@@ -2110,7 +2113,7 @@ function DetailedView({
                     </div>
 
                     <div className="panel-table-container" style={{ margin: 0, border: 'none', boxShadow: 'none', borderRadius: '8px', flex: 1 }}>
-                        <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => setHoveredCell({ tableId: null, colIndex: null })} style={{ width: '100%', tableLayout: 'fixed' }}>
+                        <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => { setHoveredCell({ tableId: null, colIndex: null }); setHoveredRowId(null); }} style={{ width: '100%', tableLayout: 'fixed' }}>
                             <colgroup>
                                 <col style={{ width: '50px' }} />
                                 <col style={{ width: isDerived ? '30%' : '35%' }} />
@@ -2160,10 +2163,10 @@ function DetailedView({
                                             return (
                                                 <React.Fragment key={`${masterTmde.id}-${idx}`}>
                                                     <tr
-                                                        className="tmde-row"
+                                                        className={`tmde-row ${isSelectedRow ? "selected-row" : ""} ${hoveredRowId === masterTmde.id ? "row-hovered" : ""}`}
+                                                        onMouseEnter={() => setHoveredRowId(masterTmde.id)}
                                                         style={{
                                                             // Apply Selection Highlight
-                                                            backgroundColor: isSelectedRow ? 'rgba(var(--primary-rgb), 0.15)' : 'transparent',
                                                             borderLeft: isSelectedRow ? '4px solid var(--primary-color)' : '4px solid transparent',
                                                             opacity: isChecked ? 1 : (isSelectedRow ? 1 : 0.7),
                                                             cursor: 'pointer'

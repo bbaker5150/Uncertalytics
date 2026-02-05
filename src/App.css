@@ -746,7 +746,7 @@ body.theme-cyberpunk.dark-mode {
 
   /* Cyberpunk Table Highlighting (Dark - Night City) - PINK/MAGENTA */
   --table-hover-row-bg: rgba(255, 0, 85, 0.15); 
-  --table-hover-col-bg: rgba(255, 0, 85, 0.05); 
+  --table-hover-col-bg: transparent; /* Disable column hover in dark mode */
   --table-selected-row-bg: rgba(255, 0, 85, 0.25); 
   --table-selected-border: var(--cyber-magenta);
 }
@@ -8101,4 +8101,40 @@ body.theme-cyberpunk .area-header-sticky {
 .point-grid-item.table-highlight:not(.active) .point-section {
     font-weight: 600;
     color: var(--primary-color);
+}
+
+/* =================================================================== */
+/* 100. NUCLEAR OVERRIDES (Final Safety Net)                          */
+/* =================================================================== */
+
+/* Force Magenta for Cyberpunk Dark Mode Rows */
+body.theme-cyberpunk.dark-mode .industry-table tbody tr:not(.selected-row):hover,
+body.theme-cyberpunk.dark-mode .industry-table tbody tr.row-hovered:not(.selected-row) {
+    background-color: rgba(255, 0, 85, 0.2) !important;
+}
+
+/* Force DISABLE Column Hover for Cyberpunk Dark Mode */
+body.theme-cyberpunk.dark-mode .industry-table tbody tr:not(.selected-row) td.col-hovered,
+body.theme-cyberpunk.dark-mode .industry-table tbody tr.row-hovered:not(.selected-row) td.col-hovered {
+    background-color: transparent !important;
+}
+
+/* =================================================================== */
+/* 101. CYBERPUNK DARK MODE SIDEBAR READABILITY FIXES                  */
+/* =================================================================== */
+
+/* Fix: Ensure tolerance/limits columns in sidebar are readable when point is selected */
+body.theme-cyberpunk.dark-mode .point-grid-item.active span {
+    color: var(--text-color) !important;
+}
+
+/* Keep the value column using primary color for emphasis */
+body.theme-cyberpunk.dark-mode .point-grid-item.active .point-value {
+    color: var(--primary-color) !important;
+}
+
+/* Keep the section column styled appropriately */
+body.theme-cyberpunk.dark-mode .point-grid-item.active .point-section {
+    color: var(--primary-color) !important;
+    opacity: 0.9;
 }
