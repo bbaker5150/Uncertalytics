@@ -1938,60 +1938,13 @@ function App() {
                   </div>
                 </div>
 
-                {/* 2. GLOBAL ACTIONS ROW (New Organic Div) */}
-                <div className="sidebar-global-actions" style={{ padding: '0 12px 8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                  
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-color-muted)', marginRight: 'auto', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Measurement Points
-                  </span>
-
-                  {/* UNIFIED EXPAND/COLLAPSE BUTTON */}
-                  <button
-                    onClick={handleToggleExpandAll}
-                    title={isGlobalExpanded ? "Collapse All" : "Expand All"}
-                    className="sidebar-filter-btn"
-                    style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}
-                  >
-                    <FontAwesomeIcon icon={isGlobalExpanded ? faCompressArrowsAlt : faExpandArrowsAlt} />
-                  </button>
-
-                  {/* Filter Button */}
-                  <button
-                    onClick={() => setIsColumnMenuOpen(!isColumnMenuOpen)}
-                    title="Filter visible columns"
-                    className={`sidebar-filter-btn ${isColumnMenuOpen ? 'active' : ''}`}
-                    style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}
-                  >
-                    <FontAwesomeIcon icon={faSlidersH} />
-                  </button>
-
-                  {isColumnMenuOpen && (
-                    <div className="sidebar-filter-dropdown" style={{ top: '100%', right: 0 }}>
-                      {[
-                        { key: 'section', label: 'Section' },
-                        { key: 'value', label: 'Value' },
-                        { key: 'tolerance', label: 'Tolerance' },
-                        { key: 'limits', label: 'Limits' },
-                        { key: 'pfa', label: 'PFA' },
-                        { key: 'pfr', label: 'PFR' },
-                        { key: 'tur', label: 'TUR' },
-                        { key: 'tar', label: 'TAR' },
-                      ].map(col => (
-                        <label key={col.key} className="filter-option">
-                          <input
-                            type="checkbox"
-                            checked={sidebarColumns[col.key]}
-                            onChange={() => setSidebarColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
-                          />
-                          <span>{col.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 {/* Sidebar Toolbar: Quick Add ONLY */}
-                <div className="sidebar-toolbar" ref={columnMenuRef} style={{ marginTop: 0 }}>
+                <div style={{ padding: '0 12px 4px 12px' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-color-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Quick Add Point
+                  </span>
+                </div>
+                <div className="sidebar-toolbar" style={{ marginTop: 0 }}>
                   <div className="sidebar-quick-add">
                     <input
                       type="text"
@@ -2027,6 +1980,59 @@ function App() {
                     >
                       <FontAwesomeIcon icon={faPlus} />
                     </button>
+                  </div>
+                </div>
+
+                {/* 2. GLOBAL ACTIONS ROW (New Organic Div) */}
+                <div className="sidebar-global-actions" style={{ padding: '0 12px 8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                  
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-color-muted)', marginRight: 'auto', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Measurement Points
+                  </span>
+
+                  {/* UNIFIED EXPAND/COLLAPSE BUTTON */}
+                  <button
+                    onClick={handleToggleExpandAll}
+                    title={isGlobalExpanded ? "Collapse All" : "Expand All"}
+                    className="sidebar-filter-btn"
+                    style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}
+                  >
+                    <FontAwesomeIcon icon={isGlobalExpanded ? faCompressArrowsAlt : faExpandArrowsAlt} />
+                  </button>
+
+                  <div style={{ position: 'relative' }} ref={columnMenuRef}>
+                    <button
+                      onClick={() => setIsColumnMenuOpen(!isColumnMenuOpen)}
+                      title="Filter visible columns"
+                      className={`sidebar-filter-btn ${isColumnMenuOpen ? 'active' : ''}`}
+                      style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}
+                    >
+                      <FontAwesomeIcon icon={faSlidersH} />
+                    </button>
+
+                    {isColumnMenuOpen && (
+                      <div className="sidebar-filter-dropdown" style={{ top: '100%', right: 0, left: 'auto' }}>
+                        {[
+                          { key: 'section', label: 'Section' },
+                          { key: 'value', label: 'Value' },
+                          { key: 'tolerance', label: 'Tolerance' },
+                          { key: 'limits', label: 'Limits' },
+                          { key: 'pfa', label: 'PFA' },
+                          { key: 'pfr', label: 'PFR' },
+                          { key: 'tur', label: 'TUR' },
+                          { key: 'tar', label: 'TAR' },
+                        ].map(col => (
+                          <label key={col.key} className="filter-option">
+                            <input
+                              type="checkbox"
+                              checked={sidebarColumns[col.key]}
+                              onChange={() => setSidebarColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
+                            />
+                            <span>{col.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
