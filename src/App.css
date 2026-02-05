@@ -1558,6 +1558,7 @@ body.theme-cyberpunk .button {
 }
 
 /* --- Sidebar Inline Editing Styles --- */
+/* --- Sidebar Inline Editing Styles --- */
 .sidebar-inline-input {
   width: 100%; /* Fill the grid cell */
   min-width: 0; /* Allow shrinking in flex/grid contexts */
@@ -1596,6 +1597,67 @@ body.theme-cyberpunk .button {
   align-items: center;
   gap: 6px;
   width: 100%;
+}
+
+/* --- Session Header Styles (Sidebar) --- */
+.session-header-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  margin-top: 8px;
+}
+
+.session-header-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* allows text truncation */
+}
+
+.session-header-label {
+  display: block;
+  opacity: 0.6;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+  color: var(--text-color-muted);
+  white-space: nowrap;
+}
+
+.session-header-value {
+  font-size: 0.8rem;
+  color: var(--text-color);
+  font-weight: 500;
+  cursor: text;
+  min-height: 1.4em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 2px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.session-header-value:hover {
+  background-color: rgba(var(--primary-rgb), 0.08);
+  color: var(--primary-color);
+}
+
+.session-header-input {
+  width: 100%;
+  font-size: 0.8rem;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--primary-color);
+  background: var(--input-background);
+  color: var(--text-color);
+  font-family: inherit;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.session-header-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
 }
 
 .sidebar-inline-input-wrapper small {

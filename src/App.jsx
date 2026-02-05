@@ -387,6 +387,192 @@ const findMatchingRange = (uut, value, unit) => {
   return match || allRanges[0] || null;
 };
 
+// --- HELPER COMPONENT: Sidebar Session Header (Inline Editing) ---
+const SidebarSessionHeader = ({ sessionData, onUpdate, isActive, onSelect }) => {
+  const [editingField, setEditingField] = useState(null);
+  const [tempValue, setTempValue] = useState("");
+
+  if (!sessionData) return null;
+
+  const startEdit = (e, field, val) => {
+    e.stopPropagation();
+    setEditingField(field);
+    setTempValue(val || "");
+  };
+
+  const commitEdit = () => {
+    if (editingField) {
+      onUpdate({ ...sessionData, [editingField]: tempValue });
+      setEditingField(null);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      commitEdit();
+    }
+    if (e.key === 'Escape') {
+      setEditingField(null);
+    }
+  };
+  
+  const formatDate = (isoString) => {
+     if(!isoString) return "-";
+     const [y, m, d] = isoString.split('-');
+     return `${m}/${d}/${y}`;
+  }
+
+  return (
+      <div 
+        className={`sidebar-session-header ${isActive ? 'active' : ''}`}
+        onClick={onSelect}
+        title="Click to view Session Dashboard"
+        style={{ 
+          padding: '12px 14px', 
+          borderBottom: '1px solid var(--border-color)', 
+          marginBottom: '10px',
+          cursor: 'pointer',
+          borderLeft: isActive ? '3px solid var(--primary-color)' : '3px solid transparent',
+          backgroundColor: isActive ? 'var(--background-color-secondary)' : 'transparent',
+          transition: 'all 0.2s ease'
+        }}
+      >
+          {/* TITLE / NAME */}
+          <div style={{ marginBottom: '4px' }}>
+              {editingField === 'name' ? (
+                  <input 
+                    autoFocus 
+                    value={tempValue} 
+                    onChange={e => setTempValue(e.target.value)} 
+                    onBlur={commitEdit}
+                    onKeyDown={handleKeyDown}
+                    onClick={e => e.stopPropagation()}
+                    className="session-header-input"
+                    style={{ fontSize: '1rem', fontWeight: 'bold' }}
+                  />
+              ) : (
+                  <div 
+                    onClick={(e) => startEdit(e, 'name', sessionData.name)}
+                    className="hover-editable"
+                    style={{ 
+                      fontSize: '1rem', 
+                      fontWeight: 'bold', 
+                      color: 'var(--primary-color)',
+                      whiteSpace: 'nowrap', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis',
+                      cursor: 'text',
+                      minHeight: '1.4em'
+                    }}
+                    title="Edit Session Name"
+                  >
+                      {sessionData.name || "Untitled Session"}
+                  </div>
+              )}
+          </div>
+
+          {/* 2x2 GRID FOR ORG, ANALYST, DOC, DATE */}
+          <div className="session-header-grid">
+              
+              {/* ORGANIZATION */}
+              <div className="session-header-field">
+                 <span className="session-header-label">Organization</span>
+                 {editingField === 'organization' ? (
+                     <input 
+                        autoFocus 
+                        value={tempValue}
+                        onChange={e => setTempValue(e.target.value)}
+                        onBlur={commitEdit}
+                        onKeyDown={handleKeyDown}
+                        onClick={e => e.stopPropagation()}
+                        className="session-header-input"
+                        placeholder="Organization"
+                     />
+                 ) : (
+                    <div 
+                      onClick={(e) => startEdit(e, 'organization', sessionData.organization)} 
+                      className="session-header-value"
+                      title={sessionData.organization || "Click to add Organization"}
+                    >
+                        {sessionData.organization || <span style={{opacity: 0.5, fontStyle: 'italic'}}>Add Org...</span>}
+                    </div>
+                 )}
+              </div>
+
+              {/* ANALYST */}
+              <div className="session-header-field">
+                 <span className="session-header-label">Analyst</span>
+                 {editingField === 'analyst' ? (
+                     <input 
+                        autoFocus 
+                        value={tempValue}
+                        onChange={e => setTempValue(e.target.value)}
+                        onBlur={commitEdit}
+                        onKeyDown={handleKeyDown}
+                        onClick={e => e.stopPropagation()}
+                        className="session-header-input"
+                     />
+                 ) : (
+                    <div 
+                      onClick={(e) => startEdit(e, 'analyst', sessionData.analyst)} 
+                      className="session-header-value"
+                    >
+                        {sessionData.analyst || <span style={{opacity: 0.5}}>-</span>}
+                    </div>
+                 )}
+              </div>
+
+              {/* DOC ID */}
+              <div className="session-header-field">
+                 <span className="session-header-label">Doc ID</span>
+                 {editingField === 'document' ? (
+                     <input 
+                        autoFocus 
+                        value={tempValue}
+                        onChange={e => setTempValue(e.target.value)}
+                        onBlur={commitEdit}
+                        onKeyDown={handleKeyDown}
+                        onClick={e => e.stopPropagation()}
+                        className="session-header-input"
+                     />
+                 ) : (
+                    <div 
+                      onClick={(e) => startEdit(e, 'document', sessionData.document)} 
+                      className="session-header-value"
+                    >
+                        {sessionData.document || <span style={{opacity: 0.5}}>-</span>}
+                    </div>
+                 )}
+              </div>
+
+               {/* DATE */}
+               <div className="session-header-field">
+                 <span className="session-header-label">Date</span>
+                 {editingField === 'documentDate' ? (
+                     <input 
+                        type="date"
+                        autoFocus 
+                        value={tempValue}
+                        onChange={e => setTempValue(e.target.value)}
+                        onBlur={commitEdit}
+                        onKeyDown={handleKeyDown}
+                        onClick={e => e.stopPropagation()}
+                        className="session-header-input"
+                     />
+                 ) : (
+                    <div 
+                      onClick={(e) => startEdit(e, 'documentDate', sessionData.documentDate)} 
+                      className="session-header-value"
+                    >
+                        {formatDate(sessionData.documentDate)}
+                    </div>
+                 )}
+              </div>
+          </div>
+      </div>
+  );
+};
+
 function App() {
   const {
     sessions,
@@ -1907,36 +2093,13 @@ function App() {
               <div className="measurement-point-list">
 
                 {/* 1. DASHBOARD HOME BUTTON */}
-                <div
-                  className={`sidebar-session-card ${selectedSessionId && !selectedAreaId && !selectedTestPointId ? 'active' : ''}`}
-                  onClick={() => handleSelectSession(selectedSessionId)}
-                >
-                  <div className="session-card-icon">
-                    <FontAwesomeIcon icon={faClipboardList} />
-                  </div>
-                  <div className="session-card-text">
-                    <span className="session-card-title">
-                      {currentSessionData?.name || "Session Overview"}
-                    </span>
-                    {currentSessionData && (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-color-muted)', margin: '6px 0', padding: '6px 0', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '3px', lineHeight: '1.3' }}>
-                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={currentSessionData.analyst}>
-                          <strong>Analyst:</strong> {currentSessionData.analyst || "N/A"}
-                        </div>
-                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={currentSessionData.document}>
-                          <strong>Doc:</strong> {currentSessionData.document || "N/A"}
-                        </div>
-                        <div>
-                          <strong>Date:</strong> {currentSessionData.documentDate ? (() => {
-                            const [y, m, d] = currentSessionData.documentDate.split('-');
-                            return `${m}/${d}/${y}`;
-                          })() : "N/A"}
-                        </div>
-                      </div>
-                    )}
-                    <span className="session-card-subtitle">{currentTestPoints.length} Points Total</span>
-                  </div>
-                </div>
+                {/* 1. DASHBOARD HOME BUTTON / SESSION HEADER */}
+                <SidebarSessionHeader 
+                  sessionData={currentSessionData}
+                  onUpdate={updateSession}
+                  isActive={selectedSessionId && !selectedAreaId && !selectedTestPointId && !selectedRangeContext}
+                  onSelect={() => handleSelectSession(selectedSessionId)}
+                />
 
                 {/* Sidebar Toolbar: Quick Add ONLY */}
                 <div style={{ padding: '0 12px 4px 12px' }}>
