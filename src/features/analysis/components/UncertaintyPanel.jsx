@@ -1426,6 +1426,21 @@ function DetailedView({
         }
     };
 
+    const handleComponentUpdate = (id, updates) => {
+        // 1. Try Manual Components
+        const currentManualComponents = testPointData.components || [];
+        if (currentManualComponents.some(c => c.id === id)) {
+             const updatedComponents = currentManualComponents.map(c => c.id === id ? { ...c, ...updates } : c);
+             onUpdateTestPoint({ components: updatedComponents });
+             return;
+        }
+        // 2. Try TMDE Components
+        if (tmdeTolerancesData.some(t => t.id === id)) {
+             const updatedTmdes = tmdeTolerancesData.map(t => t.id === id ? { ...t, ...updates } : t);
+             onUpdateTestPoint({ tmdeTolerances: updatedTmdes });
+        }
+    };
+
     const handleAssignTmdeToVariable = (symbol, tmdeIdStr) => {
     const varName = testPointData.variableMappings?.[symbol] || "";
     if (!varName) return;
@@ -2329,6 +2344,7 @@ function DetailedView({
                         <UncertaintyBudgetTable
                             components={calcResults?.calculatedBudgetComponents || []}
                             onRemove={onRemoveComponent}
+                            onComponentUpdate={handleComponentUpdate}
                             calcResults={calcResults}
                             referencePoint={uutNominal}
                             uncertaintyConfidence={sessionData.uncReq.uncertaintyConfidence}

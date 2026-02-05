@@ -3,6 +3,7 @@
  */
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
+import Select from 'react-select';
 
 // --- Components ---
 import Analysis from "./features/analysis/Analysis";
@@ -29,7 +30,13 @@ import HeaderToolbox from "./components/HeaderToolbox";
 // --- Utils & Hooks ---
 import useSessionManager from "./hooks/useSessionManager";
 import { saveSessionToPdf, parseSessionPdf } from "./utils/fileIo";
+import { unitCategories } from "./utils/uncertaintyMath";
 import "./App.css";
+
+const groupedUnitOptions = Object.entries(unitCategories).map(([category, units]) => ({
+    label: category,
+    options: units.map(u => ({ value: u, label: u }))
+}));
 
 // --- Icons ---
 import appLogo from './assets/icon.svg';
@@ -84,6 +91,29 @@ const getSidebarGridTemplate = (visibleColumns) => {
 
   if (parts.length === 0) return '1fr';
   return parts.join(' ');
+};
+
+// Helper to calculate minimum sidebar width based on visible columns
+const getMinSidebarWidth = (visibleColumns) => {
+  // Base width for padding, indentation, tree structure, etc.
+  let width = 80; // Base padding/margin
+  
+  // Add width for each visible column (use minimum values from grid template)
+  if (visibleColumns.section) width += 55;
+  if (visibleColumns.value) width += 85;
+  if (visibleColumns.tolerance) width += 90;
+  if (visibleColumns.lowLimit) width += 70;
+  if (visibleColumns.highLimit) width += 70;
+  if (visibleColumns.pfa) width += 60;
+  if (visibleColumns.pfr) width += 60;
+  if (visibleColumns.tur) width += 60;
+  if (visibleColumns.tar) width += 60;
+  
+  // Add extra buffer for gaps (4px per column gap)
+  const columnCount = Object.values(visibleColumns).filter(Boolean).length;
+  width += columnCount * 4;
+  
+  return width;
 };
 
 // --- HELPER COMPONENT: Sidebar Point Item (Supports Inline Editing) ---
@@ -398,7 +428,7 @@ const findMatchingRange = (uut, value, unit) => {
 };
 
 // --- HELPER COMPONENT: Sidebar Session Header (Inline Editing) ---
-const SidebarSessionHeader = ({ sessionData, onUpdate, isActive, onSelect }) => {
+const SidebarSessionHeader = ({ sessionData, onUpdate, isActive }) => {
   const [editingField, setEditingField] = useState(null);
   const [tempValue, setTempValue] = useState("");
 
@@ -435,13 +465,12 @@ const SidebarSessionHeader = ({ sessionData, onUpdate, isActive, onSelect }) => 
   return (
       <div 
         className={`sidebar-session-header ${isActive ? 'active' : ''}`}
-        onClick={onSelect}
-        title="Click to view Session Dashboard"
+        title="Session Details"
         style={{ 
           padding: '12px 14px', 
           borderBottom: '1px solid var(--border-color)', 
           marginBottom: '10px',
-          cursor: 'pointer',
+          cursor: 'default',
           borderLeft: isActive ? '3px solid var(--primary-color)' : '3px solid transparent',
           backgroundColor: isActive ? 'var(--background-color-secondary)' : 'transparent',
           transition: 'all 0.2s ease'
@@ -496,7 +525,6 @@ const SidebarSessionHeader = ({ sessionData, onUpdate, isActive, onSelect }) => 
                         onKeyDown={handleKeyDown}
                         onClick={e => e.stopPropagation()}
                         className="session-header-input"
-                        placeholder="Organization"
                      />
                  ) : (
                     <div 
@@ -504,7 +532,7 @@ const SidebarSessionHeader = ({ sessionData, onUpdate, isActive, onSelect }) => 
                       className="session-header-value"
                       title={sessionData.organization || "Click to add Organization"}
                     >
-                        {sessionData.organization || <span style={{opacity: 0.5, fontStyle: 'italic'}}>Add Org...</span>}
+                        {sessionData.organization || <span style={{opacity: 0.5}}>-</span>}
                     </div>
                  )}
               </div>
@@ -737,6 +765,12 @@ function App() {
       setExpandedUuts(allUutIds);
       setExpandedRanges(allRangeKeys);
       setIsGlobalExpanded(true);
+
+      // Auto-resize sidebar to fit expanded columns if too narrow
+      const minRequiredWidth = getMinSidebarWidth(sidebarColumns);
+      if (sidebarWidth < minRequiredWidth) {
+        setSidebarWidth(minRequiredWidth);
+      }
     }
   };
 
@@ -2135,15 +2169,108 @@ function App() {
                       onChange={(e) => setQuickAddValue(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleQuickAddPoint()}
                       className="quick-add-input"
+                      style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid transparent',
+                          borderRadius: '4px',
+                          color: 'var(--text-color)',
+                          padding: '0 8px',
+                          lineHeight: '26px',
+                          height: '28px',
+                          fontSize: '0.85rem',
+                          width: '80px',
+                          transition: 'all 0.2s ease',
+                          outline: 'none'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = 'var(--primary-color)'}
+                      onBlur={(e) => e.target.style.borderColor = 'transparent'}
+                      onMouseEnter={(e) => { if(document.activeElement !== e.target) e.target.style.borderColor = 'var(--border-color)'; }}
+                      onMouseLeave={(e) => { if(document.activeElement !== e.target) e.target.style.borderColor = 'transparent'; }}
                     />
-                    <input
-                      type="text"
-                      placeholder="Unit"
-                      value={quickAddUnit}
-                      onChange={(e) => setQuickAddUnit(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleQuickAddPoint()}
-                      className="quick-add-input unit"
-                    />
+                    <div style={{ width: '90px', zIndex: 1001 }} className="quick-add-unit-wrapper">
+                      <Select
+                        options={groupedUnitOptions}
+                        value={quickAddUnit ? { value: quickAddUnit, label: quickAddUnit } : null}
+                        onChange={(opt) => setQuickAddUnit(opt ? opt.value : '')}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                handleQuickAddPoint();
+                            }
+                        }}
+                        placeholder="Unit"
+                        isClearable
+                        menuPortalTarget={document.body} 
+                        styles={{
+                            control: (base, state) => ({
+                                ...base,
+                                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                                borderColor: state.isFocused ? 'var(--primary-color)' : 'transparent',
+                                color: 'var(--text-color)',
+                                minHeight: '28px',
+                                height: '28px',
+                                fontSize: '0.85rem',
+                                borderRadius: '4px',
+                                boxShadow: 'none',
+                                transition: 'all 0.2s ease',
+                                '&:hover': {
+                                    borderColor: state.isFocused ? 'var(--primary-color)' : 'var(--border-color)'
+                                }
+                            }),
+                            valueContainer: (base) => ({
+                                ...base,
+                                padding: '0 4px',
+                                height: '28px',
+                            }),
+                            input: (base) => ({
+                                ...base,
+                                margin: 0,
+                                padding: 0,
+                                color: 'var(--text-color)',
+                            }),
+                            singleValue: (base) => ({
+                                ...base,
+                                color: 'var(--text-color)',
+                            }),
+                            placeholder: (base) => ({
+                                ...base,
+                                color: 'var(--text-color-muted)',
+                            }),
+                            dropdownIndicator: (base) => ({
+                                ...base,
+                                padding: '0 2px',
+                                color: 'var(--text-color-muted)'
+                            }),
+                            indicatorsContainer: (base) => ({
+                                ...base,
+                                height: '28px'
+                            }),
+                            groupHeading: (base) => ({
+                                ...base,
+                                color: 'var(--text-color-muted)',
+                                fontSize: '0.7rem',
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase',
+                                padding: '4px 8px'
+                            }),
+                            menu: (base) => ({
+                                ...base,
+                                backgroundColor: 'var(--component-bg)',
+                                zIndex: 9999,
+                                border: '1px solid var(--border-color)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                            }),
+                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                            option: (base, state) => ({
+                                ...base,
+                                backgroundColor: state.isFocused ? 'var(--primary-color-light)' : 'var(--component-bg)',
+                                color: 'var(--text-color)',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem',
+                                padding: '4px 8px'
+                            })
+                        }}
+                      />
+                    </div>
                     <button
                       onClick={handleQuickAddPoint}
                       disabled={!quickAddValue || !quickAddUnit || (!selectedUutId && currentUutSelection.length === 0)}
@@ -2160,7 +2287,21 @@ function App() {
                 {/* 2. GLOBAL ACTIONS ROW (New Organic Div) */}
                 <div className="sidebar-global-actions" style={{ padding: '0 12px 8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                   
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-color-muted)', marginRight: 'auto', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <span 
+                    style={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: 600, 
+                        color: 'var(--text-color-muted)', 
+                        marginRight: 'auto', 
+                        textTransform: 'uppercase', 
+                        letterSpacing: '0.5px',
+                        cursor: 'pointer',
+                        userSelect: 'none' 
+                    }}
+                    onClick={() => handleSelectSession(selectedSessionId)}
+                    title="Go to Session Overview"
+                    className="sidebar-header-link"
+                  >
                     Measurement Points
                   </span>
 

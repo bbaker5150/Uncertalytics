@@ -28,8 +28,10 @@ const UncertaintyBudgetTable = ({
   hasTmde,
   onAddManualComponent,
   onOpenRepeatability, 
-  setNotification
+  setNotification,
+  onComponentUpdate
 }) => {
+  const DIST_OPTIONS = ["Normal", "Rectangular", "Triangular", "U-Shaped", "Lognormal", "Rayleigh"];
   const confidencePercent = parseFloat(uncertaintyConfidence) || 95;
   const derivedUnit = referencePoint?.unit || "Units";
   const derivedName = referencePoint?.name || "Derived";
@@ -213,7 +215,32 @@ const UncertaintyBudgetTable = ({
                 </td>
               )}
 
-              <td>{c.distribution}</td>
+              <td>
+                  <select
+                    className="mini-select"
+                    value={c.distribution || "Normal"}
+                    onChange={(e) => onComponentUpdate && onComponentUpdate(c.id, { distribution: e.target.value })}
+                    style={{
+                        width: '100%',
+                        padding: '2px 4px',
+                        backgroundColor: 'transparent',
+                        color: 'inherit',
+                        border: '1px solid transparent',
+                        borderRadius: '4px',
+                        fontSize: 'inherit',
+                        cursor: 'pointer',
+                        textAlign: 'left'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = 'var(--primary-color)'}
+                    onBlur={(e) => e.target.style.borderColor = 'transparent'}
+                  >
+                    {DIST_OPTIONS.map(d => (
+                        <option key={d} value={d} style={{ backgroundColor: 'var(--component-bg)', color: 'var(--text-color)' }}>
+                            {d}
+                        </option>
+                    ))}
+                  </select>
+              </td>
 
               <td className="action-cell">
                 {!c.isCore && (
