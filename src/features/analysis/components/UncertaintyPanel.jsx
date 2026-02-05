@@ -985,11 +985,11 @@ const SummaryDashboard = ({
                                             {specRows.slice(1).map((specComp, sIdx) => (
                                                 <tr
                                                     key={`${uut.id}-spec-${sIdx}`}
-                                                    className={isSelected ? "selected-row" : ""}
+                                                    className={isSelected ? "selected-row spec-row" : "spec-row"}
                                                     style={{
                                                         cursor: 'pointer',
                                                         transition: 'all 0.1s ease',
-                                                        backgroundColor: isSelected ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
+                                                    backgroundColor: 'transparent'
                                                     }}
                                                     onClick={(e) => handleUutClick(e, uut.id)}
                                                     onDoubleClick={() => onSelectUut && onSelectUut(uut.id, uut.measurementAreaId, uut)}
@@ -998,7 +998,7 @@ const SummaryDashboard = ({
                                                         className={`cell-tolerance ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
                                                         onMouseEnter={() => setHoveredCell({ tableId: 'uut', colIndex: 2 })}
                                                         title={specComp}
-                                                        style={{ verticalAlign: 'top', borderTop: '1px dashed var(--border-color)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
+                                                        style={{ verticalAlign: 'top', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}
                                                     >
                                                         {specComp}
                                                     </td>
@@ -1107,11 +1107,11 @@ const SummaryDashboard = ({
                                             {specRows.slice(1).map((specComp, sIdx) => (
                                                 <tr
                                                     key={`${tmde.id}-spec-${sIdx}`}
-                                                    className={isSelected ? "selected-row" : ""}
+                                                    className={isSelected ? "selected-row spec-row" : "spec-row"}
                                                     style={{
                                                         cursor: 'pointer',
                                                         transition: 'all 0.1s ease',
-                                                        backgroundColor: isSelected ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
+                                                        backgroundColor: 'transparent'
                                                     }}
                                                     onClick={(e) => handleTmdeClick(e, tmde.id)}
                                                     onDoubleClick={() => onEditTmde && onEditTmde(tmde)}
@@ -1120,7 +1120,7 @@ const SummaryDashboard = ({
                                                         className={`cell-tolerance ${hoveredCell.tableId === 'tmde' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
                                                         onMouseEnter={() => setHoveredCell({ tableId: 'tmde', colIndex: 2 })}
                                                         title={specComp}
-                                                        style={{ verticalAlign: 'top', borderTop: '1px dashed var(--border-color)' }}
+                                                        style={{ verticalAlign: 'top' }}
                                                     >
                                                         {specComp}
                                                     </td>

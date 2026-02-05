@@ -687,10 +687,10 @@ body.theme-cyberpunk {
   background-attachment: fixed;
 
   /* Cyberpunk Table Highlighting (Light - The Lab) */
-  --table-hover-row-bg: rgba(255, 0, 255, 0.05);
-  --table-hover-col-bg: rgba(0, 255, 255, 0.05);
-  --table-selected-row-bg: rgba(0, 255, 255, 0.15);
-  --table-selected-border: var(--primary-color);
+  --table-hover-row-bg: rgba(0, 255, 255, 0.05); /* Single color: Cyan Tint */
+  --table-hover-col-bg: rgba(0, 255, 255, 0.03); 
+  --table-selected-row-bg: rgba(0, 255, 255, 0.15); /* Solid Cylinder Selection */
+  --table-selected-border: var(--cyber-cyan);
 }
 
 /* --- DARK MODE: "NIGHT CITY" (Neon/Grid) --- */
@@ -1989,7 +1989,8 @@ body.theme-cyberpunk .button {
 }
 
 /* Row Hover */
-.industry-table tbody tr:hover {
+/* Row Hover - Standard (ONLY for non-selected rows) */
+.industry-table tbody tr:not(.selected-row):hover {
   background-color: var(--table-hover-row-bg) !important;
 }
 
@@ -1998,31 +1999,41 @@ body.theme-cyberpunk .button {
   background-color: var(--table-hover-col-bg);
 }
 
-/* Intersection of Row Hover and Col Hover */
-.industry-table tbody tr:hover td.col-hovered {
-  background-color: color-mix(in srgb, var(--table-hover-row-bg), var(--table-hover-col-bg));
-  /* Fallback if color-mix not supported: just one or the other, or darken */
+/* Intersection of Row Hover and Col Hover: Only apply if NOT selected */
+.industry-table tbody tr:hover:not(.selected-row) td.col-hovered {
+  background-color: var(--table-hover-col-bg); 
 }
 
-/* Selected Row */
+/* Selected Row - Enforce Variable Color */
 .industry-table tr.selected-row {
   background-color: var(--table-selected-row-bg) !important;
   border-left: 4px solid var(--table-selected-border);
 }
 
-/* Selected Row + Hover */
-/* Maintain selected color but allow slight darken or lighten if needed */
+/* Selected Row + Hover - Maintain Selected Color (No clash) */
+/* Selected Row + Hover - STRICTLY Maintain Selected Color */
 .industry-table tr.selected-row:hover {
-  background-color: var(--table-selected-row-bg) !important; /* Keep selection dominant */
-  filter: brightness(0.98); /* Subtle interaction feedback */
+  background-color: var(--table-selected-row-bg) !important;
+  filter: none; 
+  cursor: default; /* Optional: if you want to indicate no action on hover, though pointer is usually fine */
+}
+
+/* CRITICAL FIX: Prevent column hover from dirtying the selected row */
+.industry-table tr.selected-row td.col-hovered {
+  background-color: transparent !important;
 }
 
 /* Subtle border for columns option? (User asked for highlighting, usually BG) */
 
-/* Cyberpunk Table Overrides for Industry Grade */
-body.theme-cyberpunk .industry-table tr.selected-row {
-  box-shadow: inset 2px 0 0 var(--cyber-cyan);
-  border-left: 2px solid var(--cyber-cyan);
+/* Multi-row Spec Handling */
+/* 1. Default: Dashed border for sub-rows (separator) */
+.industry-table tr.spec-row td {
+  border-top: 1px dashed var(--border-color);
+}
+
+/* 2. Selected: JOIN the rows visually by removing the separator */
+.industry-table tr.selected-row.spec-row td {
+  border-top: none; /* or 1px solid transparent if spacing is needed */
 }
 
 /* =================================================================== */
@@ -7736,171 +7747,69 @@ body.theme-cyberpunk .uut-row::before {
 
 /* 1. Normal Hover (Unselected) */
 .instrument-summary-table tbody tr:hover {
-  background-color: rgba(var(--primary-rgb), 0.05);
-}
-
-/* 2. Selected State (Handled by inline JS, but reinforced here to ensure contrast) */
-/* The inline style sets bg to rgba(var(--primary-rgb), 0.15) */
-
-/* 3. Selected + Hover State (Prevent "Fading Out" effect) */
-/* We target rows that have the active border-left style applied by React */
-.instrument-summary-table
-  tbody
-  tr[style*="border-left: 4px solid var(--primary-color)"]:hover {
-  /* Make it slightly DARKER than the normal selected state (0.15 -> 0.25) */
-  background-color: rgba(var(--primary-rgb), 0.25);
-}
-
 /* =================================================================== */
-/* CYBERPUNK SPECIFIC OVERRIDES (For high contrast)                    */
+/* UNIFIED INDUSTRY-GRADE TABLE HIGHLIGHTING (Consolidated)            */
 /* =================================================================== */
 
-/* Make selected text pop in Cyberpunk mode */
-body.theme-cyberpunk
-  .instrument-summary-table
-  tbody
-  tr[style*="border-left: 4px solid var(--primary-color)"] {
-  box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.4);
-  background-color: rgba(var(--primary-rgb), 0.2) !important;
+/* 1. Base Table Structure */
+.industry-table {
+  border-collapse: collapse;
+  width: 100%;
 }
 
-body.theme-cyberpunk
-  .instrument-summary-table
-  tbody
-  tr[style*="border-left: 4px solid var(--primary-color)"]
-  td {
-  color: #fff !important;
-  text-shadow: 0 0 5px var(--primary-color);
+.industry-table tbody tr {
+  transition: background-color 0.1s ease;
 }
 
-/* 1. Base Highlight (Default Light Mode) */
-.instrument-summary-table tbody tr.selected-row {
-  /* Boosted to 0.3 (30%) opacity for better visibility on white backgrounds */
-  background-color: rgba(var(--primary-rgb), 0.3) !important;
-  font-weight: 600;
+/* 2. Row Hover - ONLY for non-selected rows */
+.industry-table tbody tr:not(.selected-row):hover {
+  background-color: var(--table-hover-row-bg) !important;
 }
 
-/* 2. Default Dark Mode Override */
-body.dark-mode .instrument-summary-table tbody tr.selected-row {
-  /* Reduced to 0.2 (20%) because 30% is too bright on dark backgrounds.
-       This works now because we added --primary-rgb to body.dark-mode */
-  background-color: rgba(var(--primary-rgb), 0.2) !important;
+/* 3. Column Hover - ONLY for non-selected rows */
+.industry-table tbody tr:not(.selected-row) td.col-hovered {
+  background-color: var(--table-hover-col-bg) !important;
 }
 
-/* 3. Orbital Theme Override */
-body.theme-orbital:not(.dark-mode)
-  .instrument-summary-table
-  tbody
-  tr.selected-row {
-  background-color: rgba(var(--primary-rgb), 0.25) !important;
+/* 4. Selected Row State - High Specificity to override everything else */
+.industry-table tbody tr.selected-row,
+.instrument-summary-table tbody tr.selected-row,
+/* Legacy selector for React inline styles override */
+.instrument-summary-table tbody tr[style*="border-left: 4px solid var(--primary-color)"] {
+  background-color: var(--table-selected-row-bg) !important;
+  border-left: 4px solid var(--table-selected-border) !important;
+  box-shadow: none !important; /* Remove any legacy shadows */
+  color: inherit !important;
 }
 
-/* Disable hover effect for non-interactive cells in UUT table (Description & Spec) */
-.instrument-summary-table tr:hover td.no-hover-cell {
-  background-color: var(--content-background) !important;
-  color: var(--text-color) !important;
+/* 5. Selected Row Hover - STRICTLY maintain selection color (NO darken/lighten) */
+.industry-table tbody tr.selected-row:hover,
+.instrument-summary-table tbody tr.selected-row:hover,
+.instrument-summary-table tbody tr[style*="border-left: 4px solid var(--primary-color)"]:hover {
+  background-color: var(--table-selected-row-bg) !important;
+  filter: none !important;
   cursor: default;
 }
 
-/* =================================================================== */
-/* POLISHED COMPACT TABLES - Minimal Scrollbars & Auto-Width Columns   */
-/* =================================================================== */
-
-/* --- Table Container: Refined Scrollbar Behavior --- */
-.instrument-summary-table-wrapper {
-  overflow-x: auto;
-  overflow-y: auto;
-  max-height: 360px; /* Slightly reduced for tighter fit */
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+/* 6. Prevent Column Hover on Selected Rows */
+.industry-table tr.selected-row td.col-hovered {
+  background-color: transparent !important;
 }
 
-/* Webkit Scrollbars (Chrome, Safari, Edge) */
-.instrument-summary-table-wrapper::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* 7. Multi-row Spec Handling */
+/* Default: Dashed border for sub-rows (separator) */
+.industry-table tr.spec-row td {
+  border-top: 1px dashed var(--border-color);
+}
+/* Selected: JOIN the rows visually by removing the separator */
+.industry-table tr.selected-row.spec-row td {
+  border-top: none !important;
+  border-bottom: none !important; /* Ensure seamless transition */
 }
 
-.instrument-summary-table-wrapper::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
-  border-radius: 3px;
-}
-
-.instrument-summary-table-wrapper::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 3px;
-  transition: background 0.2s ease;
-}
-
-.instrument-summary-table-wrapper::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
-}
-
-/* Hide scrollbar when not needed - only show on hover/focus */
-.instrument-summary-table-wrapper:not(:hover)::-webkit-scrollbar-thumb {
-  background: transparent;
-}
-
-.instrument-summary-table-wrapper:not(:hover) {
-  scrollbar-color: transparent var(--scrollbar-track);
-}
-
-/* --- Auto-Width Columns: Let content dictate size --- */
-.instrument-summary-table.compact-table {
-  width: auto;
-  min-width: 100%;
-  table-layout: auto;
-}
-
-.instrument-summary-table.compact-table th,
-.instrument-summary-table.compact-table td {
-  padding: 8px 12px;
-  white-space: nowrap;
-}
-
-/* Allow description columns to wrap when needed */
-.instrument-summary-table.compact-table td.cell-description {
-  white-space: normal;
-  max-width: 200px;
-  min-width: 100px;
-}
-
-/* Compact checkbox column */
-.instrument-summary-table.compact-table td.cell-compact,
-.instrument-summary-table.compact-table th.cell-compact {
-  width: 40px;
-  padding: 6px 8px;
-  text-align: center;
-}
-
-/* --- Global Scrollbar Styling for Table Containers --- */
-div[style*="overflowX: auto"],
-div[style*="overflow-x: auto"] {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) transparent;
-}
-
-div[style*="overflowX: auto"]::-webkit-scrollbar,
-div[style*="overflow-x: auto"]::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-div[style*="overflowX: auto"]::-webkit-scrollbar-track,
-div[style*="overflow-x: auto"]::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 3px;
-}
-
-div[style*="overflowX: auto"]::-webkit-scrollbar-thumb,
-div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 3px;
-}
-
-div[style*="overflowX: auto"]::-webkit-scrollbar-thumb:hover,
-div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
+/* 8. Cyberpunk Specific Overrides - Handled by Variables, but ensure no legacy overrides exist */
+body.theme-cyberpunk .industry-table tr.selected-row {
+  box-shadow: none !important; /* Remove conflicts */
 }
 
 /* =================================================================== */
@@ -8186,4 +8095,5 @@ body.theme-cyberpunk .area-header-sticky {
 .point-grid-item.table-highlight:not(.active) .point-section {
     font-weight: 600;
     color: var(--primary-color);
+}
 }
