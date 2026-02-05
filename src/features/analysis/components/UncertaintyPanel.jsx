@@ -712,6 +712,7 @@ const SummaryDashboard = ({
 
     // Industry Grade Highlighting State
     const [hoveredCell, setHoveredCell] = useState({ tableId: null, colIndex: null });
+    const [hoveredRowId, setHoveredRowId] = useState(null);
 
 
 
@@ -868,7 +869,7 @@ const SummaryDashboard = ({
                     </div>
                 </div>
                 <div className="panel-table-container" style={{ overflowX: 'auto', borderRadius: '8px', border: 'none' }}>
-                    <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => setHoveredCell({ tableId: null, colIndex: null })} style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
+                    <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => { setHoveredCell({ tableId: null, colIndex: null }); setHoveredRowId(null); }} style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
                         <colgroup>
                             <col style={{ width: showAreaColumn ? '34%' : '42%' }} />
                             <col style={{ width: showAreaColumn ? '26%' : '30%' }} />
@@ -924,9 +925,10 @@ const SummaryDashboard = ({
                                     return (
                                         <React.Fragment key={uut.id}>
                                             <tr
-                                                className={isSelected ? "selected-row" : ""}
+                                                className={`${isSelected ? "selected-row" : ""} ${hoveredRowId === uut.id ? "row-hovered" : ""}`}
                                                 // CLICK HANDLERS
                                                 onClick={(e) => handleUutClick(e, uut.id)}
+                                                onMouseEnter={() => setHoveredRowId(uut.id)}
                                                 onDoubleClick={() => onSelectUut && onSelectUut(uut.id, uut.measurementAreaId, uut)}
                                                 style={{
                                                     cursor: 'pointer',
@@ -985,7 +987,8 @@ const SummaryDashboard = ({
                                             {specRows.slice(1).map((specComp, sIdx) => (
                                                 <tr
                                                     key={`${uut.id}-spec-${sIdx}`}
-                                                    className={isSelected ? "selected-row spec-row" : "spec-row"}
+                                                    className={`${isSelected ? "selected-row spec-row" : "spec-row"} ${hoveredRowId === uut.id ? "row-hovered" : ""}`}
+                                                    onMouseEnter={() => setHoveredRowId(uut.id)}
                                                     style={{
                                                         cursor: 'pointer',
                                                         transition: 'all 0.1s ease',
@@ -1044,7 +1047,7 @@ const SummaryDashboard = ({
                     </div>
                 </div>
                 <div className="panel-table-container" style={{ overflowX: 'auto', borderRadius: '8px', border: 'none' }}>
-                    <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => setHoveredCell({ tableId: null, colIndex: null })} style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
+                    <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => { setHoveredCell({ tableId: null, colIndex: null }); setHoveredRowId(null); }} style={{ margin: 0, border: 'none', boxShadow: 'none', width: '100%', minWidth: '100%', tableLayout: 'fixed' }}>
                         <colgroup>
                             <col style={{ width: '42%' }} />
                             <col style={{ width: '30%' }} />
@@ -1073,9 +1076,10 @@ const SummaryDashboard = ({
                                     return (
                                         <React.Fragment key={tmde.id || idx}>
                                             <tr
-                                                className={isSelected ? "selected-row" : ""}
+                                                className={`${isSelected ? "selected-row" : ""} ${hoveredRowId === tmde.id ? "row-hovered" : ""}`}
                                                 // CLICK HANDLERS
                                                 onClick={(e) => handleTmdeClick(e, tmde.id)}
+                                                onMouseEnter={() => setHoveredRowId(tmde.id)}
                                                 onDoubleClick={() => onEditTmde && onEditTmde(tmde)}
                                                 style={{
                                                     cursor: 'pointer',
@@ -1107,13 +1111,14 @@ const SummaryDashboard = ({
                                             {specRows.slice(1).map((specComp, sIdx) => (
                                                 <tr
                                                     key={`${tmde.id}-spec-${sIdx}`}
-                                                    className={isSelected ? "selected-row spec-row" : "spec-row"}
+                                                    className={`${isSelected ? "selected-row spec-row" : "spec-row"} ${hoveredRowId === tmde.id ? "row-hovered" : ""}`}
                                                     style={{
                                                         cursor: 'pointer',
                                                         transition: 'all 0.1s ease',
                                                         backgroundColor: 'transparent'
                                                     }}
                                                     onClick={(e) => handleTmdeClick(e, tmde.id)}
+                                                    onMouseEnter={() => setHoveredRowId(tmde.id)}
                                                     onDoubleClick={() => onEditTmde && onEditTmde(tmde)}
                                                 >
                                                     <td
