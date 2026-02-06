@@ -859,8 +859,8 @@ const SummaryDashboard = ({
                         )}
                         {/* ADD BUTTON */}
                         <button
-                            className="btn-icon-only"
-                            style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
+                            className="sidebar-action-button btn-icon-only"
+                            style={{ width: '24px', height: '24px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             onClick={() => onEditUut && onEditUut(null)} // Trigger Add
                             title="Add New UUT"
                         >
@@ -1037,8 +1037,8 @@ const SummaryDashboard = ({
                         )}
                         {/* ADD BUTTON */}
                         <button
-                            className="btn-icon-only"
-                            style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
+                            className="sidebar-action-button btn-icon-only"
+                            style={{ width: '24px', height: '24px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             onClick={onAddTmde}
                             title="Add New TMDE"
                         >
@@ -1659,8 +1659,8 @@ function DetailedView({
                             </button>
                         )}
                         <button
-                            className="btn-icon-only"
-                            style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
+                            className="sidebar-action-button btn-icon-only"
+                            style={{ width: '24px', height: '24px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             onClick={() => onEditUut && onEditUut(null)}
                             title="Add New UUT"
                         >
@@ -1802,8 +1802,8 @@ function DetailedView({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {!hasMeasurementPoint && (
                             <button
-                                className="btn-icon-only"
-                                style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
+                                className="sidebar-action-button btn-icon-only"
+                                style={{ width: '24px', height: '24px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                 onClick={handleActionAdd}
                                 title="Add Measurement Point"
                             >
@@ -2117,8 +2117,8 @@ function DetailedView({
                                 </button>
                             )}
                             <button
-                                className="btn-icon-only"
-                                style={{ backgroundColor: 'var(--primary-color)', color: '#fff', width: '24px', height: '24px', borderRadius: '4px' }}
+                                className="sidebar-action-button btn-icon-only"
+                                style={{ width: '24px', height: '24px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                 onClick={onAddTmde}
                                 title="Add New TMDE"
                             >
@@ -2299,7 +2299,7 @@ function DetailedView({
                                                     {specRows.slice(1).map((specComp, sIdx) => (
                                                         <tr
                                                             key={`${masterTmde.id}-${idx}-spec-${sIdx}`}
-                                                            className={isSelectedRow ? "selected-row" : ""}
+                                                        className={`${isSelectedRow ? "selected-row spec-row" : "spec-row"} ${hoveredRowId === masterTmde.id ? "row-hovered" : ""}`}
                                                             style={{
                                                                 borderLeft: isSelectedRow ? '4px solid var(--primary-color)' : '4px solid transparent',
                                                                 opacity: isChecked ? 1 : 0.7

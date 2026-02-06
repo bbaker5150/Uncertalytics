@@ -56,6 +56,7 @@ import {
   faCopy,
   faPaste,
   faCheckCircle,
+  faCheck,
   faFilter,
   faSlidersH,
   faChevronDown,
@@ -644,6 +645,7 @@ function App() {
   } = useSessionManager();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isQuickAddSuccess, setIsQuickAddSuccess] = useState(false);
   const [editingTestPoint, setEditingTestPoint] = useState(null);
   const [editingSession, setEditingSession] = useState(null);
   const [isToleranceModalOpen, setIsToleranceModalOpen] = useState(false);
@@ -1271,18 +1273,38 @@ function App() {
     setSelectedSidebarPointIds([]);
   };
 
-  const handleSelectArea = (areaId) => {
-    // Toggle area expansion (accordion style)
+  // --- TOGGLE EXPANSION HANDLERS ---
+  const toggleAreaExpand = (e, areaId) => {
+    e.stopPropagation();
     setExpandedAreas(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(areaId)) {
-        newSet.delete(areaId);
-      } else {
-        newSet.add(areaId);
-      }
+      if (newSet.has(areaId)) newSet.delete(areaId);
+      else newSet.add(areaId);
       return newSet;
     });
+  };
 
+  const toggleUutExpand = (e, uutId) => {
+    e.stopPropagation();
+    setExpandedUuts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(uutId)) newSet.delete(uutId);
+      else newSet.add(uutId);
+      return newSet;
+    });
+  };
+
+  const toggleRangeExpand = (e, rangeKey) => {
+    e.stopPropagation();
+    setExpandedRanges(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(rangeKey)) newSet.delete(rangeKey);
+      else newSet.add(rangeKey);
+      return newSet;
+    });
+  };
+
+  const handleSelectArea = (areaId) => {
     // Set selection for the main panel
     setSelectedAreaId(areaId);
     setSelectedUutId(null);
@@ -1296,17 +1318,6 @@ function App() {
   };
 
   const handleSelectUut = (uutId, areaId) => {
-    // Toggle UUT expansion (accordion style)
-    setExpandedUuts(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(uutId)) {
-        newSet.delete(uutId);
-      } else {
-        newSet.add(uutId);
-      }
-      return newSet;
-    });
-
     // Set selection for the main panel
     setSelectedUutId(uutId);
     setSelectedAreaId(areaId);
@@ -1321,19 +1332,6 @@ function App() {
 
   // ---  Handle Range Selection ---
   const handleSelectRange = (uutId, range, areaId) => {
-    const rangeKey = `${uutId}-${range._id}`;
-
-    // Toggle range expansion (accordion style)
-    setExpandedRanges(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(rangeKey)) {
-        newSet.delete(rangeKey);
-      } else {
-        newSet.add(rangeKey);
-      }
-      return newSet;
-    });
-
     // Set selection for the main panel
     setSelectedRangeContext({ uutId, range });
     setSelectedUutId(null);
@@ -1761,6 +1759,8 @@ function App() {
     setQuickAddSection("");
     setQuickAddValue("");
     setQuickAddUnit("");
+    setIsQuickAddSuccess(true);
+    setTimeout(() => setIsQuickAddSuccess(false), 2000);
     showToast(`Point${targetUutIds.length > 1 ? 's' : ''} added to ${targetUutIds.length} UUT${targetUutIds.length > 1 ? 's' : ''}`);
   };
 
@@ -2267,6 +2267,10 @@ function App() {
                                 cursor: 'pointer',
                                 fontSize: '0.8rem',
                                 padding: '4px 8px'
+                            }),
+                            menuList: (base) => ({
+                                ...base,
+                                overflowX: 'hidden'
                             })
                         }}
                       />
@@ -2274,12 +2278,12 @@ function App() {
                     <button
                       onClick={handleQuickAddPoint}
                       disabled={!quickAddValue || !quickAddUnit || (!selectedUutId && currentUutSelection.length === 0)}
-                      className="quick-add-submit"
+                      className={`quick-add-submit ${isQuickAddSuccess ? 'success' : ''}`}
                       title={(!selectedUutId && currentUutSelection.length === 0)
                         ? "Select UUT(s) from panel first"
                         : `Add point to ${selectedUutId ? '1' : currentUutSelection.length} UUT${!selectedUutId && currentUutSelection.length > 1 ? 's' : ''} (Enter)`}
                     >
-                      <FontAwesomeIcon icon={faPlus} />
+                      <FontAwesomeIcon icon={faCheck} />
                     </button>
                   </div>
                 </div>
@@ -2370,6 +2374,7 @@ function App() {
                       >
                         <FontAwesomeIcon
                           icon={isAreaExpanded ? faChevronDown : faChevronRight}
+                          onClick={(e) => toggleAreaExpand(e, areaData.id)}
                           style={{
                             opacity: 0.6,
                             marginRight: '8px',
@@ -2424,6 +2429,7 @@ function App() {
                                   <div className="uut-info">
                                     <FontAwesomeIcon
                                       icon={isUutExpanded ? faChevronDown : faChevronRight}
+                                      onClick={(e) => toggleUutExpand(e, group.id)}
                                       style={{
                                         opacity: 0.6,
                                         marginRight: '8px',
@@ -2491,6 +2497,7 @@ function App() {
                                           >
                                             <FontAwesomeIcon
                                               icon={isRangeExpanded ? faChevronDown : faChevronRight}
+                                              onClick={(e) => toggleRangeExpand(e, rangeKey)}
                                               style={{
                                                 opacity: 0.6,
                                                 marginRight: '8px',
