@@ -273,8 +273,8 @@ function Analysis({
           ...(newActiveRange.tolerances || newActiveRange.tolerance || {}),
         };
 
+        /* eslint-disable no-unused-vars */
         const {
-          // eslint-disable-next-line no-unused-vars
           reading,
           floor,
           range,
@@ -286,6 +286,7 @@ function Analysis({
           resolution,
           ...safeInstanceMeta
         } = t;
+        /* eslint-enable no-unused-vars */
 
         return {
           ...safeInstanceMeta,
