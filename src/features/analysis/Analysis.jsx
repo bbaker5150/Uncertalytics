@@ -1,19 +1,22 @@
 /**
  * src/features/analysis/Analysis.jsx
- * * Responsibilities:
- * - Manages Top-Level State (Tabs, Modals).
- * - Calls useUncertaintyCalculation & useRiskCalculation hooks.
- * - Renders the appropriate dashboard based on the selected tab or view mode.
+ *
+ * Top-level container for the Analysis workflow.
+ *
+ * Responsibilities:
+ * 1. Manages top-level state for Tabs, Modals, and View Modes (Summary vs Detailed).
+ * 2. Coordinates data flow between sub-components and global state (App.jsx).
+ * 3. Integrates Calculation Hooks (Uncertainty & Risk) to drive the dashboards.
+ * 4. Handles instrument (UUT/TMDE) selection and editing logic.
  */
 
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 
 // --- Custom Hooks ---
 import { useUncertaintyCalculation } from "./hooks/useUncertaintyCalculation";
 import { useRiskCalculation } from "./hooks/useRiskCalculation";
 
-// --- Sub-Components ---
-import ManualComponentModal from "./components/ManualComponentModal";
+// --- Components ---
 import UncertaintyPanel from "./components/UncertaintyPanel";
 import RiskAnalysisDashboard from "./components/RiskAnalysisDashboard";
 import RiskMitigationDashboard from "./components/RiskMitigationDashboard";
@@ -22,113 +25,134 @@ import RiskScatterplot from "./components/RiskScatterplot";
 // --- Modals ---
 import NotificationModal from "../../components/modals/NotificationModal";
 import UniversalInstrumentModal from "../instruments/components/UniversalInstrumentModal";
+import ManualComponentModal from "./components/ManualComponentModal";
 import DerivedBreakdownModal from "./components/BreakdownModals/DerivedBreakdownModal";
 import RiskBreakdownModal from "./components/BreakdownModals/RiskBreakdownModals";
 import RepeatabilityModal from "./components/RepeatabilityModal";
-
 import AddTestPointModal from "../testPoints/components/AddTestPointModal";
 
-// --- Utils ---
-import {
-  convertToPPM,
-  recalculateTolerance
-} from "../../utils/uncertaintyMath";
+// --- Utilities ---
+import { convertToPPM } from "../../utils/uncertaintyMath";
 
+/**
+ * Analysis Component
+ *
+ * @param {Object} props - Component properties
+ * @param {Object} props.sessionData - Full session state (UUTs, TMDEs, Standards).
+ * @param {Object} props.testPointData - Currently active test point data.
+ * @param {Function} props.onDataSave - Callback to update the active test point.
+ * @param {Function} props.onSessionSave - Callback to update the global session data.
+ * @param {Function} props.onSaveTestPoint - Callback to save test point to the list.
+ */
 function Analysis({
   sessionData,
   testPointData,
+  defaultTestPoint,
+
+  // Data Persistance Handlers
   onDataSave,
   onSessionSave,
   onSaveTestPoint,
-  defaultTestPoint,
-  setContextMenu,
-  setBreakdownPoint,
+
+  // Navigation & Actions
   handleOpenSessionEditor,
-  // Props lifted from App.js
-  instruments,
+  onSelectUut,
+  onSelectTestPoint,
   onDeleteTmdeDefinition,
   onDecrementTmdeQuantity,
   onDeleteUut,
   onDeleteTestPoint,
-  // Shared State lifted from App.js
-  riskResults: parentRiskResults,
+  setContextMenu,
+  setBreakdownPoint,
+
+  // Global Data Props (Lifted from App.js)
+  instruments,
   setRiskResults: parentSetRiskResults,
-  
-  // --- Global UUT Selection Props ---
+
+  // Selections
   currentUutSelection = [],
   setCurrentUutSelection,
-
-  // --- Range Selection ---
-  activeRangeIndices,
-  onRangeSelectionChange,
-
-  // --- Table Selection ---
   selectedTablePointIds = [],
   setSelectedTablePointIds = () => {},
-
-  // --- Navigation Props ---
-  onSelectUut,
-  onSelectTestPoint
+  activeRangeIndices,
+  onRangeSelectionChange,
 }) {
-  // --- 1. Local UI State ---
-  const [analysisMode, setAnalysisMode] = useState("uncertaintyTool");
+  // =========================================================================
+  // 1. STATE MANAGEMENT
+  // =========================================================================
+
+  // --- UI State ---
+  const [analysisMode, setAnalysisMode] = useState("uncertaintyTool"); // 'uncertaintyTool' | 'risk' | 'riskmitigation'
   const [showContribution, setShowContribution] = useState(false);
   const [notification, setNotification] = useState(null);
 
-  // Modal States
+  // --- Modal Visibility State ---
   const [activeInstrumentModal, setActiveInstrumentModal] = useState(null); // { mode: 'uut'|'tmde', data: ... }
-  const [modalOverrides, setModalOverrides] = useState(null);
-
-  // New State for Test Point Definition
   const [isTestPointModalOpen, setTestPointModalOpen] = useState(false);
-
+  const [modalOverrides, setModalOverrides] = useState(null);
   const [isManualModalOpen, setManualModalOpen] = useState(false);
-  const [editingComponent, setEditingComponent] = useState(null);
-
   const [isRepeatabilityModalOpen, setRepeatabilityModalOpen] = useState(false);
-  const [modalPosition, setModalPosition] = useState(null);
-
-  const [activeRiskModals, setActiveRiskModals] = useState([]);
-
   const [isDerivedBreakdownOpen, setIsDerivedBreakdownOpen] = useState(false);
+  const [activeRiskModals, setActiveRiskModals] = useState([]); // Array of active risk breakdown types
+
+  // --- Modal Data State ---
+  const [editingComponent, setEditingComponent] = useState(null);
+  const [modalPosition, setModalPosition] = useState(null);
   const [derivedBreakdownData, setDerivedBreakdownData] = useState(null);
 
-  // ---  TMDE Selection State ---
+  // --- Selection State ---
   const [selectedTmdeIds, setSelectedTmdeIds] = useState([]);
 
-  // --- 2. VIEW MODE & MEMOIZED DATA ---
-  // Determine if we are in "Point View" (Detailed) or "Summary View" (Session/Area/UUT)
-  const viewMode = testPointData.viewMode || 'point';
-  const isPointView = viewMode === 'point';
+  // =========================================================================
+  // 2. MEMOIZED DATA & LOOKUPS
+  // =========================================================================
 
-  // --- 3. Memoized Data Lookups (Safe for all modes) ---
+  const viewMode = testPointData.viewMode || "point";
+  const isPointView = viewMode === "point";
+
+  // Extract safe values for calculation hooks based on current view mode
   const uutNominal = useMemo(
-    () => isPointView ? testPointData?.testPointInfo?.parameter : {},
-    [isPointView, testPointData]
+    () => (isPointView ? testPointData?.testPointInfo?.parameter : {}),
+    [isPointView, testPointData],
   );
 
   const uutToleranceData = useMemo(
-    () => isPointView ? (testPointData.uutTolerance || sessionData.uutTolerance || {}) : {},
-    [isPointView, testPointData.uutTolerance, sessionData.uutTolerance]
+    () =>
+      isPointView
+        ? testPointData.uutTolerance || sessionData.uutTolerance || {}
+        : {},
+    [isPointView, testPointData.uutTolerance, sessionData.uutTolerance],
   );
 
   const tmdeTolerancesData = useMemo(
-    () => isPointView ? (testPointData.tmdeTolerances || []) : [],
-    [isPointView, testPointData.tmdeTolerances]
+    () => (isPointView ? testPointData.tmdeTolerances || [] : []),
+    [isPointView, testPointData.tmdeTolerances],
   );
 
   const manualComponents = useMemo(() => {
-    return isPointView ? (testPointData.components || []) : [];
+    return isPointView ? testPointData.components || [] : [];
   }, [isPointView, testPointData.components]);
 
-  // Reset selection when test point changes
-  useEffect(() => {
-    setSelectedTmdeIds([]);
-  }, [testPointData.id]);
+  // =========================================================================
+  // 3. EFFECTS & SYNC
+  // =========================================================================
 
-  // --- 4. Uncertainty Calculation Hook ---
-  // Note: Hooks must always run. We pass safe/empty data if not in Point View.
-  const hookTestPointData = isPointView ? testPointData : { ...defaultTestPoint, id: 'dummy-summary' };
+  // Synchronize selection state when the active test point changes
+  // We use the "state adjustment during render" pattern to avoid useEffect cascades
+  const [prevTestPointId, setPrevTestPointId] = useState(testPointData.id);
+  if (testPointData.id !== prevTestPointId) {
+    setPrevTestPointId(testPointData.id);
+    setSelectedTmdeIds([]);
+  }
+
+  // =========================================================================
+  // 4. CALCULATION HOOKS
+  // =========================================================================
+
+  // Hook 1: Uncertainty Calculation
+  const hookTestPointData = isPointView
+    ? testPointData
+    : { ...defaultTestPoint, id: "dummy-summary" };
 
   const { calcResults, calculationError } = useUncertaintyCalculation(
     hookTestPointData,
@@ -137,10 +161,10 @@ function Analysis({
     uutToleranceData,
     uutNominal,
     manualComponents,
-    onDataSave
+    onDataSave,
   );
 
-  // --- 5. Risk Calculation Hook ---
+  // Hook 2: Risk Calculation
   const handleRiskDataSave = (data) => {
     if (data.riskMetrics !== undefined && parentSetRiskResults) {
       parentSetRiskResults(data.riskMetrics);
@@ -151,7 +175,7 @@ function Analysis({
   const {
     riskResults,
     riskInputs,
-    notification: riskNotification
+    notification: riskNotification,
   } = useRiskCalculation(
     sessionData,
     hookTestPointData,
@@ -160,220 +184,202 @@ function Analysis({
     uutNominal,
     calcResults,
     analysisMode,
-    handleRiskDataSave
+    handleRiskDataSave,
   );
 
+  // Sync risk notifications to local UI state
   if (riskNotification && !notification) {
     setNotification(riskNotification);
   }
 
-  // --- 6. Handlers ---
+  // =========================================================================
+  // 5. EVENT HANDLERS
+  // =========================================================================
 
+  // --- Selection Handlers ---
   const handleToggleTmdeSelection = (id) => {
-    setSelectedTmdeIds(prev => {
-      if (prev.includes(id)) {
-        return prev.filter(tid => tid !== id);
-      }
-      return [...prev, id];
-    });
+    setSelectedTmdeIds((prev) =>
+      prev.includes(id) ? prev.filter((tid) => tid !== id) : [...prev, id],
+    );
   };
 
   const handleToggleAllTmdes = () => {
-    if (selectedTmdeIds.length === tmdeTolerancesData.length) {
-      setSelectedTmdeIds([]);
-    } else {
-      setSelectedTmdeIds(tmdeTolerancesData.map(t => t.id));
-    }
+    const allSelected = selectedTmdeIds.length === tmdeTolerancesData.length;
+    setSelectedTmdeIds(allSelected ? [] : tmdeTolerancesData.map((t) => t.id));
   };
 
   const handleToggleUut = (uutId) => {
     if (!uutId && uutId !== 0) return;
-    const isSelected = currentUutSelection.some(id => String(id) === String(uutId));
-    let newIds;
-    if (isSelected) {
-      newIds = currentUutSelection.filter(id => String(id) !== String(uutId));
-    } else {
-      newIds = [...currentUutSelection, uutId];
-    }
-    if (setCurrentUutSelection) {
-        setCurrentUutSelection(newIds);
-    }
+    const isSelected = currentUutSelection.some(
+      (id) => String(id) === String(uutId),
+    );
+    const newIds = isSelected
+      ? currentUutSelection.filter((id) => String(id) !== String(uutId))
+      : [...currentUutSelection, uutId];
+
+    if (setCurrentUutSelection) setCurrentUutSelection(newIds);
   };
 
-  // --- INSTRUMENT EDITING HANDLERS ---
+  // --- Instrument Modal Handlers (UUT/TMDE) ---
+  const handleEditUut = (uutData) =>
+    setActiveInstrumentModal({ mode: "uut", data: uutData });
+  const handleEditTmde = (tmdeData) =>
+    setActiveInstrumentModal({ mode: "tmde", data: tmdeData });
 
-  const handleEditUut = (uutData) => {
-      setActiveInstrumentModal({
-          mode: 'uut',
-          data: uutData
-      });
-  };
-
-  const handleEditTmde = (tmdeData) => {
-      setActiveInstrumentModal({
-          mode: 'tmde',
-          data: tmdeData
-      });
-  };
-
-  const handleSaveUut = ({ description, tolerance, instrument }) => {
-    // If the modal returned a full instrument definition, we prioritize that.
-    // We clear 'tolerance' if we are switching to an instrument-based definition to allow the hook to recalculate.
-    onDataSave({ uutTolerance: tolerance });
-
+  /**
+   * Handles saving a TMDE (Test Measurement & Diagnostic Equipment) configuration.
+   * Updates global session data and local test point tolerances.
+   */
+  const handleSaveTmde = (tmdeToSave) => {
+    // 1. Update Session Library
     if (onSessionSave) {
-      const updatedTestPoint = { ...testPointData, uutTolerance: tolerance };
-      const updatedTestPointsList = (sessionData.testPoints || []).map(tp =>
-        tp.id === testPointData.id ? updatedTestPoint : tp
+      const currentTmdes = sessionData.tmdes || [];
+      const existingSessionIndex = currentTmdes.findIndex(
+        (t) => t.id === tmdeToSave.id,
       );
 
-      onSessionSave({
-        ...sessionData,
-        testPoints: updatedTestPointsList,
-        uutDescription: description,
-        uutTolerance: tolerance,
-        uutInstrument: instrument || sessionData.uutInstrument
-      });
-    }
-  };
+      const updatedSessionTmdes =
+        existingSessionIndex > -1
+          ? currentTmdes.map((t, i) =>
+              i === existingSessionIndex ? { ...t, ...tmdeToSave } : t,
+            )
+          : [...currentTmdes, tmdeToSave];
 
-  const handleSaveTmde = (tmdeToSave) => {
-    if (onSessionSave) {
-        const currentTmdes = sessionData.tmdes || [];
-        const existingSessionIndex = currentTmdes.findIndex(t => t.id === tmdeToSave.id);
-        
-        let updatedSessionTmdes;
-        if (existingSessionIndex > -1) {
-             updatedSessionTmdes = currentTmdes.map((t, i) => i === existingSessionIndex ? { ...t, ...tmdeToSave } : t);
-        } else {
-             updatedSessionTmdes = [...currentTmdes, tmdeToSave];
-        }
-        
-        onSessionSave({
-            ...sessionData,
-            tmdes: updatedSessionTmdes
-        });
+      onSessionSave({ ...sessionData, tmdes: updatedSessionTmdes });
     }
 
+    // 2. Update Local Test Point Instances
     const updatedTolerances = tmdeTolerancesData.map((t) => {
-        if (t.id === tmdeToSave.id || t.sourceId === tmdeToSave.id) {
-            
-            const newInstDef = tmdeToSave.instrument || tmdeToSave;
-            
-            let newRanges = [];
-            let funcName = t.functionName; 
-            let func = null;
-            
-            if (newInstDef.functions && newInstDef.functions.length > 0) {
-                 if (funcName) {
-                     func = newInstDef.functions.find(f => f.name === funcName);
-                 }
-                 if (!func) {
-                     func = newInstDef.functions[0];
-                 }
-                 newRanges = func ? (func.ranges || []) : [];
-                 funcName = func ? func.name : ""; 
-            } else {
-                 newRanges = newInstDef.ranges || [];
-                 funcName = ""; 
-            }
-            
-            let activeIndex = (t._index !== undefined) ? t._index : 0;
-            if (!newRanges[activeIndex]) {
-                activeIndex = 0;
-            }
-            
-            const newActiveRange = newRanges[activeIndex] || {};
-            
-            const flattenedSpecs = {
-                ...newActiveRange,
-                ...(newActiveRange.tolerances || newActiveRange.tolerance || {})
-            };
+      if (t.id === tmdeToSave.id || t.sourceId === tmdeToSave.id) {
+        const newInstDef = tmdeToSave.instrument || tmdeToSave;
+        let funcName = t.functionName || "";
 
-            const { 
-                reading, floor, range, tolerance, tolerances, min, max, unit, resolution,
-                ...safeInstanceMeta 
-            } = t;
-
-            return { 
-                ...safeInstanceMeta,       
-                ...tmdeToSave,             
-                ...flattenedSpecs,         
-                
-                id: t.id,                  
-                sourceId: tmdeToSave.id,   
-                functionName: funcName,    
-                _index: activeIndex,       
-                measurementPoint: tmdeToSave.measurementPoint || t.measurementPoint
-            };
+        // Resolve Function & Range
+        let func = null;
+        if (newInstDef.functions?.length > 0) {
+          if (funcName)
+            func = newInstDef.functions.find((f) => f.name === funcName);
+          if (!func) func = newInstDef.functions[0];
+          funcName = func ? func.name : "";
         }
-        return t;
+
+        const newRanges = func ? func.ranges || [] : newInstDef.ranges || [];
+        const activeIndex =
+          t._index !== undefined && newRanges[t._index] ? t._index : 0;
+        const newActiveRange = newRanges[activeIndex] || {};
+
+        const flattenedSpecs = {
+          ...newActiveRange,
+          ...(newActiveRange.tolerances || newActiveRange.tolerance || {}),
+        };
+
+        const {
+          // eslint-disable-next-line no-unused-vars
+          reading,
+          floor,
+          range,
+          tolerance,
+          tolerances,
+          min,
+          max,
+          unit,
+          resolution,
+          ...safeInstanceMeta
+        } = t;
+
+        return {
+          ...safeInstanceMeta,
+          ...tmdeToSave,
+          ...flattenedSpecs,
+          id: t.id,
+          sourceId: tmdeToSave.id,
+          functionName: funcName,
+          _index: activeIndex,
+          measurementPoint: tmdeToSave.measurementPoint || t.measurementPoint,
+        };
+      }
+      return t;
     });
 
     onDataSave({ tmdeTolerances: updatedTolerances });
   };
 
-  // --- Unified Instrument Handler ---
+  /**
+   * Universal handler for saving instruments from the modal.
+   * Routes to either UUT or TMDE save logic.
+   */
   const handleSaveInstrument = (data) => {
     if (!activeInstrumentModal) return;
     const { mode } = activeInstrumentModal;
 
-    if (mode === 'uut') {
-        // 1. Update the UUT List (Fixes the Table Update Issue)
-        if (onSessionSave) {
-            const currentUuts = sessionData.uuts || [];
-            const existingIndex = currentUuts.findIndex(u => u.id === data.id);
-            
-            let updatedUuts;
-            if (existingIndex > -1) {
-                // Update existing UUT definition in the list
-                updatedUuts = currentUuts.map((u, i) => i === existingIndex ? { ...u, ...data } : u);
-            } else {
-                // Add new UUT definition if it doesn't exist
-                updatedUuts = [...currentUuts, data];
-            }
+    if (mode === "uut") {
+      if (onSessionSave) {
+        const currentUuts = sessionData.uuts || [];
+        const existingIndex = currentUuts.findIndex((u) => u.id === data.id);
+        const updatedUuts =
+          existingIndex > -1
+            ? currentUuts.map((u, i) =>
+                i === existingIndex ? { ...u, ...data } : u,
+              )
+            : [...currentUuts, data];
 
-            // Save the updated list to session, preserving other legacy fields if needed
-            onSessionSave({
-                ...sessionData,
-                uuts: updatedUuts,
-                // Keep legacy fields in sync for safety, though the table relies on 'uuts'
-                uutDescription: data.description,
-                uutInstrument: data.instrument
-            });
-        }
-
-        // 2. Trigger local test point update 
-        // Clearing tolerance forces the calculation hook to re-evaluate against the new specs
-        onDataSave({ uutTolerance: null });
-
-    } else if (mode === 'tmde') {
-        handleSaveTmde(data);
+        onSessionSave({
+          ...sessionData,
+          uuts: updatedUuts,
+          uutDescription: data.description,
+          uutInstrument: data.instrument,
+        });
+      }
+      // Clearing tolerance triggers recalculation
+      onDataSave({ uutTolerance: null });
+    } else if (mode === "tmde") {
+      handleSaveTmde(data);
     }
     setActiveInstrumentModal(null);
   };
 
+  /**
+   * Handles inline updates for TMDE rows (Name, Value, Unit).
+   */
+  const handleInlineTmdeUpdate = (id, field, value) => {
+    const tmdeToUpdate = tmdeTolerancesData.find((t) => t.id === id);
+    if (!tmdeToUpdate) return;
+
+    const newTmde = { ...tmdeToUpdate };
+    const currentMP = newTmde.measurementPoint || { value: "", unit: "" };
+
+    if (field === "name") newTmde.name = value;
+    else if (field === "nominal")
+      newTmde.measurementPoint = { ...currentMP, value: value }; // Preserves string for typing
+    else if (field === "variableType") newTmde.variableType = value;
+    else if (field === "unit")
+      newTmde.measurementPoint = { ...currentMP, unit: value };
+
+    handleSaveTmde(newTmde);
+  };
+
+  // --- Test Point & Manual Component Handlers ---
+
   const handleSaveTestPointInfo = (updatedData) => {
-    // This is the main save handler that routes to onSaveTestPoint (App.jsx)
     if (onSaveTestPoint) {
       let finalData = { ...updatedData };
-      if (!finalData.id && selectedTmdeIds.length > 0) {
-        const selectedTmdes = tmdeTolerancesData.filter(t => selectedTmdeIds.includes(t.id));
-        const resetTmdes = selectedTmdes.map(t => ({
-          ...t,
-          id: Date.now() + Math.random(), 
-          name: t.name || t.description || "Unnamed Device", 
-          measurementPoint: {
-            ...t.measurementPoint,
-            value: "" 
-          }
-        }));
-
-        finalData.tmdeTolerances = resetTmdes;
-        finalData.copyTmdes = false; 
-      } else if (!finalData.id && selectedTmdeIds.length === 0) {
-        finalData.copyTmdes = false;
-        finalData.tmdeTolerances = [];
+      // Handle "Copy Selected TMDEs" logic for new test points
+      if (!finalData.id) {
+        if (selectedTmdeIds.length > 0) {
+          const selectedTmdes = tmdeTolerancesData.filter((t) =>
+            selectedTmdeIds.includes(t.id),
+          );
+          finalData.tmdeTolerances = selectedTmdes.map((t) => ({
+            ...t,
+            id: Date.now() + Math.random(),
+            name: t.name || t.description || "Unnamed Device",
+            measurementPoint: { ...t.measurementPoint, value: "" },
+          }));
+          finalData.copyTmdes = false;
+        } else {
+          finalData.copyTmdes = false;
+          finalData.tmdeTolerances = [];
+        }
       }
       onSaveTestPoint(finalData);
     } else {
@@ -382,14 +388,18 @@ function Analysis({
     setTestPointModalOpen(false);
     if (setCurrentUutSelection) setCurrentUutSelection([]);
   };
+
   const handleSaveManualComponent = (componentData) => {
     let updatedComponents;
     if (editingComponent) {
       updatedComponents = manualComponents.map((c) =>
-        c.id === editingComponent.id ? componentData : c
+        c.id === editingComponent.id ? componentData : c,
       );
     } else {
-      updatedComponents = [...manualComponents, { ...componentData, id: Date.now() }];
+      updatedComponents = [
+        ...manualComponents,
+        { ...componentData, id: Date.now() },
+      ];
     }
     onDataSave({ components: updatedComponents });
     setManualModalOpen(false);
@@ -398,12 +408,15 @@ function Analysis({
 
   const handleEditComponent = (event, component) => {
     setEditingComponent(component);
-    if (component.id.toString().includes('repeatability') || component.name === 'Repeatability') {
-      if (event && event.clientY) {
-        setModalPosition({ top: event.clientY, left: event.clientX });
-      } else {
-        setModalPosition(null);
-      }
+    if (
+      component.id.toString().includes("repeatability") ||
+      component.name === "Repeatability"
+    ) {
+      const pos =
+        event && event.clientY
+          ? { top: event.clientY, left: event.clientX }
+          : null;
+      setModalPosition(pos);
       setRepeatabilityModalOpen(true);
     } else {
       setManualModalOpen(true);
@@ -429,17 +442,19 @@ function Analysis({
       uutNominal?.value,
       uutNominal?.unit,
       null,
-      true
+      true,
     );
-
     if (warning) {
       setNotification({ title: "Conversion Error", message: warning });
       return;
     }
 
-    const isEditing = editingComponent && editingComponent.id.toString().includes('repeatability');
-    const newId = isEditing ? editingComponent.id : `repeatability_${Date.now()}`;
-
+    const isEditing =
+      editingComponent &&
+      editingComponent.id.toString().includes("repeatability");
+    const newId = isEditing
+      ? editingComponent.id
+      : `repeatability_${Date.now()}`;
     const componentData = {
       id: newId,
       name: "Repeatability",
@@ -451,168 +466,129 @@ function Analysis({
       dof: data.dof,
       distribution: "Normal",
       isCore: false,
-      savedInputs: data
+      savedInputs: data,
     };
 
-    let updatedComponents;
-    if (isEditing) {
-      updatedComponents = manualComponents.map((c) =>
-        c.id === newId ? componentData : c
-      );
-    } else {
-      updatedComponents = [...manualComponents, componentData];
-    }
+    const updatedComponents = isEditing
+      ? manualComponents.map((c) => (c.id === newId ? componentData : c))
+      : [...manualComponents, componentData];
 
     onDataSave({ components: updatedComponents });
     setEditingComponent(null);
     setRepeatabilityModalOpen(false);
   };
 
-  const handleBudgetRowContextMenu = (event, componentData) => {
+  // --- Breakdown & Analysis Handlers ---
+
+  const handleBudgetRowContextMenu = (event) => {
     event.preventDefault();
     if (testPointData.measurementType !== "derived" || !calcResults) return;
 
-    const breakdownPayload = {
+    setDerivedBreakdownData({
       equationString: testPointData.equationString,
       components: calcResults.calculatedBudgetComponents || [],
       results: calcResults,
       derivedNominalPoint: uutNominal,
       tmdeTolerances: tmdeTolerancesData,
-    };
-
-    setDerivedBreakdownData(breakdownPayload);
+    });
     setIsDerivedBreakdownOpen(true);
   };
 
   const handleShowRiskBreakdown = (type) => {
-    setActiveRiskModals(prev => {
-      if (prev.includes(type)) {
-        return prev.filter(t => t !== type);
-      }
-      return [...prev, type];
-    });
+    setActiveRiskModals((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+    );
   };
 
   const handleCloseRiskBreakdown = (type) => {
-    setActiveRiskModals(prev => prev.filter(t => t !== type));
+    setActiveRiskModals((prev) => prev.filter((t) => t !== type));
   };
 
   const handleInlineUutUpdate = (field, value) => {
-    if (field === 'description') {
-      if (onSessionSave) {
+    if (field === "description") {
+      if (onSessionSave)
         onSessionSave({ ...sessionData, uutDescription: value });
-      }
-    } else if (field === 'nominal') {
-      const currentParam = testPointData.testPointInfo?.parameter || {};
-      const newParam = { ...currentParam, value: parseFloat(value) };
-      const updatedTestPointInfo = {
-        ...testPointData.testPointInfo,
-        parameter: newParam
+    } else if (field === "nominal") {
+      // Allow float parsing updates for nominal value
+      const newParam = {
+        ...testPointData.testPointInfo?.parameter,
+        value: parseFloat(value),
       };
-      onDataSave({ testPointInfo: updatedTestPointInfo });
+      onDataSave({
+        testPointInfo: { ...testPointData.testPointInfo, parameter: newParam },
+      });
     }
   };
 
- const handleInlineTmdeUpdate = (id, field, value) => {
-    const tmdeToUpdate = tmdeTolerancesData.find(t => t.id === id);
-    if (!tmdeToUpdate) return;
-
-    // Create a shallow copy of the TMDE
-    const newTmde = { ...tmdeToUpdate };
-    
-    // CRITICAL FIX: Ensure measurementPoint structure exists.
-    // If it's missing, default to empty strings so we don't crash when accessing properties.
-    const currentMP = newTmde.measurementPoint || { value: '', unit: '' };
-
-    if (field === 'name') {
-      newTmde.name = value;
-    } else if (field === 'nominal') {
-      // CRITICAL FIX: Do NOT use parseFloat() here. 
-      // 1. Passing raw strings allows users to type decimals (e.g., "0.") without it snapping to "0".
-      // 2. Empty strings "" are preserved, preventing NaN errors in the math engine.
-      newTmde.measurementPoint = {
-        ...currentMP,
-        value: value 
-      };
-    } else if (field === 'variableType') {
-      newTmde.variableType = value;
-    } else if (field === 'unit') {
-      // CRITICAL FIX: Update unit while preserving the existing value
-      newTmde.measurementPoint = {
-        ...currentMP,
-        unit: value
-      };
-    }
-
-    // Save the changes
-    handleSaveTmde(newTmde);
-  };
-
-  // ---  Robust Lookup for Measurement Area ID ---
+  /**
+   * Prepares the Test Point Definition modal with overrides (e.g., from quick selection).
+   */
   const handleDefineTestPoint = (selectedUutIds, resolvedTolerance) => {
-     const overrides = {};
-     
-     if (selectedUutIds && Array.isArray(selectedUutIds) && selectedUutIds.length > 0) {
-         overrides.associatedUutIds = selectedUutIds;
+    const overrides = {};
+    if (selectedUutIds?.length > 0) {
+      overrides.associatedUutIds = selectedUutIds;
+      // Try to find default Area from UUT
+      const firstUut = sessionData.uuts?.find(
+        (u) => u.id === selectedUutIds[0],
+      );
+      if (firstUut) {
+        overrides.measurementAreaId =
+          firstUut.measurementAreaId ||
+          sessionData.measurementAreas?.find(
+            (a) => a.name === firstUut.measurementArea,
+          )?.id;
+      }
+    }
+    if (resolvedTolerance) overrides.uutTolerance = resolvedTolerance;
 
-         if (sessionData && sessionData.uuts) {
-             const firstUut = sessionData.uuts.find(u => u.id === selectedUutIds[0]);
-             if (firstUut) {
-                 if (firstUut.measurementAreaId) {
-                     overrides.measurementAreaId = firstUut.measurementAreaId;
-                 } 
-                 else if (firstUut.measurementArea) {
-                     const matchingArea = sessionData.measurementAreas?.find(a => a.name === firstUut.measurementArea);
-                     if (matchingArea) {
-                          overrides.measurementAreaId = matchingArea.id;
-                     }
-                 }
-             }
-         }
-     }
-     
-     if (resolvedTolerance) {
-         overrides.uutTolerance = resolvedTolerance;
-     }
-     
-     setModalOverrides(overrides);
-     setTestPointModalOpen(true);
+    setModalOverrides(overrides);
+    setTestPointModalOpen(true);
   };
+
+  // =========================================================================
+  // 6. RENDER
+  // =========================================================================
 
   return (
-    <div className="analysis-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div
+      className="analysis-container"
+      style={{ height: "100%", display: "flex", flexDirection: "column" }}
+    >
+      {/* 1. Global Modals */}
       <NotificationModal
         isOpen={!!notification}
         onClose={() => setNotification(null)}
         {...notification}
       />
 
-      {/* --- Unified Instrument Modal (For both UUT and TMDE edits) --- */}
       {activeInstrumentModal && (
-          <UniversalInstrumentModal
-            isOpen={true}
-            onClose={() => setActiveInstrumentModal(null)}
-            onSave={handleSaveInstrument}
-            mode={activeInstrumentModal.mode}
-            initialData={activeInstrumentModal.data}
-            instruments={instruments}
-          />
+        <UniversalInstrumentModal
+          isOpen={true}
+          onClose={() => setActiveInstrumentModal(null)}
+          onSave={handleSaveInstrument}
+          mode={activeInstrumentModal.mode}
+          initialData={activeInstrumentModal.data}
+          instruments={instruments}
+        />
       )}
 
       <AddTestPointModal
         isOpen={isTestPointModalOpen}
         onClose={() => {
-            setTestPointModalOpen(false);
-            setModalOverrides(null);
+          setTestPointModalOpen(false);
+          setModalOverrides(null);
         }}
         onSave={handleSaveTestPointInfo}
-        initialData={modalOverrides} 
+        initialData={modalOverrides}
         previousTestPointData={testPointData}
       />
 
       <ManualComponentModal
         isOpen={isManualModalOpen}
-        onClose={() => { setManualModalOpen(false); setEditingComponent(null); }}
+        onClose={() => {
+          setManualModalOpen(false);
+          setEditingComponent(null);
+        }}
         onSave={handleSaveManualComponent}
         existingComponent={editingComponent}
         uutNominal={uutNominal}
@@ -620,7 +596,10 @@ function Analysis({
 
       <RepeatabilityModal
         isOpen={isRepeatabilityModalOpen}
-        onClose={() => { setRepeatabilityModalOpen(false); setEditingComponent(null); }}
+        onClose={() => {
+          setRepeatabilityModalOpen(false);
+          setEditingComponent(null);
+        }}
         onSave={handleSaveRepeatability}
         uutNominal={uutNominal}
         existingData={editingComponent}
@@ -633,7 +612,7 @@ function Analysis({
         breakdownData={derivedBreakdownData}
       />
 
-      {activeRiskModals.map(type => (
+      {activeRiskModals.map((type) => (
         <RiskBreakdownModal
           key={type}
           isOpen={true}
@@ -641,121 +620,96 @@ function Analysis({
           modalType={type}
           data={{
             results: riskResults,
-            inputs: riskResults ? {
-              LLow: parseFloat(riskInputs.LLow),
-              LUp: parseFloat(riskInputs.LUp),
-              reliability: parseFloat(sessionData.uncReq.reliability),
-              guardBandMultiplier: parseFloat(sessionData.uncReq.guardBandMultiplier),
-              guardBandInputs: riskResults.gbInputs,
-            } : null,
+            inputs: riskResults
+              ? {
+                  LLow: parseFloat(riskInputs.LLow),
+                  LUp: parseFloat(riskInputs.LUp),
+                  reliability: parseFloat(sessionData.uncReq.reliability),
+                  guardBandMultiplier: parseFloat(
+                    sessionData.uncReq.guardBandMultiplier,
+                  ),
+                  guardBandInputs: riskResults.gbInputs,
+                }
+              : null,
           }}
         />
       ))}
 
-      {/* --- RENDER LOGIC: SUMMARY VS DETAILED --- */}
+      {/* 2. Main View Logic: Summary vs Detailed */}
       {!isPointView ? (
-         <UncertaintyPanel
-            testPointData={testPointData} // Passed with viewMode
-            sessionData={sessionData}
-            onDefineTestPoint={handleDefineTestPoint}
-            handleOpenSessionEditor={handleOpenSessionEditor}
-            onDeleteTestPoint={onDeleteTestPoint}
-            
-            // ---  Pass the save handler for Inline Creation ---
-            onSaveTestPoint={handleSaveTestPointInfo} 
-            
-            // --- Table Selection for Sidebar Highlighting ---
-            selectedTablePointIds={selectedTablePointIds}
-            setSelectedTablePointIds={setSelectedTablePointIds}
-
-            // --- Global UUT Selection for Sidebar Quick Add ---
-            currentUutSelection={currentUutSelection}
-            setCurrentUutSelection={setCurrentUutSelection}
-
-            // Passing empty/null props for detailed view specifics to avoid proptype warnings
-            calcResults={null}
-            calculationError={null}
-            uutNominal={null}
-            uutToleranceData={null}
-            tmdeTolerancesData={[]}
-            riskResults={null}
-            manualComponents={[]}
-            
-            // --- Navigation Handlers ---
-            onSelectUut={onSelectUut}
-            onSelectTestPoint={onSelectTestPoint}
-
-            // --- Enable UUT/TMDE Actions in Summary Views ---
-            onDeleteUut={onDeleteUut}
-            onDeleteTmdeDefinition={onDeleteTmdeDefinition}
-            onEditUut={handleEditUut}
-            onEditTmde={handleEditTmde}
-            onAddTmde={() => setActiveInstrumentModal({ mode: 'tmde', data: null })}
-         />
+        <UncertaintyPanel
+          // Data
+          testPointData={testPointData}
+          sessionData={sessionData}
+          currentUutSelection={currentUutSelection}
+          selectedTablePointIds={selectedTablePointIds}
+          // Actions & Navigation
+          onDefineTestPoint={handleDefineTestPoint}
+          handleOpenSessionEditor={handleOpenSessionEditor}
+          onDeleteTestPoint={onDeleteTestPoint}
+          onSaveTestPoint={handleSaveTestPointInfo}
+          onSelectUut={onSelectUut}
+          onSelectTestPoint={onSelectTestPoint}
+          setSelectedTablePointIds={setSelectedTablePointIds}
+          setCurrentUutSelection={setCurrentUutSelection}
+          // Instrument Management
+          onDeleteUut={onDeleteUut}
+          onDeleteTmdeDefinition={onDeleteTmdeDefinition}
+          onEditUut={handleEditUut}
+          onEditTmde={handleEditTmde}
+          onAddTmde={() =>
+            setActiveInstrumentModal({ mode: "tmde", data: null })
+          }
+          // Defaults/Nulls for irrelevant props in Summary View
+          calcResults={null}
+          calculationError={null}
+          uutNominal={null}
+          uutToleranceData={null}
+          tmdeTolerancesData={[]}
+          riskResults={null}
+          manualComponents={[]}
+        />
       ) : (
         <>
+          {/* Detailed View Navigation Tabs */}
           <div className="analysis-tabs">
-            <button
-              className={analysisMode === "uncertaintyTool" ? "active" : ""}
-              onClick={() => setAnalysisMode("uncertaintyTool")}
-            >
-              Uncertainty Analysis
-            </button>
-            <button
-              className={analysisMode === "risk" ? "active" : ""}
-              onClick={() => setAnalysisMode("risk")}
-            >
-              Risk Analysis
-            </button>
-            <button
-              className={analysisMode === "riskmitigation" ? "active" : ""}
-              onClick={() => {
-                setAnalysisMode("riskmitigation");
-                const gbLowValid = riskResults?.gbResults?.GBLOW !== undefined && !isNaN(riskResults.gbResults.GBLOW);
-                const gbUpValid = riskResults?.gbResults?.GBUP !== undefined && !isNaN(riskResults.gbResults.GBUP);
-
-                if (!gbLowValid || !gbUpValid) {
-                  const inputs = riskResults?.gbInputs || {};
-                  const reqTUR = inputs.reqTUR || "N/A";
-                  const achievedTUR = inputs.turVal ? inputs.turVal.toFixed(2) : "N/A";
-                  const uCal = inputs.combUnc ? inputs.combUnc.toPrecision(4) : "N/A";
-                  const unit = inputs.nominalUnit || "";
-                  let topContributorString = "N/A";
-                  if (calcResults && calcResults.calculatedBudgetComponents) {
-                    const sortedComponents = [...calcResults.calculatedBudgetComponents].sort((a, b) =>
-                      Math.abs(b.contribution || 0) - Math.abs(a.contribution || 0)
-                    );
-                    const topComp = sortedComponents[0];
-                    if (topComp && typeof topComp.contribution === 'number') {
-                      topContributorString = `${topComp.name} (${topComp.contribution.toPrecision(4)} ${unit})`;
+            {["uncertaintyTool", "risk", "riskmitigation"].map((mode) => (
+              <button
+                key={mode}
+                className={analysisMode === mode ? "active" : ""}
+                onClick={() => {
+                  if (mode === "riskmitigation") {
+                    // Validation override for Risk Mitigation
+                    const gbResults = riskResults?.gbResults || {};
+                    if (isNaN(gbResults.GBLOW) || isNaN(gbResults.GBUP)) {
+                      const inputs = riskResults?.gbInputs || {};
+                      setNotification({
+                        title: "Math Engine Convergence Failure",
+                        isFloating: true,
+                        message: `Cannot calculate guard bands. Required TUR: ${inputs.reqTUR || "N/A"}, Achieved: ${inputs.turVal?.toFixed(2) || "N/A"}.`,
+                      });
+                      // Still allow tab switch or block? Original code allowed it but showed notification.
                     }
                   }
-
-                  setNotification({
-                    title: "Math Engine Convergence Failure",
-                    isFloating: true,
-                    message: `The mathematical engine could not converge on guard band limits because the required TUR is so low, causing the calculated Uncertainty to exceed allowable limits.
-
-Diagnostic Data:
-• Required TUR: ${reqTUR}
-• Achieved TUR: ${achievedTUR}
-• Total Uncertainty (u_cal): ${uCal} ${unit}
-
-Primary Contributor:
-• ${topContributorString}
-
-Please increase the required TUR or improve your uncertainty to allow for a viable solution.`
-                  });
-                }
-              }}
-            >
-              Risk Mitigation
-            </button>
+                  setAnalysisMode(mode);
+                }}
+              >
+                {mode === "uncertaintyTool"
+                  ? "Uncertainty Analysis"
+                  : mode === "risk"
+                    ? "Risk Analysis"
+                    : "Risk Mitigation"}
+              </button>
+            ))}
           </div>
 
-          <div className="analysis-content" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+          <div
+            className="analysis-content"
+            style={{ flex: 1, overflowY: "auto", padding: "20px" }}
+          >
             {analysisMode === "uncertaintyTool" && (
-                <UncertaintyPanel
+              <UncertaintyPanel
+                // Data
                 testPointData={testPointData}
                 sessionData={sessionData}
                 calcResults={calcResults}
@@ -764,119 +718,121 @@ Please increase the required TUR or improve your uncertainty to allow for a viab
                 uutToleranceData={uutToleranceData}
                 tmdeTolerancesData={tmdeTolerancesData}
                 riskResults={riskResults}
-
+                // UI State
                 showContribution={showContribution}
                 setShowContribution={setShowContribution}
-
-                onAddManualComponent={() => { setEditingComponent(null); setManualModalOpen(true); }}
+                // Handlers: Components
+                onAddManualComponent={() => {
+                  setEditingComponent(null);
+                  setManualModalOpen(true);
+                }}
                 onEditManualComponent={handleEditComponent}
                 onRemoveComponent={handleRemoveComponent}
-                
-                // --- TMDE HANDLERS (UPDATED) ---
-                onAddTmde={() => setActiveInstrumentModal({ mode: 'tmde', data: null })}
+                // Handlers: Instruments
+                onAddTmde={() =>
+                  setActiveInstrumentModal({ mode: "tmde", data: null })
+                }
                 onEditTmde={handleEditTmde}
-                
-                // --- UUT HANDLERS (UPDATED) ---
                 onEditUut={handleEditUut}
-                
                 onDeleteTmdeDefinition={onDeleteTmdeDefinition}
                 onDecrementTmdeQuantity={onDecrementTmdeQuantity}
-                
                 onDeleteUut={onDeleteUut}
                 onInlineUutUpdate={handleInlineUutUpdate}
                 onInlineTmdeUpdate={handleInlineTmdeUpdate}
-
+                // Handlers: General
                 handleOpenSessionEditor={handleOpenSessionEditor}
-
                 onUpdateTestPoint={onDataSave}
-
                 onDefineTestPoint={handleDefineTestPoint}
-
-                // --- Pass Selection Props ---
+                onDeleteTestPoint={onDeleteTestPoint}
+                // Selections
                 selectedTmdeIds={selectedTmdeIds}
                 onToggleTmdeSelection={handleToggleTmdeSelection}
                 onToggleAllTmdes={handleToggleAllTmdes}
-
-                // --- Pass UUT Toggle Handler ---
                 onToggleUut={handleToggleUut}
-                
-                // --- Pass Global UUT Selection Props ---
                 currentUutSelection={currentUutSelection}
-
+                // Breakdown & Advanced
                 setContextMenu={setContextMenu}
                 setBreakdownPoint={setBreakdownPoint}
                 onBudgetRowContextMenu={handleBudgetRowContextMenu}
                 onShowDerivedBreakdown={() => {
-                    if (calcResults) handleBudgetRowContextMenu({ preventDefault: () => { } });
+                  if (calcResults)
+                    handleBudgetRowContextMenu({ preventDefault: () => {} });
                 }}
                 onShowRiskBreakdown={handleShowRiskBreakdown}
                 onOpenRepeatability={(e) => {
-                    if (e && e.clientY) setModalPosition({ top: e.clientY, left: e.clientX });
-                    setEditingComponent(null);
-                    setRepeatabilityModalOpen(true);
+                  if (e && e.clientY)
+                    setModalPosition({ top: e.clientY, left: e.clientX });
+                  setEditingComponent(null);
+                  setRepeatabilityModalOpen(true);
                 }}
                 setNotification={setNotification}
-                onDeleteTestPoint={onDeleteTestPoint}
                 activeRangeIndices={activeRangeIndices}
                 onRangeSelectionChange={onRangeSelectionChange}
-                />
+              />
             )}
 
             {analysisMode === "risk" && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "20px",
+                }}
+              >
                 {!calcResults ? (
-                    <div className="form-section-warning" style={{gridColumn: '1 / -1'}}>
+                  <div
+                    className="form-section-warning"
+                    style={{ gridColumn: "1 / -1" }}
+                  >
                     <p>Uncertainty budget must be calculated first.</p>
-                    </div>
+                  </div>
+                ) : riskResults ? (
+                  <>
+                    <RiskAnalysisDashboard
+                      results={riskResults}
+                      onShowBreakdown={handleShowRiskBreakdown}
+                      activeModals={activeRiskModals}
+                    />
+                    <RiskScatterplot
+                      results={riskResults}
+                      inputs={{
+                        LLow: parseFloat(riskInputs.LLow),
+                        LUp: parseFloat(riskInputs.LUp),
+                      }}
+                    />
+                  </>
                 ) : (
-                    <>
-                    {riskResults ? (
-                        <>
-                        <RiskAnalysisDashboard
-                            results={riskResults}
-                            onShowBreakdown={handleShowRiskBreakdown}
-                            activeModals={activeRiskModals}
-                        />
-                        <RiskScatterplot
-                            results={riskResults}
-                            inputs={{
-                            LLow: parseFloat(riskInputs.LLow),
-                            LUp: parseFloat(riskInputs.LUp),
-                            }}
-                        />
-                        </>
-                    ) : (
-                        <div className="placeholder-content" style={{ minHeight: "200px", gridColumn: '1 / -1' }}>
-                        <p>Calculating risk...</p>
-                        </div>
-                    )}
-                    </>
+                  <div
+                    className="placeholder-content"
+                    style={{ minHeight: "200px", gridColumn: "1 / -1" }}
+                  >
+                    <p>Calculating risk...</p>
+                  </div>
                 )}
-                </div>
+              </div>
             )}
 
             {analysisMode === "riskmitigation" && (
-                <>
+              <>
                 {!calcResults ? (
-                    <div className="form-section-warning">
+                  <div className="form-section-warning">
                     <p>Uncertainty budget must be calculated first.</p>
-                    </div>
+                  </div>
+                ) : riskResults ? (
+                  <RiskMitigationDashboard
+                    results={riskResults}
+                    onShowBreakdown={handleShowRiskBreakdown}
+                    activeModals={activeRiskModals}
+                  />
                 ) : (
-                    <>
-                    {riskResults ? (
-                        <RiskMitigationDashboard
-                        results={riskResults}
-                        onShowBreakdown={handleShowRiskBreakdown}
-                        activeModals={activeRiskModals}
-                        />
-                    ) : (
-                        <div className="placeholder-content" style={{ minHeight: "200px" }}>
-                        <p>Calculating risk...</p>
-                        </div>
-                    )}
-                    </>
+                  <div
+                    className="placeholder-content"
+                    style={{ minHeight: "200px" }}
+                  >
+                    <p>Calculating risk...</p>
+                  </div>
                 )}
-                </>
+              </>
             )}
           </div>
         </>
