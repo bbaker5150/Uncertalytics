@@ -564,7 +564,7 @@ export const calculateUncertaintyFromToleranceObject = (
   addComponent(
     toleranceObject.range,
     "Range",
-    parseFloat(toleranceObject.max) || parseFloat(toleranceObject.range?.value)
+    parseFloat(toleranceObject.range?.value) || parseFloat(toleranceObject.max)
   );
   addComponent(toleranceObject.floor, "Floor", nominalValue);
 
@@ -1110,7 +1110,9 @@ export const recalculateTolerance = (instrument, value, unit, existingData = {})
         else if (key === 'floor' || key === 'readings_iv') specs[key].unit = unit;
       }
       if (key === 'range') {
-        specs[key].value = calculatedRangeMax;
+        if (specs[key].value === undefined || specs[key].value === null || specs[key].value === "") {
+             specs[key].value = calculatedRangeMax;
+        }
       }
       if (specs[key].high) {
         const highVal = parseFloat(specs[key].high);

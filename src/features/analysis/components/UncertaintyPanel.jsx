@@ -362,8 +362,11 @@ const calculateToleranceMetrics = (activeTolerance, nominalObj) => {
     const rangeComp = activeTolerance.range || activeTolerance.tolerances?.range;
     if (rangeComp) {
         const rangePcn = getComponentValue(rangeComp);
-        // Use the range's Max as Full Scale (FS)
-        const fs = parseFloat(activeTolerance.max);
+        
+        // FIX: Prioritize explicit "Range Value" (Manual FS) over "Range Max"
+        const manualFS = parseFloat(rangeComp.value);
+        const rangeMax = parseFloat(activeTolerance.max);
+        const fs = !isNaN(manualFS) ? manualFS : rangeMax;
 
         if (rangePcn !== 0 && !isNaN(fs)) {
             // Basic % of Range calculation
@@ -1296,7 +1299,7 @@ function DetailedView({
         if (!isDerived) return [];
         if (testPointData.variableMappings && Object.values(testPointData.variableMappings).length > 0) {
             const vars = Object.values(testPointData.variableMappings)
-                .map(v => v ? v.trim() : "")
+                .map(v => v ? String(v).trim() : "") // <--- FIX: Ensure it is a string first
                 .filter(v => v !== "");
             return [...new Set(vars)];
         }
@@ -1548,7 +1551,7 @@ function DetailedView({
         const vars = Object.keys(currentMappings).sort().map((symbol) => {
             const name = currentMappings[symbol];
             const assignedTmde = tmdeTolerancesData.find(t =>
-                t.variableType && name && t.variableType.trim() === name.trim()
+                t.variableType && name && String(t.variableType).trim() === String(name).trim()
             );
 
             return {
@@ -2131,25 +2134,21 @@ function DetailedView({
                         <table className="instrument-summary-table compact-table industry-table" onMouseLeave={() => { setHoveredCell({ tableId: null, colIndex: null }); setHoveredRowId(null); }} style={{ width: '100%', tableLayout: 'fixed' }}>
                             <colgroup>
                                 <col style={{ width: '50px' }} />
-                                <col style={{ width: isDerived ? '30%' : '35%' }} />
-                                {isDerived && <col style={{ width: '100px' }} />}
-                                <col style={{ width: isDerived ? '25%' : '30%' }} />
-                                <col style={{ width: isDerived ? '25%' : '30%' }} />
-                                {isDerived && <col style={{ width: '15%' }} />}
+                                <col style={{ width: '40%' }} />
+                                <col style={{ width: '30%' }} />
+                                <col style={{ width: '30%' }} />
                             </colgroup>
                             <thead>
                                 <tr>
                                     <th style={{ textAlign: 'center' }}>Use</th>
                                     <th>Description</th>
-                                    {isDerived && <th>Input Var</th>}
                                     <th>Range</th>
                                     <th>Specification</th>
-                                    {isDerived && <th>Meas. Point</th>}
                                 </tr>
                             </thead>
                             <tbody>
                                 {(!sessionData.tmdes || sessionData.tmdes.length === 0) ? (
-                                    <tr><td colSpan={isDerived ? "6" : "5"} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>No TMDEs defined in Session.</td></tr>
+                                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color-muted)', fontStyle: 'italic' }}>No TMDEs defined in Session.</td></tr>
                                 ) : (
                                     sessionData.tmdes.map((masterTmde) => {
                                         // Check selection state
@@ -2160,10 +2159,7 @@ function DetailedView({
 
                                         return rowsToRender.map((tmdeInstance, idx) => {
                                             const isChecked = activeInstances.includes(tmdeInstance);
-                                            const referencePoint = tmdeInstance.measurementPoint || { value: '', unit: '' };
-
-                                            const displayValue = isChecked ? referencePoint.value : '';
-                                            const displayUnit = isChecked ? referencePoint.unit : (masterTmde.measurementPoint?.unit || '');
+                                            // const referencePoint = tmdeInstance.measurementPoint || { value: '', unit: '' }; // Removed unused reference
 
                                             const savedTolerance = isChecked ? tmdeInstance : null;
                                             const resolution = resolveUutRangeHelper(masterTmde, tmdeRangeIndices, savedTolerance, null);
@@ -2217,33 +2213,10 @@ function DetailedView({
                                                             </div>
                                                         </td>
 
-                                                        {isDerived && (
-                                                            <td
-                                                                rowSpan={rowSpan}
-                                                                style={{ verticalAlign: 'top' }}
-                                                                onClick={e => e.stopPropagation()}
-                                                                className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
-                                                                onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 2 })}
-                                                            >
-                                                                {isChecked ? (
-                                                                    <select
-                                                                        value={availableVariables.includes(tmdeInstance.variableType) ? tmdeInstance.variableType : ""}
-                                                                        onChange={(e) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'variableType', e.target.value)}
-                                                                        className="mini-select"
-                                                                    >
-                                                                        <option value="" disabled>--</option>
-                                                                        {availableVariables.map(v => (
-                                                                            <option key={v} value={v}>{v}</option>
-                                                                        ))}
-                                                                    </select>
-                                                                ) : "-"}
-                                                            </td>
-                                                        )}
-
                                                         <td
                                                             rowSpan={rowSpan}
-                                                            className={`cell-value ${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === (isDerived ? 3 : 2) ? 'col-hovered' : ''}`}
-                                                            onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: isDerived ? 3 : 2 })}
+                                                            className={`cell-value ${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}
+                                                            onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 2 })}
                                                             style={{ verticalAlign: 'top' }}
                                                             onClick={e => e.stopPropagation()}
                                                         >
@@ -2266,8 +2239,8 @@ function DetailedView({
                                                         </td>
 
                                                         <td
-                                                            className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === (isDerived ? 4 : 3) ? 'col-hovered' : ''}`}
-                                                            onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: isDerived ? 4 : 3 })}
+                                                            className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 3 ? 'col-hovered' : ''}`}
+                                                            onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 3 })}
                                                             style={{ verticalAlign: 'top' }}
                                                             title={specRows[0]}
                                                         >
@@ -2275,25 +2248,6 @@ function DetailedView({
                                                                 {specRows[0]}
                                                             </span>
                                                         </td>
-
-                                                        {isDerived && (
-                                                            <td
-                                                                rowSpan={rowSpan}
-                                                                style={{ verticalAlign: 'top' }}
-                                                                onClick={e => e.stopPropagation()}
-                                                                className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 5 ? 'col-hovered' : ''}`}
-                                                                onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 5 })}
-                                                            >
-                                                                {isChecked ? (
-                                                                    <EditableCell
-                                                                        value={displayValue}
-                                                                        suffix={displayUnit}
-                                                                        onSave={(val) => onInlineTmdeUpdate && onInlineTmdeUpdate(tmdeInstance.id, 'nominal', val)}
-                                                                        type="number"
-                                                                    />
-                                                                ) : "-"}
-                                                            </td>
-                                                        )}
                                                     </tr>
 
                                                     {specRows.slice(1).map((specComp, sIdx) => (
@@ -2306,8 +2260,8 @@ function DetailedView({
                                                             }}
                                                         >
                                                             <td
-                                                                className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === (isDerived ? 4 : 3) ? 'col-hovered' : ''}`}
-                                                                onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: isDerived ? 4 : 3 })}
+                                                                className={`${hoveredCell.tableId === 'tmde_det' && hoveredCell.colIndex === 3 ? 'col-hovered' : ''}`}
+                                                                onMouseEnter={() => setHoveredCell({ tableId: 'tmde_det', colIndex: 3 })}
                                                                 style={{ verticalAlign: 'top', borderTop: '1px dashed var(--border-color)' }}
                                                                 title={specComp}
                                                             >

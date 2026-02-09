@@ -11,6 +11,7 @@
  */
 
 import { useState, useMemo } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 // --- Custom Hooks ---
 import { useUncertaintyCalculation } from "./hooks/useUncertaintyCalculation";
@@ -315,24 +316,57 @@ function Analysis({
 
     if (mode === "uut") {
       if (onSessionSave) {
+        // --- FIX START: Resolve Measurement Area (Check if new) ---
+        let resolvedAreaId = data.measurementAreaId;
+        // Clone existing areas to ensure we don't mutate state directly
+        let updatedMeasurementAreas = [...(sessionData.measurementAreas || [])];
+
+        // If we don't have an ID but have a name (e.g., user typed "Torque")
+        if (!resolvedAreaId && data.measurementArea) {
+          const existingArea = updatedMeasurementAreas.find(a => a.name === data.measurementArea);
+          
+          if (existingArea) {
+            resolvedAreaId = existingArea.id;
+          } else {
+            // Create New Area if it doesn't exist
+            const newArea = {
+              id: uuidv4(),
+              name: data.measurementArea,
+              color: '#3498db' // Default color
+            };
+            updatedMeasurementAreas.push(newArea);
+            resolvedAreaId = newArea.id;
+          }
+        }
+
+        // Prepare the UUT object with the correct Area ID
+        const uutToSave = {
+            ...data,
+            measurementAreaId: resolvedAreaId
+        };
+        // --- FIX END ---
+
         const currentUuts = sessionData.uuts || [];
-        const existingIndex = currentUuts.findIndex((u) => u.id === data.id);
+        const existingIndex = currentUuts.findIndex((u) => u.id === uutToSave.id);
+        
         const updatedUuts =
           existingIndex > -1
             ? currentUuts.map((u, i) =>
-                i === existingIndex ? { ...u, ...data } : u,
+                i === existingIndex ? { ...u, ...uutToSave } : u,
               )
-            : [...currentUuts, data];
+            : [...currentUuts, uutToSave];
 
         onSessionSave({
           ...sessionData,
           uuts: updatedUuts,
-          uutDescription: data.description,
-          uutInstrument: data.instrument,
+          measurementAreas: updatedMeasurementAreas, // <--- IMPORTANT: Save the updated area list
+          uutDescription: uutToSave.description,
+          uutInstrument: uutToSave.instrument,
         });
       }
       // Clearing tolerance triggers recalculation
       onDataSave({ uutTolerance: null });
+      
     } else if (mode === "tmde") {
       handleSaveTmde(data);
     }

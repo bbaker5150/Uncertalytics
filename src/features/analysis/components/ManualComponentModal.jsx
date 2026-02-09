@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
-import ReactDOM from "react-dom"; // <--- 1. Import ReactDOM
+import ReactDOM from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faPenSquare } from "@fortawesome/free-solid-svg-icons"; 
+import { faCheck, faPenSquare, faRulerCombined, faCalculator } from "@fortawesome/free-solid-svg-icons"; 
 import ConversionInfo from "../../../components/common/ConversionInfo";
 import { convertToPPM, unitSystem } from "../../../utils/uncertaintyMath";
 import { oldErrorDistributions } from "../utils/budgetUtils";
@@ -18,11 +18,14 @@ const ManualComponentModal = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
+  // Mode: "standard" (Original) or "resolution" (New Tab)
+  const [activeTab, setActiveTab] = useState("standard");
+
   const [component, setComponent] = useState({
     name: "",
     type: "B",
     errorDistributionDivisor: "1.732",
-    toleranceLimit: "",
+    toleranceLimit: "", // Used for Tolerance (Standard) OR Resolution Value (Resolution Mode)
     unit: "ppm",
     standardUncertainty: "",
     dof: "Infinity",
@@ -34,8 +37,7 @@ const ManualComponentModal = ({
   useEffect(() => {
     if (isOpen) {
       const width = 800;
-      const height = 500;
-      // Because we use a Portal, window dimensions are now always accurate relative to the modal
+      const height = 550; // Slightly taller for tabs
       const x = typeof window !== 'undefined' ? Math.max(0, (window.innerWidth - width) / 2) : 0;
       const y = typeof window !== 'undefined' ? Math.max(0, (window.innerHeight - height) / 2) : 0;
       setPosition({ x, y });
@@ -47,24 +49,27 @@ const ManualComponentModal = ({
     if (isOpen) {
       setError(null);
       if (existingComponent) {
+        // Detect if this was saved as a resolution component
+        const wasResolution = existingComponent.originalInput?.isResolution || false;
+        setActiveTab(wasResolution ? "resolution" : "standard");
+
         setComponent({
-          id: existingComponent.id, // Preserve ID
+          id: existingComponent.id, 
           name: existingComponent.name,
           type: existingComponent.type,
           standardUncertainty: existingComponent.originalInput?.standardUncertainty || "",
           toleranceLimit: existingComponent.originalInput?.toleranceLimit || "",
           errorDistributionDivisor: existingComponent.originalInput?.errorDistributionDivisor || "1.732",
-          // UPDATED: Check originalInput.unit first to preserve user selection (e.g. %)
           unit: existingComponent.originalInput?.unit || existingComponent.unit_native || existingComponent.unit || "ppm",
           dof: existingComponent.dof === Infinity ? "Infinity" : String(existingComponent.dof),
         });
       } else {
+        setActiveTab("standard");
         setComponent({
           name: "",
           type: "B",
           errorDistributionDivisor: "1.732",
           toleranceLimit: "",
-          // UPDATED: Default to the UUT Nominal unit if available (e.g. "V"), else "ppm"
           unit: uutNominal?.unit || "ppm",
           standardUncertainty: "",
           dof: "Infinity",
@@ -105,11 +110,9 @@ const ManualComponentModal = ({
 
   const unitOptions = useMemo(() => {
     const nominalUnit = uutNominal?.unit;
-    // UPDATED: Added "%" to the default relative units list
     if (!nominalUnit) return ["%", "ppm", "ppb"];
     
     const relevant = unitSystem.getRelevantUnits(nominalUnit);
-    // UPDATED: Explicitly include "%" at the start along with ppm/ppb
     return ["%", "ppm", "ppb", ...relevant.filter((u) => u !== "%" && u !== "ppm" && u !== "ppb" && u !== "dB")];
   }, [uutNominal]);
 
@@ -117,67 +120,97 @@ const ManualComponentModal = ({
     setComponent((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setError(null);
+    
+    // Only set defaults if switching TO resolution, but do NOT overwrite name
+    if (tab === "resolution") {
+        setComponent(prev => ({
+            ...prev,
+            type: "B", 
+            errorDistributionDivisor: "1.732" 
+        }));
+    }
+  };
+
   const handleSubmit = () => {
     let valueInPPM = NaN;
     let dof = component.dof === "Infinity" ? Infinity : parseFloat(component.dof);
 
-    // UPDATED: Added unit to originalInputData so editing works correctly
     const originalInputData = {
       standardUncertainty: component.standardUncertainty,
       toleranceLimit: component.toleranceLimit,
       errorDistributionDivisor: component.errorDistributionDivisor,
-      unit: component.unit 
+      unit: component.unit,
+      isResolution: activeTab === "resolution" 
     };
 
     let valueNative = NaN;
 
-    if (component.type === "A") {
-      const stdUnc = parseFloat(component.standardUncertainty);
-      if (isNaN(stdUnc) || stdUnc <= 0 || (dof !== Infinity && (isNaN(dof) || dof < 1))) {
-        setError("For Type A, provide valid positive Std Unc and DoF (>=1).");
-        return;
-      }
-      
-      const { value: ppm, warning } = convertToPPM(
-        stdUnc,
-        component.unit,
-        uutNominal?.value,
-        uutNominal?.unit,
-        null,
-        true
-      );
-
-      if (warning) {
-        setError(warning);
-        return;
-      }
-      valueInPPM = ppm;
-      valueNative = stdUnc;
+    if (activeTab === "standard") {
+        // --- ORIGINAL LOGIC (Standard Type A/B) ---
+        if (component.type === "A") {
+            const stdUnc = parseFloat(component.standardUncertainty);
+            if (isNaN(stdUnc) || stdUnc <= 0 || (dof !== Infinity && (isNaN(dof) || dof < 1))) {
+                setError("For Type A, provide valid positive Std Unc and DoF (>=1).");
+                return;
+            }
+            
+            const { value: ppm, warning } = convertToPPM(
+                stdUnc,
+                component.unit,
+                uutNominal?.value,
+                uutNominal?.unit,
+                null,
+                true
+            );
+            if (warning) { setError(warning); return; }
+            valueInPPM = ppm;
+            valueNative = stdUnc;
+        } else {
+            // Type B
+            const rawValue = parseFloat(component.toleranceLimit);
+            const divisor = parseFloat(component.errorDistributionDivisor);
+            if (isNaN(rawValue) || rawValue <= 0 || isNaN(divisor)) {
+                setError("Provide valid positive tolerance limit and select distribution.");
+                return;
+            }
+            const { value: ppm, warning } = convertToPPM(
+                rawValue,
+                component.unit,
+                uutNominal?.value,
+                uutNominal?.unit,
+                null,
+                true
+            );
+            if (warning) { setError(warning); return; }
+            valueInPPM = ppm / divisor;
+            valueNative = rawValue / divisor;
+        }
     } else {
-      // Type B
-      const rawValue = parseFloat(component.toleranceLimit);
-      const divisor = parseFloat(component.errorDistributionDivisor);
+        // --- RESOLUTION LOGIC ---
+        const resVal = parseFloat(component.toleranceLimit);
+        const divisor = parseFloat(component.errorDistributionDivisor);
 
-      if (isNaN(rawValue) || rawValue <= 0 || isNaN(divisor)) {
-        setError("Provide valid positive tolerance limit and select distribution.");
-        return;
-      }
+        if (isNaN(resVal) || resVal <= 0 || isNaN(divisor)) {
+            setError("Provide valid positive resolution and select distribution.");
+            return;
+        }
 
-      const { value: ppm, warning } = convertToPPM(
-        rawValue,
-        component.unit,
-        uutNominal?.value,
-        uutNominal?.unit,
-        null,
-        true
-      );
+        const { value: ppm, warning } = convertToPPM(
+            resVal,
+            component.unit,
+            uutNominal?.value,
+            uutNominal?.unit,
+            null,
+            true
+        );
+        if (warning) { setError(warning); return; }
 
-      if (warning) {
-        setError(warning);
-        return;
-      }
-      valueInPPM = ppm / divisor;
-      valueNative = rawValue / divisor;
+        // Math: (FullStep / 2) / Divisor
+        valueInPPM = (ppm / 2) / divisor;
+        valueNative = (resVal / 2) / divisor;
     }
 
     if (!component.name) {
@@ -190,31 +223,26 @@ const ManualComponentModal = ({
     )?.label;
 
     // ---  Handle Relative Unit Display ---
-    // If unit is relative (%, ppm, ppb), calculate the absolute value in the nominal unit
-    // so the table displays consistent units (e.g. Volts instead of %).
     let finalValueNative = valueNative;
     let finalUnitNative = component.unit;
-
     const isRelative = ["%", "ppm", "ppb"].includes(component.unit);
     
     if (isRelative && uutNominal?.value && uutNominal?.unit) {
         const nominalVal = parseFloat(uutNominal.value);
         if (!isNaN(nominalVal)) {
-            // valueInPPM is the standard uncertainty (u_i) in PPM.
-            // Convert it to absolute uncertainty in nominal units.
             finalValueNative = (valueInPPM / 1000000) * Math.abs(nominalVal);
             finalUnitNative = uutNominal.unit;
         }
     }
-    // --- FIX END ---
 
     const finalData = {
       ...component,
+      type: activeTab === "resolution" ? "B" : component.type, 
       value: valueInPPM,
-      value_native: finalValueNative, // Use the calculated absolute value
-      unit_native: finalUnitNative,   // Use the absolute unit (if converted)
+      value_native: finalValueNative, 
+      unit_native: finalUnitNative,   
       dof,
-      distribution: distributionLabel,
+      distribution: activeTab === "resolution" ? `${distributionLabel} (Res)` : distributionLabel,
       originalInput: originalInputData
     };
 
@@ -223,7 +251,6 @@ const ManualComponentModal = ({
 
   if (!isOpen) return null;
 
-  // --- 2. WRAP IN PORTAL ---
   return ReactDOM.createPortal(
     <div 
         className="modal-content floating-window-content" 
@@ -236,7 +263,7 @@ const ManualComponentModal = ({
             top: position.y,
             left: position.x,
             margin: 0,
-            zIndex: 9999, // High z-index to stay on top
+            zIndex: 9999, 
             height: 'auto',
             maxHeight: '90vh'
         }}
@@ -268,17 +295,48 @@ const ManualComponentModal = ({
                 </div>
             </div>
             
-            <button 
-                onClick={onClose} 
-                className="modal-close-button"
-                style={{ position: 'static', transform: 'none' }}
-            >
+            <button onClick={onClose} className="modal-close-button" style={{ position: 'static', transform: 'none' }}>
                 &times;
             </button>
         </div>
 
         {/* CONTENT */}
         <div style={{ overflowY: 'auto', paddingRight: '5px' }}>
+            
+            {/* TABS */}
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)' }}>
+                <button 
+                    onClick={() => handleTabChange("standard")}
+                    style={{
+                        padding: '10px 5px',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: activeTab === "standard" ? '2px solid var(--primary-color)' : '2px solid transparent',
+                        color: activeTab === "standard" ? 'var(--primary-color)' : 'var(--text-color-muted)',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '8px'
+                    }}
+                >
+                    <FontAwesomeIcon icon={faCalculator} /> Standard
+                </button>
+                <button 
+                    onClick={() => handleTabChange("resolution")}
+                    style={{
+                        padding: '10px 5px',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: activeTab === "resolution" ? '2px solid var(--primary-color)' : '2px solid transparent',
+                        color: activeTab === "resolution" ? 'var(--primary-color)' : 'var(--text-color-muted)',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '8px'
+                    }}
+                >
+                    <FontAwesomeIcon icon={faRulerCombined} /> Resolution
+                </button>
+            </div>
+
             {error && <div className="form-section-warning">{error}</div>}
 
             <div className="config-stack" style={{ paddingTop: "10px", textAlign: "left" }}>
@@ -289,58 +347,123 @@ const ManualComponentModal = ({
                         name="name"
                         value={component.name}
                         onChange={handleChange}
-                        placeholder="e.g., UUT Stability Spec"
+                        placeholder={activeTab === "resolution" ? "e.g., UUT Resolution" : "e.g., UUT Stability Spec"}
                     />
                 </div>
-                <div className="config-column">
-                    <label>Type</label>
-                    <select name="type" value={component.type} onChange={handleChange}>
-                        <option value="A">Type A</option>
-                        <option value="B">Type B</option>
-                    </select>
-                </div>
 
-                {component.type === "A" && (
+                {/* --- STANDARD MODE --- */}
+                {activeTab === "standard" && (
                     <>
                         <div className="config-column">
-                            <label>Std Unc (uᵢ)</label>
-                            <div className="input-with-unit">
-                                <input
-                                    type="number"
-                                    step="any"
-                                    name="standardUncertainty"
-                                    value={component.standardUncertainty}
-                                    onChange={handleChange}
-                                    placeholder="e.g., 15.3"
-                                />
-                                <select name="unit" value={component.unit} onChange={handleChange}>
-                                    {unitOptions.map((u) => (
-                                        <option key={u} value={u}>{u}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <ConversionInfo
-                                value={component.standardUncertainty}
-                                unit={component.unit}
-                                nominal={uutNominal}
-                            />
+                            <label>Type</label>
+                            <select name="type" value={component.type} onChange={handleChange}>
+                                <option value="A">Type A</option>
+                                <option value="B">Type B</option>
+                            </select>
                         </div>
-                        <div className="config-column">
-                            <label>DoF (vᵢ)</label>
-                            <input
-                                type="number"
-                                step="1"
-                                min="1"
-                                name="dof"
-                                value={component.dof}
-                                onChange={handleChange}
-                            />
-                        </div>
+
+                        {component.type === "A" && (
+                            <>
+                                <div className="config-column">
+                                    <label>Std Unc (uᵢ)</label>
+                                    <div className="input-with-unit">
+                                        <input
+                                            type="number"
+                                            step="any"
+                                            name="standardUncertainty"
+                                            value={component.standardUncertainty}
+                                            onChange={handleChange}
+                                            placeholder="e.g., 15.3"
+                                        />
+                                        <select name="unit" value={component.unit} onChange={handleChange}>
+                                            {unitOptions.map((u) => (
+                                                <option key={u} value={u}>{u}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <ConversionInfo
+                                        value={component.standardUncertainty}
+                                        unit={component.unit}
+                                        nominal={uutNominal}
+                                    />
+                                </div>
+                                <div className="config-column">
+                                    <label>DoF (vᵢ)</label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="1"
+                                        name="dof"
+                                        value={component.dof}
+                                        onChange={handleChange}
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        {component.type === "B" && (
+                            <>
+                                <div className="config-column">
+                                    <label>Distribution</label>
+                                    <select
+                                        name="errorDistributionDivisor"
+                                        value={component.errorDistributionDivisor}
+                                        onChange={handleChange}
+                                    >
+                                        {oldErrorDistributions.map((dist) => (
+                                            <option key={dist.value} value={dist.value}>
+                                                {dist.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="config-column">
+                                    <label>Tolerance Limits (±)</label>
+                                    <div className="input-with-unit">
+                                        <input
+                                            type="number"
+                                            step="any"
+                                            name="toleranceLimit"
+                                            value={component.toleranceLimit}
+                                            onChange={handleChange}
+                                        />
+                                        <select name="unit" value={component.unit} onChange={handleChange}>
+                                            {unitOptions.map((u) => (
+                                                <option key={u} value={u}>{u}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <ConversionInfo
+                                        value={component.toleranceLimit}
+                                        unit={component.unit}
+                                        nominal={uutNominal}
+                                    />
+                                </div>
+                                <div className="config-column">
+                                    <label>DoF</label>
+                                    <input
+                                        type="text"
+                                        name="dof"
+                                        value={component.dof}
+                                        onChange={handleChange}
+                                        placeholder="Infinity"
+                                    />
+                                </div>
+                            </>
+                        )}
                     </>
                 )}
 
-                {component.type === "B" && (
+                {/* --- RESOLUTION MODE --- */}
+                {activeTab === "resolution" && (
                     <>
+                        <div className="config-column">
+                             <div className="form-section-info" style={{fontSize: '0.9rem', color: 'var(--text-color-muted)', marginBottom: '5px'}}>
+                                Calculates uncertainty from full step resolution: <br/>
+                                <em>uᵢ = (Resolution / 2) / Divisor</em>
+                            </div>
+                        </div>
+
                         <div className="config-column">
                             <label>Distribution</label>
                             <select
@@ -355,15 +478,17 @@ const ManualComponentModal = ({
                                 ))}
                             </select>
                         </div>
+
                         <div className="config-column">
-                            <label>Tolerance Limits (±)</label>
+                            <label>Resolution (Full Step)</label>
                             <div className="input-with-unit">
                                 <input
                                     type="number"
                                     step="any"
-                                    name="toleranceLimit"
+                                    name="toleranceLimit" // Reusing same state field
                                     value={component.toleranceLimit}
                                     onChange={handleChange}
+                                    placeholder="e.g. 0.001"
                                 />
                                 <select name="unit" value={component.unit} onChange={handleChange}>
                                     {unitOptions.map((u) => (
@@ -377,7 +502,8 @@ const ManualComponentModal = ({
                                 nominal={uutNominal}
                             />
                         </div>
-                        <div className="config-column">
+
+                         <div className="config-column">
                             <label>DoF</label>
                             <input
                                 type="text"
@@ -389,6 +515,7 @@ const ManualComponentModal = ({
                         </div>
                     </>
                 )}
+
             </div>
             
             <div className="modal-actions" style={{marginTop: '20px'}}>
