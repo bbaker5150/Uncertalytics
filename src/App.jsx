@@ -429,7 +429,7 @@ const findMatchingRange = (uut, value, unit) => {
 };
 
 // --- HELPER COMPONENT: Sidebar Session Header (Inline Editing) ---
-const SidebarSessionHeader = ({ sessionData, onUpdate, isActive }) => {
+const SidebarSessionHeader = ({ sessionData, onUpdate, isActive, onSelect }) => {
   const [editingField, setEditingField] = useState(null);
   const [tempValue, setTempValue] = useState("");
 
@@ -465,20 +465,12 @@ const SidebarSessionHeader = ({ sessionData, onUpdate, isActive }) => {
 
   return (
     <div
-      className={`sidebar-session-header ${isActive ? 'active' : ''}`}
-      title="Session Details"
-      style={{
-        padding: '12px 14px',
-        borderBottom: '1px solid var(--border-color)',
-        marginBottom: '10px',
-        cursor: 'default',
-        borderLeft: isActive ? '3px solid var(--primary-color)' : '3px solid transparent',
-        backgroundColor: isActive ? 'var(--background-color-secondary)' : 'transparent',
-        transition: 'all 0.2s ease'
-      }}
+      className={`sidebar-session-header-organic ${isActive ? 'active' : ''}`}
+      title="Click to select Session Overview"
+      onClick={onSelect}
     >
       {/* TITLE / NAME */}
-      <div style={{ marginBottom: '4px' }}>
+      <div style={{ marginBottom: '6px' }}>
         {editingField === 'name' ? (
           <input
             autoFocus
@@ -489,20 +481,19 @@ const SidebarSessionHeader = ({ sessionData, onUpdate, isActive }) => {
             onClick={e => e.stopPropagation()}
             className="session-header-input"
             style={{ fontSize: '1rem', fontWeight: 'bold' }}
+            placeholder="Session Name"
           />
         ) : (
           <div
             onClick={(e) => startEdit(e, 'name', sessionData.name)}
-            className="hover-editable"
+            className="session-header-value"
             style={{
               fontSize: '1rem',
               fontWeight: 'bold',
-              color: 'var(--primary-color)',
+              color: isActive ? 'var(--primary-color-dark)' : 'var(--primary-color)',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              cursor: 'text',
-              minHeight: '1.4em'
+              textOverflow: 'ellipsis'
             }}
             title="Edit Session Name"
           >
@@ -512,9 +503,8 @@ const SidebarSessionHeader = ({ sessionData, onUpdate, isActive }) => {
       </div>
 
       {/* 2x2 GRID FOR ORG, ANALYST, DOC, DATE */}
-      <div className="session-header-grid">
-
-        {/* ORGANIZATION */}
+      <div className="session-header-grid" style={{ marginTop: '4px', gap: '8px 12px' }}>
+        {/* Organization */}
         <div className="session-header-field">
           <span className="session-header-label">Organization</span>
           {editingField === 'organization' ? (
@@ -531,14 +521,13 @@ const SidebarSessionHeader = ({ sessionData, onUpdate, isActive }) => {
             <div
               onClick={(e) => startEdit(e, 'organization', sessionData.organization)}
               className="session-header-value"
-              title={sessionData.organization || "Click to add Organization"}
             >
-              {sessionData.organization || <span style={{ opacity: 0.5 }}>-</span>}
+              {sessionData.organization || "-"}
             </div>
           )}
         </div>
 
-        {/* ANALYST */}
+        {/* Analyst */}
         <div className="session-header-field">
           <span className="session-header-label">Analyst</span>
           {editingField === 'analyst' ? (
@@ -556,12 +545,12 @@ const SidebarSessionHeader = ({ sessionData, onUpdate, isActive }) => {
               onClick={(e) => startEdit(e, 'analyst', sessionData.analyst)}
               className="session-header-value"
             >
-              {sessionData.analyst || <span style={{ opacity: 0.5 }}>-</span>}
+              {sessionData.analyst || "-"}
             </div>
           )}
         </div>
 
-        {/* DOC ID */}
+        {/* Doc ID */}
         <div className="session-header-field">
           <span className="session-header-label">Doc ID</span>
           {editingField === 'document' ? (
@@ -579,12 +568,12 @@ const SidebarSessionHeader = ({ sessionData, onUpdate, isActive }) => {
               onClick={(e) => startEdit(e, 'document', sessionData.document)}
               className="session-header-value"
             >
-              {sessionData.document || <span style={{ opacity: 0.5 }}>-</span>}
+              {sessionData.document || "-"}
             </div>
           )}
         </div>
 
-        {/* DATE */}
+        {/* Date */}
         <div className="session-header-field">
           <span className="session-header-label">Date</span>
           {editingField === 'documentDate' ? (
@@ -2197,7 +2186,6 @@ function App() {
               <div className="measurement-point-list">
 
                 {/* 1. DASHBOARD HOME BUTTON */}
-                {/* 1. DASHBOARD HOME BUTTON / SESSION HEADER */}
                 <SidebarSessionHeader
                   sessionData={currentSessionData}
                   onUpdate={updateSession}
@@ -2205,15 +2193,14 @@ function App() {
                   onSelect={() => handleSelectSession(selectedSessionId)}
                 />
 
-                {/* Sidebar Toolbar: Quick Add ONLY */}
-                <div style={{ padding: '0 12px 4px 12px' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-color-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {/* Sidebar Toolbar: Quick Add ONLY (Cleaned) */}
+                <div className="sidebar-quick-add-container">
+                  <span className="sidebar-section-title">
                     Quick Add Point
                   </span>
-                </div>
-                <div className="sidebar-toolbar" style={{ marginTop: 0 }}>
-                  <div className="sidebar-quick-add">
-                    {/* Section Input: Uses specific class for smaller width */}
+
+                  <div className="sidebar-quick-add" style={{ marginTop: '4px' }}>
+                    {/* Section Input */}
                     <input
                       type="text"
                       placeholder="Section"
@@ -2223,7 +2210,7 @@ function App() {
                       className="quick-add-input section"
                     />
 
-                    {/* Value Input: Uses generic class for standard width */}
+                    {/* Value Input */}
                     <input
                       type="text"
                       placeholder="Value"
@@ -2339,7 +2326,7 @@ function App() {
 
                 {/* 2. GLOBAL ACTIONS ROW (Refined & Organic) */}
                 <div className="sidebar-global-actions">
-                  
+
                   <span className="sidebar-section-title">
                     Measurement Points
                   </span>

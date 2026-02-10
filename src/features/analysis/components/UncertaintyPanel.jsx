@@ -1142,13 +1142,6 @@ const SummaryDashboard = ({
                     </table>
                 </div>
             </div>
-
-            {/* Footer */}
-            <div style={{ padding: '20px', backgroundColor: 'rgba(var(--primary-rgb), 0.05)', borderRadius: '8px', border: '1px dashed var(--primary-color)', textAlign: 'center' }}>
-                <p style={{ margin: 0, color: 'var(--text-color)' }}>
-                    <strong><FontAwesomeIcon icon={faArrowRight} /> Next Step:</strong> Select a specific Measurement Point from the sidebar to begin Detailed Uncertainty or Risk Analysis.
-                </p>
-            </div>
         </div>
     );
 };

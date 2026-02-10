@@ -1217,9 +1217,10 @@ body.theme-cyberpunk .button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 12px 8px 16px;
-  margin-top: 8px;
-  border-bottom: 1px solid transparent; /* Keeps spacing consistent */
+  padding: 12px 16px;
+  margin-top: 0;
+  /* border-bottom: 1px solid var(--border-color); */
+  background-color: transparent;
 }
 
 .sidebar-section-title {
@@ -1425,13 +1426,29 @@ body.theme-cyberpunk .button {
 .sidebar-quick-add .quick-add-input {
   flex: 1;
   min-width: 0;
-  padding: 6px 8px;
+  padding: 0 8px; /* Tighter padding */
+  height: 28px;   /* Match height of other elements */
+  line-height: 26px;
+  
+  /* FORCE ORGANIC STYLE */
   border: 1px solid transparent;
   border-radius: 4px;
-  background: var(--input-background);
+  background-color: rgba(255, 255, 255, 0.04); /* Transparent/Organic */
   color: var(--text-color);
-  font-size: 0.75rem;
-  transition: all 0.15s ease;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.sidebar-quick-add .quick-add-input:hover {
+  border-color: var(--border-color);
+}
+
+.sidebar-quick-add .quick-add-input:focus {
+  border-color: var(--primary-color);
+  background-color: var(--background-color); /* Solid when typing */
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
 }
 
 .sidebar-quick-add .quick-add-input.unit {
@@ -8291,4 +8308,127 @@ body.theme-orbital.dark-mode .theme-selector-minimal {
 body.theme-cyberpunk .theme-selector-minimal {
     box-shadow: none !important;
     border: 2px solid var(--border-color) !important;
+}
+
+/* --- ORGANIC SESSION HEADER --- */
+
+.sidebar-session-header-organic {
+  padding: 12px 16px;
+  margin-bottom: 0; /* Remove margin so it sits flush with the divider */
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  
+  /* Add a visible separator line */
+  border-bottom: 1px solid var(--border-color); 
+  background-color: transparent;
+}
+
+/* SUBTLE HOVER: Only a very faint tint, or keep transparent */
+.sidebar-session-header-organic:hover {
+  background-color: rgba(255, 255, 255, 0.02); /* Extremely subtle */
+}
+
+/* ACTIVE STATE: No background box, just the accent border & text */
+.sidebar-session-header-organic.active {
+  background-color: transparent; /* REMOVED var(--primary-color-light) */
+  border-left-color: var(--primary-color); /* The only structural indicator */
+  color: var(--primary-color); /* Text color indicates active state */
+}
+
+/* Ensure inner text inherits the active color */
+.sidebar-session-header-organic.active .session-header-value {
+  color: inherit;
+}
+
+.sidebar-session-header-organic .session-header-value:hover {
+  background-color: var(--input-background);
+  border-color: var(--border-color);
+  color: var(--primary-color);
+}
+
+/* Make inputs invisible until focused/hovered */
+.sidebar-session-header-organic .session-header-input {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: inherit;
+  font-size: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+.sidebar-session-header-organic .session-header-input:hover {
+  background-color: var(--input-background);
+  border-color: var(--border-color);
+}
+
+.sidebar-session-header-organic .session-header-input:focus {
+  background-color: var(--input-background);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+  outline: none;
+}
+
+/* --- ORGANIC HEADER: INTERNAL GRID & LABELS --- */
+
+/* 1. Define the Grid Layout */
+.session-header-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Creates the 2-column layout */
+  width: 100%;
+}
+
+/* 2. Style the Individual Field Wrappers */
+.session-header-field {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden; /* Prevents long text from breaking layout */
+}
+
+/* 3. Style the Tiny Labels (Organization, Analyst, etc.) */
+.session-header-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-color-muted);
+  font-weight: 600;
+  margin-bottom: 1px;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+/* Optional: Tweaks for the values inside the grid */
+.session-header-field .session-header-value {
+  font-size: 0.85rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-color);
+}
+
+/* --- ORGANIC QUICK ADD --- */
+.sidebar-quick-add-container {
+  /* Subtle tint to distinguish it as an active tool area */
+  background-color: transparent;
+  
+  /* Borders to contain the tool area */
+  /* border-bottom: 1px solid var(--border-color); */
+  
+  padding: 12px 16px; /* Increased padding for better separation */
+  margin-bottom: 8px;
+}
+
+.sidebar-quick-add-container .sidebar-section-title {
+  margin-bottom: 8px;
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary-color);
+  opacity: 0.9;
 }
