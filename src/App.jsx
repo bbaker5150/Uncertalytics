@@ -665,6 +665,7 @@ function App() {
   // We use this boolean to open the modal in 'library' mode from the Tools menu.
   // Editing specific instances (UUT/TMDE) is handled via handlers passed to Analysis.
   const [isInstrumentBuilderOpen, setIsInstrumentBuilderOpen] = useState(false);
+  const [instrumentModalConfig, setInstrumentModalConfig] = useState({ mode: 'library', data: null });
 
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isBugReportOpen, setIsBugReportOpen] = useState(false);
@@ -1536,23 +1537,80 @@ function App() {
     updateSession(updatedSession);
   };
 
-  // --- NEW: Universal Save Handler ---
-  // Handles saving Instruments to Library OR instances to Session
-  const handleUniversalModalSave = (data) => {
-    // CASE 1: Saving a UUT (New or Edit)
-    if (data.type === 'uut' && currentSessionData) {
+  // --- NEW HANDLERS to Open Modal in Correct Mode ---
+  const handleEditUut = (uut = null) => {
+    let dataWithColor = uut;
 
-      // 1. Resolve Measurement Area (Fix for Sidebar Issue)
+    // FIX: If editing an existing UUT, look up its area color so the modal 
+    // initializes with the correct color instead of defaulting to Blue.
+    if (uut && uut.measurementAreaId && currentSessionData?.measurementAreas) {
+       const area = currentSessionData.measurementAreas.find(a => a.id === uut.measurementAreaId);
+       if (area) {
+          dataWithColor = { ...uut, measurementAreaColor: area.color };
+       }
+    } else if (uut && uut.measurementArea && currentSessionData?.measurementAreas) {
+       // Fallback: Lookup by name if ID is missing
+       const area = currentSessionData.measurementAreas.find(a => a.name === uut.measurementArea);
+       if (area) {
+          dataWithColor = { ...uut, measurementAreaColor: area.color };
+       }
+    }
+
+    setInstrumentModalConfig({ mode: 'uut', data: dataWithColor });
+    setIsInstrumentBuilderOpen(true);
+  };
+
+  const handleAddTmde = () => {
+    setInstrumentModalConfig({ mode: 'tmde', data: null });
+    setIsInstrumentBuilderOpen(true);
+  };
+
+  const handleEditTmde = (tmde) => {
+    setInstrumentModalConfig({ mode: 'tmde', data: tmde });
+    setIsInstrumentBuilderOpen(true);
+  };
+
+  const handleOpenLibrary = () => {
+    setInstrumentModalConfig({ mode: 'library', data: null });
+    setIsInstrumentBuilderOpen(true);
+  };
+
+  const handleUniversalModalSave = (data) => {
+    // LOGGING TO VERIFY EXECUTION
+    console.log("[App.jsx] handleUniversalModalSave CALLED with:", data);
+
+    if (!currentSessionData) return;
+
+    // CASE 1: Saving a UUT (New or Edit)
+    if (data.type === 'uut') {
+      const rawName = data.measurementArea || "";
+      const cleanName = rawName.trim();
       let resolvedAreaId = data.measurementAreaId || selectedAreaId || null;
       let updatedMeasurementAreas = [...(currentSessionData.measurementAreas || [])];
 
-      // If user typed a new area name that isn't in our list, create it.
-      if (!resolvedAreaId && data.measurementArea) {
-        const existingArea = updatedMeasurementAreas.find(a => a.name === data.measurementArea);
-        if (existingArea) {
-          resolvedAreaId = existingArea.id;
+      // Handle Measurement Area Logic
+      if (cleanName) {
+        const existingAreaIndex = updatedMeasurementAreas.findIndex(a => a.name.toLowerCase() === cleanName.toLowerCase());
+        
+        if (existingAreaIndex >= 0) {
+          resolvedAreaId = updatedMeasurementAreas[existingAreaIndex].id;
+          
+          // FIX: Explicitly update the area color if the modal sent a new one
+          if (data.measurementAreaColor) {
+             console.log(`[App.jsx] Updating area '${cleanName}' color to ${data.measurementAreaColor}`);
+             updatedMeasurementAreas[existingAreaIndex] = {
+                 ...updatedMeasurementAreas[existingAreaIndex],
+                 color: data.measurementAreaColor
+             };
+          }
         } else {
-          const newArea = { id: uuidv4(), name: data.measurementArea, color: '#3498db' };
+          // FIX: Create New Area with the specific color from the modal
+          console.log(`[App.jsx] Creating new area '${cleanName}' with color ${data.measurementAreaColor}`);
+          const newArea = { 
+             id: uuidv4(), 
+             name: cleanName, 
+             color: data.measurementAreaColor || '#3498db' 
+          };
           updatedMeasurementAreas.push(newArea);
           resolvedAreaId = newArea.id;
         }
@@ -1561,39 +1619,42 @@ function App() {
       const newUut = {
         id: data.id || uuidv4(),
         description: data.description || data.name,
-        measurementArea: data.measurementArea,
+        measurementArea: cleanName,
         measurementAreaId: resolvedAreaId,
-        instrument: data.instrument // The full instrument def
+        instrument: data.instrument
       };
 
-      const updatedUuts = [...(currentSessionData.uuts || []), newUut];
+      // Update Session UUTs (Replace if ID exists, otherwise append)
+      const existingUutIndex = (currentSessionData.uuts || []).findIndex(u => u.id === newUut.id);
+      const updatedUuts = [...(currentSessionData.uuts || [])];
+      
+      if (existingUutIndex >= 0) {
+        updatedUuts[existingUutIndex] = newUut;
+      } else {
+        updatedUuts.push(newUut);
+      }
 
       updateSession({
         ...currentSessionData,
         uuts: updatedUuts,
-        measurementAreas: updatedMeasurementAreas // Ensure new areas are saved
+        measurementAreas: updatedMeasurementAreas
       });
-      showToast(`UUT "${newUut.description}" added to session.`);
     }
-    // CASE 2: Saving a TMDE (Direct Edit or "Use as TMDE" from Library)
-    else if ((data.type === 'tmde' || (data.type === 'library' && data.useAs === 'tmde')) && currentSessionData) {
 
-      // Construct TMDE Object
+    // CASE 2: Saving a TMDE
+    else if (data.type === 'tmde' || (data.type === 'library' && data.useAs === 'tmde')) {
       let newTmde = {};
-
-      if (data.type === 'library' && data.useAs === 'tmde') {
-        // Converting Library Item -> Session TMDE
+      if (data.type === 'library') {
         newTmde = {
           id: uuidv4(),
           name: `${data.manufacturer} ${data.model}`,
           quantity: 1,
           assetId: "",
-          instrument: { ...data }, // The library item IS the instrument
+          instrument: { ...data },
           isInstrumentBased: true
         };
         delete newTmde.instrument.useAs;
       } else {
-        // Saving from TMDE form
         newTmde = {
           id: data.id || uuidv4(),
           name: data.name,
@@ -1603,19 +1664,19 @@ function App() {
           isInstrumentBased: true
         };
       }
-
-      const updatedTmdes = [...(currentSessionData.tmdes || []), newTmde];
+      const existingTmdeIndex = (currentSessionData.tmdes || []).findIndex(t => t.id === newTmde.id);
+      const updatedTmdes = [...(currentSessionData.tmdes || [])];
+      if (existingTmdeIndex >= 0) { updatedTmdes[existingTmdeIndex] = newTmde; } 
+      else { updatedTmdes.push(newTmde); }
       updateSession({ ...currentSessionData, tmdes: updatedTmdes });
-      showToast(`TMDE "${newTmde.name}" added to session.`);
     }
-    // CASE 3: Saving a UUT from "Use as UUT" Library Action
-    else if (data.type === 'library' && data.useAs === 'uut' && currentSessionData) {
-      // Resolve Area (Default to current selection or Create Default)
+
+    // CASE 3: Library Item used as UUT
+    else if (data.type === 'library' && data.useAs === 'uut') {
       let resolvedAreaId = selectedAreaId;
       let updatedMeasurementAreas = [...(currentSessionData.measurementAreas || [])];
 
       if (!resolvedAreaId) {
-        // Check for default
         const defaultArea = updatedMeasurementAreas.find(a => a.name === "General");
         if (defaultArea) {
           resolvedAreaId = defaultArea.id;
@@ -1635,18 +1696,15 @@ function App() {
       };
       delete newUut.instrument.useAs;
 
-      const updatedUuts = [...(currentSessionData.uuts || []), newUut];
       updateSession({
         ...currentSessionData,
-        uuts: updatedUuts,
+        uuts: [...(currentSessionData.uuts || []), newUut],
         measurementAreas: updatedMeasurementAreas
       });
-      showToast(`UUT "${newUut.description}" added to session.`);
     }
+    // CASE 4: Standard Library Save
     else {
-      // Standard Library Save (Managing the Library itself)
       saveInstrument(data);
-      showToast(`Instrument "${data.model}" saved to library.`);
     }
 
     setIsInstrumentBuilderOpen(false);
@@ -2076,7 +2134,8 @@ function App() {
           onSave={handleUniversalModalSave}
           onDelete={deleteInstrument}
           instruments={instruments}
-          mode="library"
+          mode={instrumentModalConfig.mode}
+          initialData={instrumentModalConfig.data}
         />
 
         {confirmationModal && (<div className="modal-overlay" style={{ zIndex: 2001 }}> <div className="modal-content"> <button onClick={() => setConfirmationModal(null)} className="modal-close-button" > &times; </button> <h3>{confirmationModal.title}</h3> <p>{confirmationModal.message}</p> <div className="modal-actions" style={{ justifyContent: "center", gap: "15px" }} > <button className="button" style={{ backgroundColor: "var(--status-bad)" }} onClick={confirmationModal.onConfirm} > Delete </button> </div> </div> </div>)}
@@ -2099,7 +2158,7 @@ function App() {
               <button className="toolbox-button" style={{ width: '40px', height: '40px', border: '1px solid var(--border-color)', background: 'var(--input-background)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-color-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', }} onClick={() => setIsBugReportOpen(true)} title="Report Bug / Request Feature" > <FontAwesomeIcon icon={faBug} /> </button>
               <button className="toolbox-button" style={{ width: '40px', height: '40px', border: '1px solid var(--border-color)', background: 'var(--input-background)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-color-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', }} onClick={() => setIsHelpOpen(true)} title="Help & Tutorial" > <FontAwesomeIcon icon={faQuestionCircle} /> </button>
             </div>
-            <HeaderToolbox isToolboxCollapsed={isToolboxCollapsed} setIsToolboxCollapsed={setIsToolboxCollapsed} isOverviewOpen={isOverviewOpen} setIsOverviewOpen={setIsOverviewOpen} isInstrumentBuilderOpen={isInstrumentBuilderOpen} setIsInstrumentBuilderOpen={setIsInstrumentBuilderOpen} isTraceabilityOpen={isTraceabilityOpen} setIsTraceabilityOpen={setIsTraceabilityOpen} isNotepadOpen={isNotepadOpen} setIsNotepadOpen={setIsNotepadOpen} isConverterOpen={isConverterOpen} setIsConverterOpen={setIsConverterOpen} handleSaveToFile={handleSaveToFile} handleLoadFromFile={handleLoadFromFile} isHelpOpen={isHelpOpen} setIsHelpOpen={setIsHelpOpen} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} dbPath={dbPath} disconnectDatabase={disconnectDatabase} selectDatabaseFolder={selectDatabaseFolder} />
+            <HeaderToolbox isToolboxCollapsed={isToolboxCollapsed} setIsToolboxCollapsed={setIsToolboxCollapsed} isOverviewOpen={isOverviewOpen} setIsOverviewOpen={setIsOverviewOpen} isInstrumentBuilderOpen={isInstrumentBuilderOpen} setIsInstrumentBuilderOpen={() => handleOpenLibrary()} isTraceabilityOpen={isTraceabilityOpen} setIsTraceabilityOpen={setIsTraceabilityOpen} isNotepadOpen={isNotepadOpen} setIsNotepadOpen={setIsNotepadOpen} isConverterOpen={isConverterOpen} setIsConverterOpen={setIsConverterOpen} handleSaveToFile={handleSaveToFile} handleLoadFromFile={handleLoadFromFile} isHelpOpen={isHelpOpen} setIsHelpOpen={setIsHelpOpen} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} dbPath={dbPath} disconnectDatabase={disconnectDatabase} selectDatabaseFolder={selectDatabaseFolder} />
           </div>
 
           <div className="results-workflow-container">
@@ -2671,6 +2730,9 @@ function App() {
                     onDataSave={handleAnalysisDataSave}
                     onSessionSave={updateSession}
                     onSaveTestPoint={handleSaveTestPoint}
+                    onEditUut={handleEditUut}
+                    onAddTmde={handleAddTmde}
+                    onEditTmde={handleEditTmde}
                     defaultTestPoint={defaultTestPoint}
                     setContextMenu={setContextMenu}
                     setBreakdownPoint={setBreakdownPoint}

@@ -159,7 +159,9 @@ const EditSessionModal = ({
   // --- Instruments Tab Logic ---
 
   const getAreaColor = (areaName) => {
-      const area = formData.measurementAreas?.find(a => a.name === areaName);
+      // Robust lookup: Try to find by Name (case-insensitive) to match UUT's area
+      const cleanName = (areaName || "").trim().toLowerCase();
+      const area = formData.measurementAreas?.find(a => (a.name || "").trim().toLowerCase() === cleanName);
       return area ? area.color : 'var(--text-color-muted)';
   };
 
@@ -194,37 +196,102 @@ const EditSessionModal = ({
   // --- Unified Instrument Handler ---
 
   const openInstrumentModal = (mode, data = null, index = null) => {
-      setActiveInstrumentModal({ mode, data, index });
+      let enhancedData = data;
+      
+      // FIX: Pre-inject the existing area color so the modal initializes correctly.
+      // If we don't do this, the modal defaults to Blue, which overwrites your work on save.
+      if (mode === 'uut' && data && data.measurementArea) {
+          const color = getAreaColor(data.measurementArea);
+          // Only inject if it's a valid color
+          if (color && !color.startsWith('var(--')) {
+              enhancedData = { ...data, measurementAreaColor: color };
+          }
+      }
+      
+      setActiveInstrumentModal({ mode, data: enhancedData, index });
   };
 
   const handleSaveInstrument = (resultData) => {
-      if (!activeInstrumentModal) return;
+      // --- DEBUG LOGS START ---
+      console.group("EditSessionModal: handleSaveInstrument");
+      console.log("%c[EditSessionModal] Function CALLED", "background: #000; color: #00ff00; font-weight: bold");
+      console.log("1. Full Data Received from Modal:", resultData);
+      console.log("2. Color Property Check:", resultData.measurementAreaColor);
+      console.log("3. Current Modal State:", activeInstrumentModal);
+      // --- DEBUG LOGS END ---
+
+      if (!activeInstrumentModal) {
+          console.error("[EditSessionModal] Error: activeInstrumentModal is null. Cannot determine mode.");
+          console.groupEnd();
+          return;
+      }
       const { mode, index } = activeInstrumentModal;
 
       if (mode === 'uut') {
-          // UUT Logic (Auto-create area if missing)
-          const assignedAreaName = resultData.measurementArea?.trim();
+          const rawAreaName = resultData.measurementArea || "";
+          const assignedAreaName = rawAreaName.trim();
+          
+          console.log(`[EditSessionModal] Processing UUT. Assigned Area Name: "${assignedAreaName}"`);
+
           setFormData(prev => {
               const newUuts = [...prev.uuts];
               let currentAreas = [...prev.measurementAreas];
+              let finalAreaId = null;
               
               if (assignedAreaName) {
-                  const areaExists = currentAreas.some(a => a.name.toLowerCase() === assignedAreaName.toLowerCase());
-                  if (!areaExists) {
-                      const newColor = PRESET_COLORS[currentAreas.length % PRESET_COLORS.length];
-                      currentAreas.push({ id: uuidv4(), name: assignedAreaName, color: newColor });
+                  // Find area by name (case-insensitive)
+                  const existingAreaIndex = currentAreas.findIndex(a => a.name.toLowerCase() === assignedAreaName.toLowerCase());
+                  
+                  if (existingAreaIndex >= 0) {
+                      console.log(`[EditSessionModal] Found EXISTING area at index ${existingAreaIndex}. ID: ${currentAreas[existingAreaIndex].id}`);
+                      finalAreaId = currentAreas[existingAreaIndex].id;
+                      
+                      // FIX: Force update color if provided
+                      if (resultData.measurementAreaColor) {
+                          console.log(`[EditSessionModal] UPDATING area color from ${currentAreas[existingAreaIndex].color} to ${resultData.measurementAreaColor}`);
+                          currentAreas[existingAreaIndex] = {
+                              ...currentAreas[existingAreaIndex],
+                              color: resultData.measurementAreaColor
+                          };
+                      } else {
+                          console.warn("[EditSessionModal] Existing area found, but NO color provided in resultData to update.");
+                      }
+                  } else {
+                      console.log("[EditSessionModal] Area does not exist. Creating NEW area.");
+                      finalAreaId = uuidv4();
+                      const newColor = resultData.measurementAreaColor || PRESET_COLORS[currentAreas.length % PRESET_COLORS.length];
+                      console.log(`[EditSessionModal] New Area Color: ${newColor}`);
+                      
+                      currentAreas.push({ 
+                          id: finalAreaId, 
+                          name: assignedAreaName, 
+                          color: newColor 
+                      });
                   }
+              } else {
+                  console.warn("[EditSessionModal] No measurement area name provided.");
               }
 
+              const uutToSave = {
+                  ...resultData,
+                  measurementArea: assignedAreaName, 
+                  measurementAreaId: finalAreaId,    
+                  measurementAreaColor: resultData.measurementAreaColor 
+              };
+
               if (index !== null) {
-                  newUuts[index] = { ...newUuts[index], ...resultData };
+                  console.log(`[EditSessionModal] Updating existing UUT at index ${index}`);
+                  newUuts[index] = { ...newUuts[index], ...uutToSave };
               } else {
-                  newUuts.push({ id: uuidv4(), ...resultData });
+                  console.log("[EditSessionModal] Adding new UUT");
+                  newUuts.push({ id: uuidv4(), ...uutToSave });
               }
+              
+              console.log("[EditSessionModal] Final Updated Areas:", currentAreas);
               return { ...prev, uuts: newUuts, measurementAreas: currentAreas };
           });
       } else if (mode === 'tmde') {
-          // TMDE Logic
+          console.log("[EditSessionModal] Processing TMDE save...");
           setFormData(prev => {
               const newTmdes = [...prev.tmdes];
               if (index !== null) {
@@ -235,9 +302,11 @@ const EditSessionModal = ({
               return { ...prev, tmdes: newTmdes };
           });
       }
+      
+      console.groupEnd();
       setActiveInstrumentModal(null);
   };
-
+  
   const handleDeleteItem = (listName, index) => {
       setFormData(prev => ({
           ...prev,

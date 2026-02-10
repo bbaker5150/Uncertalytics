@@ -21,10 +21,9 @@ import {
   faBookOpen,
   faMicroscope,
   faTools,
-  faFingerprint,
-  faHashtag,
+  faTag,
   faIndustry,
-  faTag
+  faFingerprint
 } from "@fortawesome/free-solid-svg-icons";
 import { v4 as uuidv4 } from "uuid";
 import { unitSystem, unitCategories } from "../../../utils/uncertaintyMath";
@@ -42,19 +41,23 @@ const portalStyle = {
     backgroundColor: 'var(--input-background)',
     borderColor: 'var(--border-color)',
     color: 'var(--text-color)',
-    minHeight: '32px', // Compact for table
-    height: '32px',
+    minHeight: '40px', 
+    height: '40px',   
     borderRadius: '4px',
-    fontSize: '0.85rem'
+    fontSize: '0.95rem',
+    boxShadow: 'none',
+    '&:hover': {
+        borderColor: 'var(--border-color)'
+    }
   }),
-  valueContainer: (base) => ({ ...base, padding: '0 8px', height: '30px' }),
-  indicatorsContainer: (base) => ({ ...base, height: '30px' }),
+  valueContainer: (base) => ({ ...base, padding: '0 8px', height: '38px', display: 'flex', alignItems: 'center' }),
+  indicatorsContainer: (base) => ({ ...base, height: '38px' }),
   singleValue: (base) => ({ ...base, color: 'var(--text-color)' }),
   option: (base, state) => ({
     ...base,
     backgroundColor: state.isFocused ? 'var(--primary-color)' : 'transparent',
     color: state.isFocused ? '#fff' : 'var(--text-color)',
-    fontSize: '0.85rem'
+    fontSize: '0.9rem'
   })
 };
 
@@ -112,22 +115,20 @@ const UniversalInstrumentModal = ({
     initialData = null, 
     instruments = [] 
 }) => {
-    // --- State ---
     const [viewMode, setViewMode] = useState("edit"); 
-    const [effectiveMode, setEffectiveMode] = useState(mode); // Internal tracking of mode (allows switching from Library -> UUT)
+    const [effectiveMode, setEffectiveMode] = useState(mode);
 
     const [searchTerm, setSearchTerm] = useState("");
     const [expandedDetail, setExpandedDetail] = useState(null);
 
-    // Context-Specific Data (Meta)
     const [metaData, setMetaData] = useState({
         name: "", 
-        measurementArea: "", 
+        measurementArea: "",
+        measurementAreaColor: "#3498db", 
         quantity: 1, 
         assetId: "" 
     });
 
-    // Instrument Definition State
     const [instrumentDef, setInstrumentDef] = useState({
         id: uuidv4(),
         manufacturer: "",
@@ -139,32 +140,26 @@ const UniversalInstrumentModal = ({
     const [activeFunctionId, setActiveFunctionId] = useState(null);
     const [editingRange, setEditingRange] = useState(null);
 
-    // Floating Window
     const { position, handleMouseDown } = useFloatingWindow({
         isOpen,
         defaultWidth: 1100,
         defaultHeight: 850
     });
 
-    // --- Initialization ---
     useEffect(() => {
         if (isOpen) {
             setSearchTerm("");
             setExpandedDetail(null);
             setEditingRange(null);
 
-            // 1. Determine Initial View Mode
             if (mode === 'library') {
                 setViewMode("list");
             } else {
                 setViewMode("edit");
             }
-
-            // 2. Reset Effective Mode
             setEffectiveMode(mode);
 
             if (initialData) {
-                // EDIT EXISTING
                 setViewMode("edit");
                 const loadedInst = initialData.instrument || (initialData.functions ? initialData : null) || {
                     id: uuidv4(), manufacturer: "", model: "", description: "", functions: []
@@ -173,30 +168,21 @@ const UniversalInstrumentModal = ({
                 if (loadedInst.functions?.length > 0) setActiveFunctionId(loadedInst.functions[0].id);
                 else setActiveFunctionId(null);
 
-                if (mode === 'uut') {
-                    setMetaData({
-                        name: initialData.description || "",
-                        measurementArea: initialData.measurementArea || "",
-                        quantity: 1, assetId: ""
-                    });
-                } else if (mode === 'tmde') {
-                    setMetaData({
-                        name: initialData.name || "",
-                        quantity: initialData.quantity || 1,
-                        assetId: initialData.assetId || "",
-                        measurementArea: ""
-                    });
-                }
+                setMetaData({
+                    name: initialData.description || initialData.name || "",
+                    measurementArea: initialData.measurementArea || "",
+                    measurementAreaColor: initialData.measurementAreaColor || "#3498db",
+                    quantity: initialData.quantity || 1, 
+                    assetId: initialData.assetId || ""
+                });
             } else {
-                // ADD NEW (Reset Data)
-                setMetaData({ name: "", measurementArea: "", quantity: 1, assetId: "" });
+                setMetaData({ name: "", measurementArea: "", measurementAreaColor: "#3498db", quantity: 1, assetId: "" });
                 setInstrumentDef({ id: uuidv4(), manufacturer: "", model: "", description: "", functions: [] });
                 setActiveFunctionId(null);
             }
         }
     }, [isOpen, initialData, mode]);
 
-    // --- Computed ---
     const filteredInstruments = useMemo(() => {
         if (!searchTerm) return instruments;
         const lower = searchTerm.toLowerCase();
@@ -224,61 +210,56 @@ const UniversalInstrumentModal = ({
 
     const modeIcon = effectiveMode === 'uut' ? faMicroscope : (effectiveMode === 'tmde' ? faTools : faBookOpen);
 
-    // --- Handlers ---
-    
-    // Selecting for EDITING (Library mode only) or IMPORTING (if in UUT/TMDE mode)
+    const isFormValid = useMemo(() => {
+        if (!instrumentDef.manufacturer?.trim()) return false;
+        if (!instrumentDef.model?.trim()) return false;
+        if (!metaData.name?.trim()) return false;
+        return true;
+    }, [instrumentDef.manufacturer, instrumentDef.model, metaData.name]);
+
     const handleEditLibraryItem = (inst) => {
         const newDef = JSON.parse(JSON.stringify(inst));
-        
-        // If we are importing into a UUT/TMDE definition (not managing the library itself)
         if (effectiveMode !== 'library') {
-            newDef.id = uuidv4(); // Create a fresh instance ID
-            
-            // Auto-fill Name from Instrument details
+            newDef.id = uuidv4(); 
             const autoName = `${inst.manufacturer || ''} ${inst.model || ''}`.trim();
             if (autoName) {
                 setMetaData(prev => ({ ...prev, name: autoName }));
             }
         }
-        
         setInstrumentDef(newDef);
         if (newDef.functions?.length > 0) setActiveFunctionId(newDef.functions[0].id);
         setViewMode("edit");
     };
 
-    // Selecting to SPAWN UUT or TMDE (From Builder)
     const handleUseAs = (inst, targetMode) => {
         const newDef = JSON.parse(JSON.stringify(inst));
-        newDef.id = uuidv4(); // Unique ID for the new instance
+        newDef.id = uuidv4(); 
         setInstrumentDef(newDef);
         
-        // Auto-fill meta
         const autoName = `${inst.manufacturer} ${inst.model}`;
         setMetaData(prev => ({ 
             ...prev, 
             name: autoName,
-            quantity: 1, 
-            assetId: "", 
-            measurementArea: "" 
+            measurementArea: "",
+            measurementAreaColor: "#3498db"
         }));
 
-        setEffectiveMode(targetMode); // Switch to the specific builder mode
+        setEffectiveMode(targetMode); 
         if (newDef.functions?.length > 0) setActiveFunctionId(newDef.functions[0].id);
         setViewMode("edit");
     };
 
     const handleCreateNew = () => {
         setInstrumentDef({ id: uuidv4(), manufacturer: "", model: "", description: "", functions: [] });
+        setMetaData(prev => ({...prev, name: "", measurementArea: "", measurementAreaColor: "#3498db"}));
         setActiveFunctionId(null);
         setViewMode("edit");
-        // Keep effectiveMode as is (e.g. if we were in Library mode, we are adding to library)
     };
 
     const handleMetaChange = (field, value) => {
         setMetaData(prev => ({ ...prev, [field]: value }));
     };
 
-    // --- Builder Handlers ---
     const handleAddFunction = () => {
         const newFunc = { id: uuidv4(), name: "New Function", unit: "V", ranges: [] };
         setInstrumentDef(prev => ({ ...prev, functions: [...prev.functions, newFunc] }));
@@ -348,30 +329,28 @@ const UniversalInstrumentModal = ({
     };
 
     const handleSave = () => {
-        let finalData = {};
+        if (!isFormValid) return; 
 
-        if (effectiveMode === 'uut') {
+        let finalData = {};
+        if (effectiveMode === 'uut' || effectiveMode === 'tmde') {
             finalData = {
                 id: initialData?.id || uuidv4(),
-                description: metaData.name,
-                measurementArea: metaData.measurementArea,
-                instrument: instrumentDef,
-                type: 'uut'
-            };
-        } else if (effectiveMode === 'tmde') {
-            finalData = {
-                id: initialData?.id || uuidv4(),
+                description: metaData.name, 
                 name: metaData.name,
-                quantity: metaData.quantity,
-                assetId: metaData.assetId,
+                measurementArea: metaData.measurementArea,
+                measurementAreaColor: metaData.measurementAreaColor, // <--- Key Field
                 instrument: instrumentDef,
-                isInstrumentBased: true,
-                type: 'tmde'
+                type: effectiveMode
             };
         } else {
-            // Library mode
             finalData = { ...instrumentDef, type: 'library' };
         }
+
+        // --- DEBUG LOG ---
+        console.log("[UniversalInstrumentModal] Saving Data:", finalData);
+        console.log("[UniversalInstrumentModal] Color being sent:", metaData.measurementAreaColor);
+        // -----------------
+
         onSave(finalData);
         onClose();
     };
@@ -385,7 +364,6 @@ const UniversalInstrumentModal = ({
         }
     };
 
-    // --- Options for Dropdown ---
     const actionOptions = [
         { label: 'Use as UUT', value: 'uut', icon: faMicroscope },
         { label: 'Use as TMDE', value: 'tmde', icon: faTools },
@@ -417,7 +395,7 @@ const UniversalInstrumentModal = ({
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {viewMode === 'list' && (
-                        <button className="icon-action-btn" onClick={() => setViewMode("edit")} title="Back to Editor">
+                        <button className="icon-btn-ghost" onClick={() => setViewMode("edit")} title="Back to Editor">
                             <FontAwesomeIcon icon={faArrowLeft} />
                         </button>
                     )}
@@ -440,14 +418,13 @@ const UniversalInstrumentModal = ({
                                 <FontAwesomeIcon icon={faSearch} className="search-icon" />
                                 <input
                                     type="text"
-                                    placeholder="Search library..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     autoFocus
                                 />
                             </div>
-                            <button className="button secondary" onClick={handleCreateNew}>
-                                <FontAwesomeIcon icon={faPlus} style={{ marginRight: '5px' }} /> Manual
+                            <button className="icon-btn-ghost" onClick={handleCreateNew} title="Create Manual Instrument">
+                                <FontAwesomeIcon icon={faPlus} />
                             </button>
                         </div>
 
@@ -485,22 +462,15 @@ const UniversalInstrumentModal = ({
                                                         </div>
                                                     </td>
                                                     <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                                                        {/* Dynamic Select Dropdown */}
                                                         {mode === 'library' ? (
                                                             <div style={{ width: '150px', margin: '0 auto' }}>
                                                                 <Select 
-                                                                    placeholder="Use as..."
+                                                                    placeholder="Select"
                                                                     options={actionOptions}
                                                                     styles={portalStyle}
                                                                     menuPortalTarget={document.body}
                                                                     menuPlacement="auto"
                                                                     onChange={(opt) => handleUseAs(inst, opt.value)}
-                                                                    formatOptionLabel={opt => (
-                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                            <FontAwesomeIcon icon={opt.icon} style={{ fontSize: '0.8rem', opacity: 0.7 }} />
-                                                                            <span>{opt.label}</span>
-                                                                        </div>
-                                                                    )}
                                                                 />
                                                             </div>
                                                         ) : (
@@ -516,12 +486,12 @@ const UniversalInstrumentModal = ({
                                                 {isExpanded && (
                                                     <tr className="detail-row">
                                                         <td colSpan="5">
-                                                            <div className="detail-pane">
+                                                            <div style={{padding: '10px', background: 'var(--background-color-secondary)'}}>
                                                                 {(() => {
                                                                     const func = inst.functions.find(f => f.id === expandedDetail.funcId);
                                                                     if (!func) return null;
                                                                     return (
-                                                                        <table className="specs-table">
+                                                                        <table className="ranges-table">
                                                                             <thead><tr><th>Min</th><th>Max</th><th>Res</th><th>Spec</th></tr></thead>
                                                                             <tbody>
                                                                                 {func.ranges.map((r, i) => (
@@ -556,7 +526,7 @@ const UniversalInstrumentModal = ({
                                         <h3><FontAwesomeIcon icon={faCalculator} /> Edit Tolerances</h3>
                                         <div className="slide-over-subtitle">Range: {editingRange.min} - {editingRange.max} {activeFunction?.unit}</div>
                                     </div>
-                                    <button onClick={() => setEditingRange(null)} className="modal-icon-button secondary"><FontAwesomeIcon icon={faTimes} /></button>
+                                    <button onClick={() => setEditingRange(null)} className="icon-btn-ghost"><FontAwesomeIcon icon={faTimes} /></button>
                                 </div>
                                 <div className="slide-over-body">
                                     <ToleranceForm 
@@ -576,26 +546,12 @@ const UniversalInstrumentModal = ({
                         <div className="identity-container">
                             <div className="identity-header">
                                 <span>Identification</span>
-                                <button className="library-lookup-btn" onClick={() => setViewMode('list')} title="Import from Library">
-                                    <FontAwesomeIcon icon={faBookOpen} /> <span>Library Lookup</span>
+                                <button className="icon-btn-ghost" onClick={() => setViewMode('list')} title="Import from Library">
+                                    <FontAwesomeIcon icon={faBookOpen} />
                                 </button>
                             </div>
                             
-                            {/* Unified Instrument Definition Fields */}
                             <div className="identity-grid">
-                                {/* Name / Description (Always Present) */}
-                                <div className="floating-input-group full-width">
-                                    <input 
-                                        type="text" 
-                                        value={metaData.name} 
-                                        onChange={e => handleMetaChange('name', e.target.value)} 
-                                        placeholder=" " 
-                                    />
-                                    <label>{effectiveMode === 'uut' ? 'UUT Description' : (effectiveMode === 'tmde' ? 'TMDE Name / Description' : 'Instrument Description')}</label>
-                                    <FontAwesomeIcon icon={effectiveMode === 'uut' ? faFingerprint : (effectiveMode === 'tmde' ? faTools : faTag)} className="input-icon" />
-                                </div>
-
-                                {/* Manufacturer & Model (Always Present & Matched) */}
                                 <div className="floating-input-group">
                                     <input 
                                         type="text" 
@@ -606,6 +562,7 @@ const UniversalInstrumentModal = ({
                                     <label>Manufacturer</label>
                                     <FontAwesomeIcon icon={faIndustry} className="input-icon" />
                                 </div>
+
                                 <div className="floating-input-group">
                                     <input 
                                         type="text" 
@@ -617,63 +574,60 @@ const UniversalInstrumentModal = ({
                                     <FontAwesomeIcon icon={faTag} className="input-icon" />
                                 </div>
 
-                                {/* Instance Specific Fields (Conditional but same grid) */}
-                                {effectiveMode === 'uut' && (
-                                    <div className="floating-input-group">
-                                        <input 
-                                            type="text" 
-                                            value={metaData.measurementArea} 
-                                            onChange={e => handleMetaChange('measurementArea', e.target.value)} 
-                                            placeholder=" " 
-                                        />
-                                        <label>Measurement Area</label>
-                                        <FontAwesomeIcon icon={faLayerGroup} className="input-icon" />
-                                    </div>
-                                )}
+                                <div className="floating-input-group full-width">
+                                    <input 
+                                        type="text" 
+                                        value={metaData.name} 
+                                        onChange={e => handleMetaChange('name', e.target.value)} 
+                                        placeholder=" " 
+                                    />
+                                    <label>Description / Name</label>
+                                    <FontAwesomeIcon icon={faFingerprint} className="input-icon" />
+                                </div>
 
-                                {effectiveMode === 'tmde' && (
-                                    <>
-                                        <div className="floating-input-group">
+                                {(effectiveMode === 'uut' || effectiveMode === 'tmde') && (
+                                    <div className="measurement-area-wrapper" style={{gridColumn: '1 / -1'}}>
+                                        <div className="floating-input-group" style={{flex: 1}}>
                                             <input 
                                                 type="text" 
-                                                value={metaData.assetId} 
-                                                onChange={e => handleMetaChange('assetId', e.target.value)} 
+                                                value={metaData.measurementArea} 
+                                                onChange={e => handleMetaChange('measurementArea', e.target.value)} 
                                                 placeholder=" " 
                                             />
-                                            <label>Asset ID</label>
-                                            <FontAwesomeIcon icon={faHashtag} className="input-icon" />
+                                            <label>Measurement Area</label>
+                                            <FontAwesomeIcon icon={faLayerGroup} className="input-icon" />
                                         </div>
-                                        <div className="floating-input-group small-width">
-                                            <input 
-                                                type="number" 
-                                                min="1"
-                                                value={metaData.quantity} 
-                                                onChange={e => handleMetaChange('quantity', parseInt(e.target.value))} 
-                                                placeholder=" " 
-                                            />
-                                            <label>Qty</label>
-                                        </div>
-                                    </>
+                                        <input 
+                                            type="color" 
+                                            className="color-picker-input"
+                                            value={metaData.measurementAreaColor}
+                                            onChange={e => handleMetaChange('measurementAreaColor', e.target.value)}
+                                            title="Area Color"
+                                        />
+                                    </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Editor Body */}
                         <div className="instrument-editor-body">
-                            {/* Sidebar */}
+                            {/* Sidebar: Restored Text Labels */}
                             <div className="function-nav-rail">
                                 <div className="rail-header">
-                                    <h5><FontAwesomeIcon icon={faCube} /> Functions</h5>
-                                    <button className="icon-action-btn" onClick={handleAddFunction} title="Add Function"><FontAwesomeIcon icon={faPlus} /></button>
+                                    <h5>Functions</h5>
+                                    <button className="icon-btn-ghost" onClick={handleAddFunction} title="Add Function"><FontAwesomeIcon icon={faPlus} /></button>
                                 </div>
                                 <div className="rail-list">
                                     {instrumentDef.functions.map(f => (
                                         <div key={f.id} className={`rail-item ${activeFunctionId === f.id ? 'active' : ''}`} onClick={() => setActiveFunctionId(f.id)}>
-                                            <span>{f.name}</span>
-                                            <button className="btn-icon-only danger small" onClick={(e) => { e.stopPropagation(); handleDeleteFunction(f.id); }}><FontAwesomeIcon icon={faTrashAlt} size="xs" /></button>
+                                            <FontAwesomeIcon icon={faCube} className="rail-item-icon" />
+                                            <span className="rail-item-text">{f.name}</span>
+                                            <button className="rail-delete-btn" onClick={(e) => { e.stopPropagation(); handleDeleteFunction(f.id); }} title="Delete">
+                                                <FontAwesomeIcon icon={faTrashAlt} size="sm" />
+                                            </button>
                                         </div>
                                     ))}
-                                    {instrumentDef.functions.length === 0 && <div className="empty-rail">No functions defined.</div>}
+                                    {instrumentDef.functions.length === 0 && <div className="empty-rail" style={{writingMode: 'horizontal-tb', transform: 'none', padding: '20px'}}>No Functions</div>}
                                 </div>
                             </div>
 
@@ -687,7 +641,7 @@ const UniversalInstrumentModal = ({
                                                 <input type="text" value={activeFunction.name} onChange={e => updateActiveFunction('name', e.target.value)} />
                                             </div>
                                             
-                                            <div className="workspace-input-group" style={{width: '180px'}}>
+                                            <div className="workspace-input-group" style={{width: '120px'}}>
                                                 <label>Base Unit</label>
                                                 <Select
                                                     value={categorizedUnitOptions.flatMap(g => g.options ? g.options : g).find(opt => opt.value === activeFunction.unit) || null}
@@ -702,13 +656,13 @@ const UniversalInstrumentModal = ({
 
                                         <div className="ranges-panel">
                                             <div className="panel-toolbar">
-                                                <h5><FontAwesomeIcon icon={faLayerGroup} /> Ranges</h5>
-                                                <button className="button small" onClick={handleAddRange}><FontAwesomeIcon icon={faPlus} /> Add Range</button>
+                                                <h5>Ranges</h5>
+                                                <button className="icon-btn-ghost" onClick={handleAddRange} title="Add Range"><FontAwesomeIcon icon={faPlus} /></button>
                                             </div>
                                             <div className="ranges-table-container">
                                                 <table className="ranges-table">
                                                     <thead>
-                                                        <tr><th style={{width:'20%'}}>Min</th><th style={{width:'20%'}}>Max</th><th style={{width:'20%'}}>Res</th><th style={{width:'30%'}}>Tolerance</th><th style={{width:'10%'}}>Actions</th></tr>
+                                                        <tr><th style={{width:'20%'}}>Min</th><th style={{width:'20%'}}>Max</th><th style={{width:'20%'}}>Res</th><th style={{width:'30%'}}>Tolerance</th><th style={{width:'10%'}}></th></tr>
                                                     </thead>
                                                     <tbody>
                                                         {activeFunction.ranges.map(range => (
@@ -722,7 +676,7 @@ const UniversalInstrumentModal = ({
                                                                         <FontAwesomeIcon icon={faEdit} />
                                                                     </div>
                                                                 </td>
-                                                                <td><button className="btn-icon-only danger" onClick={() => handleDeleteRange(range.id)}><FontAwesomeIcon icon={faTrashAlt} /></button></td>
+                                                                <td><button className="icon-btn-ghost" onClick={() => handleDeleteRange(range.id)} title="Delete Range"><FontAwesomeIcon icon={faTrashAlt} /></button></td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -733,7 +687,7 @@ const UniversalInstrumentModal = ({
                                 ) : (
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-color-muted)' }}>
                                         <FontAwesomeIcon icon={faCube} size="3x" style={{ marginBottom: '15px', opacity: 0.3 }} />
-                                        <p>Select or create a function to begin editing specs.</p>
+                                        <p>Select or create a function</p>
                                     </div>
                                 )}
                             </div>
@@ -741,8 +695,13 @@ const UniversalInstrumentModal = ({
 
                         {/* Footer */}
                         <div className="editor-actions">
-                            <button className="button primary large" onClick={handleSave}>
-                                <FontAwesomeIcon icon={faCheck} style={{ marginRight: '8px' }} /> Save Configuration
+                            <button 
+                                className="btn-large-icon" 
+                                onClick={handleSave} 
+                                disabled={!isFormValid}
+                                title={!isFormValid ? "Fill Manufacturer, Model, and Description" : "Save Configuration"}
+                            >
+                                <FontAwesomeIcon icon={faCheck} />
                             </button>
                         </div>
                     </div>
