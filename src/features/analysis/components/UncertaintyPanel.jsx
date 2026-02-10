@@ -932,7 +932,7 @@ const SummaryDashboard = ({
                                                 // CLICK HANDLERS
                                                 onClick={(e) => handleUutClick(e, uut.id)}
                                                 onMouseEnter={() => setHoveredRowId(uut.id)}
-                                                onDoubleClick={() => onSelectUut && onSelectUut(uut.id, uut.measurementAreaId, uut)}
+                                                onDoubleClick={() => onEditUut && onEditUut(uut)}
                                                 style={{
                                                     cursor: 'pointer',
                                                     transition: 'all 0.1s ease',
@@ -998,7 +998,7 @@ const SummaryDashboard = ({
                                                     backgroundColor: 'transparent'
                                                     }}
                                                     onClick={(e) => handleUutClick(e, uut.id)}
-                                                    onDoubleClick={() => onSelectUut && onSelectUut(uut.id, uut.measurementAreaId, uut)}
+                                                    onDoubleClick={() => onEditUut && onEditUut(uut)}
                                                 >
                                                     <td
                                                         className={`cell-tolerance ${hoveredCell.tableId === 'uut' && hoveredCell.colIndex === 2 ? 'col-hovered' : ''}`}

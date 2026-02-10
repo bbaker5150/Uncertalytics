@@ -34,8 +34,8 @@ import { unitCategories } from "./utils/uncertaintyMath";
 import "./App.css";
 
 const groupedUnitOptions = Object.entries(unitCategories).map(([category, units]) => ({
-    label: category,
-    options: units.map(u => ({ value: u, label: u }))
+  label: category,
+  options: units.map(u => ({ value: u, label: u }))
 }));
 
 // --- Icons ---
@@ -79,7 +79,7 @@ const getSidebarGridTemplate = (visibleColumns) => {
   if (visibleColumns.section) parts.push('50px');
   if (visibleColumns.value) parts.push('80px');
   if (visibleColumns.tolerance) parts.push('minmax(80px, 1fr)');
-  
+
   // Split Limits Columns
   if (visibleColumns.lowLimit) parts.push('minmax(60px, 0.8fr)');
   if (visibleColumns.highLimit) parts.push('minmax(60px, 0.8fr)');
@@ -98,7 +98,7 @@ const getSidebarGridTemplate = (visibleColumns) => {
 const getMinSidebarWidth = (visibleColumns) => {
   // Base width for padding, indentation, tree structure, etc.
   let width = 80; // Base padding/margin
-  
+
   // Add width for each visible column (use minimum values from grid template)
   if (visibleColumns.section) width += 55;
   if (visibleColumns.value) width += 85;
@@ -109,11 +109,11 @@ const getMinSidebarWidth = (visibleColumns) => {
   if (visibleColumns.pfr) width += 60;
   if (visibleColumns.tur) width += 60;
   if (visibleColumns.tar) width += 60;
-  
+
   // Add extra buffer for gaps (4px per column gap)
   const columnCount = Object.values(visibleColumns).filter(Boolean).length;
   width += columnCount * 4;
-  
+
   return width;
 };
 
@@ -456,159 +456,159 @@ const SidebarSessionHeader = ({ sessionData, onUpdate, isActive }) => {
       setEditingField(null);
     }
   };
-  
+
   const formatDate = (isoString) => {
-     if(!isoString) return "-";
-     const [y, m, d] = isoString.split('-');
-     return `${m}/${d}/${y}`;
+    if (!isoString) return "-";
+    const [y, m, d] = isoString.split('-');
+    return `${m}/${d}/${y}`;
   }
 
   return (
-      <div 
-        className={`sidebar-session-header ${isActive ? 'active' : ''}`}
-        title="Session Details"
-        style={{ 
-          padding: '12px 14px', 
-          borderBottom: '1px solid var(--border-color)', 
-          marginBottom: '10px',
-          cursor: 'default',
-          borderLeft: isActive ? '3px solid var(--primary-color)' : '3px solid transparent',
-          backgroundColor: isActive ? 'var(--background-color-secondary)' : 'transparent',
-          transition: 'all 0.2s ease'
-        }}
-      >
-          {/* TITLE / NAME */}
-          <div style={{ marginBottom: '4px' }}>
-              {editingField === 'name' ? (
-                  <input 
-                    autoFocus 
-                    value={tempValue} 
-                    onChange={e => setTempValue(e.target.value)} 
-                    onBlur={commitEdit}
-                    onKeyDown={handleKeyDown}
-                    onClick={e => e.stopPropagation()}
-                    className="session-header-input"
-                    style={{ fontSize: '1rem', fontWeight: 'bold' }}
-                  />
-              ) : (
-                  <div 
-                    onClick={(e) => startEdit(e, 'name', sessionData.name)}
-                    className="hover-editable"
-                    style={{ 
-                      fontSize: '1rem', 
-                      fontWeight: 'bold', 
-                      color: 'var(--primary-color)',
-                      whiteSpace: 'nowrap', 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis',
-                      cursor: 'text',
-                      minHeight: '1.4em'
-                    }}
-                    title="Edit Session Name"
-                  >
-                      {sessionData.name || "Untitled Session"}
-                  </div>
-              )}
+    <div
+      className={`sidebar-session-header ${isActive ? 'active' : ''}`}
+      title="Session Details"
+      style={{
+        padding: '12px 14px',
+        borderBottom: '1px solid var(--border-color)',
+        marginBottom: '10px',
+        cursor: 'default',
+        borderLeft: isActive ? '3px solid var(--primary-color)' : '3px solid transparent',
+        backgroundColor: isActive ? 'var(--background-color-secondary)' : 'transparent',
+        transition: 'all 0.2s ease'
+      }}
+    >
+      {/* TITLE / NAME */}
+      <div style={{ marginBottom: '4px' }}>
+        {editingField === 'name' ? (
+          <input
+            autoFocus
+            value={tempValue}
+            onChange={e => setTempValue(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={handleKeyDown}
+            onClick={e => e.stopPropagation()}
+            className="session-header-input"
+            style={{ fontSize: '1rem', fontWeight: 'bold' }}
+          />
+        ) : (
+          <div
+            onClick={(e) => startEdit(e, 'name', sessionData.name)}
+            className="hover-editable"
+            style={{
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              color: 'var(--primary-color)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              cursor: 'text',
+              minHeight: '1.4em'
+            }}
+            title="Edit Session Name"
+          >
+            {sessionData.name || "Untitled Session"}
           </div>
-
-          {/* 2x2 GRID FOR ORG, ANALYST, DOC, DATE */}
-          <div className="session-header-grid">
-              
-              {/* ORGANIZATION */}
-              <div className="session-header-field">
-                 <span className="session-header-label">Organization</span>
-                 {editingField === 'organization' ? (
-                     <input 
-                        autoFocus 
-                        value={tempValue}
-                        onChange={e => setTempValue(e.target.value)}
-                        onBlur={commitEdit}
-                        onKeyDown={handleKeyDown}
-                        onClick={e => e.stopPropagation()}
-                        className="session-header-input"
-                     />
-                 ) : (
-                    <div 
-                      onClick={(e) => startEdit(e, 'organization', sessionData.organization)} 
-                      className="session-header-value"
-                      title={sessionData.organization || "Click to add Organization"}
-                    >
-                        {sessionData.organization || <span style={{opacity: 0.5}}>-</span>}
-                    </div>
-                 )}
-              </div>
-
-              {/* ANALYST */}
-              <div className="session-header-field">
-                 <span className="session-header-label">Analyst</span>
-                 {editingField === 'analyst' ? (
-                     <input 
-                        autoFocus 
-                        value={tempValue}
-                        onChange={e => setTempValue(e.target.value)}
-                        onBlur={commitEdit}
-                        onKeyDown={handleKeyDown}
-                        onClick={e => e.stopPropagation()}
-                        className="session-header-input"
-                     />
-                 ) : (
-                    <div 
-                      onClick={(e) => startEdit(e, 'analyst', sessionData.analyst)} 
-                      className="session-header-value"
-                    >
-                        {sessionData.analyst || <span style={{opacity: 0.5}}>-</span>}
-                    </div>
-                 )}
-              </div>
-
-              {/* DOC ID */}
-              <div className="session-header-field">
-                 <span className="session-header-label">Doc ID</span>
-                 {editingField === 'document' ? (
-                     <input 
-                        autoFocus 
-                        value={tempValue}
-                        onChange={e => setTempValue(e.target.value)}
-                        onBlur={commitEdit}
-                        onKeyDown={handleKeyDown}
-                        onClick={e => e.stopPropagation()}
-                        className="session-header-input"
-                     />
-                 ) : (
-                    <div 
-                      onClick={(e) => startEdit(e, 'document', sessionData.document)} 
-                      className="session-header-value"
-                    >
-                        {sessionData.document || <span style={{opacity: 0.5}}>-</span>}
-                    </div>
-                 )}
-              </div>
-
-               {/* DATE */}
-               <div className="session-header-field">
-                 <span className="session-header-label">Date</span>
-                 {editingField === 'documentDate' ? (
-                     <input 
-                        type="date"
-                        autoFocus 
-                        value={tempValue}
-                        onChange={e => setTempValue(e.target.value)}
-                        onBlur={commitEdit}
-                        onKeyDown={handleKeyDown}
-                        onClick={e => e.stopPropagation()}
-                        className="session-header-input"
-                     />
-                 ) : (
-                    <div 
-                      onClick={(e) => startEdit(e, 'documentDate', sessionData.documentDate)} 
-                      className="session-header-value"
-                    >
-                        {formatDate(sessionData.documentDate)}
-                    </div>
-                 )}
-              </div>
-          </div>
+        )}
       </div>
+
+      {/* 2x2 GRID FOR ORG, ANALYST, DOC, DATE */}
+      <div className="session-header-grid">
+
+        {/* ORGANIZATION */}
+        <div className="session-header-field">
+          <span className="session-header-label">Organization</span>
+          {editingField === 'organization' ? (
+            <input
+              autoFocus
+              value={tempValue}
+              onChange={e => setTempValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              onClick={e => e.stopPropagation()}
+              className="session-header-input"
+            />
+          ) : (
+            <div
+              onClick={(e) => startEdit(e, 'organization', sessionData.organization)}
+              className="session-header-value"
+              title={sessionData.organization || "Click to add Organization"}
+            >
+              {sessionData.organization || <span style={{ opacity: 0.5 }}>-</span>}
+            </div>
+          )}
+        </div>
+
+        {/* ANALYST */}
+        <div className="session-header-field">
+          <span className="session-header-label">Analyst</span>
+          {editingField === 'analyst' ? (
+            <input
+              autoFocus
+              value={tempValue}
+              onChange={e => setTempValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              onClick={e => e.stopPropagation()}
+              className="session-header-input"
+            />
+          ) : (
+            <div
+              onClick={(e) => startEdit(e, 'analyst', sessionData.analyst)}
+              className="session-header-value"
+            >
+              {sessionData.analyst || <span style={{ opacity: 0.5 }}>-</span>}
+            </div>
+          )}
+        </div>
+
+        {/* DOC ID */}
+        <div className="session-header-field">
+          <span className="session-header-label">Doc ID</span>
+          {editingField === 'document' ? (
+            <input
+              autoFocus
+              value={tempValue}
+              onChange={e => setTempValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              onClick={e => e.stopPropagation()}
+              className="session-header-input"
+            />
+          ) : (
+            <div
+              onClick={(e) => startEdit(e, 'document', sessionData.document)}
+              className="session-header-value"
+            >
+              {sessionData.document || <span style={{ opacity: 0.5 }}>-</span>}
+            </div>
+          )}
+        </div>
+
+        {/* DATE */}
+        <div className="session-header-field">
+          <span className="session-header-label">Date</span>
+          {editingField === 'documentDate' ? (
+            <input
+              type="date"
+              autoFocus
+              value={tempValue}
+              onChange={e => setTempValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              onClick={e => e.stopPropagation()}
+              className="session-header-input"
+            />
+          ) : (
+            <div
+              onClick={(e) => startEdit(e, 'documentDate', sessionData.documentDate)}
+              className="session-header-value"
+            >
+              {formatDate(sessionData.documentDate)}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -678,7 +678,7 @@ function App() {
   const [sessionImageCache, setSessionImageCache] = useState(new Map());
   const [riskResults, setRiskResults] = useState(null);
 
-  const [sidebarWidth, setSidebarWidth] = useState(550); 
+  const [sidebarWidth, setSidebarWidth] = useState(550);
   const isResizingRef = useRef(false);
 
   // --- SIDEBAR PREFERENCES ---
@@ -713,7 +713,7 @@ function App() {
 
       // Apply constraints
       const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(e.clientX, effectiveLimit));
-      
+
       setSidebarWidth(newWidth);
     };
 
@@ -721,7 +721,7 @@ function App() {
       if (isResizingRef.current) {
         isResizingRef.current = false;
         document.body.style.cursor = 'default';
-        document.body.style.userSelect = 'auto'; 
+        document.body.style.userSelect = 'auto';
       }
     };
 
@@ -815,7 +815,7 @@ function App() {
 
   // ---  Table Selection State ---
   const [selectedTablePointIds, setSelectedTablePointIds] = useState([]);
-  
+
   // --- NEW: Sidebar Multi-Select State ---
   const [selectedSidebarPointIds, setSelectedSidebarPointIds] = useState([]);
 
@@ -937,79 +937,79 @@ function App() {
 
     // RANGE CHECK HELPER
     const isValueInRange = (val, unit, range) => {
-        if (!range) return true; // No range specified = compatible (default behavior)
-        const numVal = parseFloat(val);
-        if (isNaN(numVal)) return true; // Non-numeric = pass
-        
-        const min = parseFloat(range.min);
-        const max = parseFloat(range.max);
-        
-        // Unit check (relaxed)
-        const unitMatch = !unit || !range.unit || unit.toLowerCase() === range.unit.toLowerCase();
-        
-        if (!isNaN(min) && !isNaN(max)) {
-           return unitMatch && numVal >= min && numVal <= max;
-        }
-        return unitMatch;
+      if (!range) return true; // No range specified = compatible (default behavior)
+      const numVal = parseFloat(val);
+      if (isNaN(numVal)) return true; // Non-numeric = pass
+
+      const min = parseFloat(range.min);
+      const max = parseFloat(range.max);
+
+      // Unit check (relaxed)
+      const unitMatch = !unit || !range.unit || unit.toLowerCase() === range.unit.toLowerCase();
+
+      if (!isNaN(min) && !isNaN(max)) {
+        return unitMatch && numVal >= min && numVal <= max;
+      }
+      return unitMatch;
     };
 
     let errorCount = 0;
 
     pointsToPaste.forEach(pt => {
-        // Create new point object (Clean ID)
-        const newPointData = { ...pt };
-        delete newPointData.id;
-        newPointData.measurementAreaId = resolvedAreaId;
-        newPointData.associatedUutIds = [targetUutId];
+      // Create new point object (Clean ID)
+      const newPointData = { ...pt };
+      delete newPointData.id;
+      newPointData.measurementAreaId = resolvedAreaId;
+      newPointData.associatedUutIds = [targetUutId];
 
-        const val = newPointData.testPointInfo?.parameter?.value;
-        const unit = newPointData.testPointInfo?.parameter?.unit;
+      const val = newPointData.testPointInfo?.parameter?.value;
+      const unit = newPointData.testPointInfo?.parameter?.unit;
 
-        // Resolve Tolerance
-        if (targetRange) {
-           // Strict Check if pasting into specific Range
-           if (!isValueInRange(val, unit, targetRange)) {
-               errorCount++;
-               return; 
-           }
-           newPointData.uutTolerance = targetRange;
-        } else if (targetUut) {
-            // Auto-Resolve
-            const matched = findMatchingRange(targetUut, val, unit);
-            newPointData.uutTolerance = matched || null;
-            // If dropped on UUT generally, we assume if it matches ANY range it's fine,
-            // or if it doesn't match any, it goes to default/uncategorized.
-            // The constraint "ensure they aren't being moved into a range they cant be in" 
-            // usually applies most strictly to specific range targets.
+      // Resolve Tolerance
+      if (targetRange) {
+        // Strict Check if pasting into specific Range
+        if (!isValueInRange(val, unit, targetRange)) {
+          errorCount++;
+          return;
         }
-        newPoints.push(newPointData);
+        newPointData.uutTolerance = targetRange;
+      } else if (targetUut) {
+        // Auto-Resolve
+        const matched = findMatchingRange(targetUut, val, unit);
+        newPointData.uutTolerance = matched || null;
+        // If dropped on UUT generally, we assume if it matches ANY range it's fine,
+        // or if it doesn't match any, it goes to default/uncategorized.
+        // The constraint "ensure they aren't being moved into a range they cant be in" 
+        // usually applies most strictly to specific range targets.
+      }
+      newPoints.push(newPointData);
     });
 
     if (errorCount > 0) {
-        showToast(`Skipped ${errorCount} point(s) outside target range.`, "error");
+      showToast(`Skipped ${errorCount} point(s) outside target range.`, "error");
     }
 
     if (newPoints.length > 0) {
-        saveTestPoint(newPoints, null); // Batch save if supported, else loop. saveTestPoint handles array?
-        // Checking saveTestPoint impl... it calls updateSession. 
-        // We might need to check if saveTestPoint handles arrays. 
-        // Logic at 1276 suggests it handles batch if `associatedUutIds` > 1 but here we have multiple POINTS.
-        // Let's assume we modify saveTestPoint or call it in loop.
-        // Actually, safer to loop for now unless we verify saveTestPoint supports point array.
-        // Looking at line 1282: `saveTestPoint(batchPoints, null)` where batchPoints is array.
-        // So it likely supports it.
-        
-        // Wait, line 409 `saveTestPoint` comes from `useSessionManager`.
-        // I can't see `useSessionManager`. 
-        // However, `handleSaveTestPoint` in App.jsx (line 1275) uses it.
-        // Reuse safe assumption: saveTestPoint(newPoints) works if it accepts array.
-        // If not, use loop.
-        // `updateSession` takes full session object. 
-        // `saveTestPoint` usually helper.
-        // Let's pass array.
-         saveTestPoint(newPoints, null);
-         showToast(`${newPoints.length} point(s) pasted processing.`);
-         setSelectedTestPointContextUutId(targetUutId);
+      saveTestPoint(newPoints, null); // Batch save if supported, else loop. saveTestPoint handles array?
+      // Checking saveTestPoint impl... it calls updateSession. 
+      // We might need to check if saveTestPoint handles arrays. 
+      // Logic at 1276 suggests it handles batch if `associatedUutIds` > 1 but here we have multiple POINTS.
+      // Let's assume we modify saveTestPoint or call it in loop.
+      // Actually, safer to loop for now unless we verify saveTestPoint supports point array.
+      // Looking at line 1282: `saveTestPoint(batchPoints, null)` where batchPoints is array.
+      // So it likely supports it.
+
+      // Wait, line 409 `saveTestPoint` comes from `useSessionManager`.
+      // I can't see `useSessionManager`. 
+      // However, `handleSaveTestPoint` in App.jsx (line 1275) uses it.
+      // Reuse safe assumption: saveTestPoint(newPoints) works if it accepts array.
+      // If not, use loop.
+      // `updateSession` takes full session object. 
+      // `saveTestPoint` usually helper.
+      // Let's pass array.
+      saveTestPoint(newPoints, null);
+      showToast(`${newPoints.length} point(s) pasted processing.`);
+      setSelectedTestPointContextUutId(targetUutId);
     }
   }, [clipboardPoint, currentSessionData, saveTestPoint, setSelectedTestPointContextUutId]);
 
@@ -1024,25 +1024,25 @@ function App() {
       // 2. Ctrl+C for Copy Point
       if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
         if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-           if (selectedSidebarPointIds.length > 0) {
-              const points = currentTestPoints.filter(p => selectedSidebarPointIds.includes(p.id));
-              if (points.length > 0) {
-                 e.preventDefault();
-                 handleCopyPoint(points);
-              }
-           } else if (selectedTestPointId) {
-             const point = currentTestPoints.find(p => p.id === selectedTestPointId);
-             if (point) {
-               e.preventDefault();
-               handleCopyPoint(point);
-             }
-           }
+          if (selectedSidebarPointIds.length > 0) {
+            const points = currentTestPoints.filter(p => selectedSidebarPointIds.includes(p.id));
+            if (points.length > 0) {
+              e.preventDefault();
+              handleCopyPoint(points);
+            }
+          } else if (selectedTestPointId) {
+            const point = currentTestPoints.find(p => p.id === selectedTestPointId);
+            if (point) {
+              e.preventDefault();
+              handleCopyPoint(point);
+            }
+          }
         }
       }
 
       // 3. Ctrl+V for Paste Point
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-         // (Paste logic remains mostly same, just checking clipboard array)
+        // (Paste logic remains mostly same, just checking clipboard array)
         if (clipboardPoint && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
           e.preventDefault();
           // Determine target from selection state
@@ -1079,13 +1079,13 @@ function App() {
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (e.key === 'Delete') {
           if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-             if (selectedSidebarPointIds.length > 0) {
-                e.preventDefault();
-                handleDeleteTestPoint(selectedSidebarPointIds);
-             } else if (selectedTestPointId) {
-                e.preventDefault();
-                handleDeleteTestPoint(selectedTestPointId);
-             }
+            if (selectedSidebarPointIds.length > 0) {
+              e.preventDefault();
+              handleDeleteTestPoint(selectedSidebarPointIds);
+            } else if (selectedTestPointId) {
+              e.preventDefault();
+              handleDeleteTestPoint(selectedTestPointId);
+            }
           }
         }
       }
@@ -1141,13 +1141,13 @@ function App() {
   const handleDragStart = (e, pointId) => {
     // If dragging an item that is NOT in the selection, make it the only selection
     if (!selectedSidebarPointIds.includes(pointId)) {
-       setSelectedSidebarPointIds([pointId]);
-       setDraggedPointId(pointId); 
+      setSelectedSidebarPointIds([pointId]);
+      setDraggedPointId(pointId);
     } else {
-       // Dragging a selected item = dragging the group
-       setDraggedPointId(pointId); // Still track primary for generic logic
+      // Dragging a selected item = dragging the group
+      setDraggedPointId(pointId); // Still track primary for generic logic
     }
-    
+
     e.dataTransfer.effectAllowed = "move";
     // Optional: Set drag preview size/text if multiple
   };
@@ -1171,9 +1171,9 @@ function App() {
     // Identify points to move
     let pointsToMoveIds = [];
     if (draggedPointId && selectedSidebarPointIds.includes(draggedPointId)) {
-        pointsToMoveIds = [...selectedSidebarPointIds];
+      pointsToMoveIds = [...selectedSidebarPointIds];
     } else if (draggedPointId) {
-        pointsToMoveIds = [draggedPointId];
+      pointsToMoveIds = [draggedPointId];
     }
 
     if (pointsToMoveIds.length === 0) return;
@@ -1192,18 +1192,18 @@ function App() {
 
     // --- RANGE CHECK FUNCTION ---
     const isValueInRange = (val, unit, range) => {
-        if (!range) return true;
-        const numVal = parseFloat(val);
-        if (isNaN(numVal)) return true;
-        
-        const min = parseFloat(range.min);
-        const max = parseFloat(range.max);
-        const unitMatch = !unit || !range.unit || unit.toLowerCase() === range.unit.toLowerCase();
-        
-        if (!isNaN(min) && !isNaN(max)) {
-           return unitMatch && numVal >= min && numVal <= max;
-        }
-        return unitMatch;
+      if (!range) return true;
+      const numVal = parseFloat(val);
+      if (isNaN(numVal)) return true;
+
+      const min = parseFloat(range.min);
+      const max = parseFloat(range.max);
+      const unitMatch = !unit || !range.unit || unit.toLowerCase() === range.unit.toLowerCase();
+
+      if (!isNaN(min) && !isNaN(max)) {
+        return unitMatch && numVal >= min && numVal <= max;
+      }
+      return unitMatch;
     };
 
 
@@ -1211,50 +1211,50 @@ function App() {
     let errorCount = 0;
 
     pointsToMoveIds.forEach(pId => {
-        const pointToProcess = currentTestPoints.find(p => p.id === pId);
-        if (!pointToProcess) return;
+      const pointToProcess = currentTestPoints.find(p => p.id === pId);
+      if (!pointToProcess) return;
 
-        const val = pointToProcess.testPointInfo?.parameter?.value;
-        const unit = pointToProcess.testPointInfo?.parameter?.unit;
+      const val = pointToProcess.testPointInfo?.parameter?.value;
+      const unit = pointToProcess.testPointInfo?.parameter?.unit;
 
-        // CHECK VALIDITY
-        if (targetRange) {
-             if (!isValueInRange(val, unit, targetRange)) {
-                 errorCount++;
-                 return;
-             }
+      // CHECK VALIDITY
+      if (targetRange) {
+        if (!isValueInRange(val, unit, targetRange)) {
+          errorCount++;
+          return;
         }
-        
-        const updatedPointData = {
-          ...pointToProcess,
-          measurementAreaId: resolvedAreaId, // Use resolved ID
-          associatedUutIds: [targetUutId],
-        };
+      }
 
-        // Tolerance Logic
-        if (targetRange) {
-          updatedPointData.uutTolerance = targetRange;
-        } else if (targetUut) {
-          const matched = findMatchingRange(targetUut, val, unit);
-          updatedPointData.uutTolerance = matched || null;
-        }
-        
-        updatesToSave.push(updatedPointData);
+      const updatedPointData = {
+        ...pointToProcess,
+        measurementAreaId: resolvedAreaId, // Use resolved ID
+        associatedUutIds: [targetUutId],
+      };
+
+      // Tolerance Logic
+      if (targetRange) {
+        updatedPointData.uutTolerance = targetRange;
+      } else if (targetUut) {
+        const matched = findMatchingRange(targetUut, val, unit);
+        updatedPointData.uutTolerance = matched || null;
+      }
+
+      updatesToSave.push(updatedPointData);
     });
-    
+
     if (errorCount > 0) {
-        showToast(`Move rejected: ${errorCount} point(s) do not fit in target range.`, "error");
-        // Force failure of whole batch or just partial?
-        // User says "ensure they aren't being moved". Partial success is risky. 
-        // Best to abort ALL if dragging as a group to maintain integrity, OR just skip invalid.
-        // "let the user no this point falls outside"
-        // I will skip invalid and move valid, but if ALL are invalid, nothing happens.
+      showToast(`Move rejected: ${errorCount} point(s) do not fit in target range.`, "error");
+      // Force failure of whole batch or just partial?
+      // User says "ensure they aren't being moved". Partial success is risky. 
+      // Best to abort ALL if dragging as a group to maintain integrity, OR just skip invalid.
+      // "let the user no this point falls outside"
+      // I will skip invalid and move valid, but if ALL are invalid, nothing happens.
     }
 
     if (updatesToSave.length > 0) {
-        saveTestPoint(updatesToSave, null);
-        showToast(`Moved ${updatesToSave.length} measurement point${updatesToSave.length > 1 ? 's' : ''}`);
-        setSelectedTestPointContextUutId(targetUutId);
+      saveTestPoint(updatesToSave, null);
+      showToast(`Moved ${updatesToSave.length} measurement point${updatesToSave.length > 1 ? 's' : ''}`);
+      setSelectedTestPointContextUutId(targetUutId);
     }
 
     setDraggedPointId(null);
@@ -1352,37 +1352,37 @@ function App() {
     // Multi-Select Logic
     let newSelection = [];
     if (e && (e.ctrlKey || e.metaKey)) {
-       if (selectedSidebarPointIds.includes(tpId)) {
-          newSelection = selectedSidebarPointIds.filter(id => id !== tpId);
-       } else {
-          newSelection = [...selectedSidebarPointIds, tpId];
-       }
-    } else if (e && e.shiftKey && selectedSidebarPointIds.length > 0) {
-       // Shift Select (Simple range logic within visual list is hard without flat index, 
-       // but we can try basic or just fallback to additive). 
-       // For now, implementing additive or last-selected.
-       // User asked "similar to UUT / TMDE tables". Table usually does range.
-       // Since the tree is nested, linear index is tricky.
-       // We'll treat shift as "add to selection" for simplicity unless we flat map the tree.
-       // A better shift would be: if we have a lastSelectedId, find range.
-       // Giving the complexity of tree, let's stick to Ctrl toggle first, or simple append.
+      if (selectedSidebarPointIds.includes(tpId)) {
+        newSelection = selectedSidebarPointIds.filter(id => id !== tpId);
+      } else {
         newSelection = [...selectedSidebarPointIds, tpId];
+      }
+    } else if (e && e.shiftKey && selectedSidebarPointIds.length > 0) {
+      // Shift Select (Simple range logic within visual list is hard without flat index, 
+      // but we can try basic or just fallback to additive). 
+      // For now, implementing additive or last-selected.
+      // User asked "similar to UUT / TMDE tables". Table usually does range.
+      // Since the tree is nested, linear index is tricky.
+      // We'll treat shift as "add to selection" for simplicity unless we flat map the tree.
+      // A better shift would be: if we have a lastSelectedId, find range.
+      // Giving the complexity of tree, let's stick to Ctrl toggle first, or simple append.
+      newSelection = [...selectedSidebarPointIds, tpId];
     } else {
-       newSelection = [tpId];
+      newSelection = [tpId];
     }
-    
+
     setSelectedSidebarPointIds(newSelection);
-  
+
     // Update Single Selection State (Legacy/Detail View)
     // If multiple selected, detail view usually shows the LAST one or clears.
     // Existing logic expects `selectedTestPointId` to be a string.
     if (newSelection.length === 1) {
-        setSelectedTestPointId(newSelection[0]);
+      setSelectedTestPointId(newSelection[0]);
     } else {
-        // If multiple, maybe clear detail view or show "X points selected"?
-        // UncertaintyPanel expects single ID.
-        // We'll keep selectedTestPointId as the *last* clicked logic or null.
-        setSelectedTestPointId(tpId); 
+      // If multiple, maybe clear detail view or show "X points selected"?
+      // UncertaintyPanel expects single ID.
+      // We'll keep selectedTestPointId as the *last* clicked logic or null.
+      setSelectedTestPointId(tpId);
     }
 
     setSelectedRangeContext(null); // Clear range
@@ -1544,16 +1544,16 @@ function App() {
     // FIX: If editing an existing UUT, look up its area color so the modal 
     // initializes with the correct color instead of defaulting to Blue.
     if (uut && uut.measurementAreaId && currentSessionData?.measurementAreas) {
-       const area = currentSessionData.measurementAreas.find(a => a.id === uut.measurementAreaId);
-       if (area) {
-          dataWithColor = { ...uut, measurementAreaColor: area.color };
-       }
+      const area = currentSessionData.measurementAreas.find(a => a.id === uut.measurementAreaId);
+      if (area) {
+        dataWithColor = { ...uut, measurementAreaColor: area.color };
+      }
     } else if (uut && uut.measurementArea && currentSessionData?.measurementAreas) {
-       // Fallback: Lookup by name if ID is missing
-       const area = currentSessionData.measurementAreas.find(a => a.name === uut.measurementArea);
-       if (area) {
-          dataWithColor = { ...uut, measurementAreaColor: area.color };
-       }
+      // Fallback: Lookup by name if ID is missing
+      const area = currentSessionData.measurementAreas.find(a => a.name === uut.measurementArea);
+      if (area) {
+        dataWithColor = { ...uut, measurementAreaColor: area.color };
+      }
     }
 
     setInstrumentModalConfig({ mode: 'uut', data: dataWithColor });
@@ -1591,25 +1591,25 @@ function App() {
       // Handle Measurement Area Logic
       if (cleanName) {
         const existingAreaIndex = updatedMeasurementAreas.findIndex(a => a.name.toLowerCase() === cleanName.toLowerCase());
-        
+
         if (existingAreaIndex >= 0) {
           resolvedAreaId = updatedMeasurementAreas[existingAreaIndex].id;
-          
+
           // FIX: Explicitly update the area color if the modal sent a new one
           if (data.measurementAreaColor) {
-             console.log(`[App.jsx] Updating area '${cleanName}' color to ${data.measurementAreaColor}`);
-             updatedMeasurementAreas[existingAreaIndex] = {
-                 ...updatedMeasurementAreas[existingAreaIndex],
-                 color: data.measurementAreaColor
-             };
+            console.log(`[App.jsx] Updating area '${cleanName}' color to ${data.measurementAreaColor}`);
+            updatedMeasurementAreas[existingAreaIndex] = {
+              ...updatedMeasurementAreas[existingAreaIndex],
+              color: data.measurementAreaColor
+            };
           }
         } else {
           // FIX: Create New Area with the specific color from the modal
           console.log(`[App.jsx] Creating new area '${cleanName}' with color ${data.measurementAreaColor}`);
-          const newArea = { 
-             id: uuidv4(), 
-             name: cleanName, 
-             color: data.measurementAreaColor || '#3498db' 
+          const newArea = {
+            id: uuidv4(),
+            name: cleanName,
+            color: data.measurementAreaColor || '#3498db'
           };
           updatedMeasurementAreas.push(newArea);
           resolvedAreaId = newArea.id;
@@ -1627,7 +1627,7 @@ function App() {
       // Update Session UUTs (Replace if ID exists, otherwise append)
       const existingUutIndex = (currentSessionData.uuts || []).findIndex(u => u.id === newUut.id);
       const updatedUuts = [...(currentSessionData.uuts || [])];
-      
+
       if (existingUutIndex >= 0) {
         updatedUuts[existingUutIndex] = newUut;
       } else {
@@ -1666,7 +1666,7 @@ function App() {
       }
       const existingTmdeIndex = (currentSessionData.tmdes || []).findIndex(t => t.id === newTmde.id);
       const updatedTmdes = [...(currentSessionData.tmdes || [])];
-      if (existingTmdeIndex >= 0) { updatedTmdes[existingTmdeIndex] = newTmde; } 
+      if (existingTmdeIndex >= 0) { updatedTmdes[existingTmdeIndex] = newTmde; }
       else { updatedTmdes.push(newTmde); }
       updateSession({ ...currentSessionData, tmdes: updatedTmdes });
     }
@@ -2164,13 +2164,13 @@ function App() {
           <div className="results-workflow-container">
             <aside
               className="results-sidebar"
-              style={{ 
-                width: `${sidebarWidth}px`, 
+              style={{
+                width: `${sidebarWidth}px`,
                 minWidth: `${sidebarWidth}px`,
                 maxWidth: `${sidebarWidth}px`,
                 position: 'relative',
                 display: 'flex',
-                flexDirection: 'column' 
+                flexDirection: 'column'
               }}
             >
               {/* NEW: DRAG HANDLE */}
@@ -2198,7 +2198,7 @@ function App() {
 
                 {/* 1. DASHBOARD HOME BUTTON */}
                 {/* 1. DASHBOARD HOME BUTTON / SESSION HEADER */}
-                <SidebarSessionHeader 
+                <SidebarSessionHeader
                   sessionData={currentSessionData}
                   onUpdate={updateSession}
                   isActive={selectedSessionId && !selectedAreaId && !selectedTestPointId && !selectedRangeContext}
@@ -2213,6 +2213,7 @@ function App() {
                 </div>
                 <div className="sidebar-toolbar" style={{ marginTop: 0 }}>
                   <div className="sidebar-quick-add">
+                    {/* Section Input: Uses specific class for smaller width */}
                     <input
                       type="text"
                       placeholder="Section"
@@ -2221,6 +2222,8 @@ function App() {
                       onKeyDown={(e) => e.key === 'Enter' && handleQuickAddPoint()}
                       className="quick-add-input section"
                     />
+
+                    {/* Value Input: Uses generic class for standard width */}
                     <input
                       type="text"
                       placeholder="Value"
@@ -2228,112 +2231,99 @@ function App() {
                       onChange={(e) => setQuickAddValue(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleQuickAddPoint()}
                       className="quick-add-input"
-                      style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                          border: '1px solid transparent',
-                          borderRadius: '4px',
-                          color: 'var(--text-color)',
-                          padding: '0 8px',
-                          lineHeight: '26px',
-                          height: '28px',
-                          fontSize: '0.85rem',
-                          width: '80px',
-                          transition: 'all 0.2s ease',
-                          outline: 'none'
-                      }}
-                      onFocus={(e) => e.target.style.borderColor = 'var(--primary-color)'}
-                      onBlur={(e) => e.target.style.borderColor = 'transparent'}
-                      onMouseEnter={(e) => { if(document.activeElement !== e.target) e.target.style.borderColor = 'var(--border-color)'; }}
-                      onMouseLeave={(e) => { if(document.activeElement !== e.target) e.target.style.borderColor = 'transparent'; }}
                     />
+
+                    {/* Unit Selector */}
                     <div style={{ width: '90px', zIndex: 1001 }} className="quick-add-unit-wrapper">
                       <Select
                         options={groupedUnitOptions}
                         value={quickAddUnit ? { value: quickAddUnit, label: quickAddUnit } : null}
                         onChange={(opt) => setQuickAddUnit(opt ? opt.value : '')}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                handleQuickAddPoint();
-                            }
+                          if (e.key === 'Enter') {
+                            handleQuickAddPoint();
+                          }
                         }}
                         placeholder="Unit"
                         isClearable
-                        menuPortalTarget={document.body} 
+                        menuPortalTarget={document.body}
                         styles={{
-                            control: (base, state) => ({
-                                ...base,
-                                backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                                borderColor: state.isFocused ? 'var(--primary-color)' : 'transparent',
-                                color: 'var(--text-color)',
-                                minHeight: '28px',
-                                height: '28px',
-                                fontSize: '0.85rem',
-                                borderRadius: '4px',
-                                boxShadow: 'none',
-                                transition: 'all 0.2s ease',
-                                '&:hover': {
-                                    borderColor: state.isFocused ? 'var(--primary-color)' : 'var(--border-color)'
-                                }
-                            }),
-                            valueContainer: (base) => ({
-                                ...base,
-                                padding: '0 4px',
-                                height: '28px',
-                            }),
-                            input: (base) => ({
-                                ...base,
-                                margin: 0,
-                                padding: 0,
-                                color: 'var(--text-color)',
-                            }),
-                            singleValue: (base) => ({
-                                ...base,
-                                color: 'var(--text-color)',
-                            }),
-                            placeholder: (base) => ({
-                                ...base,
-                                color: 'var(--text-color-muted)',
-                            }),
-                            dropdownIndicator: (base) => ({
-                                ...base,
-                                padding: '0 2px',
-                                color: 'var(--text-color-muted)'
-                            }),
-                            indicatorsContainer: (base) => ({
-                                ...base,
-                                height: '28px'
-                            }),
-                            groupHeading: (base) => ({
-                                ...base,
-                                color: 'var(--text-color-muted)',
-                                fontSize: '0.7rem',
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase',
-                                padding: '4px 8px'
-                            }),
-                            menu: (base) => ({
-                                ...base,
-                                backgroundColor: 'var(--component-bg)',
-                                zIndex: 9999,
-                                border: '1px solid var(--border-color)',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
-                            }),
-                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-                            option: (base, state) => ({
-                                ...base,
-                                backgroundColor: state.isFocused ? 'var(--primary-color-light)' : 'var(--component-bg)',
-                                color: 'var(--text-color)',
-                                cursor: 'pointer',
-                                fontSize: '0.8rem',
-                                padding: '4px 8px'
-                            }),
-                            menuList: (base) => ({
-                                ...base,
-                                overflowX: 'hidden'
-                            })
+                          control: (base, state) => ({
+                            ...base,
+                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                            borderColor: state.isFocused ? 'var(--primary-color)' : 'transparent',
+                            color: 'var(--text-color)',
+                            minHeight: '28px',
+                            height: '28px',
+                            fontSize: '0.85rem',
+                            borderRadius: '4px',
+                            boxShadow: 'none',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              borderColor: state.isFocused ? 'var(--primary-color)' : 'var(--border-color)'
+                            }
+                          }),
+                          valueContainer: (base) => ({
+                            ...base,
+                            padding: '0 4px',
+                            height: '28px',
+                          }),
+                          input: (base) => ({
+                            ...base,
+                            margin: 0,
+                            padding: 0,
+                            color: 'var(--text-color)',
+                          }),
+                          singleValue: (base) => ({
+                            ...base,
+                            color: 'var(--text-color)',
+                          }),
+                          placeholder: (base) => ({
+                            ...base,
+                            color: 'var(--text-color-muted)',
+                          }),
+                          dropdownIndicator: (base) => ({
+                            ...base,
+                            padding: '0 2px',
+                            color: 'var(--text-color-muted)'
+                          }),
+                          indicatorsContainer: (base) => ({
+                            ...base,
+                            height: '28px'
+                          }),
+                          groupHeading: (base) => ({
+                            ...base,
+                            color: 'var(--text-color-muted)',
+                            fontSize: '0.7rem',
+                            fontWeight: 'bold',
+                            textTransform: 'uppercase',
+                            padding: '4px 8px'
+                          }),
+                          menu: (base) => ({
+                            ...base,
+                            backgroundColor: 'var(--component-bg)',
+                            zIndex: 9999,
+                            border: '1px solid var(--border-color)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                          }),
+                          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                          option: (base, state) => ({
+                            ...base,
+                            backgroundColor: state.isFocused ? 'var(--primary-color-light)' : 'var(--component-bg)',
+                            color: 'var(--text-color)',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            padding: '4px 8px'
+                          }),
+                          menuList: (base) => ({
+                            ...base,
+                            overflowX: 'hidden'
+                          })
                         }}
                       />
                     </div>
+
+                    {/* Submit Button */}
                     <button
                       onClick={handleQuickAddPoint}
                       disabled={!quickAddValue || !quickAddUnit || (!selectedUutId && currentUutSelection.length === 0)}
@@ -2347,71 +2337,67 @@ function App() {
                   </div>
                 </div>
 
-                {/* 2. GLOBAL ACTIONS ROW (New Organic Div) */}
-                <div className="sidebar-global-actions" style={{ padding: '0 12px 8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                {/* 2. GLOBAL ACTIONS ROW (Refined & Organic) */}
+                <div className="sidebar-global-actions">
                   
-                  <span 
-                    style={{ 
-                        fontSize: '0.75rem', 
-                        fontWeight: 600, 
-                        color: 'var(--text-color-muted)', 
-                        marginRight: 'auto', 
-                        textTransform: 'uppercase', 
-                        letterSpacing: '0.5px',
-                        cursor: 'pointer',
-                        userSelect: 'none' 
-                    }}
-                    onClick={() => handleSelectSession(selectedSessionId)}
-                    title="Go to Session Overview"
-                    className="sidebar-header-link"
-                  >
+                  <span className="sidebar-section-title">
                     Measurement Points
                   </span>
 
-                  {/* UNIFIED EXPAND/COLLAPSE BUTTON */}
-                  <button
-                    onClick={handleToggleExpandAll}
-                    title={isGlobalExpanded ? "Collapse All" : "Expand All"}
-                    className="sidebar-filter-btn"
-                    style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}
-                  >
-                    <FontAwesomeIcon icon={isGlobalExpanded ? faCompressArrowsAlt : faExpandArrowsAlt} />
-                  </button>
-
-                  <div style={{ position: 'relative' }} ref={columnMenuRef}>
+                  <div className="sidebar-actions-group">
+                    {/* Eyeball: Go to Session Overview */}
                     <button
-                      onClick={() => setIsColumnMenuOpen(!isColumnMenuOpen)}
-                      title="Filter visible columns"
-                      className={`sidebar-filter-btn ${isColumnMenuOpen ? 'active' : ''}`}
-                      style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}
+                      onClick={() => handleSelectSession(selectedSessionId)}
+                      title="View Session Overview"
+                      className="sidebar-action-btn-organic"
                     >
-                      <FontAwesomeIcon icon={faSlidersH} />
+                      <FontAwesomeIcon icon={faEye} />
                     </button>
 
-                    {isColumnMenuOpen && (
-                      <div className="sidebar-filter-dropdown" style={{ top: '100%', right: 0, left: 'auto' }}>
-                        {[
-                          { key: 'section', label: 'Section' },
-                          { key: 'value', label: 'Value' },
-                          { key: 'tolerance', label: 'Tolerance' },
-                          { key: 'lowLimit', label: 'Low Limit' },
-                          { key: 'highLimit', label: 'High Limit' },
-                          { key: 'pfa', label: 'PFA' },
-                          { key: 'pfr', label: 'PFR' },
-                          { key: 'tur', label: 'TUR' },
-                          { key: 'tar', label: 'TAR' },
-                        ].map(col => (
-                          <label key={col.key} className="filter-option">
-                            <input
-                              type="checkbox"
-                              checked={sidebarColumns[col.key]}
-                              onChange={() => setSidebarColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
-                            />
-                            <span>{col.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
+                    {/* Expand/Collapse All */}
+                    <button
+                      onClick={handleToggleExpandAll}
+                      title={isGlobalExpanded ? "Collapse All" : "Expand All"}
+                      className="sidebar-action-btn-organic"
+                    >
+                      <FontAwesomeIcon icon={isGlobalExpanded ? faCompressArrowsAlt : faExpandArrowsAlt} />
+                    </button>
+
+                    {/* Column Filter Menu */}
+                    <div style={{ position: 'relative' }} ref={columnMenuRef}>
+                      <button
+                        onClick={() => setIsColumnMenuOpen(!isColumnMenuOpen)}
+                        title="Filter visible columns"
+                        className={`sidebar-action-btn-organic ${isColumnMenuOpen ? 'active' : ''}`}
+                      >
+                        <FontAwesomeIcon icon={faSlidersH} />
+                      </button>
+
+                      {isColumnMenuOpen && (
+                        <div className="sidebar-filter-dropdown" style={{ top: '100%', right: 0, left: 'auto' }}>
+                          {[
+                            { key: 'section', label: 'Section' },
+                            { key: 'value', label: 'Value' },
+                            { key: 'tolerance', label: 'Tolerance' },
+                            { key: 'lowLimit', label: 'Low Limit' },
+                            { key: 'highLimit', label: 'High Limit' },
+                            { key: 'pfa', label: 'PFA' },
+                            { key: 'pfr', label: 'PFR' },
+                            { key: 'tur', label: 'TUR' },
+                            { key: 'tar', label: 'TAR' },
+                          ].map(col => (
+                            <label key={col.key} className="filter-option">
+                              <input
+                                type="checkbox"
+                                checked={sidebarColumns[col.key]}
+                                onChange={() => setSidebarColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
+                              />
+                              <span>{col.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -2596,7 +2582,7 @@ function App() {
                                                     minWidth: 'min-content'
                                                   }}
                                                 >
-                                                {sidebarColumns.section && <span>Sect.</span>}
+                                                  {sidebarColumns.section && <span>Sect.</span>}
                                                   {sidebarColumns.value && <span>Value</span>}
                                                   {sidebarColumns.tolerance && <span>Tolerance</span>}
                                                   {sidebarColumns.lowLimit && <span>Low</span>}
@@ -2648,12 +2634,12 @@ function App() {
                                           <span>Other Points</span>
                                         </div>
                                         {group.uncategorizedPoints.map(tp => (
-                                            <SidebarPointItem
-                                              key={tp.id}
-                                              point={tp}
-                                              isSelected={selectedSidebarPointIds.includes(tp.id)}
-                                              isTableSelected={selectedTablePointIds.includes(tp.id)}
-                                              onSelect={(e) => handleSelectTestPoint(e, tp.id, group.id)}
+                                          <SidebarPointItem
+                                            key={tp.id}
+                                            point={tp}
+                                            isSelected={selectedSidebarPointIds.includes(tp.id)}
+                                            isTableSelected={selectedTablePointIds.includes(tp.id)}
+                                            onSelect={(e) => handleSelectTestPoint(e, tp.id, group.id)}
                                             onModalOpen={(p) => { setEditingTestPoint(p); setIsAddModalOpen(true); }}
                                             onSave={handleInlinePointUpdate}
                                             onDragStart={handleDragStart}
