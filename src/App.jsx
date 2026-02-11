@@ -12,7 +12,7 @@ import AddTestPointModal from "./features/testPoints/components/AddTestPointModa
 import TestPointDetailView from "./features/testPoints/components/TestPointDetailView";
 import ToleranceToolModal from "./features/testPoints/components/ToleranceToolModal";
 import EditSessionModal from "./features/session/components/EditSessionModal";
-import OverviewModal from "./features/session/components/OverviewModal";
+// OverviewModal Removed
 import ContextMenu from "./components/common/ContextMenu";
 import FullBreakdownModal from "./features/analysis/components/BreakdownModals/FullBreakdownModal";
 import TestPointInfoModal from "./features/testPoints/components/TestPointInfoModal";
@@ -638,7 +638,9 @@ function App() {
   const [editingTestPoint, setEditingTestPoint] = useState(null);
   const [editingSession, setEditingSession] = useState(null);
   const [isToleranceModalOpen, setIsToleranceModalOpen] = useState(false);
-  const [isOverviewOpen, setIsOverviewOpen] = useState(false);
+  // OverviewModal State Removed
+  const [isOverviewOpen, setIsOverviewOpen] = useState(false); // Can be removed but kept to prevent breaking HeaderToolbox if it relies on boolean
+
   const [breakdownPoint, setBreakdownPoint] = useState(null);
   const [infoModalPoint, setInfoModalPoint] = useState(null);
   const [confirmationModal, setConfirmationModal] = useState(null);
@@ -814,7 +816,8 @@ function App() {
   // --- DRAG AND DROP & CLIPBOARD STATE ---
   const [draggedPointId, setDraggedPointId] = useState(null);
   const [dragOverTargetId, setDragOverTargetId] = useState(null);
-  const [clipboardPoint, setClipboardPoint] = useState(null); // The point currently in the "clipboard"
+  const [clipboardPoint, setClipboardPoint] = useState(null);
+  const [clipboardUut, setClipboardUut] = useState(null)
 
   // --- TOAST STATE ---
   const [toast, setToast] = useState(null);
@@ -911,7 +914,6 @@ function App() {
     const pointsToPaste = Array.isArray(clipboardPoint) ? clipboardPoint : [clipboardPoint];
     const targetUut = currentSessionData.uuts.find(u => u.id === targetUutId);
 
-    // FIX: Robust Area ID Lookup
     let resolvedAreaId = targetAreaId;
     if (!resolvedAreaId && targetUut) {
       resolvedAreaId = targetUut.measurementAreaId;
@@ -966,10 +968,6 @@ function App() {
         // Auto-Resolve
         const matched = findMatchingRange(targetUut, val, unit);
         newPointData.uutTolerance = matched || null;
-        // If dropped on UUT generally, we assume if it matches ANY range it's fine,
-        // or if it doesn't match any, it goes to default/uncategorized.
-        // The constraint "ensure they aren't being moved into a range they cant be in" 
-        // usually applies most strictly to specific range targets.
       }
       newPoints.push(newPointData);
     });
@@ -979,28 +977,35 @@ function App() {
     }
 
     if (newPoints.length > 0) {
-      saveTestPoint(newPoints, null); // Batch save if supported, else loop. saveTestPoint handles array?
-      // Checking saveTestPoint impl... it calls updateSession. 
-      // We might need to check if saveTestPoint handles arrays. 
-      // Logic at 1276 suggests it handles batch if `associatedUutIds` > 1 but here we have multiple POINTS.
-      // Let's assume we modify saveTestPoint or call it in loop.
-      // Actually, safer to loop for now unless we verify saveTestPoint supports point array.
-      // Looking at line 1282: `saveTestPoint(batchPoints, null)` where batchPoints is array.
-      // So it likely supports it.
-
-      // Wait, line 409 `saveTestPoint` comes from `useSessionManager`.
-      // I can't see `useSessionManager`. 
-      // However, `handleSaveTestPoint` in App.jsx (line 1275) uses it.
-      // Reuse safe assumption: saveTestPoint(newPoints) works if it accepts array.
-      // If not, use loop.
-      // `updateSession` takes full session object. 
-      // `saveTestPoint` usually helper.
-      // Let's pass array.
       saveTestPoint(newPoints, null);
       showToast(`${newPoints.length} point(s) pasted processing.`);
       setSelectedTestPointContextUutId(targetUutId);
     }
   }, [clipboardPoint, currentSessionData, saveTestPoint, setSelectedTestPointContextUutId]);
+
+  const handleCopyUut = useCallback((uut) => {
+    setClipboardUut(uut);
+    showToast(`UUT "${uut.model || 'Item'}" copied to clipboard`);
+    setContextMenu(null);
+  }, []);
+
+  const handlePasteUut = useCallback((targetAreaId) => {
+    if (!clipboardUut || !currentSessionData) return;
+
+    // Create Clone
+    const newUut = {
+      ...clipboardUut,
+      id: uuidv4(),
+      measurementAreaId: targetAreaId,
+      measurementArea: currentSessionData.measurementAreas.find(a => a.id === targetAreaId)?.name || "",
+      // Note: This duplicates the UUT definition only, not its test points (deep clone logic would go here)
+    };
+
+    const updatedUuts = [...(currentSessionData.uuts || []), newUut];
+    updateSession({ ...currentSessionData, uuts: updatedUuts });
+    showToast(`Pasted UUT "${newUut.model}"`);
+    setContextMenu(null);
+  }, [clipboardUut, currentSessionData, updateSession]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1233,11 +1238,6 @@ function App() {
 
     if (errorCount > 0) {
       showToast(`Move rejected: ${errorCount} point(s) do not fit in target range.`, "error");
-      // Force failure of whole batch or just partial?
-      // User says "ensure they aren't being moved". Partial success is risky. 
-      // Best to abort ALL if dragging as a group to maintain integrity, OR just skip invalid.
-      // "let the user no this point falls outside"
-      // I will skip invalid and move valid, but if ALL are invalid, nothing happens.
     }
 
     if (updatesToSave.length > 0) {
@@ -2130,8 +2130,6 @@ function App() {
         {confirmationModal && (<div className="modal-overlay" style={{ zIndex: 2001 }}> <div className="modal-content"> <button onClick={() => setConfirmationModal(null)} className="modal-close-button" > &times; </button> <h3>{confirmationModal.title}</h3> <p>{confirmationModal.message}</p> <div className="modal-actions" style={{ justifyContent: "center", gap: "15px" }} > <button className="button" style={{ backgroundColor: "var(--status-bad)" }} onClick={confirmationModal.onConfirm} > Delete </button> </div> </div> </div>)}
         <AddTestPointModal isOpen={isAddModalOpen || !!editingTestPoint} onClose={() => { setIsAddModalOpen(false); setEditingTestPoint(null); }} onSave={handleSaveTestPoint} initialData={editingTestPoint || (selectedAreaId ? { measurementAreaId: selectedAreaId } : null)} hasExistingPoints={currentTestPoints.length > 0} previousTestPointData={currentTestPoints.length > 0 ? currentTestPoints[currentTestPoints.length - 1] : null} />
         <EditSessionModal isOpen={!!editingSession} onClose={() => { setEditingSession(null); setInitialSessionTab("details"); }} sessionData={editingSession} onSave={handleSessionChange} onSaveToFile={handleSaveToFile} handleLoadFromFile={handleLoadFromFile} initialSection={initialSessionTab} sessionImageCache={sessionImageCache} onImageCacheChange={setSessionImageCache} onRemoveImageFile={deleteSessionImage} instruments={instruments} />
-
-        <OverviewModal isOpen={isOverviewOpen} onClose={() => setIsOverviewOpen(false)} sessionData={currentSessionData} onDeleteTmdeDefinition={handleDeleteTmdeDefinition} onDecrementTmdeQuantity={decrementTmdeQuantity} instruments={instruments} />
         {displayData && displayData.id && displayData.viewMode === 'point' && (<ToleranceToolModal isOpen={isToleranceModalOpen} onClose={() => setIsToleranceModalOpen(false)} onSave={(data) => { updateTestPointData(data); }} testPointData={displayData} />)}
         <FullBreakdownModal isOpen={!!breakdownPoint} breakdownData={breakdownPoint} onClose={() => setBreakdownPoint(null)} />
         <TestPointInfoModal isOpen={!!infoModalPoint} testPoint={infoModalPoint} onClose={() => setInfoModalPoint(null)} />
@@ -2147,7 +2145,33 @@ function App() {
               <button className="toolbox-button" style={{ width: '40px', height: '40px', border: '1px solid var(--border-color)', background: 'var(--input-background)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-color-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', }} onClick={() => setIsBugReportOpen(true)} title="Report Bug / Request Feature" > <FontAwesomeIcon icon={faBug} /> </button>
               <button className="toolbox-button" style={{ width: '40px', height: '40px', border: '1px solid var(--border-color)', background: 'var(--input-background)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-color-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', }} onClick={() => setIsHelpOpen(true)} title="Help & Tutorial" > <FontAwesomeIcon icon={faQuestionCircle} /> </button>
             </div>
-            <HeaderToolbox isToolboxCollapsed={isToolboxCollapsed} setIsToolboxCollapsed={setIsToolboxCollapsed} isOverviewOpen={isOverviewOpen} setIsOverviewOpen={setIsOverviewOpen} isInstrumentBuilderOpen={isInstrumentBuilderOpen} setIsInstrumentBuilderOpen={() => handleOpenLibrary()} isTraceabilityOpen={isTraceabilityOpen} setIsTraceabilityOpen={setIsTraceabilityOpen} isNotepadOpen={isNotepadOpen} setIsNotepadOpen={setIsNotepadOpen} isConverterOpen={isConverterOpen} setIsConverterOpen={setIsConverterOpen} handleSaveToFile={handleSaveToFile} handleLoadFromFile={handleLoadFromFile} isHelpOpen={isHelpOpen} setIsHelpOpen={setIsHelpOpen} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} dbPath={dbPath} disconnectDatabase={disconnectDatabase} selectDatabaseFolder={selectDatabaseFolder} />
+
+            {/* UPDATED HEADER TOOLBOX */}
+            <HeaderToolbox
+              isToolboxCollapsed={isToolboxCollapsed}
+              setIsToolboxCollapsed={setIsToolboxCollapsed}
+              isOverviewOpen={false}
+              setIsOverviewOpen={() => handleSelectSession(selectedSessionId)}
+              isInstrumentBuilderOpen={isInstrumentBuilderOpen}
+              setIsInstrumentBuilderOpen={() => handleOpenLibrary()}
+              isTraceabilityOpen={isTraceabilityOpen}
+              setIsTraceabilityOpen={setIsTraceabilityOpen}
+              isNotepadOpen={isNotepadOpen}
+              setIsNotepadOpen={setIsNotepadOpen}
+              isConverterOpen={isConverterOpen}
+              setIsConverterOpen={setIsConverterOpen}
+              handleSaveToFile={handleSaveToFile}
+              handleLoadFromFile={handleLoadFromFile}
+              isHelpOpen={isHelpOpen}
+              setIsHelpOpen={setIsHelpOpen}
+              currentTheme={currentTheme}
+              setCurrentTheme={setCurrentTheme}
+              isDarkMode={isDarkMode}
+              setIsDarkMode={setIsDarkMode}
+              dbPath={dbPath}
+              disconnectDatabase={disconnectDatabase}
+              selectDatabaseFolder={selectDatabaseFolder}
+            />
           </div>
 
           <div className="results-workflow-container">
@@ -2332,14 +2356,7 @@ function App() {
                   </span>
 
                   <div className="sidebar-actions-group">
-                    {/* Eyeball: Go to Session Overview */}
-                    <button
-                      onClick={() => handleSelectSession(selectedSessionId)}
-                      title="View Session Overview"
-                      className="sidebar-action-btn-organic"
-                    >
-                      <FontAwesomeIcon icon={faEye} />
-                    </button>
+                    {/* Eyeball Button Removed - Moved to HeaderToolbox */}
 
                     {/* Expand/Collapse All */}
                     <button
@@ -2403,6 +2420,20 @@ function App() {
                       <div
                         className={`area-header-sticky ${isAreaActive ? 'active' : ''}`}
                         onClick={() => handleSelectArea(areaData.id)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setContextMenu({
+                            x: e.pageX, y: e.pageY,
+                            items: [
+                              {
+                                label: "Paste UUT Here",
+                                action: () => handlePasteUut(areaData.id),
+                                icon: faPaste,
+                                className: !clipboardUut ? 'disabled' : ''
+                              }
+                            ]
+                          });
+                        }}
                       >
                         <FontAwesomeIcon
                           icon={isAreaExpanded ? faChevronDown : faChevronRight}
@@ -2454,6 +2485,22 @@ function App() {
                                           icon: faPaste,
                                           className: !clipboardPoint ? 'disabled' : ''
                                         },
+                                        {
+                                          label: "Copy UUT",
+                                          action: () => handleCopyUut(group),
+                                          icon: faCopy
+                                        },
+                                        {
+                                          label: "Edit UUT",
+                                          action: () => handleEditUut(group),
+                                          icon: faEdit
+                                        },
+                                        {
+                                          label: "Delete UUT",
+                                          action: () => handleDeleteUut(group.id),
+                                          icon: faTrashAlt,
+                                          className: "destructive"
+                                        }
                                       ],
                                     });
                                   }}

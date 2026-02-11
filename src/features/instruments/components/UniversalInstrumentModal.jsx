@@ -219,13 +219,25 @@ const UniversalInstrumentModal = ({
 
     const handleEditLibraryItem = (inst) => {
         const newDef = JSON.parse(JSON.stringify(inst));
+        
+        // --- FIX: Fully populate MetaData from Library Item ---
+        setMetaData({
+            name: inst.description || "", // Populate description for library edit
+            measurementArea: inst.measurementArea || "", // Restore saved area
+            measurementAreaColor: inst.measurementAreaColor || "#3498db", // Restore saved color
+            quantity: 1, 
+            assetId: ""
+        });
+
         if (effectiveMode !== 'library') {
             newDef.id = uuidv4(); 
             const autoName = `${inst.manufacturer || ''} ${inst.model || ''}`.trim();
             if (autoName) {
+                // If creating UUT/TMDE, default name to Manufacturer + Model
                 setMetaData(prev => ({ ...prev, name: autoName }));
             }
         }
+        
         setInstrumentDef(newDef);
         if (newDef.functions?.length > 0) setActiveFunctionId(newDef.functions[0].id);
         setViewMode("edit");
@@ -237,11 +249,13 @@ const UniversalInstrumentModal = ({
         setInstrumentDef(newDef);
         
         const autoName = `${inst.manufacturer} ${inst.model}`;
+        
+        // --- FIX: Inherit Measurement Area/Color from library item instead of resetting ---
         setMetaData(prev => ({ 
             ...prev, 
             name: autoName,
-            measurementArea: "",
-            measurementAreaColor: "#3498db"
+            measurementArea: inst.measurementArea || "", 
+            measurementAreaColor: inst.measurementAreaColor || "#3498db"
         }));
 
         setEffectiveMode(targetMode); 
@@ -280,7 +294,7 @@ const UniversalInstrumentModal = ({
 
     const handleAddRange = () => {
         if (!activeFunction) return;
-        const newRange = { id: uuidv4(), min: 0, max: 0, resolution: 0.0001, tolerances: {} };
+        const newRange = { id: uuidv4(), min: 0, max: 0, resolution: 0, tolerances: {} };
         const updatedRanges = [...activeFunction.ranges, newRange]; 
         setInstrumentDef(prev => ({
             ...prev,
@@ -338,19 +352,22 @@ const UniversalInstrumentModal = ({
                 description: metaData.name, 
                 name: metaData.name,
                 measurementArea: metaData.measurementArea,
-                measurementAreaColor: metaData.measurementAreaColor, // <--- Key Field
+                measurementAreaColor: metaData.measurementAreaColor,
                 instrument: instrumentDef,
                 type: effectiveMode
             };
         } else {
-            finalData = { ...instrumentDef, type: 'library' };
+            // Library Mode: Sync description with the input field (metaData.name)
+            finalData = { 
+                ...instrumentDef, 
+                description: metaData.name, // Ensure description is updated from UI
+                measurementArea: metaData.measurementArea, 
+                measurementAreaColor: metaData.measurementAreaColor,
+                type: 'library' 
+            };
         }
 
-        // --- DEBUG LOG ---
         console.log("[UniversalInstrumentModal] Saving Data:", finalData);
-        console.log("[UniversalInstrumentModal] Color being sent:", metaData.measurementAreaColor);
-        // -----------------
-
         onSave(finalData);
         onClose();
     };
@@ -492,10 +509,10 @@ const UniversalInstrumentModal = ({
                                                                     if (!func) return null;
                                                                     return (
                                                                         <table className="ranges-table">
-                                                                            <thead><tr><th>Min</th><th>Max</th><th>Res</th><th>Spec</th></tr></thead>
+                                                                            <thead><tr><th>Min</th><th>Max</th><th>Spec</th></tr></thead>
                                                                             <tbody>
                                                                                 {func.ranges.map((r, i) => (
-                                                                                    <tr key={i}><td>{r.min}</td><td>{r.max}</td><td>{r.resolution}</td><td>{formatToleranceSummary(r.tolerances)}</td></tr>
+                                                                                    <tr key={i}><td>{r.min}</td><td>{r.max}</td><td>{formatToleranceSummary(r.tolerances)}</td></tr>
                                                                                 ))}
                                                                             </tbody>
                                                                         </table>
@@ -537,7 +554,9 @@ const UniversalInstrumentModal = ({
                                     />
                                 </div>
                                 <div className="slide-over-footer">
-                                    <button className="button primary" onClick={saveRangeSpecs}><FontAwesomeIcon icon={faCheck} style={{ marginRight: '8px' }} /> Save Specs</button>
+                                    <button className="btn-large-icon" onClick={saveRangeSpecs} title="Save Specs">
+                                        <FontAwesomeIcon icon={faCheck} />
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -585,27 +604,26 @@ const UniversalInstrumentModal = ({
                                     <FontAwesomeIcon icon={faFingerprint} className="input-icon" />
                                 </div>
 
-                                {(effectiveMode === 'uut' || effectiveMode === 'tmde') && (
-                                    <div className="measurement-area-wrapper" style={{gridColumn: '1 / -1'}}>
-                                        <div className="floating-input-group" style={{flex: 1}}>
-                                            <input 
-                                                type="text" 
-                                                value={metaData.measurementArea} 
-                                                onChange={e => handleMetaChange('measurementArea', e.target.value)} 
-                                                placeholder=" " 
-                                            />
-                                            <label>Measurement Area</label>
-                                            <FontAwesomeIcon icon={faLayerGroup} className="input-icon" />
-                                        </div>
+                                {/* Measurement Area - Always Visible now */}
+                                <div className="measurement-area-wrapper" style={{gridColumn: '1 / -1'}}>
+                                    <div className="floating-input-group" style={{flex: 1}}>
                                         <input 
-                                            type="color" 
-                                            className="color-picker-input"
-                                            value={metaData.measurementAreaColor}
-                                            onChange={e => handleMetaChange('measurementAreaColor', e.target.value)}
-                                            title="Area Color"
+                                            type="text" 
+                                            value={metaData.measurementArea} 
+                                            onChange={e => handleMetaChange('measurementArea', e.target.value)} 
+                                            placeholder=" " 
                                         />
+                                        <label>Measurement Area</label>
+                                        <FontAwesomeIcon icon={faLayerGroup} className="input-icon" />
                                     </div>
-                                )}
+                                    <input 
+                                        type="color" 
+                                        className="color-picker-input"
+                                        value={metaData.measurementAreaColor}
+                                        onChange={e => handleMetaChange('measurementAreaColor', e.target.value)}
+                                        title="Area Color"
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -662,14 +680,20 @@ const UniversalInstrumentModal = ({
                                             <div className="ranges-table-container">
                                                 <table className="ranges-table">
                                                     <thead>
-                                                        <tr><th style={{width:'20%'}}>Min</th><th style={{width:'20%'}}>Max</th><th style={{width:'20%'}}>Res</th><th style={{width:'30%'}}>Tolerance</th><th style={{width:'10%'}}></th></tr>
+                                                        <tr>
+                                                            <th style={{width:'25%'}}>Min</th>
+                                                            <th style={{width:'25%'}}>Max</th>
+                                                            {/* Resolution removed */}
+                                                            <th style={{width:'40%'}}>Tolerance</th>
+                                                            <th style={{width:'10%'}}></th>
+                                                        </tr>
                                                     </thead>
                                                     <tbody>
                                                         {activeFunction.ranges.map(range => (
                                                             <tr key={range.id}>
                                                                 <td><input type="number" step="any" value={range.min} onChange={e => updateRangeBounds(range.id, 'min', e.target.value)} /></td>
                                                                 <td><input type="number" step="any" value={range.max} onChange={e => updateRangeBounds(range.id, 'max', e.target.value)} /></td>
-                                                                <td><input type="number" step="any" value={range.resolution} onChange={e => updateRangeBounds(range.id, 'resolution', e.target.value)} /></td>
+                                                                {/* Resolution removed */}
                                                                 <td>
                                                                     <div className="tolerance-cell" onClick={() => setEditingRange({ ...range })}>
                                                                         {formatToleranceSummary(range.tolerances)}

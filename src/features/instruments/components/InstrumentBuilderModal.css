@@ -387,3 +387,70 @@
     gap: 15px;
     flex-shrink: 0;
 }
+
+/* --- New Additions for Measurement Area & Actions --- */
+
+/* Measurement Area Wrapper */
+.measurement-area-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    grid-column: 1 / -1; 
+    margin-bottom: 0;
+}
+
+/* Color Picker Styling */
+.color-picker-input {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.color-picker-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+.color-picker-input::-webkit-color-swatch {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+/* Large Icon-Only Button (Green Check) */
+.btn-large-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.2rem;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    transition: transform 0.2s, background 0.2s;
+}
+.btn-large-icon:hover {
+    background-color: var(--primary-color-dark);
+    transform: translateY(-2px);
+}
+.btn-large-icon:disabled {
+    background-color: var(--border-color);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.7;
+}
+
+.slide-over-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--background-color-secondary);
+}

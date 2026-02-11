@@ -10,7 +10,7 @@ import {
   faRightLeft,
   faSave,
   faFolderOpen,
-  faQuestionCircle,
+  faEye,
   faPalette,
   faRotate
 } from "@fortawesome/free-solid-svg-icons";
@@ -232,7 +232,7 @@ const HeaderToolbox = ({
             onClick={() => setIsOverviewOpen(!isOverviewOpen)}
             title="Session Overview"
           >
-            <FontAwesomeIcon icon={faList} />
+            <FontAwesomeIcon icon={faEye} />
           </button>
         </div>
 
