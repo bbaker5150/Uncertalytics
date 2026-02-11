@@ -6454,6 +6454,151 @@ body.theme-cyberpunk .notification-window .window-header {
 }
 
 /* =================================================================== */
+/* CONFIGURATION PANEL & TABLE CARD SYSTEM                             */
+/* =================================================================== */
+
+/* Main panel container — holds all stacked cards */
+.configuration-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* Individual card wrapper */
+.panel-card {
+  background-color: var(--content-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+/* Card header bar */
+.panel-card-header {
+  padding: 10px 16px;
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-card-header .panel-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-card-header .panel-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Section titles inside paneled views */
+.panel-section-title {
+  margin: 0 0 8px 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-color);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Table container inside cards — flush edges, allows scroll */
+.panel-table-container {
+  overflow-x: auto;
+  border-radius: 0 0 8px 8px;
+  border: none;
+  flex: 1;
+}
+
+/* Delete button in card headers */
+.panel-card-header .btn-delete-selection {
+  color: var(--status-bad);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.panel-card-header .btn-delete-selection:hover {
+  background: rgba(255, 82, 82, 0.1);
+  border-color: var(--status-bad);
+}
+
+/* Add button in card headers */
+.panel-card-header .btn-add-item {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-color-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.panel-card-header .btn-add-item:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: rgba(var(--primary-rgb), 0.06);
+}
+
+/* Empty state row for tables */
+.panel-empty-row td {
+  padding: 20px;
+  text-align: center;
+  font-style: italic;
+  color: var(--text-color-muted);
+}
+
+/* Quick-add input styling (table inline quick add) */
+.panel-quick-add-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+  font-size: 0.85rem;
+  color: var(--text-color);
+  outline: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease;
+  font-family: inherit;
+}
+
+.panel-quick-add-input:focus {
+  border-bottom-color: var(--primary-color);
+}
+
+.panel-quick-add-input.value-input {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.panel-quick-add-input.unit-input {
+  color: var(--text-color-muted);
+}
+
+/* =================================================================== */
 /* INSTRUMENT SUMMARY TABLE (New Row-Based View)                       */
 /* =================================================================== */
 
@@ -6515,11 +6660,35 @@ body.theme-cyberpunk .notification-window .window-header {
   white-space: nowrap;
 }
 
-/* Description columns CAN wrap, but with a minimum width for readability */
+/* Description columns: bold, truncated with ellipsis */
 .instrument-summary-table td.cell-description {
-  min-width: 140px;
-  max-width: 250px;
-  word-wrap: break-word;
+  font-weight: 600;
+  vertical-align: top;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0; /* Needed for text-overflow to work with table-layout: fixed */
+}
+
+/* Tolerance & value cells: top-align for multi-spec rows */
+.instrument-summary-table td.cell-tolerance,
+.instrument-summary-table td.cell-value,
+.instrument-summary-table td.cell-area {
+  vertical-align: top;
+}
+
+/* Tables inside panel cards fill fully */
+.panel-table-container .instrument-summary-table {
+  width: 100%;
+  margin: 0;
+  border: none;
+  box-shadow: none;
+}
+
+/* Selects inside panel tables fill their cell */
+.panel-table-container .session-selector {
+  width: 100%;
+  padding: 4px 8px;
 }
 
 /* Compact columns (checkbox, actions) */

@@ -81,7 +81,7 @@ function Analysis({
   // --- NEW: Handlers passed from App.jsx to control Global Modal ---
   onEditUut,
   onAddTmde,
-  onEditTmde
+  onEditTmde,
 }) {
   // =========================================================================
   // 1. STATE MANAGEMENT
@@ -597,36 +597,41 @@ function Analysis({
 
       {/* 2. Main View Logic: Summary vs Detailed */}
       {!isPointView ? (
-        <UncertaintyPanel
-          // Data
-          testPointData={testPointData}
-          sessionData={sessionData}
-          currentUutSelection={currentUutSelection}
-          selectedTablePointIds={selectedTablePointIds}
-          // Actions & Navigation
-          onDefineTestPoint={handleDefineTestPoint}
-          handleOpenSessionEditor={handleOpenSessionEditor}
-          onDeleteTestPoint={onDeleteTestPoint}
-          onSaveTestPoint={handleSaveTestPointInfo}
-          onSelectUut={onSelectUut}
-          onSelectTestPoint={onSelectTestPoint}
-          setSelectedTablePointIds={setSelectedTablePointIds}
-          setCurrentUutSelection={setCurrentUutSelection}
-          // Instrument Management
-          onDeleteUut={onDeleteUut}
-          onDeleteTmdeDefinition={onDeleteTmdeDefinition}
-          onEditUut={onEditUut}
-          onEditTmde={onEditTmde}
-          onAddTmde={onAddTmde}
-          // Defaults/Nulls for irrelevant props in Summary View
-          calcResults={null}
-          calculationError={null}
-          uutNominal={null}
-          uutToleranceData={null}
-          tmdeTolerancesData={[]}
-          riskResults={null}
-          manualComponents={[]}
-        />
+        <div
+          className="analysis-content"
+          style={{ flex: 1, overflowY: "auto", padding: "20px" }}
+        >
+          <UncertaintyPanel
+            // Data
+            testPointData={testPointData}
+            sessionData={sessionData}
+            currentUutSelection={currentUutSelection}
+            selectedTablePointIds={selectedTablePointIds}
+            // Actions & Navigation
+            onDefineTestPoint={handleDefineTestPoint}
+            handleOpenSessionEditor={handleOpenSessionEditor}
+            onDeleteTestPoint={onDeleteTestPoint}
+            onSaveTestPoint={handleSaveTestPointInfo}
+            onSelectUut={onSelectUut}
+            onSelectTestPoint={onSelectTestPoint}
+            setSelectedTablePointIds={setSelectedTablePointIds}
+            setCurrentUutSelection={setCurrentUutSelection}
+            // Instrument Management
+            onDeleteUut={onDeleteUut}
+            onDeleteTmdeDefinition={onDeleteTmdeDefinition}
+            onEditUut={onEditUut}
+            onEditTmde={onEditTmde}
+            onAddTmde={onAddTmde}
+            // Defaults/Nulls for irrelevant props in Summary View
+            calcResults={null}
+            calculationError={null}
+            uutNominal={null}
+            uutToleranceData={null}
+            tmdeTolerancesData={[]}
+            riskResults={null}
+            manualComponents={[]}
+          />
+        </div>
       ) : (
         <>
           {/* Detailed View Navigation Tabs */}
