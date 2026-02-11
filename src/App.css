@@ -1186,7 +1186,7 @@ body.theme-cyberpunk .button {
 /* --- Sidebar and Main Content --- */
 .results-workflow-container {
   display: flex;
-  gap: 2rem;
+  gap: 0; /* Sidebar border-right handles separation */
 }
 
 .results-sidebar {
@@ -1199,9 +1199,9 @@ body.theme-cyberpunk .button {
   /* Themed Background */
   background-color: var(--sidebar-background);
 
-  /* Borders */
+  /* Borders — single clean right edge */
   border-right: 1px solid var(--border-color);
-  padding-right: 20px;
+  padding-right: 0; /* Remove outer padding; inner sections manage it */
 
   /* Glass support specifically for sidebar if needed */
   -webkit-backdrop-filter: var(--sidebar-backdrop-filter);
@@ -1217,14 +1217,13 @@ body.theme-cyberpunk .button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  margin-top: 0;
-  /* border-bottom: 1px solid var(--border-color); */
+  padding: 8px 14px;
+  margin: 0;
   background-color: transparent;
 }
 
 .sidebar-section-title {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1236,7 +1235,7 @@ body.theme-cyberpunk .button {
 .sidebar-actions-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 /* Ensure the buttons feel organic/subtle */
@@ -1261,78 +1260,60 @@ body.theme-cyberpunk .button {
   color: var(--primary-color);
 }
 
-/* --- SIDEBAR POINT GRID ITEMS (Premium Polished) --- */
-.point-grid-item {
-  display: grid;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 12px 8px 16px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-size: 0.85rem;
-  margin-bottom: 2px;
-  min-height: 32px;
-}
-
-.point-grid-item:hover {
-  background: var(--primary-color-light);
-  border-color: rgba(var(--primary-rgb), 0.15);
-}
-
-.point-grid-item.active {
-  background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.15) 0%, transparent 100%);
-  border-left: 3px solid var(--primary-color);
-  padding-left: 13px; /* Compensate for border */
-}
-
-.point-grid-item.table-highlight {
-  background: rgba(var(--primary-rgb), 0.08);
-  border-left: 2px solid var(--primary-color);
-  padding-left: 14px;
-}
+/* --- SIDEBAR POINT GRID ITEMS ---
+   Primary definitions are in Section 20 (Redesigned Sidebar / Level 4 Points).
+   The scoped overrides below are for contextual refinements only. */
 
 .point-grid-item .point-section {
-  font-weight: 700;
-  font-size: 0.75rem;
-  color: var(--text-color);
-  text-align: right;
-  padding-right: 6px;
-  border-right: 2px solid var(--border-color);
   cursor: text;
 }
 
 .point-grid-item .point-value {
-  font-family: "Consolas", "Monaco", monospace;
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: var(--primary-color);
   cursor: text;
 }
 
 .point-grid-item .point-tolerance,
 .point-grid-item .point-limits {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--text-color-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Shared style for metric columns (tolerance, limits) in sidebar points */
+.point-metric {
+  font-size: 0.65rem;
+  color: var(--text-color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Shared style for risk metric columns (PFA, PFR, TUR, TAR) */
+.point-risk-metric {
+  font-size: 0.65rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Placeholder dash for empty values */
+.point-placeholder {
+  opacity: 0.3;
+}
+
 /* Column Header Row */
 .sidebar-column-headers {
   display: grid;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: var(--text-color-muted);
-  padding: 4px 12px 6px 16px;
-  margin-bottom: 4px;
+  padding: 4px 14px 4px 14px;
+  margin-bottom: 0;
   border-bottom: 1px solid var(--border-color);
-  opacity: 0.8;
-  gap: 8px;
+  opacity: 0.7;
+  gap: 4px;
   text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.3px;
 }
 
@@ -1342,9 +1323,9 @@ body.theme-cyberpunk .button {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  margin-bottom: 8px;
+  gap: 6px;
+  padding: 6px 14px;
+  margin-bottom: 0;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -1617,9 +1598,9 @@ body.theme-cyberpunk .button {
   justify-content: space-between;
   align-items: flex-end;
   border-bottom: 1px solid var(--border-color);
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  gap: 1rem;
+  margin-bottom: 0;
+  padding: 10px 14px;
+  gap: 10px;
 }
 
 .sidebar-header h4 {
@@ -1631,34 +1612,34 @@ body.theme-cyberpunk .button {
 /* --- Sidebar Inline Editing Styles --- */
 /* --- Sidebar Inline Editing Styles --- */
 .sidebar-inline-input {
-  width: 100%; /* Fill the grid cell */
-  min-width: 0; /* Allow shrinking in flex/grid contexts */
-  padding: 0 4px;
-  height: 24px; /* Fixed height for alignment */
-  font-size: 0.85rem;
+  width: 100%;
+  min-width: 0;
+  padding: 1px 4px;
+  height: 22px;
+  font-size: 0.8rem;
   border: 1px solid var(--primary-color);
-  border-radius: 2px;
+  border-radius: 3px;
   background-color: var(--input-background);
   color: var(--text-color);
   font-family: inherit;
-  box-sizing: border-box; /* Crucial for width: 100% */
+  box-sizing: border-box;
 }
 
 .sidebar-inline-input:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 6px rgba(0, 123, 255, 0.4);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
 }
 
 .sidebar-inline-input.section {
   text-align: right;
   font-weight: 700;
-  font-size: 0.75rem;
-  padding-right: 2px; /* Slight padding for text */
+  font-size: 0.7rem;
+  padding-right: 2px;
 }
 
 .sidebar-inline-input.value {
-  flex-grow: 1; /* Take up all space not used by the unit */
+  flex-grow: 1;
   font-family: "Consolas", monospace;
   font-weight: 600;
 }
@@ -1674,22 +1655,24 @@ body.theme-cyberpunk .button {
 .session-header-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px 12px;
-  margin-top: 8px;
+  gap: 6px 10px;
+  margin-top: 4px;
 }
 
 .session-header-field {
   display: flex;
   flex-direction: column;
-  min-width: 0; /* allows text truncation */
+  min-width: 0;
 }
 
 .session-header-label {
   display: block;
-  opacity: 0.6;
-  font-size: 0.65rem;
+  opacity: 0.7;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
-  margin-bottom: 2px;
+  letter-spacing: 0.05em;
+  margin-bottom: 1px;
   color: var(--text-color-muted);
   white-space: nowrap;
 }
@@ -1699,36 +1682,54 @@ body.theme-cyberpunk .button {
   color: var(--text-color);
   font-weight: 500;
   cursor: text;
-  min-height: 1.4em;
+  min-height: 1.3em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 1px 2px;
-  border-radius: 4px;
-  transition: background-color 0.15s ease;
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  transition: all 0.15s ease;
 }
 
 .session-header-value:hover {
-  background-color: rgba(var(--primary-rgb), 0.08);
+  background-color: rgba(var(--primary-rgb), 0.06);
+  border-color: var(--border-color);
   color: var(--primary-color);
 }
 
 .session-header-input {
   width: 100%;
   font-size: 0.8rem;
-  padding: 3px 6px;
-  border-radius: 4px;
+  padding: 2px 4px;
+  border-radius: 3px;
   border: 1px solid var(--primary-color);
   background: var(--input-background);
   color: var(--text-color);
   font-family: inherit;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   box-sizing: border-box;
 }
 
 .session-header-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
+}
+
+/* Session Name (Title line) — slightly larger than other fields */
+.session-header-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.sidebar-session-header-organic.active .session-header-name {
+  color: var(--primary-color-dark);
+}
+
+.session-header-name-input {
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .sidebar-inline-input-wrapper small {
@@ -1811,13 +1812,7 @@ body.theme-cyberpunk .button {
   display: block;
 }
 
-.measurement-point-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
+/* Note: .measurement-point-list is defined in Section 20 */
 
 .measurement-point-item {
   display: flex;
@@ -4631,19 +4626,24 @@ body.dark-mode .final-result-display {
 .session-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 4px;
   flex-grow: 1;
+  min-width: 0; /* Allow shrinking */
 }
 
 .session-controls label {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.65rem;
+  font-weight: 700;
   color: var(--text-color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .session-selector {
-  padding: 8px;
+  padding: 6px 8px;
   font-weight: 500;
+  font-size: 0.85rem;
+  border-radius: var(--border-radius);
 }
 
 /* Fix for Orbital Dark Mode Session Selector Readability */
@@ -4654,7 +4654,7 @@ body.theme-orbital.dark-mode .session-selector option {
 
 .session-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 4px;
   align-items: center;
 }
 
@@ -4662,11 +4662,11 @@ body.theme-orbital.dark-mode .session-selector option {
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-color-muted);
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   cursor: pointer;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4681,7 +4681,7 @@ body.theme-orbital.dark-mode .session-selector option {
 
 .sidebar-action-button.delete {
   color: var(--status-bad);
-  border-color: var(--status-bad);
+  border-color: rgba(220, 53, 69, 0.3);
 }
 
 .sidebar-action-button.delete:hover {
@@ -7285,29 +7285,30 @@ body.theme-cyberpunk .range-header-container:hover {
 .measurement-point-list {
   display: flex;
   flex-direction: column;
-  gap: 0; /* Remove gap, use padding/borders */
-  padding-bottom: 40px;
+  gap: 0;
+  padding: 0 0 40px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* --- Level 0: Session Overview (Dashboard Home) --- */
 .sidebar-session-card {
-  margin: 10px 10px 20px 10px;
-  padding: 12px 15px;
+  margin: 8px 14px 12px 14px;
+  padding: 10px 14px;
   background: var(--component-bg);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
 .sidebar-session-card:hover {
   border-color: var(--primary-color);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 .sidebar-session-card.active {
@@ -7317,23 +7318,27 @@ body.theme-cyberpunk .range-header-container:hover {
 }
 
 .session-card-icon {
-  font-size: 1.2rem;
+  font-size: 1rem;
   color: var(--primary-color);
 }
 
 .session-card-text {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .session-card-title {
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .session-card-subtitle {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-color-muted);
 }
 
@@ -7342,25 +7347,23 @@ body.theme-cyberpunk .range-header-container:hover {
   position: sticky;
   top: 0;
   z-index: 10;
-  background-color: var(
-    --sidebar-background
-  ); /* Ensures content doesn't show through */
+  background-color: var(--sidebar-background);
   backdrop-filter: blur(10px);
-  padding: 15px 15px 8px 15px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border-color);
-  margin-bottom: 5px;
-
+  margin-bottom: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .area-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   color: var(--text-color-muted);
   flex-grow: 1;
 }
@@ -7369,12 +7372,21 @@ body.theme-cyberpunk .range-header-container:hover {
   color: var(--primary-color);
 }
 
+.area-header-sticky.active {
+  border-left: 3px solid var(--primary-color);
+  background-color: rgba(var(--primary-rgb), 0.04);
+}
+
+.area-header-sticky.active .area-label {
+  color: var(--primary-color);
+}
+
 /* --- Tree Structure Guide Lines --- */
 .tree-branch {
   position: relative;
-  margin-left: 22px; /* Indent for UUTs */
-  padding-left: 15px;
-  border-left: 1px solid var(--border-color); /* The vertical guide line */
+  margin-left: 20px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border-color);
 }
 
 /* --- Level 2: UUT Row --- */
@@ -7382,11 +7394,11 @@ body.theme-cyberpunk .range-header-container:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
-  margin: 2px 0;
-  border-radius: 6px;
+  padding: 7px 10px;
+  margin: 1px 0;
+  border-radius: 4px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.15s ease;
   position: relative;
 }
 
@@ -7394,36 +7406,46 @@ body.theme-cyberpunk .range-header-container:hover {
 .uut-row::before {
   content: "";
   position: absolute;
-  left: -16px; /* Connects to the border-left of tree-branch */
+  left: -15px;
   top: 50%;
-  width: 12px;
+  width: 11px;
   height: 1px;
   background-color: var(--border-color);
 }
 
 .uut-row:hover {
-  background-color: var(--component-header-bg);
+  background-color: rgba(var(--primary-rgb), 0.04);
 }
 
 .uut-row.active {
-  background-color: var(--primary-color-light);
-  color: var(--primary-color-dark);
+  background-color: rgba(var(--primary-rgb), 0.08);
+  color: var(--primary-color);
+  border-left: 3px solid var(--primary-color);
 }
 
 .uut-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-color);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.uut-info > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .uut-actions-group {
   display: flex;
-  gap: 4px;
-  opacity: 0; /* Hidden by default for cleanliness */
-  transition: opacity 0.2s;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
 }
 
 .uut-row:hover .uut-actions-group,
@@ -7436,33 +7458,31 @@ body.theme-cyberpunk .range-header-container:hover {
   font-size: 0.7rem;
   font-weight: 700;
   color: var(--text-color-muted);
-  padding: 6px 10px; /* Adjusted padding for hit area */
-  margin-top: 4px;
+  padding: 5px 10px;
+  margin-top: 2px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
   display: flex;
   align-items: center;
-  gap: 8px; /* Slightly more gap for icon */
-
-  /* Interactivity */
+  gap: 6px;
   cursor: pointer;
   border-radius: 4px;
-  border: 1px solid transparent; /* Prevents layout jump on active border */
-  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
 }
 
 /* 2. Hover State */
 .range-label-row:hover {
-  background-color: var(--primary-color-light);
+  background-color: rgba(var(--primary-rgb), 0.06);
   color: var(--primary-color);
 }
 
 /* 3. Active/Selected State */
 .range-label-row.active {
-  background-color: var(--primary-color-light);
+  background-color: rgba(var(--primary-rgb), 0.08);
   color: var(--primary-color);
   font-weight: 800;
-  border-color: rgba(0, 0, 0, 0.05);
+  border-left: 3px solid var(--primary-color);
 }
 
 /* --- THEME OVERRIDES --- */
@@ -7473,9 +7493,10 @@ body.dark-mode .range-label-row:hover {
   color: var(--text-color);
 }
 body.dark-mode .range-label-row.active {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.08);
   color: var(--primary-color);
   border-color: transparent;
+  border-left: 3px solid var(--primary-color);
 }
 
 /* Cyberpunk Theme (Neon Glow) */
@@ -7494,6 +7515,7 @@ body.theme-cyberpunk .range-label-row.active {
   background-color: rgba(0, 0, 0, 0.6);
   color: var(--primary-color);
   border: 1px solid var(--primary-color);
+  border-left: 3px solid var(--primary-color);
   box-shadow: 0 0 5px var(--primary-color);
   text-shadow: none;
 }
@@ -7503,6 +7525,7 @@ body.theme-cyberpunk:not(.dark-mode) .range-label-row.active {
   background-color: #000000;
   color: #ffffff;
   border: 1px solid var(--cyber-magenta);
+  border-left: 3px solid var(--cyber-magenta);
 }
 
 /* =================================================================== */
@@ -7511,17 +7534,17 @@ body.theme-cyberpunk:not(.dark-mode) .range-label-row.active {
 
 .point-grid-item {
   display: grid;
-  grid-template-columns: 45px 1fr; /* Fixed width for Section, Flex for Value */
-  gap: 10px;
+  grid-template-columns: 45px 1fr;
+  gap: 4px;
   align-items: center;
-  min-height: 34px;
-  padding: 8px 12px;
-  margin-bottom: 2px;
-  border-radius: 4px; /* Match Range/UUT border radius */
+  min-height: 30px;
+  padding: 5px 14px;
+  margin-bottom: 1px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  font-size: 0.85rem;
-  color: var(--text-color); /* Default text color */
+  transition: all 0.15s ease;
+  font-size: 0.8rem;
+  color: var(--text-color);
   text-decoration: none;
   border: 1px solid transparent;
   position: relative;
@@ -7529,35 +7552,32 @@ body.theme-cyberpunk:not(.dark-mode) .range-label-row.active {
 
 /* Hover State - Subtle */
 .point-grid-item:hover {
-  background-color: var(--hover-background);
+  background-color: rgba(var(--primary-rgb), 0.04);
   color: var(--primary-color);
 }
 
-/* --- ACTIVE STATE (Consistent "Text Highlight" Style) --- */
-/* This matches the logic used for Ranges: Subtle BG + Highlighted Text */
+/* --- ACTIVE STATE --- */
 .point-grid-item.active {
-  background-color: rgba(var(--primary-rgb), 0.1); /* Subtle highlight BG */
-  color: var(--primary-color); /* Highlighted Text */
+  background-color: rgba(var(--primary-rgb), 0.08);
+  color: var(--primary-color);
   font-weight: 700;
   border-color: transparent;
-  border-left: 3px solid var(--primary-color); /* Selection Indicator */
+  border-left: 3px solid var(--primary-color);
 }
 
 /* --- POINT FIELDS (The Editable Text) --- */
 
 /* Point Section Column */
 .point-section {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: var(--text-color-muted);
   text-transform: uppercase;
   text-align: right;
-
-  /* UPDATED: Prepare for Edit Mode visuals */
-  transition: all 0.1s ease-in-out;
-  border: 1px solid transparent; /* Reserve space for hover border */
-  border-radius: 2px;
-  padding: 0 2px; /* Breathing room for the highlight box */
+  transition: all 0.1s ease;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 0 2px;
 }
 
 /* Point Value Column */
@@ -7567,30 +7587,26 @@ body.theme-cyberpunk:not(.dark-mode) .range-label-row.active {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-
-  /* UPDATED: Prepare for Edit Mode visuals */
-  transition: all 0.1s ease-in-out;
+  transition: all 0.1s ease;
   border: 1px solid transparent;
-  border-radius: 2px;
+  border-radius: 3px;
   padding: 0 2px;
 }
 
 /* --- INTERACTION STATES (Visual Cues) --- */
 
 /* 1. EDITABLE CUE: Only when row is ACTIVE */
-/* When the row is selected, hovering the text shows it can be edited */
 .point-grid-item.active .point-section:hover,
 .point-grid-item.active .point-value:hover {
   cursor: text;
   background-color: var(--input-background);
   border-color: var(--primary-color);
-  box-shadow: 0 0 2px rgba(var(--primary-rgb), 0.3);
-  color: var(--text-color); /* Ensure high contrast when editing */
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+  color: var(--text-color);
   opacity: 1;
 }
 
 /* 2. SELECTABLE CUE: When row is NOT active */
-/* Normal pointer behavior for selection */
 .point-grid-item:not(.active) .point-section:hover,
 .point-grid-item:not(.active) .point-value:hover {
   cursor: pointer;
@@ -8313,27 +8329,25 @@ body.theme-cyberpunk .theme-selector-minimal {
 /* --- ORGANIC SESSION HEADER --- */
 
 .sidebar-session-header-organic {
-  padding: 12px 16px;
-  margin-bottom: 0; /* Remove margin so it sits flush with the divider */
+  padding: 10px 14px;
+  margin-bottom: 0;
   border-left: 3px solid transparent;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   cursor: pointer;
-  
-  /* Add a visible separator line */
-  border-bottom: 1px solid var(--border-color); 
+  border-bottom: 1px solid var(--border-color);
   background-color: transparent;
 }
 
-/* SUBTLE HOVER: Only a very faint tint, or keep transparent */
+/* SUBTLE HOVER */
 .sidebar-session-header-organic:hover {
-  background-color: rgba(255, 255, 255, 0.02); /* Extremely subtle */
+  background-color: rgba(var(--primary-rgb), 0.02);
 }
 
-/* ACTIVE STATE: No background box, just the accent border & text */
+/* ACTIVE STATE */
 .sidebar-session-header-organic.active {
-  background-color: transparent; /* REMOVED var(--primary-color-light) */
-  border-left-color: var(--primary-color); /* The only structural indicator */
-  color: var(--primary-color); /* Text color indicates active state */
+  background-color: transparent;
+  border-left-color: var(--primary-color);
+  color: var(--primary-color);
 }
 
 /* Ensure inner text inherits the active color */
@@ -8373,36 +8387,33 @@ body.theme-cyberpunk .theme-selector-minimal {
 
 /* --- ORGANIC HEADER: INTERNAL GRID & LABELS --- */
 
-/* 1. Define the Grid Layout */
 .session-header-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* Creates the 2-column layout */
+  grid-template-columns: 1fr 1fr;
   width: 100%;
+  gap: 6px 10px;
 }
 
-/* 2. Style the Individual Field Wrappers */
 .session-header-field {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  overflow: hidden; /* Prevents long text from breaking layout */
+  overflow: hidden;
 }
 
-/* 3. Style the Tiny Labels (Organization, Analyst, etc.) */
 .session-header-label {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-color-muted);
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 1px;
   white-space: nowrap;
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
-/* Optional: Tweaks for the values inside the grid */
 .session-header-field .session-header-value {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -8412,23 +8423,19 @@ body.theme-cyberpunk .theme-selector-minimal {
 
 /* --- ORGANIC QUICK ADD --- */
 .sidebar-quick-add-container {
-  /* Subtle tint to distinguish it as an active tool area */
   background-color: transparent;
-  
-  /* Borders to contain the tool area */
-  /* border-bottom: 1px solid var(--border-color); */
-  
-  padding: 12px 16px; /* Increased padding for better separation */
-  margin-bottom: 8px;
+  padding: 8px 14px 10px 14px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .sidebar-quick-add-container .sidebar-section-title {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   display: block;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--primary-color);
-  opacity: 0.9;
+  opacity: 0.8;
 }
